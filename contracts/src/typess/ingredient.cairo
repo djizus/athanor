@@ -37,6 +37,11 @@ pub impl IngredientImpl of IngredientTrait {
         let id: u8 = self.into();
         id - 1
     }
+
+    #[inline]
+    fn from(index: u8) -> Ingredient {
+        (index + 1).into()
+    }
 }
 
 pub impl IngredientIntoU8 of Into<Ingredient, u8> {

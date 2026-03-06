@@ -27,8 +27,8 @@ set -e
 #   - Cairo Option::None serializes as 1 (second enum variant), Option::Some(v) as 0 v
 #   - FullTokenContract game_registry_address uses Option::Some = "0 <addr>"
 #   - FullTokenContract event_relayer_address uses Option::None = "1"
-#   - game_system dojo_init: creator_address, denshokan_address, renderer_address(Option::None=1), vrf_address
-#   - config_system dojo_init: creator_address (ONE param)
+#   - Play dojo_init: creator_address, denshokan_address, renderer_address(Option::None=1), vrf_address
+#   - Setup dojo_init: creator_address (ONE param)
 #   - exploration_system, crafting_system, hero_system: NO dojo_init (read from centralized Config model)
 #   - sozo migrate MUST run from workspace root, not from contracts/
 #   - Fresh katana required for dev (no schema upgrade support)
@@ -238,13 +238,13 @@ sleep 2
 # ---------------------------------------------------
 print_step 5 "Updating $DOJO_CONFIG with deployed addresses..."
 
-sed -i "s|\"${NAMESPACE}-game_system\" = \[.*|\"${NAMESPACE}-game_system\" = [|" "$DOJO_CONFIG"
+sed -i "s|\"${NAMESPACE}-Play\" = \[.*|\"${NAMESPACE}-Play\" = [|" "$DOJO_CONFIG"
 python3 -c "
 import re
 with open('$DOJO_CONFIG', 'r') as f:
     content = f.read()
 
-game_block = '''\"${NAMESPACE}-game_system\" = [
+game_block = '''\"${NAMESPACE}-Play\" = [
     \"$ACCOUNT_ADDRESS\",
     \"$TOKEN_ADDRESS\",
     \"1\",
@@ -252,17 +252,17 @@ game_block = '''\"${NAMESPACE}-game_system\" = [
 ]'''
 
 content = re.sub(
-    r'\"${NAMESPACE}-game_system\" = \[.*?\]',
+    r'\"${NAMESPACE}-Play\" = \[.*?\]',
     game_block,
     content,
     flags=re.DOTALL
 )
 
-config_block = '''\"${NAMESPACE}-config_system\" = [
+config_block = '''\"${NAMESPACE}-Setup\" = [
     \"$ACCOUNT_ADDRESS\",
 ]'''
 content = re.sub(
-    r'\"${NAMESPACE}-config_system\" = \[.*?\]',
+    r'\"${NAMESPACE}-Setup\" = \[.*?\]',
     config_block,
     content,
     flags=re.DOTALL
@@ -336,15 +336,15 @@ CRAFTING_SYSTEM=""
 HERO_SYSTEM=""
 
 if [ -f "$MANIFEST_FILE" ]; then
-    GAME_SYSTEM=$(jq -r ".contracts[] | select(.tag == \"${NAMESPACE}-game_system\") | .address" "$MANIFEST_FILE" 2>/dev/null)
-    CONFIG_SYSTEM=$(jq -r ".contracts[] | select(.tag == \"${NAMESPACE}-config_system\") | .address" "$MANIFEST_FILE" 2>/dev/null)
+    GAME_SYSTEM=$(jq -r ".contracts[] | select(.tag == \"${NAMESPACE}-Play\") | .address" "$MANIFEST_FILE" 2>/dev/null)
+    CONFIG_SYSTEM=$(jq -r ".contracts[] | select(.tag == \"${NAMESPACE}-Setup\") | .address" "$MANIFEST_FILE" 2>/dev/null)
     EXPLORE_SYSTEM=$(jq -r ".contracts[] | select(.tag == \"${NAMESPACE}-exploration_system\") | .address" "$MANIFEST_FILE" 2>/dev/null)
     CRAFTING_SYSTEM=$(jq -r ".contracts[] | select(.tag == \"${NAMESPACE}-crafting_system\") | .address" "$MANIFEST_FILE" 2>/dev/null)
     HERO_SYSTEM=$(jq -r ".contracts[] | select(.tag == \"${NAMESPACE}-hero_system\") | .address" "$MANIFEST_FILE" 2>/dev/null)
 fi
 
-print_info "game_system:        $GAME_SYSTEM"
-print_info "config_system:      $CONFIG_SYSTEM"
+print_info "Play:        $GAME_SYSTEM"
+print_info "Setup:      $CONFIG_SYSTEM"
 print_info "exploration_system: $EXPLORE_SYSTEM"
 print_info "crafting_system:    $CRAFTING_SYSTEM"
 print_info "hero_system:        $HERO_SYSTEM"
@@ -404,8 +404,8 @@ echo "Addresses:"
 echo "  World:              $WORLD_ADDRESS"
 echo "  FullTokenContract:  $TOKEN_ADDRESS"
 echo "  MinigameRegistry:   $REGISTRY_ADDRESS"
-echo "  game_system:        $GAME_SYSTEM"
-echo "  config_system:      $CONFIG_SYSTEM"
+echo "  Play:               $GAME_SYSTEM"
+echo "  Setup:              $CONFIG_SYSTEM"
 echo "  exploration_system: $EXPLORE_SYSTEM"
 echo "  crafting_system:    $CRAFTING_SYSTEM"
 echo "  hero_system:        $HERO_SYSTEM"

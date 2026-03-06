@@ -11,16 +11,12 @@ use crate::events::game::{GameCreatedTrait, GrimoireCompletedTrait};
 use crate::events::hero::{HeroRecruitedTrait, PotionAppliedTrait};
 use crate::events::loot::LootClaimedTrait;
 use crate::interfaces::vrf::IVrfProviderDispatcher;
+use crate::models::character::Character;
 use crate::models::config::{Config, GameSettings, GameSettingsMetadata};
-use crate::models::crafting::FailedCombo;
 use crate::models::discovery::Discovery;
 use crate::models::game::{GameSeed, GameSession};
-use crate::models::hero::{Hero, HeroPendingIngredient};
 use crate::models::hint::Hint;
 use crate::models::index::Game;
-use crate::models::inventory::{IngredientBalance, PotionItem};
-use crate::models::player::PlayerMeta;
-use crate::models::recipe::Recipe;
 
 // ---------------------------------------------------------------------------
 // Store — typed facade over WorldStorage
@@ -94,6 +90,14 @@ pub impl StoreImpl of StoreTrait {
         self.world.write_model(model);
     }
 
+    fn character(self: @Store, game_id: u64, character_id: u8) -> Character {
+        self.world.read_model((game_id, character_id))
+    }
+
+    fn set_character(mut self: Store, model: @Character) {
+        self.world.write_model(model);
+    }
+
     // -----------------------------------------------------------------------
     // GameSession
     // -----------------------------------------------------------------------
@@ -115,92 +119,6 @@ pub impl StoreImpl of StoreTrait {
     }
 
     fn set_game_seed(mut self: Store, model: @GameSeed) {
-        self.world.write_model(model);
-    }
-
-    // -----------------------------------------------------------------------
-    // Hero
-    // -----------------------------------------------------------------------
-
-    fn hero(self: @Store, game_id: u64, hero_id: u8) -> Hero {
-        self.world.read_model((game_id, hero_id))
-    }
-
-    fn set_hero(mut self: Store, model: @Hero) {
-        self.world.write_model(model);
-    }
-
-    // -----------------------------------------------------------------------
-    // HeroPendingIngredient
-    // -----------------------------------------------------------------------
-
-    fn pending_ingredient(
-        self: @Store, game_id: u64, hero_id: u8, ingredient_id: u8,
-    ) -> HeroPendingIngredient {
-        self.world.read_model((game_id, hero_id, ingredient_id))
-    }
-
-    fn set_pending_ingredient(mut self: Store, model: @HeroPendingIngredient) {
-        self.world.write_model(model);
-    }
-
-    // -----------------------------------------------------------------------
-    // Recipe
-    // -----------------------------------------------------------------------
-
-    fn recipe(self: @Store, game_id: u64, recipe_id: u8) -> Recipe {
-        self.world.read_model((game_id, recipe_id))
-    }
-
-    fn set_recipe(mut self: Store, model: @Recipe) {
-        self.world.write_model(model);
-    }
-
-    // -----------------------------------------------------------------------
-    // IngredientBalance
-    // -----------------------------------------------------------------------
-
-    fn ingredient(self: @Store, game_id: u64, ingredient_id: u8) -> IngredientBalance {
-        self.world.read_model((game_id, ingredient_id))
-    }
-
-    fn set_ingredient(mut self: Store, model: @IngredientBalance) {
-        self.world.write_model(model);
-    }
-
-    // -----------------------------------------------------------------------
-    // PotionItem
-    // -----------------------------------------------------------------------
-
-    fn potion(self: @Store, game_id: u64, potion_index: u16) -> PotionItem {
-        self.world.read_model((game_id, potion_index))
-    }
-
-    fn set_potion(mut self: Store, model: @PotionItem) {
-        self.world.write_model(model);
-    }
-
-    // -----------------------------------------------------------------------
-    // FailedCombo
-    // -----------------------------------------------------------------------
-
-    fn failed_combo(self: @Store, game_id: u64, combo_key: u16) -> FailedCombo {
-        self.world.read_model((game_id, combo_key))
-    }
-
-    fn set_failed_combo(mut self: Store, model: @FailedCombo) {
-        self.world.write_model(model);
-    }
-
-    // -----------------------------------------------------------------------
-    // PlayerMeta
-    // -----------------------------------------------------------------------
-
-    fn player(self: @Store, addr: ContractAddress) -> PlayerMeta {
-        self.world.read_model(addr)
-    }
-
-    fn set_player(mut self: Store, model: @PlayerMeta) {
         self.world.write_model(model);
     }
 

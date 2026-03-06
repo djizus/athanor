@@ -1,4 +1,6 @@
 use core::num::traits::Pow;
+use crate::elements::effects;
+use crate::models::character::Character;
 
 pub const EFFECT_COUNT: u8 = 30;
 pub const ALL_EFFECTS: u32 = 2_u32.pow(EFFECT_COUNT.into()) - 1;
@@ -44,6 +46,46 @@ pub impl EffectImpl of EffectTrait {
     fn index(self: Effect) -> u8 {
         let id: u8 = self.into();
         id - 1
+    }
+
+    #[inline]
+    fn apply(self: Effect, ref character: Character, quantity: u16) {
+        match self {
+            // Max Health
+            Effect::Blue => effects::health::Health::apply(ref character, 5 * quantity),
+            Effect::Green => effects::health::Health::apply(ref character, 5 * quantity),
+            Effect::Red => effects::health::Health::apply(ref character, 5 * quantity),
+            Effect::Yellow => effects::health::Health::apply(ref character, 10 * quantity),
+            Effect::Purple => effects::health::Health::apply(ref character, 10 * quantity),
+            Effect::Orange => effects::health::Health::apply(ref character, 10 * quantity),
+            Effect::Pink => effects::health::Health::apply(ref character, 15 * quantity),
+            Effect::Brown => effects::health::Health::apply(ref character, 15 * quantity),
+            Effect::Gray => effects::health::Health::apply(ref character, 15 * quantity),
+            Effect::Black => effects::health::Health::apply(ref character, 20 * quantity),
+            // Increase Power
+            Effect::White => effects::power::Power::apply(ref character, quantity),
+            Effect::Cyan => effects::power::Power::apply(ref character, quantity),
+            Effect::Magenta => effects::power::Power::apply(ref character, quantity),
+            Effect::Lime => effects::power::Power::apply(ref character, 2 * quantity),
+            Effect::Teal => effects::power::Power::apply(ref character, 2 * quantity),
+            Effect::Maroon => effects::power::Power::apply(ref character, 3 * quantity),
+            Effect::Navy => effects::power::Power::apply(ref character, 3 * quantity),
+            Effect::Indigo => effects::power::Power::apply(ref character, 4 * quantity),
+            Effect::Violet => effects::power::Power::apply(ref character, 4 * quantity),
+            Effect::Gold => effects::power::Power::apply(ref character, 5 * quantity),
+            // Increase Regen
+            Effect::Silver => effects::regen::Regen::apply(ref character, quantity),
+            Effect::Copper => effects::regen::Regen::apply(ref character, quantity),
+            Effect::Mauve => effects::regen::Regen::apply(ref character, quantity),
+            Effect::Ruby => effects::regen::Regen::apply(ref character, quantity),
+            Effect::Sapphire => effects::regen::Regen::apply(ref character, 2 * quantity),
+            Effect::Emerald => effects::regen::Regen::apply(ref character, 2 * quantity),
+            Effect::Diamond => effects::regen::Regen::apply(ref character, 2 * quantity),
+            Effect::Amethyst => effects::regen::Regen::apply(ref character, 2 * quantity),
+            Effect::Topaz => effects::regen::Regen::apply(ref character, 3 * quantity),
+            Effect::Aquamarine => effects::regen::Regen::apply(ref character, 3 * quantity),
+            _ => (),
+        }
     }
 }
 
