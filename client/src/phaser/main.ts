@@ -13,6 +13,7 @@ export function createPhaserGame(parent: string, bridge: PhaserBridge): Phaser.G
     backgroundColor: '#080810',
     transparent: true,
     banner: false,
+    disableVisibilityChange: true,
     dom: { createContainer: false },
     scale: {
       mode: Phaser.Scale.FIT,
@@ -24,6 +25,7 @@ export function createPhaserGame(parent: string, bridge: PhaserBridge): Phaser.G
   });
 
   game.registry.set('bridge', bridge);
+  game.sound.pauseOnBlur = false;
   bridge.setGame(game);
   return game;
 }

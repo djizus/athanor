@@ -83,7 +83,7 @@ export function HomePage() {
   if (!address) {
     return (
       <div className="glass-page home-menu-page">
-        <section className="home-menu-shell floating-panel">
+        <section className="home-menu-shell">
           <div className="ambient-particles" aria-hidden>
             {particles.map((idx) => (
               <span key={`menu-disconnected-particle-${idx}`} className="ambient-particle" />
@@ -118,7 +118,7 @@ export function HomePage() {
 
   return (
     <div className="glass-page home-menu-page">
-      <section className="home-menu-shell floating-panel">
+      <section className="home-menu-shell">
         <div className="ambient-particles" aria-hidden>
           {particles.map((idx) => (
             <span key={`menu-connected-particle-${idx}`} className="ambient-particle" />

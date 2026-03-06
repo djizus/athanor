@@ -740,26 +740,29 @@ button:disabled, .btn:disabled {
 }
 
 .home-menu-gear {
-  background: rgba(10, 10, 19, 0.5);
-  border: 1px solid rgba(240, 192, 64, 0.22);
-  border-radius: var(--radius-md);
-  color: var(--text-secondary);
+  background: linear-gradient(180deg, rgba(42, 40, 74, 0.84), rgba(31, 30, 57, 0.84));
+  border: 1px solid rgba(121, 113, 170, 0.35);
+  border-radius: 0.85rem;
+  color: #f2eef8;
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  justify-content: center;
+  gap: 0.45rem;
   font-family: var(--font-title);
-  font-size: 0.86rem;
-  letter-spacing: 0.03em;
-  padding: 0.4rem 0.62rem;
+  font-size: clamp(1rem, 2.5vw, 1.45rem);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  min-height: 3rem;
+  min-width: 12rem;
+  padding: 0.5rem 1rem;
   cursor: pointer;
-  transition: color var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
+  transition: background var(--transition-fast), border-color var(--transition-fast);
   line-height: 1;
 }
 
 .home-menu-gear:hover {
-  color: var(--accent-gold);
-  border-color: rgba(240, 192, 64, 0.5);
-  background: rgba(10, 10, 19, 0.75);
+  border-color: rgba(240, 192, 64, 0.55);
+  background: linear-gradient(180deg, rgba(58, 54, 91, 0.95), rgba(37, 34, 64, 0.95));
 }
 
 .home-menu-stats {

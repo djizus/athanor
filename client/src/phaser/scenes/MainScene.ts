@@ -116,6 +116,7 @@ export class MainScene extends Phaser.Scene {
     this.cameraTargetX = cam.midPoint.x;
 
     this.input.mouse?.disableContextMenu();
+    this.sound.pauseOnBlur = false;
 
     this.bridge.on('heroesUpdated', this.onHeroesUpdated);
     this.bridge.on('focusedHeroChange', this.onFocusedHeroChange);
