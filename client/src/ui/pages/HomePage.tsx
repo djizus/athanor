@@ -78,11 +78,11 @@ export function HomePage() {
   const bestTime = formatBestTime(playerMeta?.best_time as bigint | undefined)
   const totalGames = playerMeta?.total_games ?? 0
 
-  return (
-    <main className="home-menu">
-      <section className="home-menu-shell panel">
-        {!address ? (
-          <>
+  if (!address) {
+    return (
+      <main className="home-menu">
+        <section className="home-menu-shell">
+          <div className="home-menu-hero">
             <img
               src="/assets/branding/logo-loading-gold-shadow.png"
               alt="Athanor"
@@ -90,6 +90,8 @@ export function HomePage() {
               className="home-menu-logo"
             />
             <p className="home-menu-tagline">Transmute, explore, survive.</p>
+          </div>
+          <div className="home-menu-bottom">
             <button
               className="home-menu-button home-menu-button-primary"
               disabled={!primaryConnector}
@@ -101,75 +103,83 @@ export function HomePage() {
             >
               Connect Wallet
             </button>
-          </>
-        ) : (
-          <>
-            <div className="home-menu-topbar">
-              <div className="home-menu-player-chip">
-                <span className="home-menu-player-name">{displayName}</span>
-                {isUsername && (
-                  <span className="home-menu-player-address">{truncatedAddress}</span>
-                )}
-              </div>
+          </div>
+        </section>
+      </main>
+    )
+  }
+
+  return (
+    <main className="home-menu">
+      <section className="home-menu-shell">
+        <div className="home-menu-topbar">
+          <div className="home-menu-player-chip">
+            <span className="home-menu-player-name">{displayName}</span>
+            {isUsername && (
+              <span className="home-menu-player-address">{truncatedAddress}</span>
+            )}
+          </div>
+          <button
+            className="home-menu-gear"
+            onClick={() => setSettingsOpen(true)}
+            aria-label="Settings"
+          >
+            ⚙
+          </button>
+        </div>
+
+        <div className="home-menu-hero">
+          <img
+            src="/assets/branding/logo-loading-gold-shadow.png"
+            alt="Athanor"
+            draggable={false}
+            className="home-menu-logo"
+          />
+          <p className="home-menu-tagline">Transmute, explore, survive.</p>
+        </div>
+
+        <div className="home-menu-bottom">
+          <div className="home-menu-stats">
+            <span>🏆 Rank #{rank ?? '—'}</span>
+            <span className="home-menu-stats-sep">·</span>
+            <span>⏱ Best: {bestTime}</span>
+            <span className="home-menu-stats-sep">·</span>
+            <span>🎮 Runs: {totalGames}</span>
+          </div>
+
+          <div className="home-menu-actions">
+            {activeGame ? (
               <button
-                className="home-menu-gear"
-                onClick={() => setSettingsOpen(true)}
-                aria-label="Settings"
+                className="home-menu-button home-menu-button-primary"
+                onClick={() => navigate('play', activeGame.game_id)}
               >
-                ⚙
+                Continue Game #{activeGame.game_id}
               </button>
-            </div>
-
-            <img
-              src="/assets/branding/logo-loading-gold-shadow.png"
-              alt="Athanor"
-              draggable={false}
-              className="home-menu-logo"
-            />
-            <p className="home-menu-tagline">Transmute, explore, survive.</p>
-
-            <div className="home-menu-stats">
-              <span>🏆 Rank #{rank ?? '—'}</span>
-              <span className="home-menu-stats-sep">·</span>
-              <span>⏱ Best: {bestTime}</span>
-              <span className="home-menu-stats-sep">·</span>
-              <span>🎮 Runs: {totalGames}</span>
-            </div>
-
-            <div className="home-menu-actions">
-              {activeGame ? (
-                <button
-                  className="home-menu-button home-menu-button-primary"
-                  onClick={() => navigate('play', activeGame.game_id)}
-                >
-                  Continue Game #{activeGame.game_id}
-                </button>
-              ) : (
-                <button
-                  className="home-menu-button home-menu-button-primary"
-                  onClick={handleCreateGame}
-                  disabled={isCreatingGame}
-                >
-                  {isCreatingGame ? 'Forging Run...' : 'New Game'}
-                </button>
-              )}
-              <button className="home-menu-button" onClick={() => navigate('mygames')}>
-                My Games{games.length > 0 ? ` (${games.length})` : ''}
+            ) : (
+              <button
+                className="home-menu-button home-menu-button-primary"
+                onClick={handleCreateGame}
+                disabled={isCreatingGame}
+              >
+                {isCreatingGame ? 'Forging Run...' : 'New Game'}
               </button>
-              <button className="home-menu-button" onClick={() => navigate('leaderboard')}>
-                Leaderboard
-              </button>
-            </div>
+            )}
+            <button className="home-menu-button" onClick={() => navigate('mygames')}>
+              My Games{games.length > 0 ? ` (${games.length})` : ''}
+            </button>
+            <button className="home-menu-button" onClick={() => navigate('leaderboard')}>
+              Leaderboard
+            </button>
+          </div>
 
-            <SettingsOverlay
-              open={settingsOpen}
-              onClose={() => setSettingsOpen(false)}
-              address={address}
-            />
+          {error ? <p className="home-menu-error">{error}</p> : null}
+        </div>
 
-            {error ? <p className="home-menu-error">{error}</p> : null}
-          </>
-        )}
+        <SettingsOverlay
+          open={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
+          address={address}
+        />
       </section>
     </main>
   )

@@ -540,56 +540,58 @@ button:disabled, .btn:disabled {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  background: rgba(8, 8, 16, 0.65);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  gap: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(8, 8, 16, 0.35) 0%,
+    rgba(8, 8, 16, 0.55) 40%,
+    rgba(8, 8, 16, 0.8) 100%
+  );
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   border: none;
   border-radius: 0;
   box-shadow: none;
-  padding: 1.5rem 1.25rem;
+  padding: 1rem 1.25rem 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.home-menu-hero {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 0;
 }
 
 .home-menu-logo {
-  width: clamp(11rem, 36vw, 20rem);
+  width: clamp(14rem, 40vw, 26rem);
   max-width: 92%;
   user-select: none;
   animation: float 3s ease-in-out infinite, pulse-glow 3.4s ease-in-out infinite;
 }
 
 .home-menu-tagline {
-  margin-top: -0.35rem;
   font-family: var(--font-body);
-  font-size: clamp(1.05rem, 2.8vw, 1.45rem);
+  font-size: clamp(1.1rem, 3vw, 1.6rem);
   font-weight: 500;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   color: #c8bfd8;
   text-align: center;
-  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.45);
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.5);
 }
 
-.home-menu-meta {
+.home-menu-bottom {
   width: 100%;
-  text-align: center;
-  display: grid;
-  gap: 0.22rem;
-  padding: 0.2rem 0.2rem 0.1rem;
-}
-
-.home-menu-address {
-  margin: 0;
-  color: #e4dff0;
-  font-size: clamp(0.95rem, 2.3vw, 1.25rem);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.home-menu-runs {
-  margin: 0;
-  color: #a8a0bc;
-  font-size: clamp(1rem, 2.35vw, 1.25rem);
+  max-width: 40rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding-top: 0.5rem;
 }
 
 .home-menu-actions {
@@ -631,7 +633,7 @@ button:disabled, .btn:disabled {
 
 .home-menu-error {
   width: 100%;
-  margin: 0.2rem 0 0;
+  max-width: 40rem;
   color: #ffbcbc;
   background: rgba(46, 14, 16, 0.68);
   border: 1px solid rgba(208, 64, 80, 0.45);
@@ -641,17 +643,12 @@ button:disabled, .btn:disabled {
   font-size: 1rem;
 }
 
-.home-menu-shell {
-  position: relative;
-}
-
 .home-menu-topbar {
   width: 100%;
-  max-width: 40rem;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 0.25rem;
+  flex-shrink: 0;
 }
 
 .home-menu-player-chip {
@@ -699,7 +696,6 @@ button:disabled, .btn:disabled {
   font-family: var(--font-body);
   font-size: clamp(0.9rem, 2.2vw, 1.1rem);
   color: var(--text-secondary);
-  padding: 0.25rem 0;
 }
 
 .home-menu-stats-sep {
@@ -842,7 +838,11 @@ button:disabled, .btn:disabled {
 
 @media (min-width: 768px) {
   .home-menu-shell {
-    padding: 2rem 2rem 1.5rem;
+    padding: 1.5rem 2.5rem 2rem;
+  }
+
+  .home-menu-logo {
+    width: clamp(16rem, 28vw, 28rem);
   }
 }
 
