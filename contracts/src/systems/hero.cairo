@@ -6,19 +6,17 @@ pub trait IHeroSystem<T> {
 
 #[dojo::contract]
 pub mod hero_system {
+    use athanor::constants::{self, DEFAULT_NS};
+    use athanor::models::game::GameSessionAssertTrait;
+    use athanor::models::hero::{HeroAssertTrait, HeroTrait};
+    use athanor::models::inventory::PotionItem;
+    use athanor::store::{StoreImpl, StoreTrait};
     use game_components_minigame::libs::{assert_token_ownership, post_action, pre_action};
     use game_components_token::core::interface::{
         IMinigameTokenDispatcher, IMinigameTokenDispatcherTrait,
     };
     use game_components_token::libs::LifecycleTrait;
     use starknet::get_block_timestamp;
-
-    use athanor::constants::{self, DEFAULT_NS};
-    use athanor::models::game::GameSessionAssertTrait;
-    use athanor::models::hero::{HeroTrait, HeroAssertTrait};
-    use athanor::models::inventory::PotionItem;
-    use athanor::store::{StoreImpl, StoreTrait};
-
     use super::IHeroSystem;
 
     // No Storage needed — token_address comes from Config via Store
@@ -42,9 +40,7 @@ pub mod hero_system {
 
             pre_action(token_address, game_id);
 
-            let token_dispatcher = IMinigameTokenDispatcher {
-                contract_address: token_address,
-            };
+            let token_dispatcher = IMinigameTokenDispatcher { contract_address: token_address };
             assert!(
                 token_dispatcher.token_metadata(game_id).lifecycle.is_playable(timestamp),
                 "Game not playable",
@@ -78,9 +74,7 @@ pub mod hero_system {
 
             pre_action(token_address, game_id);
 
-            let token_dispatcher = IMinigameTokenDispatcher {
-                contract_address: token_address,
-            };
+            let token_dispatcher = IMinigameTokenDispatcher { contract_address: token_address };
             assert!(
                 token_dispatcher.token_metadata(game_id).lifecycle.is_playable(timestamp),
                 "Game not playable",

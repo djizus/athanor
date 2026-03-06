@@ -1,5 +1,5 @@
-use starknet::ContractAddress;
 use athanor::constants;
+use starknet::ContractAddress;
 
 // --- Singleton system config (key = 0) ---
 // Stores external addresses used by all systems.

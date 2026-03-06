@@ -1,11 +1,18 @@
+#[inline]
+pub fn NAME() -> ByteArray {
+    "Play"
+}
+
 #[starknet::interface]
-pub trait IGameSystem<T> {
+pub trait IPlay<T> {
     fn create(ref self: T, game_id: u64);
+    fn glean(ref self: T, game_id: u64);
+    fn craft(ref self: T, game_id: u64, ingredient_a: u8, ingredient_b: u8, quantity: u16);
     fn surrender(ref self: T, game_id: u64);
 }
 
 #[dojo::contract]
-pub mod game_system {
+pub mod Play {
     use athanor::constants::DEFAULT_NS;
     use athanor::helpers::random::RandomImpl;
     use athanor::helpers::recipes;
@@ -24,18 +31,24 @@ pub mod game_system {
     use game_components_token::libs::LifecycleTrait;
     use openzeppelin::introspection::src5::SRC5Component;
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
-    use super::IGameSystem;
+    use crate::components::playable::PlayableComponent;
+    use crate::constants::NAMESPACE;
+    use crate::helpers::random::RandomTrait;
+    use super::*;
+
+    // Components
 
     component!(path: MinigameComponent, storage: minigame, event: MinigameEvent);
     component!(path: SRC5Component, storage: src5, event: SRC5Event);
+    component!(path: PlayableComponent, storage: playable, event: PlayableEvent);
 
     #[abi(embed_v0)]
     impl MinigameImpl = MinigameComponent::MinigameImpl<ContractState>;
     impl MinigameInternalImpl = MinigameComponent::InternalImpl<ContractState>;
-
     #[abi(embed_v0)]
     impl SRC5Impl = SRC5Component::SRC5Impl<ContractState>;
     use game_components_minigame::minigame::MinigameComponent;
+    impl PlayableInternalImpl = PlayableComponent::InternalImpl<ContractState>;
 
     #[storage]
     struct Storage {
@@ -43,6 +56,8 @@ pub mod game_system {
         minigame: MinigameComponent::Storage,
         #[substorage(v0)]
         src5: SRC5Component::Storage,
+        #[substorage(v0)]
+        playable: PlayableComponent::Storage,
     }
 
     #[event]
@@ -52,6 +67,8 @@ pub mod game_system {
         MinigameEvent: MinigameComponent::Event,
         #[flat]
         SRC5Event: SRC5Component::Event,
+        #[flat]
+        PlayableEvent: PlayableComponent::Event,
     }
 
     fn dojo_init(
@@ -125,35 +142,31 @@ pub mod game_system {
     }
 
     #[abi(embed_v0)]
-    impl GameSystemImpl of IGameSystem<ContractState> {
+    impl GameSystemImpl of IPlay<ContractState> {
         fn create(ref self: ContractState, game_id: u64) {
-            let mut store = StoreImpl::new(self.world(@DEFAULT_NS()));
-            let token_address = self.token_address();
-
-            pre_action(token_address, game_id);
-
-            let token_dispatcher = IMinigameTokenDispatcher { contract_address: token_address };
-            let token_metadata = token_dispatcher.token_metadata(game_id);
-            assert!(
-                token_metadata.lifecycle.is_playable(get_block_timestamp()), "Game not playable",
-            );
-            assert_token_ownership(token_address, game_id);
-
-            // Generate seed via VRF
+            // [Setup] World
+            let world = self.world(@NAMESPACE());
+            // [Compute] Seed
+            let store = StoreTrait::new(world);
             let vrf_addr = store.vrf_address();
             let random = if vrf_addr.is_zero() {
-                RandomImpl::new_pseudo_random()
+                RandomTrait::new_pseudo_random()
             } else {
-                RandomImpl::from_vrf_address(vrf_addr, game_id.into())
+                RandomTrait::from_vrf_address(vrf_addr, game_id.into())
             };
-            let seed = random.seed;
+            // [Effect] Create game
+            self.before(world, game_id);
+            self.playable.create(world, game_id, random.seed);
 
-            let player = get_caller_address();
-            let timestamp = get_block_timestamp();
+            // --- [LEGACY] ---
 
             // Create session + seed
+            let player = get_caller_address();
+            let timestamp = get_block_timestamp();
+            let seed = random.seed;
             let session = GameSessionTrait::new(game_id, player, seed, timestamp);
             store.set_session(@session);
+            let mut store = StoreTrait::new(world);
             store.set_game_seed(@GameSeed { game_id, seed });
 
             // Generate 10 recipes
@@ -177,7 +190,31 @@ pub mod game_system {
 
             store.emit_game_created(game_id, player, 0, seed);
 
-            post_action(token_address, game_id);
+            self.after(world, game_id);
+        }
+
+        fn glean(ref self: ContractState, game_id: u64) {
+            // [Setup] World
+            let world = self.world(@NAMESPACE());
+            // [Effect] Glean
+            self.before(world, game_id);
+            self.playable.glean(world, game_id);
+            self.after(world, game_id);
+        }
+
+        fn craft(
+            ref self: ContractState,
+            game_id: u64,
+            ingredient_a: u8,
+            ingredient_b: u8,
+            quantity: u16,
+        ) {
+            // [Setup] World
+            let world = self.world(@NAMESPACE());
+            // [Effect] Craft
+            self.before(world, game_id);
+            self.playable.craft(world, game_id, ingredient_a.into(), ingredient_b.into(), quantity);
+            self.after(world, game_id);
         }
 
         fn surrender(ref self: ContractState, game_id: u64) {
@@ -199,6 +236,30 @@ pub mod game_system {
             session.game_over = true;
             store.set_session(@session);
 
+            post_action(token_address, game_id);
+        }
+    }
+
+    #[generate_trait]
+    pub impl PrivateImpl of PrivateTrait {
+        fn before(ref self: ContractState, world: WorldStorage, game_id: u64) {
+            // [Check] Game is playable
+            let mut store = StoreTrait::new(world);
+            let token_address = store.token_address();
+            pre_action(token_address, game_id);
+            let token_dispatcher = IMinigameTokenDispatcher { contract_address: token_address };
+            let now = get_block_timestamp();
+            assert!(
+                token_dispatcher.token_metadata(game_id).lifecycle.is_playable(now),
+                "Game not playable",
+            );
+            assert_token_ownership(token_address, game_id);
+        }
+
+        fn after(ref self: ContractState, world: WorldStorage, game_id: u64) {
+            // [Effect] Post actions
+            let store = StoreTrait::new(world);
+            let token_address = store.token_address();
             post_action(token_address, game_id);
         }
     }

@@ -7,6 +7,12 @@ pub trait ICraftingSystem<T> {
 
 #[dojo::contract]
 pub mod crafting_system {
+    use athanor::constants::{self, DEFAULT_NS};
+    use athanor::helpers::random::{Random, RandomImpl, RandomTrait};
+    use athanor::models::crafting::FailedCombo;
+    use athanor::models::game::GameSessionAssertTrait;
+    use athanor::models::inventory::PotionItem;
+    use athanor::store::{Store, StoreImpl, StoreTrait};
     use core::poseidon::poseidon_hash_span;
     use game_components_minigame::libs::{assert_token_ownership, post_action, pre_action};
     use game_components_token::core::interface::{
@@ -14,20 +20,16 @@ pub mod crafting_system {
     };
     use game_components_token::libs::LifecycleTrait;
     use starknet::get_block_timestamp;
-
-    use athanor::constants::{self, DEFAULT_NS};
-    use athanor::helpers::random::{Random, RandomImpl, RandomTrait};
-    use athanor::models::crafting::FailedCombo;
-    use athanor::models::game::GameSessionAssertTrait;
-    use athanor::models::inventory::PotionItem;
-    use athanor::store::{Store, StoreImpl, StoreTrait};
-
     use super::ICraftingSystem;
 
     // No Storage needed — token_address and vrf_address come from Config via Store
 
     fn combo_key(a: u8, b: u8) -> u16 {
-        let (lo, hi) = if a < b { (a, b) } else { (b, a) };
+        let (lo, hi) = if a < b {
+            (a, b)
+        } else {
+            (b, a)
+        };
         lo.into() * constants::TOTAL_INGREDIENTS.into() + hi.into()
     }
 
@@ -58,9 +60,7 @@ pub mod crafting_system {
 
             pre_action(token_address, game_id);
 
-            let token_dispatcher = IMinigameTokenDispatcher {
-                contract_address: token_address,
-            };
+            let token_dispatcher = IMinigameTokenDispatcher { contract_address: token_address };
             assert!(
                 token_dispatcher.token_metadata(game_id).lifecycle.is_playable(timestamp),
                 "Game not playable",
@@ -99,10 +99,7 @@ pub mod crafting_system {
             let mut found_recipe: bool = false;
             let mut found_id: u8 = 0;
             let mut r_idx: u8 = 0;
-            loop {
-                if r_idx >= constants::RECIPES_TO_DISCOVER {
-                    break;
-                }
+            while r_idx < constants::RECIPES_TO_DISCOVER {
                 let recipe = store.recipe(game_id, r_idx);
                 if !recipe.discovered && recipe.ingredient_a == lo && recipe.ingredient_b == hi {
                     found_recipe = true;
@@ -110,7 +107,7 @@ pub mod crafting_system {
                     break;
                 }
                 r_idx += 1;
-            };
+            }
 
             if found_recipe {
                 let mut recipe = store.recipe(game_id, found_id);
@@ -134,12 +131,7 @@ pub mod crafting_system {
 
                 store
                     .emit_recipe_discovered(
-                        game_id,
-                        found_id,
-                        lo,
-                        hi,
-                        recipe.effect_type,
-                        session.discovered_count,
+                        game_id, found_id, lo, hi, recipe.effect_type, session.discovered_count,
                     );
 
                 store.set_session(@session);
@@ -167,9 +159,7 @@ pub mod crafting_system {
 
             pre_action(token_address, game_id);
 
-            let token_dispatcher = IMinigameTokenDispatcher {
-                contract_address: token_address,
-            };
+            let token_dispatcher = IMinigameTokenDispatcher { contract_address: token_address };
             assert!(
                 token_dispatcher.token_metadata(game_id).lifecycle.is_playable(timestamp),
                 "Game not playable",
@@ -198,10 +188,7 @@ pub mod crafting_system {
             store.set_ingredient(@bal_b);
 
             let mut brewed: u16 = 0;
-            loop {
-                if brewed >= max_brews {
-                    break;
-                }
+            while brewed < max_brews {
                 let potion_idx = session.potion_count;
                 session.potion_count += 1;
                 store
@@ -215,7 +202,7 @@ pub mod crafting_system {
                         },
                     );
                 brewed += 1;
-            };
+            }
 
             store.set_session(@session);
 
@@ -229,9 +216,7 @@ pub mod crafting_system {
 
             pre_action(token_address, game_id);
 
-            let token_dispatcher = IMinigameTokenDispatcher {
-                contract_address: token_address,
-            };
+            let token_dispatcher = IMinigameTokenDispatcher { contract_address: token_address };
             assert!(
                 token_dispatcher.token_metadata(game_id).lifecycle.is_playable(timestamp),
                 "Game not playable",
@@ -244,13 +229,10 @@ pub mod crafting_system {
             // Cost = hint_base_cost * hint_cost_multiplier^hints_used
             let mut cost: u32 = constants::HINT_BASE_COST.into();
             let mut i: u8 = 0;
-            loop {
-                if i >= session.hints_used {
-                    break;
-                }
+            while i < session.hints_used {
                 cost *= constants::HINT_COST_MULTIPLIER.into();
                 i += 1;
-            };
+            }
             assert!(session.gold >= cost, "Not enough gold");
 
             session.gold -= cost;
@@ -271,10 +253,7 @@ pub mod crafting_system {
             let mut skip: u8 = 0;
             let mut hinted_recipe_id: u8 = 0;
             let mut r_idx: u8 = 0;
-            loop {
-                if r_idx >= constants::RECIPES_TO_DISCOVER {
-                    break;
-                }
+            while r_idx < constants::RECIPES_TO_DISCOVER {
                 let recipe = store.recipe(game_id, r_idx);
                 if !recipe.discovered {
                     if skip == target_idx {
@@ -284,7 +263,7 @@ pub mod crafting_system {
                     skip += 1;
                 }
                 r_idx += 1;
-            };
+            }
 
             let hinted = store.recipe(game_id, hinted_recipe_id);
 

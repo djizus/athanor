@@ -1,6 +1,5 @@
-use athanor::constants;
 use athanor::helpers::random::{Random, RandomTrait};
-use athanor::types;
+use athanor::{constants, types};
 
 #[derive(Copy, Drop)]
 pub struct TickEvent {
@@ -141,23 +140,18 @@ fn set_at(arr: Array<u16>, index: u32, value: u16) -> Array<u16> {
     let mut result: Array<u16> = array![];
     let len = arr.len();
     let mut i: u32 = 0;
-    loop {
-        if i >= len {
-            break;
-        }
+    while i < len {
         if i == index {
             result.append(value);
         } else {
             result.append(*arr.at(i));
         }
         i += 1;
-    };
+    }
     result
 }
 
-pub fn simulate_expedition(
-    hp: u16, max_hp: u16, power: u16, seed: felt252,
-) -> ExpeditionResult {
+pub fn simulate_expedition(hp: u16, max_hp: u16, power: u16, seed: felt252) -> ExpeditionResult {
     let mut rng = Random { seed, nonce: 0 };
     let mut current_hp: u32 = hp.into();
     let hero_max_hp: u32 = max_hp.into();
@@ -169,12 +163,9 @@ pub fn simulate_expedition(
 
     let max_depth: u16 = 300;
 
-    loop {
-        if depth >= max_depth {
-            break;
-        }
-
+    while depth < max_depth {
         let zone_id = get_zone(depth);
+
         let drain = get_drain(zone_id);
 
         if current_hp <= drain {
@@ -186,12 +177,15 @@ pub fn simulate_expedition(
                 );
             break;
         }
+
         current_hp -= drain;
 
         let event_roll: u16 = rng.next_bounded(10000).try_into().unwrap();
+
         let (trap_t, gold_t, heal_t, beast_t) = get_event_thresholds(zone_id);
 
         let mut event_kind: u8 = types::EVENT_NOTHING;
+
         let mut event_value: u16 = 0;
 
         if event_roll < trap_t {
@@ -250,11 +244,11 @@ pub fn simulate_expedition(
         let hp_after = clamp_u16(current_hp);
 
         if event_kind != types::EVENT_NOTHING {
-            events
-                .append(TickEvent { depth, zone_id, event_kind, value: event_value, hp_after });
+            events.append(TickEvent { depth, zone_id, event_kind, value: event_value, hp_after });
         }
 
         let drop_roll: u16 = rng.next_bounded(10000).try_into().unwrap();
+
         let drop_chance = get_drop_chance(zone_id);
 
         if drop_roll < drop_chance {
@@ -285,7 +279,7 @@ pub fn simulate_expedition(
         }
 
         depth += 1;
-    };
+    }
 
     ExpeditionResult {
         death_depth: depth, gold, events, ingredient_counts, remaining_hp: clamp_u16(current_hp),
