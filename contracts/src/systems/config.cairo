@@ -7,6 +7,9 @@ pub trait IConfigSystem<T> {
 
 #[dojo::contract]
 pub mod config_system {
+    use athanor::constants::DEFAULT_NS;
+    use athanor::models::config::{GameSettings, GameSettingsMetadata, GameSettingsTrait};
+    use athanor::store::{StoreImpl, StoreTrait};
     use dojo::world::{WorldStorage, WorldStorageTrait};
     use game_components_minigame::extensions::settings::interface::{
         IMinigameSettings, IMinigameSettingsDetails,
@@ -14,15 +17,9 @@ pub mod config_system {
     use game_components_minigame::extensions::settings::settings::SettingsComponent;
     use game_components_minigame::extensions::settings::structs::{GameSetting, GameSettingDetails};
     use game_components_minigame::interface::{IMinigameDispatcher, IMinigameDispatcherTrait};
-    use openzeppelin_introspection::src5::SRC5Component;
+    use openzeppelin::introspection::src5::SRC5Component;
     use starknet::storage::StoragePointerWriteAccess;
     use starknet::{ContractAddress, get_block_timestamp};
-
-    use athanor::constants::DEFAULT_NS;
-    use athanor::models::config::{
-        GameSettings, GameSettingsMetadata, GameSettingsTrait,
-    };
-    use athanor::store::{StoreImpl, StoreTrait};
     use super::IConfigSystem;
 
     component!(path: SettingsComponent, storage: settings, event: SettingsEvent);
@@ -73,9 +70,7 @@ pub mod config_system {
         self.settings_counter.write(0);
 
         let (game_systems_address, _) = world.dns(@"game_system").unwrap();
-        let minigame_dispatcher = IMinigameDispatcher {
-            contract_address: game_systems_address,
-        };
+        let minigame_dispatcher = IMinigameDispatcher { contract_address: game_systems_address };
         let minigame_token_address = minigame_dispatcher.token_address();
 
         self
@@ -88,7 +83,8 @@ pub mod config_system {
                 array![
                     GameSetting { name: "Zones", value: "3" },
                     GameSetting { name: "Recipes", value: "10" },
-                ].span(),
+                ]
+                    .span(),
                 minigame_token_address,
             );
     }
@@ -112,8 +108,15 @@ pub mod config_system {
                 name: format!("{}", metadata.name),
                 description: "Athanor game settings",
                 settings: array![
-                    GameSetting { name: "Active", value: if metadata.is_active { "Yes" } else { "No" } },
-                ].span(),
+                    GameSetting {
+                        name: "Active", value: if metadata.is_active {
+                            "Yes"
+                        } else {
+                            "No"
+                        },
+                    },
+                ]
+                    .span(),
             }
         }
     }

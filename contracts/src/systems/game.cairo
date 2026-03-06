@@ -6,6 +6,14 @@ pub trait IGameSystem<T> {
 
 #[dojo::contract]
 pub mod game_system {
+    use athanor::constants::DEFAULT_NS;
+    use athanor::helpers::random::RandomImpl;
+    use athanor::helpers::recipes;
+    use athanor::models::config::Config;
+    use athanor::models::game::{GameSeed, GameSessionAssertTrait, GameSessionTrait};
+    use athanor::models::hero::HeroTrait;
+    use athanor::models::player::PlayerMeta;
+    use athanor::store::{StoreImpl, StoreTrait};
     use core::num::traits::Zero;
     use dojo::world::{WorldStorage, WorldStorageTrait};
     use game_components_minigame::interface::IMinigameTokenData;
@@ -14,18 +22,8 @@ pub mod game_system {
         IMinigameTokenDispatcher, IMinigameTokenDispatcherTrait,
     };
     use game_components_token::libs::LifecycleTrait;
-    use openzeppelin_introspection::src5::SRC5Component;
+    use openzeppelin::introspection::src5::SRC5Component;
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
-
-    use athanor::constants::DEFAULT_NS;
-    use athanor::helpers::random::RandomImpl;
-    use athanor::helpers::recipes;
-    use athanor::models::config::Config;
-    use athanor::models::game::{GameSeed, GameSessionTrait, GameSessionAssertTrait};
-    use athanor::models::hero::HeroTrait;
-    use athanor::models::player::PlayerMeta;
-    use athanor::store::{StoreImpl, StoreTrait};
-
     use super::IGameSystem;
 
     component!(path: MinigameComponent, storage: minigame, event: MinigameEvent);
@@ -37,7 +35,6 @@ pub mod game_system {
 
     #[abi(embed_v0)]
     impl SRC5Impl = SRC5Component::SRC5Impl<ContractState>;
-
     use game_components_minigame::minigame::MinigameComponent;
 
     #[storage]
@@ -93,7 +90,11 @@ pub mod game_system {
                 "",
                 Option::None,
                 Option::None,
-                if renderer.is_zero() { Option::None } else { Option::Some(renderer) },
+                if renderer.is_zero() {
+                    Option::None
+                } else {
+                    Option::Some(renderer)
+                },
                 if config_address.is_zero() {
                     Option::None
                 } else {
@@ -105,10 +106,7 @@ pub mod game_system {
 
         // Write centralized Config — all systems read from this
         let mut store = StoreImpl::new(world);
-        store
-            .set_config(
-                @Config { key: 0, token_address: denshokan_address, vrf_address },
-            );
+        store.set_config(@Config { key: 0, token_address: denshokan_address, vrf_address });
     }
 
     #[abi(embed_v0)]
@@ -134,9 +132,7 @@ pub mod game_system {
 
             pre_action(token_address, game_id);
 
-            let token_dispatcher = IMinigameTokenDispatcher {
-                contract_address: token_address,
-            };
+            let token_dispatcher = IMinigameTokenDispatcher { contract_address: token_address };
             let token_metadata = token_dispatcher.token_metadata(game_id);
             assert!(
                 token_metadata.lifecycle.is_playable(get_block_timestamp()), "Game not playable",
@@ -190,9 +186,7 @@ pub mod game_system {
 
             pre_action(token_address, game_id);
 
-            let token_dispatcher = IMinigameTokenDispatcher {
-                contract_address: token_address,
-            };
+            let token_dispatcher = IMinigameTokenDispatcher { contract_address: token_address };
             let token_metadata = token_dispatcher.token_metadata(game_id);
             assert!(
                 token_metadata.lifecycle.is_playable(get_block_timestamp()), "Game not playable",

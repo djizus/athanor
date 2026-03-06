@@ -1,8 +1,8 @@
 [package]
 name = "athanor"
-version.workspace = true
-edition.workspace = true
-cairo-version.workspace = true
+version = "0.1.0"
+cairo-version = "2.13.1"
+edition = "2024_07"
 
 [tool.scarb]
 allow-prebuilt-plugins = ["dojo_cairo_macros"]
@@ -11,20 +11,25 @@ allow-prebuilt-plugins = ["dojo_cairo_macros"]
 slot = "sozo --profile slot clean && sozo --profile slot build && sozo --profile slot migrate --guest"
 
 [dependencies]
-dojo.workspace = true
-starknet.workspace = true
 game_components_minigame.workspace = true
 game_components_token.workspace = true
-openzeppelin_introspection.workspace = true
-origami_random.workspace = true
-
-[[target.starknet-contract]]
-build-external-contracts = [
-    "dojo::world::world_contract::world",
-    "game_components_token::examples::full_token_contract::FullTokenContract",
-    "game_components_token::examples::minigame_registry_contract::MinigameRegistryContract",
-]
+dojo.workspace = true
+openzeppelin.workspace = true
+starknet.workspace = true
 
 [dev-dependencies]
 dojo_cairo_test.workspace = true
 cairo_test.workspace = true
+
+[[target.starknet-contract]]
+build-external-contracts = [
+  "dojo::world::world_contract::world",
+  "game_components_token::examples::full_token_contract::FullTokenContract",
+  "game_components_token::examples::minigame_registry_contract::MinigameRegistryContract",
+]
+
+[features]
+default = []
+
+[profile.slot]
+[profile.sepolia]
