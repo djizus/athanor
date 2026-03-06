@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { getZoneForDepth, HERO_STATUS_EXPLORING } from '@/game/constants';
+import { getSettingsSnapshot } from '@/stores/settingsStore';
 import type { AthanorHero } from '../PhaserBridge';
 import { PhaserBridge } from '../PhaserBridge';
 import { EventEffect } from '../objects/EventEffect';
@@ -121,7 +122,8 @@ export class MainScene extends Phaser.Scene {
 
   private tryPlaySound(key: string, volume = 0.5): void {
     if (!this.cache.audio.exists(key)) return;
-    this.sound.play(key, { volume });
+    const { sfxVolume } = getSettingsSnapshot();
+    this.sound.play(key, { volume: volume * sfxVolume });
   }
 
   private shutdown(): void {
