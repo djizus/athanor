@@ -78,9 +78,10 @@ async function probeConnectivity(rpcUrl: string, toriiUrl: string): Promise<void
   }
 }
 
-export async function setupDojo() {
+export async function setupDojo(onStatus?: (status: string) => void) {
   console.groupCollapsed('[athanor:init] setupDojo')
   try {
+    onStatus?.('Validating configuration...')
     const config = dojoConfig()
     const namespace = import.meta.env.VITE_PUBLIC_NAMESPACE ?? 'athanor'
     const entityModels = modelNames.map((name) => `${namespace}-${name}`)
@@ -96,9 +97,11 @@ export async function setupDojo() {
       throw new Error('Invalid world address (0x0). Check VITE_PUBLIC_WORLD_ADDRESS in client/.env.')
     }
 
+    onStatus?.('Connecting to Katana and Torii...')
     logPhase('connectivity')
     await probeConnectivity(config.rpcUrl, config.toriiUrl)
 
+    onStatus?.('Initializing indexer...')
     logPhase('torii')
     const toriiClient = await new ToriiClient({
       toriiUrl: config.toriiUrl,
@@ -115,6 +118,7 @@ export async function setupDojo() {
 
     const clientModels = Object.values(contractComponents) as Parameters<typeof getSyncEntities>[1]
 
+    onStatus?.('Syncing game state...')
     logPhase('sync', { entityModels })
     const sync = await withTimeout(
       getSyncEntities(toriiClient, clientModels, clause, undefined, entityModels),
@@ -123,6 +127,7 @@ export async function setupDojo() {
     )
     console.info('[athanor:init] sync result:', sync)
 
+    onStatus?.('Preparing game systems...')
     logPhase('systems')
     const client = createSystemCalls(config.manifest)
     console.info('[athanor:init] system calls created, contracts:', config.manifest.contracts.map(c => c.tag))

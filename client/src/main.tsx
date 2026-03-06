@@ -71,9 +71,7 @@ function Root() {
       deployType: import.meta.env.VITE_PUBLIC_DEPLOY_TYPE ?? 'dev',
     })
 
-    setInitStatus('Connecting to local Katana and Torii...')
-
-    setupDojo()
+    setupDojo(setInitStatus)
       .then((result) => {
         console.info('[athanor:init] setupDojo resolved')
         if (mounted) {

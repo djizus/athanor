@@ -88,6 +88,10 @@ export class PhaserBridge extends Phaser.Events.EventEmitter {
     this.emit('zoneChange', zoneId);
   }
 
+  notifyBootComplete(): void {
+    this.emit('bootComplete');
+  }
+
   playCraftEffect(discovered: boolean): void {
     this.emit('craftResult', { discovered });
   }

@@ -73,6 +73,9 @@ export class BootScene extends Phaser.Scene {
       }
     }
 
+    const bridge = this.registry.get('bridge') as import('../PhaserBridge').PhaserBridge | undefined;
+    bridge?.notifyBootComplete();
+
     this.scene.start('MainScene');
   }
 

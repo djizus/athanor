@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigationStore, type PageId } from '@/stores/navigationStore'
 import { createPhaserGame, PhaserBridge } from '@/phaser'
+import { LoadingScreen } from '@/ui/LoadingScreen'
 import { HomePage } from '@/ui/pages/HomePage'
 import { LeaderboardPage } from '@/ui/pages/LeaderboardPage'
 import { MyGamesPage } from '@/ui/pages/MyGamesPage'
@@ -23,7 +24,7 @@ function PageRouter({ bridge }: { bridge: PhaserBridge }) {
 export default function App() {
   const bridgeRef = useRef<PhaserBridge | null>(null)
   const gameRef = useRef<Phaser.Game | null>(null)
-  const [bridgeReady, setBridgeReady] = useState(false)
+  const [ready, setReady] = useState(false)
 
   useEffect(() => {
     console.info('[athanor:app] creating PhaserBridge + game')
@@ -31,29 +32,38 @@ export default function App() {
     const game = createPhaserGame('game-container', bridge)
     bridgeRef.current = bridge
     gameRef.current = game
-    setBridgeReady(true)
-    console.info('[athanor:app] bridge ready, game created')
+
+    const onBootComplete = () => {
+      console.info('[athanor:app] bootComplete received — game engine ready')
+      setReady(true)
+    }
+    bridge.on('bootComplete', onBootComplete)
 
     return () => {
       console.info('[athanor:app] cleanup — destroying game')
+      bridge.off('bootComplete', onBootComplete)
       bridge.removeAllListeners()
       bridge.setGame(null)
       game.destroy(true)
       bridgeRef.current = null
       gameRef.current = null
-      setBridgeReady(false)
+      setReady(false)
     }
   }, [])
 
-  const bridge = bridgeReady ? bridgeRef.current : null
-  console.info('[athanor:render] App render — bridgeReady:', bridgeReady, 'bridge:', !!bridge)
+  const bridge = ready ? bridgeRef.current : null
+  console.info('[athanor:render] App render — ready:', ready, 'bridge:', !!bridge)
 
   return (
     <>
       <div id="game-container" />
-      <div className="app">
-        {bridge ? <PageRouter bridge={bridge} /> : <p style={{ color: '#888', textAlign: 'center', marginTop: '2rem' }}>Waiting for game engine...</p>}
-      </div>
+      {bridge ? (
+        <div className="app">
+          <PageRouter bridge={bridge} />
+        </div>
+      ) : (
+        <LoadingScreen status="Loading game assets..." />
+      )}
     </>
   )
 }
