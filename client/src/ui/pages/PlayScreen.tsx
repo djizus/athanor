@@ -7,11 +7,18 @@ import { useInventory } from '@/hooks/useInventory'
 import { useRecipes } from '@/hooks/useRecipes'
 import { useNavigationStore } from '@/stores/navigationStore'
 import type { PhaserBridge } from '@/phaser'
+import {
+  HERO_NAMES,
+  HERO_RECRUIT_COSTS,
+  HERO_STATUS_EXPLORING,
+  HERO_STATUS_IDLE,
+  HERO_STATUS_RETURNING,
+  displayGold,
+  displayHp,
+  heroAssetUrl,
+} from '@/game/constants'
 import { StatusHUD } from '@/ui/components/StatusHUD'
-import { MiniHeroRoster } from '@/ui/components/MiniHeroRoster'
-import { ActionBar } from '@/ui/components/ActionBar'
-import { RightPanel, type PanelMode } from '@/ui/components/RightPanel'
-import { HotkeyBar } from '@/ui/components/HotkeyBar'
+import { CraftContent, GrimoireContent, InventoryContent } from '@/ui/components/RightPanel'
 import { SettingsOverlay } from '@/ui/components/SettingsOverlay'
 
 interface Props {
@@ -22,15 +29,19 @@ export function PlayScreen({ bridge }: Props) {
   const { client } = useDojo()
   const { gameId, navigate } = useNavigationStore()
   const { account, address } = useAccount()
-  const { session, seed } = useGame(gameId)
+  const { session } = useGame(gameId)
   const heroes = useHeroes(gameId)
   const inventory = useInventory(gameId)
   const recipes = useRecipes(gameId)
 
   const [selectedHeroId, setSelectedHeroId] = useState(0)
-  const [activePanel, setActivePanel] = useState<PanelMode | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000))
+
+  const [heroesCollapsed, setHeroesCollapsed] = useState(false)
+  const [inventoryCollapsed, setInventoryCollapsed] = useState(false)
+  const [craftCollapsed, setCraftCollapsed] = useState(false)
+  const [grimoireCollapsed, setGrimoireCollapsed] = useState(false)
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000)
@@ -74,23 +85,27 @@ export function PlayScreen({ bridge }: Props) {
     return () => { bridge.off('heroSelected', onHeroSelected) }
   }, [bridge])
 
-  const togglePanel = useCallback((mode: PanelMode) => {
-    setActivePanel((current) => (current === mode ? null : mode))
+  const scrollPanelIntoView = useCallback((panelClass: string, collapseSetter: React.Dispatch<React.SetStateAction<boolean>>) => {
+    collapseSetter(false)
+    requestAnimationFrame(() => {
+      const el = document.querySelector(`.${panelClass}`)
+      el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    })
   }, [])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return
       switch (e.key.toLowerCase()) {
-        case 'c': togglePanel('craft'); break
-        case 'g': togglePanel('grimoire'); break
-        case 'i': togglePanel('inventory'); break
-        case 'escape': setActivePanel(null); break
+        case 'c': scrollPanelIntoView('panel-craft', setCraftCollapsed); break
+        case 'g': scrollPanelIntoView('panel-grimoire', setGrimoireCollapsed); break
+        case 'i': scrollPanelIntoView('panel-inventory', setInventoryCollapsed); break
+        case 'escape': setSelectedHeroId(-1); break
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [togglePanel])
+  }, [scrollPanelIntoView])
 
   const handleSendExpedition = async (heroId: number) => {
     if (!account || gameId == null) return
@@ -136,59 +151,106 @@ export function PlayScreen({ bridge }: Props) {
   const heroCount = session?.hero_count ?? heroes.length
   const isGameOver = session?.game_over ?? false
   const hintCost = 1000 * Math.pow(3, session?.hints_used ?? 0)
-  const seedLabel = seed ? `#${String(seed.seed).slice(0, 8)}` : '...'
+  const startedAt = session ? Number(session.started_at) : now
+  const elapsedSeconds = Math.max(0, now - startedAt)
 
   return (
     <div className="play-screen">
+      <button className="play-back-btn floating-panel" onClick={() => navigate('home')}>
+        ← Back
+      </button>
+
       <StatusHUD
         gold={gold}
         discoveredCount={discoveredCount}
-        seedLabel={seedLabel}
-        isGameOver={isGameOver}
-        onSurrender={() => void handleSurrender()}
-        onBack={() => navigate('home')}
+        elapsedSeconds={elapsedSeconds}
       />
 
-      <MiniHeroRoster
-        heroes={heroes}
-        heroCount={heroCount}
-        selectedHeroId={selectedHeroId}
-        gold={gold}
-        isGameOver={isGameOver}
-        now={now}
-        onSelectHero={setSelectedHeroId}
-        onRecruit={() => void handleRecruitHero()}
-      />
+      <button className="play-settings-btn floating-panel" onClick={() => setSettingsOpen(true)}>
+        ⚙
+      </button>
 
-      <ActionBar
-        heroes={heroes}
-        selectedHeroId={selectedHeroId}
-        isGameOver={isGameOver}
-        now={now}
-        onSendExpedition={(id) => void handleSendExpedition(id)}
-        onClaimLoot={(id) => void handleClaimLoot(id)}
-      />
+      <div className="play-left-panels">
+        <div className="side-panel floating-panel panel-heroes">
+          <button className="side-panel-header" onClick={() => setHeroesCollapsed((v) => !v)}>
+            <span className="side-panel-title">Heroes</span>
+            <span className="side-panel-chevron">{heroesCollapsed ? '▸' : '▾'}</span>
+          </button>
+          {!heroesCollapsed && (
+            <div className="side-panel-body">
+              {[0, 1, 2].map((slot) => (
+                <HeroSlot
+                  key={slot}
+                  slot={slot}
+                  heroes={heroes}
+                  heroCount={heroCount}
+                  selectedHeroId={selectedHeroId}
+                  gold={gold}
+                  isGameOver={isGameOver}
+                  now={now}
+                  onSelectHero={setSelectedHeroId}
+                  onRecruit={() => void handleRecruitHero()}
+                  onSendExpedition={(id) => void handleSendExpedition(id)}
+                  onClaimLoot={(id) => void handleClaimLoot(id)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
 
-      {activePanel && (
-        <RightPanel
-          mode={activePanel}
-          onClose={() => setActivePanel(null)}
-          inventory={inventory}
-          recipes={recipes}
-          discoveredCount={discoveredCount}
-          gold={gold}
-          isGameOver={isGameOver}
-          hintCost={hintCost}
-          onCraft={(a, b) => void handleCraft(a, b)}
-          onBuyHint={() => void handleBuyHint()}
-        />
-      )}
+        <div className="side-panel floating-panel panel-inventory">
+          <button className="side-panel-header" onClick={() => setInventoryCollapsed((v) => !v)}>
+            <span className="side-panel-title">Inventory</span>
+            <span className="side-panel-chevron">{inventoryCollapsed ? '▸' : '▾'}</span>
+          </button>
+          {!inventoryCollapsed && (
+            <div className="side-panel-body">
+              <InventoryContent inventory={inventory} />
+            </div>
+          )}
+        </div>
+      </div>
 
-      <HotkeyBar
-        activePanel={activePanel}
-        onTogglePanel={togglePanel}
-        onSettings={() => setSettingsOpen(true)}
-      />
+      <div className="play-right-panels">
+        <div className="side-panel floating-panel panel-craft">
+          <button className="side-panel-header" onClick={() => setCraftCollapsed((v) => !v)}>
+            <span className="side-panel-title">Brew</span>
+            <span className="side-panel-chevron">{craftCollapsed ? '▸' : '▾'}</span>
+          </button>
+          {!craftCollapsed && (
+            <div className="side-panel-body">
+              <CraftContent
+                inventory={inventory}
+                gold={gold}
+                isGameOver={isGameOver}
+                hintCost={hintCost}
+                onCraft={(a, b) => void handleCraft(a, b)}
+                onBuyHint={() => void handleBuyHint()}
+              />
+            </div>
+          )}
+        </div>
+
+        <div className="side-panel floating-panel panel-grimoire">
+          <button className="side-panel-header" onClick={() => setGrimoireCollapsed((v) => !v)}>
+            <span className="side-panel-title">Grimoire {discoveredCount}/10</span>
+            <span className="side-panel-chevron">{grimoireCollapsed ? '▸' : '▾'}</span>
+          </button>
+          {!grimoireCollapsed && (
+            <div className="side-panel-body">
+              <GrimoireContent recipes={recipes} discoveredCount={discoveredCount} />
+            </div>
+          )}
+        </div>
+      </div>
+
+      <button
+        className="play-surrender-btn floating-panel btn-danger"
+        onClick={() => void handleSurrender()}
+        disabled={isGameOver}
+      >
+        Surrender
+      </button>
 
       {isGameOver && (
         <div className="game-over-overlay">
@@ -208,6 +270,131 @@ export function PlayScreen({ bridge }: Props) {
           address={address}
         />
       )}
+    </div>
+  )
+}
+
+interface HeroSlotProps {
+  slot: number
+  heroes: Array<{
+    hero_id: number
+    hp: number
+    max_hp: number
+    status: number
+    return_at: bigint | number
+    pending_gold: number
+  }>
+  heroCount: number
+  selectedHeroId: number
+  gold: number
+  isGameOver: boolean
+  now: number
+  onSelectHero: (heroId: number) => void
+  onRecruit: () => void
+  onSendExpedition: (heroId: number) => void
+  onClaimLoot: (heroId: number) => void
+}
+
+function HeroSlot({
+  slot,
+  heroes,
+  heroCount,
+  selectedHeroId,
+  gold,
+  isGameOver,
+  now,
+  onSelectHero,
+  onRecruit,
+  onSendExpedition,
+  onClaimLoot,
+}: HeroSlotProps) {
+  const hero = heroes.find((h) => h.hero_id === slot)
+
+  if (!hero) {
+    if (slot < heroCount) return null
+    if (slot === heroCount && heroCount < 3) {
+      const cost = HERO_RECRUIT_COSTS[Math.min(heroCount, 2)]
+      return (
+        <div className="hero-card hero-card-locked">
+          <div className="hero-card-locked-icon">+</div>
+          <div className="hero-card-info">
+            <span className="hero-card-name">{HERO_NAMES[slot]}</span>
+            <button
+              className="hero-card-recruit btn-primary"
+              onClick={onRecruit}
+              disabled={isGameOver || gold < cost}
+            >
+              Recruit ({displayGold(cost)}g)
+            </button>
+          </div>
+        </div>
+      )
+    }
+    return null
+  }
+
+  const hpPct = hero.max_hp > 0 ? Math.min(100, (hero.hp / hero.max_hp) * 100) : 0
+  const remaining = Math.max(0, Number(hero.return_at) - now)
+  const isIdle = hero.status === HERO_STATUS_IDLE
+  const isExploring = hero.status === HERO_STATUS_EXPLORING
+  const isReturning = hero.status === HERO_STATUS_RETURNING
+  const lootReady = isReturning && remaining === 0
+
+  let statusText = 'Ready'
+  let statusClass = ''
+  if (lootReady) { statusText = 'Loot!'; statusClass = 'loot-ready' }
+  else if (isExploring) { statusText = `Exploring ${remaining}s`; statusClass = 'exploring' }
+  else if (isReturning) { statusText = `Returning ${remaining}s`; statusClass = 'returning' }
+
+  const hpColor = hpPct > 50 ? 'var(--accent-green)' : hpPct > 25 ? '#ff9800' : 'var(--accent-red)'
+
+  return (
+    <div
+      className={`hero-card${selectedHeroId === hero.hero_id ? ' selected' : ''}`}
+      onClick={() => onSelectHero(hero.hero_id)}
+    >
+      <div className="hero-card-top">
+        <img
+          className="hero-card-portrait"
+          src={heroAssetUrl(hero.hero_id)}
+          alt={HERO_NAMES[hero.hero_id]}
+        />
+        <div className="hero-card-info">
+          <span className="hero-card-name">
+            {HERO_NAMES[hero.hero_id]} — {displayHp(hero.hp)}/{displayHp(hero.max_hp)}
+          </span>
+          <div className="hero-card-hp">
+            <div className="hero-card-hp-fill" style={{ width: `${hpPct}%`, background: hpColor }} />
+          </div>
+          <span className={`hero-card-status ${statusClass}`}>{statusText}</span>
+        </div>
+      </div>
+      <div className="hero-card-actions">
+        {isIdle && (
+          <button
+            className="btn-primary btn-sm"
+            onClick={(e) => { e.stopPropagation(); onSendExpedition(hero.hero_id) }}
+            disabled={isGameOver}
+          >
+            Send Expedition
+          </button>
+        )}
+        {isExploring && (
+          <span className="hero-card-timer">Exploring... {remaining}s</span>
+        )}
+        {isReturning && !lootReady && (
+          <span className="hero-card-timer">Returning... {remaining}s</span>
+        )}
+        {lootReady && (
+          <button
+            className="btn-primary btn-sm btn-loot"
+            onClick={(e) => { e.stopPropagation(); onClaimLoot(hero.hero_id) }}
+            disabled={isGameOver}
+          >
+            Claim Loot
+          </button>
+        )}
+      </div>
     </div>
   )
 }

@@ -13,12 +13,12 @@ import {
 
 export type PanelMode = 'craft' | 'grimoire' | 'inventory'
 
-interface InventoryItem {
+export interface InventoryItem {
   ingredient_id: number
   quantity: number
 }
 
-interface RecipeData {
+export interface RecipeData {
   recipe_id: number
   discovered: boolean
   ingredient_a: number
@@ -27,66 +27,9 @@ interface RecipeData {
   effect_value: number
 }
 
-interface Props {
-  mode: PanelMode
-  onClose: () => void
-  inventory: InventoryItem[]
-  recipes: RecipeData[]
-  discoveredCount: number
-  gold: number
-  isGameOver: boolean
-  hintCost: number
-  onCraft: (ingredientA: number, ingredientB: number) => void
-  onBuyHint: () => void
-}
+/* ── Craft Panel Content ──────────────────────── */
 
-export function RightPanel({
-  mode,
-  onClose,
-  inventory,
-  recipes,
-  discoveredCount,
-  gold,
-  isGameOver,
-  hintCost,
-  onCraft,
-  onBuyHint,
-}: Props) {
-  const titles: Record<PanelMode, string> = {
-    craft: 'Brew',
-    grimoire: `Grimoire ${discoveredCount}/10`,
-    inventory: 'Inventory',
-  }
-
-  return (
-    <div className="right-panel floating-panel" key={mode}>
-      <div className="right-panel-header">
-        <span className="right-panel-title">{titles[mode]}</span>
-        <button className="right-panel-close" onClick={onClose}>✕</button>
-      </div>
-      <div className="right-panel-body">
-        {mode === 'craft' && (
-          <CraftContent
-            inventory={inventory}
-            gold={gold}
-            isGameOver={isGameOver}
-            hintCost={hintCost}
-            onCraft={onCraft}
-            onBuyHint={onBuyHint}
-          />
-        )}
-        {mode === 'grimoire' && (
-          <GrimoireContent recipes={recipes} discoveredCount={discoveredCount} />
-        )}
-        {mode === 'inventory' && (
-          <InventoryContent inventory={inventory} />
-        )}
-      </div>
-    </div>
-  )
-}
-
-function CraftContent({
+export function CraftContent({
   inventory,
   gold,
   isGameOver,
@@ -150,7 +93,9 @@ function CraftContent({
   )
 }
 
-function GrimoireContent({
+/* ── Grimoire Panel Content ───────────────────── */
+
+export function GrimoireContent({
   recipes,
   discoveredCount,
 }: {
@@ -189,7 +134,9 @@ function GrimoireContent({
   )
 }
 
-function InventoryContent({ inventory }: { inventory: InventoryItem[] }) {
+/* ── Inventory Panel Content ──────────────────── */
+
+export function InventoryContent({ inventory }: { inventory: InventoryItem[] }) {
   return (
     <>
       {ZONE_NAMES.map((zoneName, zi) => (

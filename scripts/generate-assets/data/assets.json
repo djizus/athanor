@@ -9,49 +9,12 @@
       "description": "Dark medieval alchemist laboratory interior"
     },
     {
-      "id": "zone-meadow",
-      "filename": "zone-meadow.png",
+      "id": "world-map",
+      "filename": "world-map.png",
       "category": "backgrounds",
-      "width": 1280,
-      "height": 720,
-      "description": "Verdant Meadow — lush green fields, soft golden light, wildflowers, ancient standing stones",
-      "zoneColor": "#4a9e4a"
-    },
-    {
-      "id": "zone-marsh",
-      "filename": "zone-marsh.png",
-      "category": "backgrounds",
-      "width": 1280,
-      "height": 720,
-      "description": "Misty Marsh — foggy wetlands, blue-grey tones, twisted dead trees, bioluminescent fungi",
-      "zoneColor": "#4a7a9e"
-    },
-    {
-      "id": "zone-cavern",
-      "filename": "zone-cavern.png",
-      "category": "backgrounds",
-      "width": 1280,
-      "height": 720,
-      "description": "Crystal Cavern — sparkling amethyst and amber crystals, dark stone walls, warm mineral glow",
-      "zoneColor": "#b8860b"
-    },
-    {
-      "id": "zone-volcanic",
-      "filename": "zone-volcanic.png",
-      "category": "backgrounds",
-      "width": 1280,
-      "height": 720,
-      "description": "Volcanic Ridge — crimson lava flows between dark basalt, floating embers, smoke plumes",
-      "zoneColor": "#9e4a4a"
-    },
-    {
-      "id": "zone-spire",
-      "filename": "zone-spire.png",
-      "category": "backgrounds",
-      "width": 1280,
-      "height": 720,
-      "description": "Aether Spire — ethereal purple tower, starlit void, swirling arcane energy, floating runes",
-      "zoneColor": "#9e4a9e"
+      "width": 2048,
+      "height": 2048,
+      "description": "Top-down fantasy world map showing three connected zones: Verdant Meadow (lush green fields, wildflowers, standing stones) on the left, Crystal Cavern (amber crystals, dark stone walls, mineral glow) in the center, and Aether Spire (ethereal purple tower, swirling arcane energy, floating runes) on the right, connected by winding paths"
     }
   ],
   "heroes": [

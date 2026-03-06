@@ -996,7 +996,7 @@ button:disabled, .btn:disabled {
   .loading-logo { width: 20rem; }
 }
 
-/* ── Play Screen — Floating Panel System ──────────────────────── */
+/* ── Play Screen — Side Panel Layout ──────────────────────────── */
 
 .play-screen {
   position: fixed;
@@ -1019,70 +1019,177 @@ button:disabled, .btn:disabled {
   box-shadow: var(--glass-shadow);
 }
 
-/* Status HUD — top center pill */
+.play-back-btn {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 12;
+  padding: 0.35rem 0.75rem;
+  font-family: var(--font-title);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border: 1px solid var(--glass-border);
+  transition: all var(--transition-fast);
+}
+
+.play-back-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--border-glow);
+}
+
 .status-hud {
   position: absolute;
-  top: 16px;
+  top: 12px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 1.5rem;
-  padding: 0.45rem 1.25rem;
+  gap: 0.6rem;
+  padding: 0.4rem 1.2rem;
   font-family: var(--font-title);
   font-size: 0.85rem;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   white-space: nowrap;
-  z-index: 10;
+  z-index: 12;
 }
 
 .status-hud-gold { color: var(--accent-gold); }
 .status-hud-recipes { color: var(--text-primary); }
-.status-hud-seed { color: var(--text-muted); font-size: 0.75rem; }
+.status-hud-time { color: var(--text-secondary); }
+.status-hud-sep { color: var(--text-muted); font-size: 0.7rem; }
 
-.status-hud-actions {
-  display: flex;
-  gap: 0.4rem;
-  margin-left: 0.5rem;
-}
-
-.status-hud-actions button {
-  font-size: 0.7rem;
-  padding: 0.25rem 0.6rem;
-}
-
-/* Mini Hero Roster — top left */
-.mini-roster {
+.play-settings-btn {
   position: absolute;
-  top: 16px;
-  left: 16px;
+  top: 12px;
+  right: 12px;
+  z-index: 12;
+  padding: 0.35rem 0.6rem;
+  font-size: 1rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border: 1px solid var(--glass-border);
+  transition: all var(--transition-fast);
+}
+
+.play-settings-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--border-glow);
+}
+
+.play-surrender-btn {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  z-index: 12;
+  padding: 0.4rem 1rem;
+  font-family: var(--font-title);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.play-left-panels {
+  position: absolute;
+  left: 12px;
+  top: 52px;
+  bottom: 12px;
+  width: 280px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  pointer-events: auto;
+  scrollbar-width: thin;
+}
+
+.play-right-panels {
+  position: absolute;
+  right: 12px;
+  top: 52px;
+  bottom: 52px;
+  width: 280px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  pointer-events: auto;
+  scrollbar-width: thin;
+}
+
+.side-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.side-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.7rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-color);
+  transition: background var(--transition-fast);
+  width: 100%;
+  text-align: left;
+}
+
+.side-panel-header:hover {
+  background: var(--bg-hover);
+}
+
+.side-panel-title {
+  font-family: var(--font-title);
+  font-size: 0.8rem;
+  color: var(--accent-gold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.side-panel-chevron {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  transition: transform var(--transition-fast);
+}
+
+.side-panel-body {
+  padding: 0.6rem;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  padding: 0.6rem;
-  min-width: 200px;
-  z-index: 10;
+  overflow-y: auto;
 }
 
-.mini-roster-hero {
+.hero-card {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.35rem 0.4rem;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.45rem;
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: background var(--transition-fast);
   border: 1px solid transparent;
 }
 
-.mini-roster-hero:hover { background: var(--bg-hover); }
+.hero-card:hover { background: var(--bg-hover); }
 
-.mini-roster-hero.selected {
+.hero-card.selected {
   border-color: var(--accent-gold-dim);
   background: rgba(240, 192, 64, 0.06);
 }
 
-.mini-roster-portrait {
+.hero-card-top {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.hero-card-portrait {
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -1091,25 +1198,25 @@ button:disabled, .btn:disabled {
   flex-shrink: 0;
 }
 
-.mini-roster-hero.selected .mini-roster-portrait {
+.hero-card.selected .hero-card-portrait {
   border-color: var(--accent-gold);
 }
 
-.mini-roster-info {
+.hero-card-info {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0.12rem;
 }
 
-.mini-roster-name {
+.hero-card-name {
   font-family: var(--font-title);
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   color: var(--text-primary);
 }
 
-.mini-roster-hp {
+.hero-card-hp {
   width: 100%;
   height: 4px;
   background: var(--bg-secondary);
@@ -1117,29 +1224,58 @@ button:disabled, .btn:disabled {
   overflow: hidden;
 }
 
-.mini-roster-hp-fill {
+.hero-card-hp-fill {
   height: 100%;
   border-radius: 2px;
   transition: width 0.3s ease;
 }
 
-.mini-roster-status {
-  font-size: 0.7rem;
+.hero-card-status {
+  font-size: 0.68rem;
   color: var(--text-muted);
 }
 
-.mini-roster-status.exploring { color: var(--accent-blue); }
-.mini-roster-status.returning { color: var(--accent-gold); }
-.mini-roster-status.loot-ready { color: var(--accent-green); font-weight: 600; }
+.hero-card-status.exploring { color: var(--accent-blue); }
+.hero-card-status.returning { color: var(--accent-gold); }
+.hero-card-status.loot-ready { color: var(--accent-green); font-weight: 600; }
 
-.mini-roster-locked {
+.hero-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding-left: 44px;
+}
+
+.hero-card-timer {
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  color: var(--accent-blue);
+}
+
+.btn-sm {
+  font-size: 0.72rem;
+  padding: 0.25rem 0.6rem;
+}
+
+.hero-card .btn-loot {
+  border-color: var(--accent-green);
+  box-shadow: 0 0 12px rgba(64, 192, 96, 0.2);
+  animation: pulse-loot 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-loot {
+  0%, 100% { box-shadow: 0 0 12px rgba(64, 192, 96, 0.2); }
+  50% { box-shadow: 0 0 20px rgba(64, 192, 96, 0.4); }
+}
+
+.hero-card-locked {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.35rem 0.4rem;
+  padding: 0.45rem;
 }
 
-.mini-roster-locked-icon {
+.hero-card-locked-icon {
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -1152,181 +1288,11 @@ button:disabled, .btn:disabled {
   flex-shrink: 0;
 }
 
-.mini-roster-recruit-btn {
+.hero-card-recruit {
   font-size: 0.7rem;
   padding: 0.2rem 0.5rem;
 }
 
-/* Action Bar — bottom center contextual */
-.action-bar {
-  position: absolute;
-  bottom: 56px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem 1.25rem;
-  z-index: 10;
-  animation: action-bar-in 0.2s ease;
-}
-
-@keyframes action-bar-in {
-  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
-  to { opacity: 1; transform: translateX(-50%) translateY(0); }
-}
-
-.action-bar-label {
-  font-family: var(--font-title);
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  letter-spacing: 0.04em;
-}
-
-.action-bar-timer {
-  font-family: var(--font-body);
-  font-size: 0.9rem;
-  color: var(--accent-blue);
-}
-
-.action-bar .btn-primary {
-  font-size: 0.85rem;
-  padding: 0.5rem 1.5rem;
-}
-
-.action-bar .btn-loot {
-  border-color: var(--accent-green);
-  box-shadow: 0 0 12px rgba(64, 192, 96, 0.2);
-  animation: pulse-loot 1.5s ease-in-out infinite;
-}
-
-@keyframes pulse-loot {
-  0%, 100% { box-shadow: 0 0 12px rgba(64, 192, 96, 0.2); }
-  50% { box-shadow: 0 0 20px rgba(64, 192, 96, 0.4); }
-}
-
-/* Right Panel — togglable craft/grimoire/inventory */
-.right-panel {
-  position: absolute;
-  top: 64px;
-  right: 16px;
-  bottom: 56px;
-  width: 300px;
-  z-index: 10;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  animation: right-panel-in 0.25s ease;
-}
-
-@keyframes right-panel-in {
-  from { opacity: 0; transform: translateX(16px); }
-  to { opacity: 1; transform: translateX(0); }
-}
-
-.right-panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.6rem 0.75rem;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.right-panel-title {
-  font-family: var(--font-title);
-  font-size: 0.85rem;
-  color: var(--accent-gold);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.right-panel-close {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  font-size: 1rem;
-  padding: 0.15rem 0.35rem;
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-}
-
-.right-panel-close:hover {
-  color: var(--text-secondary);
-  background: var(--bg-hover);
-}
-
-.right-panel-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0.75rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-/* Hotkey Bar — bottom */
-.hotkey-bar {
-  position: absolute;
-  bottom: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.3rem 0.6rem;
-  z-index: 10;
-  opacity: 0.7;
-  transition: opacity var(--transition-fast);
-}
-
-.hotkey-bar:hover { opacity: 1; }
-
-.hotkey-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  font-family: var(--font-title);
-  font-size: 0.7rem;
-  letter-spacing: 0.04em;
-  color: var(--text-muted);
-  background: transparent;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  padding: 0.25rem 0.5rem;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.hotkey-btn:hover {
-  color: var(--text-secondary);
-  border-color: var(--border-glow);
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.hotkey-btn.active {
-  color: var(--accent-gold);
-  border-color: var(--accent-gold-dim);
-  background: rgba(240, 192, 64, 0.06);
-}
-
-.hotkey-key {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  font-size: 0.65rem;
-  background: var(--bg-secondary);
-  border-radius: 3px;
-  color: var(--text-secondary);
-}
-
-.hotkey-btn.active .hotkey-key {
-  background: rgba(240, 192, 64, 0.15);
-  color: var(--accent-gold);
-}
-
-/* Craft section inside right panel */
 .craft-slot-row {
   display: flex;
   gap: 0.5rem;
@@ -1335,13 +1301,13 @@ button:disabled, .btn:disabled {
 
 .craft-slot-row select {
   flex: 1;
-  padding: 0.45rem;
+  padding: 0.4rem;
   background: var(--bg-card);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   font-family: var(--font-body);
-  font-size: 0.85rem;
+  font-size: 0.82rem;
 }
 
 .craft-slot-row select:focus {
@@ -1351,7 +1317,7 @@ button:disabled, .btn:disabled {
 
 .craft-plus {
   color: var(--text-muted);
-  font-size: 1.1rem;
+  font-size: 1rem;
   flex-shrink: 0;
 }
 
@@ -1362,7 +1328,6 @@ button:disabled, .btn:disabled {
 
 .craft-btn-row button { flex: 1; }
 
-/* Grimoire inside right panel */
 .grimoire-progress {
   width: 100%;
   height: 6px;
@@ -1389,31 +1354,30 @@ button:disabled, .btn:disabled {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  padding: 0.5rem;
-  font-size: 0.8rem;
+  padding: 0.45rem;
+  font-size: 0.78rem;
 }
 
 .grimoire-card.discovered { border-color: var(--accent-gold-dim); }
 
 .grimoire-card-title {
   font-family: var(--font-title);
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   color: var(--accent-gold);
-  margin-bottom: 0.15rem;
+  margin-bottom: 0.12rem;
 }
 
 .grimoire-card-info {
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   color: var(--text-secondary);
 }
 
 .grimoire-card-undiscovered {
   color: var(--text-muted);
   font-style: italic;
-  font-size: 0.78rem;
+  font-size: 0.75rem;
 }
 
-/* Inventory inside right panel */
 .inventory-zone-header {
   font-family: var(--font-title);
   font-size: 0.72rem;
@@ -1428,20 +1392,19 @@ button:disabled, .btn:disabled {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.25rem 0;
+  padding: 0.2rem 0;
 }
 
 .inventory-row-icon {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   border-radius: var(--radius-sm);
 }
 
-.inventory-row-name { flex: 1; font-size: 0.82rem; }
-.inventory-row-qty { color: var(--text-secondary); font-size: 0.78rem; }
+.inventory-row-name { flex: 1; font-size: 0.8rem; }
+.inventory-row-qty { color: var(--text-secondary); font-size: 0.76rem; }
 .inventory-row-zero { opacity: 0.4; }
 
-/* Game over overlay */
 .game-over-overlay {
   position: absolute;
   inset: 0;
@@ -1524,39 +1487,37 @@ button:disabled, .btn:disabled {
 /* ── Responsive — Play Screen ─────────────────────────────── */
 
 @media (max-width: 1023px) {
-  .right-panel { width: 260px; }
-  .mini-roster { min-width: 170px; }
+  .play-left-panels,
+  .play-right-panels {
+    width: 240px;
+  }
 }
 
 @media (max-width: 767px) {
-  .mini-roster {
-    top: 56px;
-    left: 8px;
-    min-width: auto;
-    padding: 0.4rem;
-  }
-
-  .mini-roster-info { display: none; }
-  .mini-roster-portrait { width: 32px; height: 32px; }
-
-  .right-panel {
-    top: 0;
-    right: 0;
-    bottom: 0;
+  .play-left-panels,
+  .play-right-panels {
+    position: fixed;
     width: 100%;
-    max-width: 340px;
-    border-radius: 0;
+    max-width: 320px;
+    top: auto;
+    bottom: 0;
+    max-height: 45vh;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   }
+
+  .play-left-panels { left: 0; }
+  .play-right-panels { right: 0; }
 
   .status-hud {
     top: 8px;
     font-size: 0.75rem;
-    gap: 1rem;
-    padding: 0.35rem 1rem;
+    gap: 0.5rem;
+    padding: 0.3rem 0.8rem;
   }
 
-  .action-bar { bottom: 48px; }
-  .hotkey-bar { bottom: 6px; }
+  .hero-card-info { display: none; }
+  .hero-card-portrait { width: 32px; height: 32px; }
+  .hero-card-actions { padding-left: 0; }
 }
 
 select::-ms-expand { display: none; }

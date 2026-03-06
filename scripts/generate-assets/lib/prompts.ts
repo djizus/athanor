@@ -16,6 +16,10 @@ export function buildBackgroundPrompt(asset: ImageAssetDef): string {
     ].join(' ');
   }
 
+  if (asset.id === 'world-map') {
+    return buildWorldMapPrompt();
+  }
+
   return [
     `${asset.description}.`,
     `Painted as a wide panoramic scene suitable as a full-screen game background.`,
@@ -24,6 +28,24 @@ export function buildBackgroundPrompt(asset: ImageAssetDef): string {
     `Full-bleed seamless scene extending edge-to-edge. No borders, no frames.`,
     `Vignette edges: outermost 8% on all sides smoothly fades to near-black #080810.`,
     `No people, no text, no UI elements, no watermarks.`,
+  ].join(' ');
+}
+
+export function buildWorldMapPrompt(): string {
+  return [
+    `A top-down bird's-eye view fantasy world map for an alchemy RPG game, square 1:1 composition.`,
+    `Three large distinct biome zones arranged left-to-right, connected by winding paths:`,
+    `LEFT ZONE (30% of width): Verdant Meadow — lush green fields, wildflowers, ancient standing stones, a small glowing camp at the far left edge as a starting point.`,
+    `CENTER ZONE (35% of width): Crystal Cavern — exposed underground cavern viewed from above, amber and amethyst crystal formations, dark stone walls, warm mineral glow emanating from crystal clusters.`,
+    `RIGHT ZONE (35% of width): Aether Spire — ethereal purple floating island with a central tower, swirling arcane energy trails, glowing runes on the ground, starlit atmosphere.`,
+    `Each zone should be large and clearly defined with space for game tokens to move through them.`,
+    `Winding dirt paths connect the zones with clear waypoints along the routes.`,
+    `The zones occupy the central 80% of the image, with dark atmospheric borders.`,
+    GLOBAL_ART_STYLE,
+    `Color palette: dark background #080810, green #4a9e4a for meadow, amber #b8860b for cavern, purple #9e4a9e for spire.`,
+    `Full-bleed seamless scene. Vignette edges: outermost 10% fades to near-black #080810.`,
+    `Top-down orthographic perspective, like a tabletop game board map.`,
+    `No people, no text, no labels, no UI elements, no watermarks, no icons.`,
   ].join(' ');
 }
 

@@ -16,7 +16,7 @@ interface AmbientLayer {
 export class ZoneBackground {
   private readonly scene: Phaser.Scene;
   private readonly container: Phaser.GameObjects.Container;
-  private readonly zoneBackgrounds: Phaser.GameObjects.Image[] = [];
+  private readonly mapImage: Phaser.GameObjects.Image;
   private readonly labOverlay: Phaser.GameObjects.Image;
   private readonly ambientLayers: AmbientLayer[] = [];
 
@@ -24,36 +24,24 @@ export class ZoneBackground {
     this.scene = scene;
     this.container = scene.add.container(0, 0);
 
-    this.createZoneBackgrounds();
+    this.mapImage = scene.add.image(WORLD_WIDTH / 2, GAME_HEIGHT / 2, 'world-map');
+    this.mapImage.setDisplaySize(WORLD_WIDTH, GAME_HEIGHT);
+    this.mapImage.setDepth(0);
+
     this.labOverlay = scene.add.image(BASE_CAMP_X + 180, GAME_HEIGHT / 2, 'lab-bg');
     this.labOverlay.setDisplaySize(460, GAME_HEIGHT);
     this.labOverlay.setAlpha(0.18);
     this.labOverlay.setDepth(1);
 
-    this.container.add([...this.zoneBackgrounds, this.labOverlay]);
+    this.container.add([this.mapImage, this.labOverlay]);
     this.createAmbientEmitters();
   }
 
   destroy(): void {
     for (const layer of this.ambientLayers) layer.emitter.destroy();
-    for (const bg of this.zoneBackgrounds) bg.destroy();
+    this.mapImage.destroy();
     this.labOverlay.destroy();
     this.container.destroy();
-  }
-
-  private createZoneBackgrounds(): void {
-    const zoneDefs = [
-      { key: 'zone-0', x: ZONE_0_X, width: ZONE_1_X - ZONE_0_X },
-      { key: 'zone-1', x: ZONE_1_X, width: ZONE_2_X - ZONE_1_X },
-      { key: 'zone-2', x: ZONE_2_X, width: WORLD_WIDTH - ZONE_2_X },
-    ] as const;
-
-    for (const zone of zoneDefs) {
-      const bg = this.scene.add.image(zone.x + zone.width / 2, GAME_HEIGHT / 2, zone.key);
-      bg.setDisplaySize(zone.width, GAME_HEIGHT);
-      bg.setDepth(0);
-      this.zoneBackgrounds.push(bg);
-    }
   }
 
   private createAmbientEmitters(): void {

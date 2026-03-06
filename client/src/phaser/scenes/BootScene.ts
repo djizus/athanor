@@ -1,8 +1,6 @@
 import Phaser from 'phaser';
 import { COLORS, ZONE_TINTS } from '../utils/colors';
-import { GAME_HEIGHT, GAME_WIDTH } from '../utils/layout';
-
-const ZONE_BG_KEYS = ['zone-meadow', 'zone-cavern', 'zone-spire'];
+import { GAME_HEIGHT, GAME_WIDTH, WORLD_WIDTH } from '../utils/layout';
 
 const SFX_KEYS = [
   'click', 'brew-success', 'brew-fail', 'discovery',
@@ -24,10 +22,7 @@ export class BootScene extends Phaser.Scene {
 
   preload(): void {
     this.load.image('lab-bg-file', '/assets/backgrounds/lab-bg.png');
-
-    for (let i = 0; i < ZONE_BG_KEYS.length; i++) {
-      this.load.image(`zone-${i}-file`, `/assets/backgrounds/${ZONE_BG_KEYS[i]}.png`);
-    }
+    this.load.image('world-map-file', '/assets/backgrounds/world-map.png');
 
     const heroNames = ['alaric', 'brynn', 'cassiel'];
     for (const name of heroNames) {
@@ -53,6 +48,7 @@ export class BootScene extends Phaser.Scene {
     const gfx = this.add.graphics();
 
     this.generateGradient(gfx, 'lab-bg', GAME_WIDTH, GAME_HEIGHT, COLORS.bgPrimary, COLORS.bgSecondary);
+    this.generateGradient(gfx, 'world-map', WORLD_WIDTH, GAME_HEIGHT, COLORS.bgPrimary, COLORS.bgSecondary);
 
     for (let i = 0; i < ZONE_TINTS.length; i++) {
       const top = this.blend(ZONE_TINTS[i], COLORS.black, 0.45);
@@ -77,12 +73,10 @@ export class BootScene extends Phaser.Scene {
       this.textures.remove('lab-bg');
       this.textures.addImage('lab-bg', this.textures.get('lab-bg-file').getSourceImage() as HTMLImageElement);
     }
-    for (let i = 0; i < ZONE_BG_KEYS.length; i++) {
-      const fileKey = `zone-${i}-file`;
-      if (this.textures.exists(fileKey)) {
-        this.textures.remove(`zone-${i}`);
-        this.textures.addImage(`zone-${i}`, this.textures.get(fileKey).getSourceImage() as HTMLImageElement);
-      }
+
+    if (this.textures.exists('world-map-file')) {
+      this.textures.remove('world-map');
+      this.textures.addImage('world-map', this.textures.get('world-map-file').getSourceImage() as HTMLImageElement);
     }
 
     const bridge = this.registry.get('bridge') as import('../PhaserBridge').PhaserBridge | undefined;
