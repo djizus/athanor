@@ -42,6 +42,8 @@ export class BootScene extends Phaser.Scene {
       this.load.audio(track.key, `/assets/sounds/music/${track.file}`);
     }
 
+    console.info('[BootScene:music] queued music tracks', MUSIC_TRACKS);
+
     this.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR, (file: Phaser.Loader.File) => {
       console.debug(`[BootScene] optional asset missing: ${file.key}`);
     });
@@ -85,6 +87,11 @@ export class BootScene extends Phaser.Scene {
 
     const bridge = this.registry.get('bridge') as import('../PhaserBridge').PhaserBridge | undefined;
     bridge?.notifyBootComplete();
+
+    console.info('[BootScene:music] music cache status', MUSIC_TRACKS.map((track) => ({
+      key: track.key,
+      loaded: this.cache.audio.exists(track.key),
+    })));
 
     this.scene.start('MainScene');
   }

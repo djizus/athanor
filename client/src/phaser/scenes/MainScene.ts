@@ -29,7 +29,13 @@ export class MainScene extends Phaser.Scene {
   private currentMusicSound: Phaser.Sound.BaseSound | null = null;
 
   private readonly onMusicComplete = (): void => {
+    console.info('[MainScene:music] track completed, advancing playlist');
     this.playNextMusicTrack();
+  };
+
+  private readonly onFirstInteractionMusic = (): void => {
+    console.info('[MainScene:music] first pointer interaction received, attempting playlist start');
+    this.startMusicPlaylist();
   };
 
   private readonly onHeroesUpdated = (heroes: AthanorHero[]): void => {
@@ -123,8 +129,15 @@ export class MainScene extends Phaser.Scene {
     this.input.on(Phaser.Input.Events.GAME_OUT, this.onPointerUp);
     this.input.on(Phaser.Input.Events.POINTER_UP_OUTSIDE, this.onPointerUp);
 
+    console.info('[MainScene:music] audio setup', {
+      locked: this.sound.locked,
+      playlist: [...MUSIC_PLAYLIST],
+    });
+
     if (this.sound.locked) {
+      console.warn('[MainScene:music] sound is locked, waiting for unlock');
       this.sound.once(Phaser.Sound.Events.UNLOCKED, this.startMusicPlaylist, this);
+      this.input.once(Phaser.Input.Events.POINTER_DOWN, this.onFirstInteractionMusic);
     } else {
       this.startMusicPlaylist();
     }
@@ -145,8 +158,12 @@ export class MainScene extends Phaser.Scene {
   }
 
   private startMusicPlaylist(): void {
-    if (this.currentMusicSound) return;
+    if (this.currentMusicSound) {
+      console.info('[MainScene:music] playlist already started');
+      return;
+    }
     this.currentMusicIndex = 0;
+    console.info('[MainScene:music] starting playlist from first track');
     this.playMusicTrack(this.currentMusicIndex);
   }
 
@@ -157,15 +174,23 @@ export class MainScene extends Phaser.Scene {
 
   private playMusicTrack(index: number): void {
     const key = MUSIC_PLAYLIST[index];
-    if (!this.cache.audio.exists(key)) return;
+    if (!this.cache.audio.exists(key)) {
+      console.error('[MainScene:music] track missing in cache', { key, index });
+      return;
+    }
 
     this.currentMusicSound?.off(Phaser.Sound.Events.COMPLETE, this.onMusicComplete, this);
     this.currentMusicSound?.destroy();
 
     const { musicVolume } = getSettingsSnapshot();
+    console.info('[MainScene:music] playing track', { key, index, musicVolume });
     const music = this.sound.add(key, { loop: false, volume: musicVolume });
     music.once(Phaser.Sound.Events.COMPLETE, this.onMusicComplete, this);
-    music.play();
+    const started = music.play();
+
+    if (!started) {
+      console.warn('[MainScene:music] play() returned false', { key, index, musicVolume });
+    }
 
     this.currentMusicSound = music;
   }
@@ -255,6 +280,7 @@ export class MainScene extends Phaser.Scene {
     this.input.off(Phaser.Input.Events.POINTER_UP, this.onPointerUp);
     this.input.off(Phaser.Input.Events.GAME_OUT, this.onPointerUp);
     this.input.off(Phaser.Input.Events.POINTER_UP_OUTSIDE, this.onPointerUp);
+    this.input.off(Phaser.Input.Events.POINTER_DOWN, this.onFirstInteractionMusic);
     this.sound.off(Phaser.Sound.Events.UNLOCKED, this.startMusicPlaylist, this);
 
     this.currentMusicSound?.off(Phaser.Sound.Events.COMPLETE, this.onMusicComplete, this);

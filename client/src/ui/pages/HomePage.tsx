@@ -25,7 +25,7 @@ export function HomePage() {
   const { connect, connectors } = useConnect()
   const playerMeta = usePlayerMeta(address)
   const games = useGameTokens(address)
-  const { displayName, isUsername } = usePlayerName(address)
+  const { displayName } = usePlayerName(address)
   const rank = usePlayerRank(address)
   const [isCreatingGame, setIsCreatingGame] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -77,11 +77,18 @@ export function HomePage() {
 
   const bestTime = formatBestTime(playerMeta?.best_time as bigint | undefined)
   const totalGames = playerMeta?.total_games ?? 0
+  const rankText = `Rank #${rank ?? '—'} · Best: ${bestTime} · Runs: ${totalGames}`
+  const particles = Array.from({ length: 12 }, (_, idx) => idx)
 
   if (!address) {
     return (
-      <div className="glass-page">
+      <div className="glass-page home-menu-page">
         <section className="home-menu-shell floating-panel">
+          <div className="ambient-particles" aria-hidden>
+            {particles.map((idx) => (
+              <span key={`menu-disconnected-particle-${idx}`} className="ambient-particle" />
+            ))}
+          </div>
           <div className="home-menu-hero">
             <img
               src="/assets/branding/logo-loading-gold-shadow.png"
@@ -89,7 +96,7 @@ export function HomePage() {
               draggable={false}
               className="home-menu-logo"
             />
-            <p className="home-menu-tagline">Transmute, explore, survive.</p>
+            <p className="home-menu-tagline">Rank #— · Best: NA · Runs: 0</p>
           </div>
           <div className="home-menu-bottom">
             <button
@@ -110,21 +117,25 @@ export function HomePage() {
   }
 
   return (
-    <div className="glass-page">
+    <div className="glass-page home-menu-page">
       <section className="home-menu-shell floating-panel">
+        <div className="ambient-particles" aria-hidden>
+          {particles.map((idx) => (
+            <span key={`menu-connected-particle-${idx}`} className="ambient-particle" />
+          ))}
+        </div>
         <div className="home-menu-topbar">
           <div className="home-menu-player-chip">
             <span className="home-menu-player-name">{displayName}</span>
-            {isUsername && (
-              <span className="home-menu-player-address">{truncatedAddress}</span>
-            )}
+            <span className="home-menu-player-address">👤 {truncatedAddress}</span>
           </div>
           <button
             className="home-menu-gear"
             onClick={() => setSettingsOpen(true)}
             aria-label="Settings"
           >
-            ⚙
+            <span aria-hidden>⚙</span>
+            <span>Settings</span>
           </button>
         </div>
 
@@ -135,18 +146,10 @@ export function HomePage() {
             draggable={false}
             className="home-menu-logo"
           />
-          <p className="home-menu-tagline">Transmute, explore, survive.</p>
+          <p className="home-menu-tagline">{rankText}</p>
         </div>
 
         <div className="home-menu-bottom">
-          <div className="home-menu-stats">
-            <span>Rank #{rank ?? '—'}</span>
-            <span className="home-menu-stats-sep">·</span>
-            <span>Best: {bestTime}</span>
-            <span className="home-menu-stats-sep">·</span>
-            <span>Runs: {totalGames}</span>
-          </div>
-
           <div className="home-menu-actions">
             {activeGame ? (
               <button
