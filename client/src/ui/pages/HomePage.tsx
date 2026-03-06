@@ -81,8 +81,17 @@ export function HomePage() {
 
   const bestTime = formatBestTime(playerMeta?.best_time as bigint | undefined)
   const totalGames = playerMeta?.total_games ?? 0
-  const rankText = `Rank #${rank ?? '—'} · Best: ${bestTime} · Runs: ${totalGames}`
   const particles = Array.from({ length: 12 }, (_, idx) => idx)
+
+  function getRankIcon(r: number | null): string {
+    if (r === null) return '🔮'
+    if (r === 1) return '👑'
+    if (r === 2) return '🥈'
+    if (r === 3) return '🥉'
+    if (r <= 10) return '⚔️'
+    return '🔮'
+  }
+  const rankIcon = getRankIcon(rank)
 
   if (!address) {
     return (
@@ -100,7 +109,10 @@ export function HomePage() {
               draggable={false}
               className="home-menu-logo"
             />
-            <p className="home-menu-tagline">Rank #— · Best: NA · Runs: 0</p>
+            <div className="home-menu-rank-panel">
+              <span className="home-menu-rank-icon">🔮</span>
+              <span className="home-menu-rank-text">Rank #— · Best: NA · Runs: 0</span>
+            </div>
             <div className="home-menu-actions">
               <button
                 className="home-menu-button home-menu-button-primary"
@@ -156,7 +168,10 @@ export function HomePage() {
             draggable={false}
             className="home-menu-logo"
           />
-          <p className="home-menu-tagline">{rankText}</p>
+          <div className="home-menu-rank-panel">
+            <span className="home-menu-rank-icon">{rankIcon}</span>
+            <span className="home-menu-rank-text">Rank #{rank ?? '—'} · Best: {bestTime} · Runs: {totalGames}</span>
+          </div>
           <div className="home-menu-actions">
             {activeGame ? (
               <button
