@@ -1,37 +1,36 @@
 [world]
 name = "Athanor"
 description = "Fully on-chain competitive grimoire race"
-seed = "athanor_dev"
+seed = "athanor_sepolia"
 
 [namespace]
 default = "athanor"
 
 [env]
-rpc_url = "http://localhost:5050/"
-# Default account for katana --dev --dev.seed 0
-account_address = "0x127fd5f1fe78a71f8bcd1fec63e3fe2f0486b6ecd5c86a0466c3a21fa5cfcec"
-private_key = "0xc5b2fcab997346f3ea1c00b002ecf6f382c5f9c9659a3894eb783c5320f912"
+rpc_url = "https://api.cartridge.gg/rpc/starknet-sepolia"
+account_address = "0x0"
+private_key = "0x0"
 
 [writers]
 "athanor" = ["athanor-game_system", "athanor-config_system", "athanor-exploration_system", "athanor-crafting_system", "athanor-hero_system"]
 
 [init_call_args]
 "athanor-game_system" = [
-    "0x127fd5f1fe78a71f8bcd1fec63e3fe2f0486b6ecd5c86a0466c3a21fa5cfcec",
+    "0x0",
     "0x0",
     "1",
-    "0x0",
+    "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f",
 ]
 "athanor-config_system" = [
-    "0x127fd5f1fe78a71f8bcd1fec63e3fe2f0486b6ecd5c86a0466c3a21fa5cfcec",
+    "0x0",
 ]
 "athanor-exploration_system" = [
     "0x0",
-    "0x0",
+    "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f",
 ]
 "athanor-crafting_system" = [
     "0x0",
-    "0x0",
+    "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f",
 ]
 "athanor-hero_system" = [
     "0x0",

@@ -731,6 +731,256 @@ const HERO_BASE_REGEN: u16 = 100;    // 1.00 HP/s (x100)
 - [x] apply_potion: permanent stat buff (max_hp +val×100, power +val×100, regen +val×10)
 - [ ] Tests
 
+### Phase 4.5: Architecture Refactor (nums patterns)
+
+Adopt Store pattern, centralized Config, model assertions, and event constructors from the
+`references/nums/` codebase. **NOT adopting** full component architecture — Athanor's systems
+are independent enough that thin components add complexity without payoff.
+
+**Goal**: Eliminate raw `world.read_model()`/`world.write_model()` calls from systems, centralize
+external addresses, DRY up validation, and make events self-constructing.
+
+#### Step 1: Config model (foundation)
+
+Add a singleton `Config` model to store external addresses. Currently `token_address` and
+`vrf_address` are duplicated across 4 systems' Storage + dojo_init.
+
+**File: `models/config.cairo`** — Add:
+```cairo
+#[derive(Copy, Drop, Serde)]
+#[dojo::model]
+pub struct Config {
+    #[key]
+    pub key: felt252,                   // singleton, always 0
+    pub token_address: ContractAddress,
+    pub vrf_address: ContractAddress,
+}
+```
+
+**File: `systems/game.cairo`** — In `dojo_init`, write Config:
+```cairo
+world.write_model(@Config { key: 0, token_address: denshokan_address, vrf_address });
+```
+
+**Other systems** — Remove `token_address` / `vrf_address` from Storage and dojo_init.
+Read via Store instead.
+
+- [ ] Add Config model to models/config.cairo
+- [ ] Write Config in game_system.dojo_init
+- [ ] Remove token_address/vrf_address from exploration_system, crafting_system, hero_system Storage
+- [ ] Remove their dojo_init functions (no longer needed)
+
+#### Step 2: Store abstraction
+
+**New file: `store.cairo`** — Wraps WorldStorage with typed accessors.
+
+```cairo
+#[derive(Copy, Drop)]
+pub struct Store {
+    world: WorldStorage,
+}
+
+#[generate_trait]
+pub impl StoreImpl of StoreTrait {
+    fn new(world: WorldStorage) -> Store { Store { world } }
+
+    // --- Config ---
+    fn config(self: @Store) -> Config { self.world.read_model(0) }
+
+    // --- Dispatchers (from Config) ---
+    fn token_disp(self: @Store) -> IMinigameTokenDispatcher { ... }
+    fn vrf_disp(self: @Store) -> IVrfProviderDispatcher { ... }
+
+    // --- Model getters ---
+    fn session(self: @Store, game_id: u64) -> GameSession { ... }
+    fn hero(self: @Store, game_id: u64, hero_id: u8) -> Hero { ... }
+    fn recipe(self: @Store, game_id: u64, recipe_id: u8) -> Recipe { ... }
+    fn ingredient(self: @Store, game_id: u64, ingredient_id: u8) -> IngredientBalance { ... }
+    fn potion(self: @Store, game_id: u64, potion_index: u16) -> PotionItem { ... }
+    fn failed_combo(self: @Store, game_id: u64, combo_key: u16) -> FailedCombo { ... }
+    fn pending_ingredient(self: @Store, game_id: u64, hero_id: u8, ing_id: u8) -> HeroPendingIngredient { ... }
+    fn player(self: @Store, addr: ContractAddress) -> PlayerMeta { ... }
+    fn settings(self: @Store, settings_id: u32) -> GameSettings { ... }
+
+    // --- Model setters ---
+    fn set_session(mut self: Store, model: @GameSession) { ... }
+    fn set_hero(mut self: Store, model: @Hero) { ... }
+    fn set_recipe(mut self: Store, model: @Recipe) { ... }
+    // ... etc for all models
+
+    // --- Event emitters ---
+    fn emit_game_created(mut self: Store, game_id: u64, player: ContractAddress, ...) { ... }
+    fn emit_expedition_started(mut self: Store, ...) { ... }
+    fn emit_exploration_event(mut self: Store, ...) { ... }
+    fn emit_loot_claimed(mut self: Store, ...) { ... }
+    fn emit_recipe_discovered(mut self: Store, ...) { ... }
+    fn emit_potion_applied(mut self: Store, ...) { ... }
+    fn emit_hero_recruited(mut self: Store, ...) { ... }
+    fn emit_grimoire_completed(mut self: Store, ...) { ... }
+}
+```
+
+- [ ] Create store.cairo with Store struct
+- [ ] Add typed getters for all 11 models
+- [ ] Add typed setters for all 11 models
+- [ ] Add dispatcher getters (token, vrf) reading from Config
+- [ ] Add event emission methods for all 8 events
+- [ ] Export from lib.cairo
+
+#### Step 3: Event constructors
+
+Split `events.cairo` into individual files with `new()` constructors that auto-populate
+`time` fields where applicable.
+
+**New structure:**
+```
+events/
+├── index.cairo        # All event struct definitions (#[dojo::event])
+├── exploration.cairo  # ExplorationEvent + ExpeditionStarted constructors
+├── game.cairo         # GameCreated + GrimoireCompleted constructors
+├── crafting.cairo      # RecipeDiscovered constructors
+├── hero.cairo         # HeroRecruited + PotionApplied constructors
+└── loot.cairo         # LootClaimed constructor
+```
+
+Each constructor file follows the pattern:
+```cairo
+pub use crate::events::index::GameCreated;
+
+#[generate_trait]
+pub impl GameCreatedImpl of GameCreatedTrait {
+    fn new(game_id: u64, player: ContractAddress, settings_id: u32, seed: felt252) -> GameCreated {
+        GameCreated { game_id, player, settings_id, seed }
+    }
+}
+```
+
+- [ ] Create events/index.cairo (move struct definitions from events.cairo)
+- [ ] Create constructor files for each event group
+- [ ] Delete old events.cairo
+- [ ] Update lib.cairo module tree
+- [ ] Update Store event methods to use constructors
+
+#### Step 4: Model assertions
+
+Add `AssertTrait` implementations to key models. Extracts repeated inline assertions
+into reusable, self-documenting methods.
+
+**File: `models/game.cairo`** — Add:
+```cairo
+pub mod errors {
+    pub const GAME_OVER: felt252 = 'Game is over';
+    pub const GAME_NOT_OVER: felt252 = 'Game not over';
+}
+
+#[generate_trait]
+pub impl GameSessionAssert of GameSessionAssertTrait {
+    fn assert_not_over(self: @GameSession) { assert!(!*self.game_over, "Game is over"); }
+    fn assert_is_playing(self: @GameSession) { assert!(!*self.game_over, "Game is over"); }
+}
+```
+
+**File: `models/hero.cairo`** — Add:
+```cairo
+#[generate_trait]
+pub impl HeroAssert of HeroAssertTrait {
+    fn assert_idle(self: @Hero) { assert!(*self.status == types::HERO_STATUS_IDLE, "Hero not idle"); }
+    fn assert_exploring(self: @Hero) { assert!(*self.status == types::HERO_STATUS_EXPLORING, "Hero not on expedition"); }
+    fn assert_alive(self: @Hero) { assert!(*self.hp > 0, "Hero has no HP"); }
+    fn assert_recruited(self: @Hero, session: @GameSession) {
+        assert!(*self.hero_id < *session.hero_count, "Hero not recruited");
+    }
+}
+```
+
+- [ ] Add GameSessionAssert to models/game.cairo
+- [ ] Add HeroAssert to models/hero.cairo
+- [ ] Replace inline assertions in systems with trait method calls
+
+#### Step 5: Model logic traits
+
+Move repeated logic from systems into model trait methods. Makes models "smart" and
+systems thin.
+
+**File: `models/hero.cairo`** — Add `HeroTrait`:
+```cairo
+#[generate_trait]
+pub impl HeroImpl of HeroTrait {
+    fn new(game_id: u64, hero_id: u8) -> Hero { ... }  // Base stats from constants
+    fn apply_buff(ref self: Hero, effect_type: u8, effect_value: u8) { ... }
+    fn idle_regen(ref self: Hero, rest_time: u64) { ... }  // Regen + cap
+    fn start_expedition(ref self: Hero, seed: felt252, timestamp: u64, result: @ExpeditionResult) { ... }
+    fn complete_expedition(ref self: Hero) { ... }  // Reset expedition fields
+}
+```
+
+**File: `models/game.cairo`** — Add `GameSessionTrait`:
+```cairo
+#[generate_trait]
+pub impl GameSessionImpl of GameSessionTrait {
+    fn new(game_id: u64, player: ContractAddress, seed: felt252, timestamp: u64) -> GameSession { ... }
+}
+```
+
+- [ ] Add HeroTrait to models/hero.cairo
+- [ ] Add GameSessionTrait to models/game.cairo
+- [ ] Update systems to use model methods
+
+#### Step 6: System migration
+
+Rewrite each system to use Store. This is the largest step but mechanical — replace
+`world.read_model()` → `store.session()`, `world.write_model()` → `store.set_session()`,
+`world.emit_event()` → `store.emit_*()`.
+
+**For each system:**
+1. Replace `let mut world = self.world(@DEFAULT_NS())` → `let mut store = StoreImpl::new(self.world(@DEFAULT_NS()))`
+2. Replace model reads → store getters
+3. Replace model writes → store setters
+4. Replace event emissions → store event methods
+5. Replace inline assertions → model assert trait calls
+6. Replace inline logic → model trait method calls
+7. Read token_address/vrf_address from Store config instead of self.storage
+
+**Systems to migrate (in order):**
+- [ ] game_system (most complex — has MinigameComponent, keeps its own Storage for that)
+- [ ] exploration_system (remove Storage entirely)
+- [ ] crafting_system (remove Storage entirely)
+- [ ] hero_system (remove Storage entirely)
+- [ ] config_system (keeps SettingsComponent Storage)
+
+#### Step 7: Module tree + cleanup
+
+**Update `lib.cairo`:**
+```cairo
+pub mod constants;
+pub mod types;
+pub mod store;
+
+pub mod events {
+    pub mod index;
+    pub mod exploration;
+    pub mod game;
+    pub mod crafting;
+    pub mod hero;
+    pub mod loot;
+}
+
+pub mod models { ... }  // unchanged
+pub mod helpers { ... }  // unchanged
+pub mod interfaces { ... }  // unchanged
+pub mod systems { ... }  // unchanged
+```
+
+- [ ] Update lib.cairo
+- [ ] Remove dead imports
+- [ ] `sozo build` passes clean
+- [ ] Update PLAN.md decision 9.4 (VRF addresses now in Config, not per-system Storage)
+
+#### Verification
+
+After each step, run `sozo build` to verify. The refactor is purely structural —
+no behavioral changes. Every system call produces identical state transitions.
+
 ### Phase 5: Client MVP
 - [ ] Dojo setup, Torii sync, Controller connector
 - [ ] Navigation store (zustand) + page transitions
@@ -780,7 +1030,25 @@ Cartridge VRF is called per expedition start and per hint purchase (not just at 
 - `from_vrf_address(vrf_addr, salt)` abstracts VRF vs pseudo-random fallback (zero address = dev mode)
 - exploration_system and crafting_system each store `vrf_address` in their own Storage
 
-### 9.5 Token Economy — None
+### 9.5 Architecture — Store Pattern (not Components)
+
+Adopting the nums Store pattern: a `Store` struct wraps `WorldStorage` and provides typed
+accessors for all models, dispatcher getters from centralized Config, and event emission helpers.
+
+**NOT** adopting nums' full component architecture (`#[starknet::component]`). Reasons:
+- Athanor's systems are independent (no cross-system quest/achievement dependencies)
+- Component architecture adds indirection without payoff at this codebase size (~1200 LOC)
+- The Store pattern alone gives 80% of the cleanup for 20% of the effort
+- Can migrate to components later if cross-cutting concerns emerge (e.g., achievements)
+
+The key architectural changes:
+1. **Store** — All world access goes through `Store` (reads, writes, events)
+2. **Config model** — Single source of truth for `token_address` + `vrf_address`
+3. **Model assertions** — `GameSessionAssert`, `HeroAssert` traits on model files
+4. **Model logic** — `HeroTrait`, `GameSessionTrait` for repeated operations
+5. **Event constructors** — Each event gets a `new()` constructor in its own file
+
+### 9.6 Token Economy — None
 
 No ATHANOR token for v0.1. No entry fees, no ingredient/potion trading. Gold is an in-game-only resource scoped to each game session. Revisit for v0.2+ if competitive modes need staking or prize pools.
 
