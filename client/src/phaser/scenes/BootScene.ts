@@ -16,7 +16,28 @@ export class BootScene extends Phaser.Scene {
     super('BootScene');
   }
 
-  async create(): Promise<void> {
+  preload(): void {
+    this.load.image('lab-bg-file', '/assets/backgrounds/lab-bg.png');
+
+    for (let i = 0; i < ZONE_BG_KEYS.length; i++) {
+      this.load.image(`zone-${i}-file`, `/assets/backgrounds/${ZONE_BG_KEYS[i]}.png`);
+    }
+
+    const heroNames = ['alaric', 'brynn', 'cassiel'];
+    for (const name of heroNames) {
+      this.load.image(`hero-${name}`, `/assets/heroes/hero-${name}.png`);
+    }
+
+    for (const key of SFX_KEYS) {
+      this.load.audio(key, `/assets/sounds/effects/${key}.mp3`);
+    }
+
+    this.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR, (file: Phaser.Loader.File) => {
+      console.debug(`[BootScene] optional asset missing: ${file.key}`);
+    });
+  }
+
+  create(): void {
     const gfx = this.add.graphics();
 
     this.generateGradient(gfx, 'lab-bg', GAME_WIDTH, GAME_HEIGHT, COLORS.bgPrimary, COLORS.bgSecondary);
@@ -40,67 +61,19 @@ export class BootScene extends Phaser.Scene {
 
     gfx.destroy();
 
-    await this.loadAssets();
-    this.scene.start('MainScene');
-  }
-
-  private async loadAssets(): Promise<void> {
-    // Collect all valid URLs first (async), then queue loads synchronously.
-    // Phaser's loader nulls its internal list between async yields in create().
-    const imageLoads: { key: string; url: string; replace?: boolean }[] = [];
-    const audioLoads: { key: string; url: string }[] = [];
-
-    const labUrl = '/assets/backgrounds/lab-bg.png';
-    if (await this.urlExists(labUrl)) {
-      imageLoads.push({ key: 'lab-bg', url: labUrl, replace: true });
+    if (this.textures.exists('lab-bg-file')) {
+      this.textures.remove('lab-bg');
+      this.textures.addImage('lab-bg', this.textures.get('lab-bg-file').getSourceImage() as HTMLImageElement);
     }
-
     for (let i = 0; i < ZONE_BG_KEYS.length; i++) {
-      const url = `/assets/backgrounds/${ZONE_BG_KEYS[i]}.png`;
-      if (await this.urlExists(url)) {
-        imageLoads.push({ key: `zone-${i}`, url, replace: true });
+      const fileKey = `zone-${i}-file`;
+      if (this.textures.exists(fileKey)) {
+        this.textures.remove(`zone-${i}`);
+        this.textures.addImage(`zone-${i}`, this.textures.get(fileKey).getSourceImage() as HTMLImageElement);
       }
     }
 
-    const heroNames = ['alaric', 'brynn', 'cassiel'];
-    for (const name of heroNames) {
-      const url = `/assets/heroes/hero-${name}.png`;
-      if (await this.urlExists(url)) {
-        imageLoads.push({ key: `hero-${name}`, url });
-      }
-    }
-
-    for (const key of SFX_KEYS) {
-      const url = `/assets/sounds/effects/${key}.mp3`;
-      if (await this.urlExists(url)) {
-        audioLoads.push({ key, url });
-      }
-    }
-
-    if (imageLoads.length === 0 && audioLoads.length === 0) return;
-
-    // Queue all loads synchronously — no awaits between loader calls
-    for (const { key, url, replace } of imageLoads) {
-      if (replace) this.textures.remove(key);
-      this.load.image(key, url);
-    }
-    for (const { key, url } of audioLoads) {
-      this.load.audio(key, url);
-    }
-
-    await new Promise<void>((resolve) => {
-      this.load.once(Phaser.Loader.Events.COMPLETE, () => resolve());
-      this.load.start();
-    });
-  }
-
-  private async urlExists(url: string): Promise<boolean> {
-    try {
-      const resp = await fetch(url, { method: 'HEAD' });
-      return resp.ok;
-    } catch {
-      return false;
-    }
+    this.scene.start('MainScene');
   }
 
   private generateGradient(
