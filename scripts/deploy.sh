@@ -19,7 +19,7 @@ set -e
 #
 # Prerequisites:
 #   - sozo, jq installed
-#   - For dev: katana running locally (katana --dev --dev.no-fee --dev.seed 0 --invoke-max-steps 10000000)
+#   - For dev: katana running locally (katana --dev --dev.no-fee --dev.seed 0 --invoke-max-steps 10000000 --http.cors_origins '*')
 #   - For slot: slot credentials configured in dojo_slot.toml
 #   - For sepolia: account funded, credentials in dojo_sepolia.toml
 #
@@ -419,10 +419,13 @@ echo ""
 case "$ENV" in
     dev)
         echo "Next steps:"
-        echo "  1. Start Torii:"
+        echo "  1. Start Katana (if not already running):"
+        echo "     katana --dev --dev.no-fee --dev.seed 0 --invoke-max-steps 10000000 --http.cors_origins '*'"
+        echo ""
+        echo "  2. Start Torii:"
         echo "     torii --world $WORLD_ADDRESS --rpc http://localhost:5050 --http.cors_origins '*'"
         echo ""
-        echo "  2. Start client:"
+        echo "  3. Start client:"
         echo "     cd client && pnpm dev"
         ;;
     slot)
