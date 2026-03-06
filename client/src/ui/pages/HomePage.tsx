@@ -93,18 +93,13 @@ export function HomePage() {
               <span key={`menu-disconnected-particle-${idx}`} className="ambient-particle" />
             ))}
           </div>
-          <div className="home-menu-topbar">
-            <div className="home-menu-topbar-side" />
+          <div className="home-menu-center">
             <img
               src="/assets/branding/logo-loading-gold-shadow.png"
               alt="Athanor"
               draggable={false}
               className="home-menu-logo"
             />
-            <div className="home-menu-topbar-side" />
-          </div>
-
-          <div className="home-menu-center">
             <p className="home-menu-tagline">Rank #— · Best: NA · Runs: 0</p>
             <div className="home-menu-actions">
               <button
@@ -134,37 +129,33 @@ export function HomePage() {
           ))}
         </div>
         <div className="home-menu-topbar">
-          <div className="home-menu-topbar-side home-menu-topbar-left">
-            <button className="home-menu-player-chip" type="button" onClick={() => {}}>
-              {isUsername ? (
-                <>
-                  <span className="home-menu-player-name">{displayName}</span>
-                  <span className="home-menu-player-address">👤 {truncatedAddress}</span>
-                </>
-              ) : (
-                <span className="home-menu-player-name">👤 {displayName}</span>
-              )}
-            </button>
-          </div>
+          <button className="home-menu-player-chip" type="button" onClick={() => {}}>
+            {isUsername ? (
+              <>
+                <span className="home-menu-player-name">{displayName}</span>
+                <span className="home-menu-player-address">👤 {truncatedAddress}</span>
+              </>
+            ) : (
+              <span className="home-menu-player-name">👤 {displayName}</span>
+            )}
+          </button>
+          <button
+            className="home-menu-gear"
+            onClick={() => setSettingsOpen(true)}
+            aria-label="Settings"
+          >
+            <span aria-hidden>⚙</span>
+            <span>Settings</span>
+          </button>
+        </div>
+
+        <div className="home-menu-center">
           <img
             src="/assets/branding/logo-loading-gold-shadow.png"
             alt="Athanor"
             draggable={false}
             className="home-menu-logo"
           />
-          <div className="home-menu-topbar-side home-menu-topbar-right">
-            <button
-              className="home-menu-gear"
-              onClick={() => setSettingsOpen(true)}
-              aria-label="Settings"
-            >
-              <span aria-hidden>⚙</span>
-              <span>Settings</span>
-            </button>
-          </div>
-        </div>
-
-        <div className="home-menu-center">
           <p className="home-menu-tagline">{rankText}</p>
           <div className="home-menu-actions">
             {activeGame ? (

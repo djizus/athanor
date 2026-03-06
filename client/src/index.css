@@ -619,11 +619,12 @@ button:disabled, .btn:disabled {
 }
 
 .home-menu-logo {
-  width: clamp(10rem, 22vw, 18rem);
-  max-width: 40%;
+  width: clamp(12rem, 32vw, 22rem);
+  max-width: 80%;
   user-select: none;
   animation: float 3s ease-in-out infinite, pulse-glow 3.4s ease-in-out infinite;
   flex-shrink: 0;
+  filter: drop-shadow(0 2px 12px rgba(0, 0, 0, 0.6));
 }
 
 .home-menu-center {
@@ -701,25 +702,10 @@ button:disabled, .btn:disabled {
 .home-menu-topbar {
   width: 100%;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   flex-shrink: 0;
   padding: 0 0.25rem;
-}
-
-.home-menu-topbar-side {
-  flex: 1;
-  min-width: 0;
-}
-
-.home-menu-topbar-left {
-  display: flex;
-  justify-content: flex-start;
-}
-
-.home-menu-topbar-right {
-  display: flex;
-  justify-content: flex-end;
 }
 
 .home-menu-player-chip {
@@ -936,7 +922,7 @@ button:disabled, .btn:disabled {
   }
 
   .home-menu-logo {
-    width: clamp(12rem, 20vw, 20rem);
+    width: clamp(14rem, 24vw, 24rem);
   }
 }
 
