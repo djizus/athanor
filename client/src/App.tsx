@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigationStore, type PageId } from '@/stores/navigationStore'
 import { createPhaserGame, PhaserBridge } from '@/phaser'
 import { LoadingScreen } from '@/ui/LoadingScreen'
+import { Toaster } from '@/ui/components/Toaster'
 import { HomePage } from '@/ui/pages/HomePage'
 import { LeaderboardPage } from '@/ui/pages/LeaderboardPage'
 import { MyGamesPage } from '@/ui/pages/MyGamesPage'
@@ -64,6 +65,7 @@ export default function App() {
       ) : (
         <LoadingScreen status="Loading game assets..." />
       )}
+      <Toaster />
     </>
   )
 }

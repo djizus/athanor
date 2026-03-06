@@ -6,6 +6,7 @@ import { useHeroes } from '@/hooks/useHeroes'
 import { useInventory } from '@/hooks/useInventory'
 import { useRecipes } from '@/hooks/useRecipes'
 import { useNavigationStore } from '@/stores/navigationStore'
+import { txToast } from '@/stores/toastStore'
 import type { PhaserBridge } from '@/phaser'
 import {
   HERO_NAMES,
@@ -109,32 +110,38 @@ export function PlayScreen({ bridge }: Props) {
 
   const handleSendExpedition = async (heroId: number) => {
     if (!account || gameId == null) return
-    try { await client.sendExpedition(account, gameId, heroId) } catch (e) { console.error('Send expedition failed:', e) }
+    const t = txToast('Sending expedition')
+    try { await client.sendExpedition(account, gameId, heroId); t.success() } catch (e) { t.error(); console.error('Send expedition failed:', e) }
   }
 
   const handleClaimLoot = async (heroId: number) => {
     if (!account || gameId == null) return
-    try { await client.claimLoot(account, gameId, heroId) } catch (e) { console.error('Claim loot failed:', e) }
+    const t = txToast('Claiming loot')
+    try { await client.claimLoot(account, gameId, heroId); t.success() } catch (e) { t.error(); console.error('Claim loot failed:', e) }
   }
 
   const handleCraft = async (ingredientA: number, ingredientB: number) => {
     if (!account || gameId == null) return
-    try { await client.craft(account, gameId, ingredientA, ingredientB) } catch (e) { console.error('Craft failed:', e) }
+    const t = txToast('Brewing potion')
+    try { await client.craft(account, gameId, ingredientA, ingredientB); t.success() } catch (e) { t.error(); console.error('Craft failed:', e) }
   }
 
   const handleBuyHint = async () => {
     if (!account || gameId == null) return
-    try { await client.buyHint(account, gameId) } catch (e) { console.error('Buy hint failed:', e) }
+    const t = txToast('Buying hint')
+    try { await client.buyHint(account, gameId); t.success() } catch (e) { t.error(); console.error('Buy hint failed:', e) }
   }
 
   const handleRecruitHero = async () => {
     if (!account || gameId == null) return
-    try { await client.recruitHero(account, gameId) } catch (e) { console.error('Recruit hero failed:', e) }
+    const t = txToast('Recruiting hero')
+    try { await client.recruitHero(account, gameId); t.success() } catch (e) { t.error(); console.error('Recruit hero failed:', e) }
   }
 
   const handleSurrender = async () => {
     if (!account || gameId == null) return
-    try { await client.surrender(account, gameId) } catch (e) { console.error('Surrender failed:', e) }
+    const t = txToast('Surrendering')
+    try { await client.surrender(account, gameId); t.success() } catch (e) { t.error(); console.error('Surrender failed:', e) }
   }
 
   if (gameId == null) {

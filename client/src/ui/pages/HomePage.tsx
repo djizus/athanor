@@ -8,6 +8,7 @@ import { useGameTokens } from '@/hooks/useGameTokens'
 import { useDojo } from '@/dojo/useDojo'
 import { extractGameId } from '@/dojo/systems'
 import { useNavigationStore } from '@/stores/navigationStore'
+import { txToast } from '@/stores/toastStore'
 import { SettingsOverlay } from '@/ui/components/SettingsOverlay'
 
 function formatBestTime(bestTimeBigInt: bigint | undefined): string {
@@ -51,6 +52,7 @@ export function HomePage() {
     setError(null)
     setIsCreatingGame(true)
 
+    const t = txToast('Creating game')
     try {
       const provider = new RpcProvider({ nodeUrl: config.rpcUrl })
       const mintResult = await client.mintGame(account)
@@ -62,9 +64,11 @@ export function HomePage() {
       }
 
       await client.create(account, gameId)
+      t.success('Game created')
       navigate('play', gameId)
     } catch (creationError) {
       const message = creationError instanceof Error ? creationError.message : 'Game creation failed'
+      t.error(message)
       setError(message)
     } finally {
       setIsCreatingGame(false)
