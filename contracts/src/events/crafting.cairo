@@ -10,6 +10,8 @@ pub impl RecipeDiscoveredImpl of RecipeDiscoveredTrait {
         effect_type: u8,
         discovered_count: u8,
     ) -> RecipeDiscovered {
-        RecipeDiscovered { game_id, recipe_id, ingredient_a, ingredient_b, effect_type, discovered_count }
+        RecipeDiscovered {
+            game_id, recipe_id, ingredient_a, ingredient_b, effect_type, discovered_count,
+        }
     }
 }

@@ -72,11 +72,13 @@ pub impl HeroImpl of HeroTrait {
         let rest_time: u64 = now - self.return_at;
         let regen_amount: u64 = rest_time * self.regen_per_sec.into();
         let total_hp: u64 = self.hp.into() + regen_amount;
-        self.hp = if total_hp >= self.max_hp.into() {
-            self.max_hp
-        } else {
-            total_hp.try_into().unwrap()
-        };
+        self
+            .hp =
+                if total_hp >= self.max_hp.into() {
+                    self.max_hp
+                } else {
+                    total_hp.try_into().unwrap()
+                };
     }
 
     /// Reset expedition fields after claiming loot.

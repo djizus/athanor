@@ -1,25 +1,26 @@
 use dojo::event::EventStorage;
 use dojo::model::ModelStorage;
 use dojo::world::WorldStorage;
-use starknet::ContractAddress;
-
 use game_components_token::core::interface::IMinigameTokenDispatcher;
-
-use crate::interfaces::vrf::IVrfProviderDispatcher;
-use crate::models::config::{Config, GameSettings, GameSettingsMetadata};
-use crate::models::game::{GameSession, GameSeed};
-use crate::models::hero::{Hero, HeroPendingIngredient};
-use crate::models::recipe::Recipe;
-use crate::models::inventory::{IngredientBalance, PotionItem};
-use crate::models::crafting::FailedCombo;
-use crate::models::player::PlayerMeta;
+use starknet::ContractAddress;
+use crate::events::crafting::RecipeDiscoveredTrait;
 
 // Event constructors
-use crate::events::exploration::{ExplorationEventTrait, ExpeditionStartedTrait};
+use crate::events::exploration::{ExpeditionStartedTrait, ExplorationEventTrait};
 use crate::events::game::{GameCreatedTrait, GrimoireCompletedTrait};
-use crate::events::crafting::RecipeDiscoveredTrait;
 use crate::events::hero::{HeroRecruitedTrait, PotionAppliedTrait};
 use crate::events::loot::LootClaimedTrait;
+use crate::interfaces::vrf::IVrfProviderDispatcher;
+use crate::models::config::{Config, GameSettings, GameSettingsMetadata};
+use crate::models::crafting::FailedCombo;
+use crate::models::discovery::Discovery;
+use crate::models::game::{GameSeed, GameSession};
+use crate::models::hero::{Hero, HeroPendingIngredient};
+use crate::models::hint::Hint;
+use crate::models::index::Game;
+use crate::models::inventory::{IngredientBalance, PotionItem};
+use crate::models::player::PlayerMeta;
+use crate::models::recipe::Recipe;
 
 // ---------------------------------------------------------------------------
 // Store — typed facade over WorldStorage
@@ -67,6 +68,30 @@ pub impl StoreImpl of StoreTrait {
 
     fn vrf_address(self: @Store) -> ContractAddress {
         self.config().vrf_address
+    }
+
+    fn game(self: @Store, game_id: u64) -> Game {
+        self.world.read_model(game_id)
+    }
+
+    fn set_game(mut self: Store, model: @Game) {
+        self.world.write_model(model);
+    }
+
+    fn hint(self: @Store, game_id: u64, ingredient: u8) -> Hint {
+        self.world.read_model((game_id, ingredient))
+    }
+
+    fn set_hint(mut self: Store, model: @Hint) {
+        self.world.write_model(model);
+    }
+
+    fn discovery(self: @Store, game_id: u64, ingredient_a: u8, ingredient_b: u8) -> Discovery {
+        self.world.read_model((game_id, ingredient_a, ingredient_b))
+    }
+
+    fn set_discovery(mut self: Store, model: @Discovery) {
+        self.world.write_model(model);
     }
 
     // -----------------------------------------------------------------------
@@ -204,11 +229,7 @@ pub impl StoreImpl of StoreTrait {
     // -----------------------------------------------------------------------
 
     fn emit_game_created(
-        mut self: Store,
-        game_id: u64,
-        player: ContractAddress,
-        settings_id: u32,
-        seed: felt252,
+        mut self: Store, game_id: u64, player: ContractAddress, settings_id: u32, seed: felt252,
     ) {
         self.world.emit_event(@GameCreatedTrait::new(game_id, player, settings_id, seed));
     }
@@ -285,8 +306,6 @@ pub impl StoreImpl of StoreTrait {
     fn emit_grimoire_completed(
         mut self: Store, game_id: u64, player: ContractAddress, completion_time: u64,
     ) {
-        self
-            .world
-            .emit_event(@GrimoireCompletedTrait::new(game_id, player, completion_time));
+        self.world.emit_event(@GrimoireCompletedTrait::new(game_id, player, completion_time));
     }
 }

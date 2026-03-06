@@ -1,4 +1,4 @@
-pub use crate::events::index::{ExplorationEvent, ExpeditionStarted};
+pub use crate::events::index::{ExpeditionStarted, ExplorationEvent};
 
 #[generate_trait]
 pub impl ExplorationEventImpl of ExplorationEventTrait {
@@ -12,7 +12,9 @@ pub impl ExplorationEventImpl of ExplorationEventTrait {
         value: u16,
         hp_after: u16,
     ) -> ExplorationEvent {
-        ExplorationEvent { game_id, event_index, hero_id, depth, zone_id, event_kind, value, hp_after }
+        ExplorationEvent {
+            game_id, event_index, hero_id, depth, zone_id, event_kind, value, hp_after,
+        }
     }
 }
 

@@ -1,9 +1,7 @@
+use athanor::interfaces::vrf::{IVrfProviderDispatcher, IVrfProviderDispatcherTrait, Source};
 use core::num::traits::Zero;
 use core::poseidon::poseidon_hash_span;
-use starknet::{
-    ContractAddress, get_block_timestamp, get_caller_address, get_contract_address, get_tx_info,
-};
-use athanor::interfaces::vrf::{IVrfProviderDispatcher, IVrfProviderDispatcherTrait, Source};
+use starknet::{ContractAddress, get_tx_info};
 
 #[derive(Copy, Drop, Serde)]
 pub struct Random {
@@ -14,7 +12,8 @@ pub struct Random {
 #[generate_trait]
 pub impl RandomImpl of RandomTrait {
     fn new_vrf(salt: felt252) -> Random {
-        let vrf_address: ContractAddress = 0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f
+        let vrf_address: ContractAddress =
+            0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f
             .try_into()
             .unwrap();
         let vrf_provider = IVrfProviderDispatcher { contract_address: vrf_address };
@@ -33,19 +32,7 @@ pub impl RandomImpl of RandomTrait {
     }
 
     fn new_pseudo_random() -> Random {
-        let tx_info = get_tx_info().unbox();
-        let caller = get_caller_address();
-        let contract = get_contract_address();
-        let timestamp: felt252 = get_block_timestamp().into();
-
-        let seed = poseidon_hash_span(
-            array![
-                tx_info.transaction_hash, caller.into(), contract.into(), timestamp, tx_info.nonce,
-            ]
-                .span(),
-        );
-
-        Random { seed, nonce: 0 }
+        Random { seed: get_tx_info().transaction_hash, nonce: 0 }
     }
 
     fn next_seed(ref self: Random) -> felt252 {
