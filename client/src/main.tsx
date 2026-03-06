@@ -8,8 +8,12 @@ import App from './App.tsx'
 import { LoadingScreen } from './ui/LoadingScreen'
 import { dojoConfig } from '../dojo.config'
 import { cartridgeConnector } from './cartridgeConnector'
+import { devConnector } from './devConnector'
 import { DojoProvider, type DojoSetup } from './dojo/context'
 import { setupDojo } from './dojo/setup'
+
+const isDevMode = (import.meta.env.VITE_PUBLIC_DEPLOY_TYPE ?? 'dev') === 'dev'
+const connector = isDevMode ? devConnector : cartridgeConnector
 
 function createSlotChain(nodeUrl: string): Chain {
   return {
@@ -100,7 +104,7 @@ function Root() {
   }
 
   return (
-    <StarknetConfig autoConnect chains={[chain]} provider={provider} paymasterProvider={paymaster} connectors={[cartridgeConnector]}>
+    <StarknetConfig autoConnect chains={[chain]} provider={provider} paymasterProvider={paymaster} connectors={[connector]}>
       <DojoProvider value={dojo}>
         <App />
       </DojoProvider>
