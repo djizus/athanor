@@ -19,8 +19,8 @@ export function usePlayerName(address: string | undefined): {
       return
     }
 
-    const connector = connectors[0] as Record<string, unknown> | undefined
-    const usernameFn = connector?.username as (() => Promise<string | undefined>) | undefined
+    const connector = connectors[0] as unknown as { username?: () => Promise<string | undefined> } | undefined
+    const usernameFn = connector?.username
 
     if (typeof usernameFn === 'function') {
       usernameFn()

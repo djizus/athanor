@@ -11,6 +11,12 @@ const SFX_KEYS = [
   'victory', 'notification', 'ambient-lab',
 ] as const;
 
+const MUSIC_TRACKS = [
+  { key: 'menu-theme', file: 'main_theme.mp3' },
+  { key: 'game-loop-1', file: 'game_loop_1.mp3' },
+  { key: 'game-loop-2', file: 'game_loop_2.mp3' },
+] as const;
+
 export class BootScene extends Phaser.Scene {
   constructor() {
     super('BootScene');
@@ -30,6 +36,10 @@ export class BootScene extends Phaser.Scene {
 
     for (const key of SFX_KEYS) {
       this.load.audio(key, `/assets/sounds/effects/${key}.mp3`);
+    }
+
+    for (const track of MUSIC_TRACKS) {
+      this.load.audio(track.key, `/assets/sounds/music/${track.file}`);
     }
 
     this.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR, (file: Phaser.Loader.File) => {
