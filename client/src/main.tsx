@@ -36,6 +36,8 @@ function createSlotChain(nodeUrl: string): Chain {
 function Root() {
   const [dojo, setDojo] = useState<DojoSetup | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [initStatus, setInitStatus] = useState('Bootstrapping client...')
+  const [initError, setInitError] = useState<string | null>(null)
 
   const chain = useMemo(() => createSlotChain(dojoConfig().rpcUrl), [])
   const provider = useMemo(
@@ -49,17 +51,36 @@ function Root() {
   useEffect(() => {
     let mounted = true
 
+    console.groupCollapsed('[athanor:init] root')
+    console.info('[athanor:init] env', {
+      rpcUrl: dojoConfig().rpcUrl,
+      toriiUrl: dojoConfig().toriiUrl,
+      worldAddress: dojoConfig().manifest.world.address,
+      deployType: import.meta.env.VITE_PUBLIC_DEPLOY_TYPE ?? 'dev',
+    })
+
+    setInitStatus('Connecting to local Katana and Torii...')
+
     setupDojo()
       .then((result) => {
+        console.info('[athanor:init] setupDojo resolved')
         if (mounted) {
           setDojo(result)
+          setInitStatus('Initialization complete')
           setIsLoading(false)
         }
       })
-      .catch(() => {
+      .catch((error: unknown) => {
+        console.error('[athanor:init] setupDojo failed', error)
+        const message = error instanceof Error ? error.message : String(error)
         if (mounted) {
+          setInitError(message)
+          setInitStatus('Initialization failed')
           setIsLoading(false)
         }
+      })
+      .finally(() => {
+        console.groupEnd()
       })
 
     return () => {
@@ -68,7 +89,7 @@ function Root() {
   }, [])
 
   if (isLoading || !dojo) {
-    return <LoadingScreen />
+    return <LoadingScreen status={initStatus} error={initError} />
   }
 
   return (
