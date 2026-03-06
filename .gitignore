@@ -7,6 +7,8 @@ references/
 !.env.example
 .env.local
 .env.*.local
+account*.json
+keystore*.json
 
 # Dependencies
 node_modules/
@@ -35,3 +37,6 @@ katana.log
 # Misc
 *.log
 .opencode/
+
+# Legacy
+contracts/src/systems/_*.cairo

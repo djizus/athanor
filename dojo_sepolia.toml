@@ -1,26 +1,34 @@
 [world]
 name = "Athanor"
 description = "Fully on-chain competitive grimoire race"
-seed = "athanor_sepolia"
+seed = "athanor-v0.0.0"
 
 [namespace]
-default = "athanor"
+default = "ATHANOR"
 
 [env]
-rpc_url = "https://api.cartridge.gg/rpc/starknet-sepolia"
-account_address = "0x0"
-private_key = "0x0"
+rpc_url = "https://api.cartridge.gg/x/starknet/sepolia"
+world_address = "0x0105c803b39505fc491487fd171f22a8dd5f115e7ef74cdde8edc4a255dd4c15"
+account_address = "0x059b1a0c489b635d7c7f43594d187362ddd2dcea6c82db4eef2579fd185b3753"
+keystore_path = "./keystore_sepolia.json"
 
 [writers]
-"athanor" = ["athanor-game_system", "athanor-config_system", "athanor-exploration_system", "athanor-crafting_system", "athanor-hero_system"]
+"ATHANOR" = ["ATHANOR-Play"]
+
+[owners]
+"ATHANOR" = ["ATHANOR-Setup"]
+
+[migration]
+order_inits = ["ATHANOR-Play", "ATHANOR-Setup"]
 
 [init_call_args]
-"athanor-game_system" = [
-    "0x0",
-    "0x0",
-    "1",
-    "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f",
+"ATHANOR-Play" = [
+  "0x059b1a0c489b635d7c7f43594d187362ddd2dcea6c82db4eef2579fd185b3753",
+  "0x00ce6622be39efa11b4a50b7d2e0c342a218bc099bbd313365efe169ef0eb3e2",
+  "0x1",
+  "0x1",
+  # "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f",
 ]
-"athanor-config_system" = [
-    "0x0",
+"ATHANOR-Setup" = [
+  "0x059b1a0c489b635d7c7f43594d187362ddd2dcea6c82db4eef2579fd185b3753",
 ]
