@@ -2,7 +2,7 @@ import { StrictMode } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { type Chain } from '@starknet-react/chains'
-import { StarknetConfig, jsonRpcProvider } from '@starknet-react/core'
+import { StarknetConfig, jsonRpcProvider, paymasterRpcProvider } from '@starknet-react/core'
 import './index.css'
 import App from './App.tsx'
 import { LoadingScreen } from './ui/LoadingScreen'
@@ -43,6 +43,13 @@ function Root() {
   const provider = useMemo(
     () =>
       jsonRpcProvider({
+        rpc: () => ({ nodeUrl: dojoConfig().rpcUrl }),
+      }),
+    [],
+  )
+  const paymaster = useMemo(
+    () =>
+      paymasterRpcProvider({
         rpc: () => ({ nodeUrl: dojoConfig().rpcUrl }),
       }),
     [],
@@ -93,7 +100,7 @@ function Root() {
   }
 
   return (
-    <StarknetConfig autoConnect chains={[chain]} provider={provider} connectors={[cartridgeConnector]}>
+    <StarknetConfig autoConnect chains={[chain]} provider={provider} paymasterProvider={paymaster} connectors={[cartridgeConnector]}>
       <DojoProvider value={dojo}>
         <App />
       </DojoProvider>
