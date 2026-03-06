@@ -6,6 +6,12 @@ pub trait IExplorationSystem<T> {
 
 #[dojo::contract]
 pub mod exploration_system {
+    use athanor::constants::{self, DEFAULT_NS};
+    use athanor::helpers::exploration;
+    use athanor::helpers::random::RandomImpl;
+    use athanor::models::game::GameSessionAssertTrait;
+    use athanor::models::hero::{HeroAssertTrait, HeroPendingIngredient, HeroTrait};
+    use athanor::store::{StoreImpl, StoreTrait};
     use core::poseidon::poseidon_hash_span;
     use game_components_minigame::libs::{assert_token_ownership, post_action, pre_action};
     use game_components_token::core::interface::{
@@ -13,14 +19,6 @@ pub mod exploration_system {
     };
     use game_components_token::libs::LifecycleTrait;
     use starknet::get_block_timestamp;
-
-    use athanor::constants::{self, DEFAULT_NS};
-    use athanor::helpers::exploration;
-    use athanor::helpers::random::RandomImpl;
-    use athanor::models::game::GameSessionAssertTrait;
-    use athanor::models::hero::{HeroPendingIngredient, HeroAssertTrait, HeroTrait};
-    use athanor::store::{StoreImpl, StoreTrait};
-
     use super::IExplorationSystem;
 
     // No Storage needed — token_address and vrf_address come from Config via Store
@@ -34,9 +32,7 @@ pub mod exploration_system {
 
             pre_action(token_address, game_id);
 
-            let token_dispatcher = IMinigameTokenDispatcher {
-                contract_address: token_address,
-            };
+            let token_dispatcher = IMinigameTokenDispatcher { contract_address: token_address };
             let token_metadata = token_dispatcher.token_metadata(game_id);
             assert!(token_metadata.lifecycle.is_playable(timestamp), "Game not playable");
             assert_token_ownership(token_address, game_id);
@@ -65,10 +61,7 @@ pub mod exploration_system {
             // Emit exploration events
             let events_len = result.events.len();
             let mut event_idx: u32 = 0;
-            loop {
-                if event_idx >= events_len {
-                    break;
-                }
+            while event_idx < events_len {
                 let tick = *result.events.at(event_idx);
                 store
                     .emit_exploration_event(
@@ -82,7 +75,7 @@ pub mod exploration_system {
                         tick.hp_after,
                     );
                 event_idx += 1;
-            };
+            }
 
             // Update hero with expedition results
             hero.status = athanor::types::HERO_STATUS_EXPLORING;
@@ -97,10 +90,7 @@ pub mod exploration_system {
             // Store pending ingredients
             let ing_len = result.ingredient_counts.len();
             let mut ing_idx: u32 = 0;
-            loop {
-                if ing_idx >= ing_len {
-                    break;
-                }
+            while ing_idx < ing_len {
                 let qty = *result.ingredient_counts.at(ing_idx);
                 if qty > 0 {
                     store
@@ -114,7 +104,7 @@ pub mod exploration_system {
                         );
                 }
                 ing_idx += 1;
-            };
+            }
 
             store.emit_expedition_started(game_id, hero_id, result.death_depth, return_at);
 
@@ -128,9 +118,7 @@ pub mod exploration_system {
 
             pre_action(token_address, game_id);
 
-            let token_dispatcher = IMinigameTokenDispatcher {
-                contract_address: token_address,
-            };
+            let token_dispatcher = IMinigameTokenDispatcher { contract_address: token_address };
             let token_metadata = token_dispatcher.token_metadata(game_id);
             assert!(token_metadata.lifecycle.is_playable(timestamp), "Game not playable");
             assert_token_ownership(token_address, game_id);
@@ -149,10 +137,7 @@ pub mod exploration_system {
 
             // Transfer ingredients
             let mut ing_id: u8 = 0;
-            loop {
-                if ing_id >= constants::TOTAL_INGREDIENTS {
-                    break;
-                }
+            while ing_id < constants::TOTAL_INGREDIENTS {
                 let pending = store.pending_ingredient(game_id, hero_id, ing_id);
                 if pending.quantity > 0 {
                     let mut balance = store.ingredient(game_id, ing_id);
@@ -167,7 +152,7 @@ pub mod exploration_system {
                         );
                 }
                 ing_id += 1;
-            };
+            }
 
             // Idle regen + reset expedition fields
             hero.idle_regen(timestamp);
