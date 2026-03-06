@@ -16,11 +16,11 @@ type ManifestJson = {
 }
 
 const SYSTEM_TAGS = [
-  'athanor-game_system',
+  'ATHANOR-Play',
   'athanor-exploration_system',
   'athanor-crafting_system',
   'athanor-hero_system',
-  'athanor-config_system',
+  'ATHANOR-Setup',
 ] as const
 
 function loadManifest(): ManifestJson | null {

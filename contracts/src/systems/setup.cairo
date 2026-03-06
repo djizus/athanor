@@ -1,4 +1,9 @@
-use athanor::models::config::GameSettings;
+use crate::models::config::GameSettings;
+
+#[inline]
+pub fn NAME() -> ByteArray {
+    "Setup"
+}
 
 #[starknet::interface]
 pub trait IConfigSystem<T> {
@@ -6,11 +11,8 @@ pub trait IConfigSystem<T> {
 }
 
 #[dojo::contract]
-pub mod config_system {
-    use athanor::constants::DEFAULT_NS;
-    use athanor::models::config::{GameSettings, GameSettingsMetadata, GameSettingsTrait};
-    use athanor::store::{StoreImpl, StoreTrait};
-    use dojo::world::{WorldStorage, WorldStorageTrait};
+pub mod Setup {
+    use dojo::world::{IWorldDispatcherTrait, WorldStorage, WorldStorageTrait};
     use game_components_minigame::extensions::settings::interface::{
         IMinigameSettings, IMinigameSettingsDetails,
     };
@@ -20,6 +22,10 @@ pub mod config_system {
     use openzeppelin::introspection::src5::SRC5Component;
     use starknet::storage::StoragePointerWriteAccess;
     use starknet::{ContractAddress, get_block_timestamp};
+    use crate::constants::NAMESPACE;
+    use crate::models::config::{GameSettings, GameSettingsMetadata, GameSettingsTrait};
+    use crate::store::{StoreImpl, StoreTrait};
+    use crate::systems::play::NAME as PLAY;
     use super::IConfigSystem;
 
     component!(path: SettingsComponent, storage: settings, event: SettingsEvent);
@@ -49,9 +55,9 @@ pub mod config_system {
     }
 
     fn dojo_init(ref self: ContractState, creator_address: ContractAddress) {
-        let world: WorldStorage = self.world(@DEFAULT_NS());
+        let world: WorldStorage = self.world(@NAMESPACE());
         let timestamp = get_block_timestamp();
-        let mut store = StoreImpl::new(world);
+        let store = StoreImpl::new(world);
 
         self.settings.initializer();
 
@@ -69,30 +75,42 @@ pub mod config_system {
 
         self.settings_counter.write(0);
 
-        let (game_systems_address, _) = world.dns(@"game_system").unwrap();
-        let minigame_dispatcher = IMinigameDispatcher { contract_address: game_systems_address };
+        let (play_address, _) = world.dns(@PLAY()).unwrap();
+        let minigame_dispatcher = IMinigameDispatcher { contract_address: play_address };
         let minigame_token_address = minigame_dispatcher.token_address();
 
         self
             .settings
             .create_settings(
-                game_systems_address,
-                0,
-                "Default",
-                "Official Athanor settings. 3 zones, 9 ingredients, 10 recipes.",
-                array![
+                game_address: play_address,
+                settings_id: 0,
+                name: "Default",
+                description: "Official Athanor settings. 3 zones, 9 ingredients, 10 recipes.",
+                settings: array![
                     GameSetting { name: "Zones", value: "3" },
                     GameSetting { name: "Recipes", value: "10" },
                 ]
                     .span(),
-                minigame_token_address,
+                minigame_token_address: minigame_token_address,
+            );
+
+        // [Event] Order torii to index the tokens
+        let instance_name: felt252 = minigame_token_address.into();
+        world
+            .dispatcher
+            .register_external_contract(
+                namespace: NAMESPACE(),
+                contract_name: "ERC20",
+                instance_name: format!("{}", instance_name),
+                contract_address: minigame_token_address,
+                block_number: 1,
             );
     }
 
     #[abi(embed_v0)]
     impl MinigameSettingsImpl of IMinigameSettings<ContractState> {
         fn settings_exist(self: @ContractState, settings_id: u32) -> bool {
-            let store = StoreImpl::new(self.world(@DEFAULT_NS()));
+            let store = StoreImpl::new(self.world(@NAMESPACE()));
             let settings = store.settings(settings_id);
             settings.exists()
         }
@@ -101,7 +119,7 @@ pub mod config_system {
     #[abi(embed_v0)]
     impl MinigameSettingsDetailsImpl of IMinigameSettingsDetails<ContractState> {
         fn settings_details(self: @ContractState, settings_id: u32) -> GameSettingDetails {
-            let store = StoreImpl::new(self.world(@DEFAULT_NS()));
+            let store = StoreImpl::new(self.world(@NAMESPACE()));
             let metadata = store.settings_meta(settings_id);
 
             GameSettingDetails {
@@ -124,7 +142,7 @@ pub mod config_system {
     #[abi(embed_v0)]
     impl ConfigSystemImpl of IConfigSystem<ContractState> {
         fn get_game_settings(self: @ContractState, settings_id: u32) -> GameSettings {
-            let store = StoreImpl::new(self.world(@DEFAULT_NS()));
+            let store = StoreImpl::new(self.world(@NAMESPACE()));
             store.settings(settings_id)
         }
     }

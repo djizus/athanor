@@ -1,3 +1,4 @@
+use core::num::traits::Bounded;
 use starknet::ContractAddress;
 
 #[derive(Copy, Drop, Serde)]
@@ -68,13 +69,14 @@ pub impl GameSessionAssert of GameSessionAssertTrait {
 // --- Game ---
 
 use core::num::traits::Pow;
-use crate::constants::DEFAULT_HINT_PRICE;
+use crate::constants::{DEFAULT_HERO_COSTS, DEFAULT_HINT_PRICE, DEFAULT_MAX_HEROES};
 use crate::helpers::bitmap::Bitmap;
 use crate::helpers::crafter::Crafter;
 use crate::helpers::packer::Packer;
 pub use crate::models::index::Game;
 use crate::typess::effect::{ALL_EFFECTS, EFFECT_COUNT, Effect};
 use crate::typess::ingredient::{INGREDIENT_COUNT, Ingredient, IngredientTrait};
+use crate::typess::role::{Role, RoleTrait};
 
 pub const TRY_SIZE: u16 = 2_u16.pow(5);
 pub const INGREDIENT_SIZE: u16 = 2_u16.pow(10);
@@ -87,8 +89,9 @@ pub mod Errors {
     pub const GAME_MISSING_INGREDIENTS: felt252 = 'Game: missing ingredients';
     pub const GAME_INVALID_INGREDIENTS: felt252 = 'Game: invalid ingredients';
     pub const GAME_NOT_ENOUGH_GOLD: felt252 = 'Game: not enough gold';
-    pub const GAME_NOT_EXIST: felt252 = 'Game: not exist';
-    pub const GAME_DOES_NOT_EXIST: felt252 = 'Game: does not exist';
+    pub const GAME_NOT_STARTED: felt252 = 'Game: not started';
+    pub const GAME_IS_STARTED: felt252 = 'Game: is started';
+    pub const GAME_MAX_HEROES: felt252 = 'Game: max heroes';
 }
 
 #[generate_trait]
@@ -97,7 +100,8 @@ pub impl GameImpl of GameTrait {
     fn new(id: u64, seed: felt252) -> Game {
         Game {
             id,
-            started_at: starknet::get_block_timestamp(),
+            heroes: 0,
+            started_at: 0,
             ended_at: 0,
             remaining_tries: INGREDIENT_COUNT.into() * (INGREDIENT_COUNT.into() - 1) / 2,
             gold: 0,
@@ -109,6 +113,12 @@ pub impl GameImpl of GameTrait {
             tries: 0,
             seed: seed,
         }
+    }
+
+    #[inline]
+    fn start(ref self: Game) {
+        self.started_at = starknet::get_block_timestamp();
+        self.recruit(self.seed.into());
     }
 
     #[inline]
@@ -134,19 +144,43 @@ pub impl GameImpl of GameTrait {
     }
 
     #[inline]
-    fn add_ingredient(ref self: Game, ingredient: Ingredient, quantity: u16) {
+    fn recruit(ref self: Game, rng: u256) -> (u8, Role) {
+        // [Check] Not at max heroes
+        let count = Bitmap::popcount(self.heroes);
+        assert(count < DEFAULT_MAX_HEROES, Errors::GAME_MAX_HEROES);
+        // [Effect] Spend gold
+        let cost = DEFAULT_HERO_COSTS.span().at(count.into());
+        self.spend(*cost);
+        // [Effect] Add hero
+        let role: Role = RoleTrait::draw(self.heroes, rng.low);
+        self.heroes = Bitmap::set(self.heroes, role.index());
+        // [Return] Role
+        (count, role)
+    }
+
+    #[inline]
+    fn merge(ref self: Game, ingredients: u256) {
         // [Effect] Add ingredient to the balance
+        let mut quantities: Array<u16> = Packer::unpack(
+            ingredients, INGREDIENT_SIZE, INGREDIENT_COUNT.into(),
+        );
         let ingredients: u256 = self.ingredients.into();
         let mut balances: Array<u16> = Packer::unpack(
             ingredients, INGREDIENT_SIZE, INGREDIENT_COUNT.into(),
         );
-        balances.append(quantity);
+        for _index in 0_u32..INGREDIENT_COUNT.into() {
+            let quantity: u32 = quantities.pop_front().unwrap().into();
+            let balance: u32 = balances.pop_front().unwrap().into();
+            // [Info] Handle overflow
+            let value: u32 = core::cmp::min(balance + quantity, Bounded::<u16>::MAX.into());
+            balances.append(value.try_into().unwrap());
+        }
         let ingredients: u256 = Packer::pack(balances, INGREDIENT_SIZE);
         self.ingredients = ingredients.try_into().unwrap();
     }
 
     #[inline]
-    fn add_effect(ref self: Game, effect: Effect, quantity: u16) {
+    fn store(ref self: Game, effect: Effect, quantity: u16) {
         // [Effect] Add effect to the balance
         let effects: u256 = self.effects.into();
         let mut balances: Array<u16> = Packer::unpack(effects, EFFECT_SIZE, EFFECT_COUNT.into());
@@ -156,7 +190,7 @@ pub impl GameImpl of GameTrait {
     }
 
     #[inline]
-    fn remove_effect(ref self: Game, effect: Effect, quantity: u16) {
+    fn consume(ref self: Game, effect: Effect, quantity: u16) {
         // [Effect] Remove effect from the balance
         let effects: u256 = self.effects.into();
         let mut balances: Array<u16> = Packer::unpack(effects, EFFECT_SIZE, EFFECT_COUNT.into());
@@ -166,7 +200,7 @@ pub impl GameImpl of GameTrait {
     }
 
     #[inline]
-    fn glean(ref self: Game, rng: u256) -> (Effect, Ingredient) {
+    fn clue(ref self: Game, rng: u256) -> (Effect, Ingredient) {
         // TODO: Can be optimized by unpacking directly inside this function
         // [Effect] Spend gold and update hint price
         self.spend(self.hint_price);
@@ -293,13 +327,13 @@ pub impl GameAssert of AssertTrait {
     }
 
     #[inline]
-    fn assert_not_exist(self: @Game) {
-        assert(self.started_at == @0, Errors::GAME_NOT_EXIST);
+    fn assert_not_started(self: @Game) {
+        assert(self.started_at == @0, Errors::GAME_NOT_STARTED);
     }
 
     #[inline]
-    fn assert_does_exist(self: @Game) {
-        assert(self.started_at != @0, Errors::GAME_DOES_NOT_EXIST);
+    fn assert_is_started(self: @Game) {
+        assert(self.started_at != @0, Errors::GAME_IS_STARTED);
     }
 }
 
@@ -335,16 +369,16 @@ mod tests {
     }
 
     #[test]
-    fn test_game_glean_two_left() {
+    fn test_game_clue_two_left() {
         let mut game = GameTrait::new(1, SEED);
         // bits 1-29 set, bit 0 clear → only Effect::None (index 0) is eligible
         game.gold = 4 + 16;
         game.grimoire = 2_u32.pow(EFFECT_COUNT.into() - 1) - 2;
-        let (effect, ingredient) = game.glean(0);
+        let (effect, ingredient) = game.clue(0);
         assert_eq!(effect, Effect::Blue);
         assert_eq!(ingredient, Ingredient::AmberSap);
         assert_eq!(game.tries, 1);
-        let (effect, ingredient) = game.glean(1);
+        let (effect, ingredient) = game.clue(1);
         assert_eq!(effect, Effect::Aquamarine);
         assert_eq!(ingredient, Ingredient::AmberSap);
         assert_eq!(game.tries, 2);

@@ -3,6 +3,7 @@
 pub struct Game {
     #[key]
     pub id: u64,
+    pub heroes: u8,
     pub started_at: u64,
     pub ended_at: u64,
     pub remaining_tries: u16,
@@ -37,4 +38,21 @@ pub struct Hint {
     #[key]
     pub ingredient: u8,
     pub recipes: u32 // Bitmap of recipes that can be crafted with this ingredient
+}
+
+#[derive(Copy, Drop, Serde)]
+#[dojo::model]
+pub struct Character {
+    #[key]
+    pub game_id: u64,
+    #[key]
+    pub id: u8,
+    pub role: u8,
+    pub health: u16,
+    pub max_health: u16,
+    pub power: u16,
+    pub regen: u16,
+    pub gold: u32,
+    pub available_at: u64,
+    pub ingredients: felt252,
 }
