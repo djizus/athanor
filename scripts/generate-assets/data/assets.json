@@ -1,0 +1,120 @@
+{
+  "backgrounds": [
+    {
+      "id": "lab-bg",
+      "filename": "lab-bg.png",
+      "category": "backgrounds",
+      "width": 1280,
+      "height": 720,
+      "description": "Dark medieval alchemist laboratory interior"
+    },
+    {
+      "id": "zone-meadow",
+      "filename": "zone-meadow.png",
+      "category": "backgrounds",
+      "width": 1280,
+      "height": 720,
+      "description": "Verdant Meadow — lush green fields, soft golden light, wildflowers, ancient standing stones",
+      "zoneColor": "#4a9e4a"
+    },
+    {
+      "id": "zone-marsh",
+      "filename": "zone-marsh.png",
+      "category": "backgrounds",
+      "width": 1280,
+      "height": 720,
+      "description": "Misty Marsh — foggy wetlands, blue-grey tones, twisted dead trees, bioluminescent fungi",
+      "zoneColor": "#4a7a9e"
+    },
+    {
+      "id": "zone-cavern",
+      "filename": "zone-cavern.png",
+      "category": "backgrounds",
+      "width": 1280,
+      "height": 720,
+      "description": "Crystal Cavern — sparkling amethyst and amber crystals, dark stone walls, warm mineral glow",
+      "zoneColor": "#b8860b"
+    },
+    {
+      "id": "zone-volcanic",
+      "filename": "zone-volcanic.png",
+      "category": "backgrounds",
+      "width": 1280,
+      "height": 720,
+      "description": "Volcanic Ridge — crimson lava flows between dark basalt, floating embers, smoke plumes",
+      "zoneColor": "#9e4a4a"
+    },
+    {
+      "id": "zone-spire",
+      "filename": "zone-spire.png",
+      "category": "backgrounds",
+      "width": 1280,
+      "height": 720,
+      "description": "Aether Spire — ethereal purple tower, starlit void, swirling arcane energy, floating runes",
+      "zoneColor": "#9e4a9e"
+    }
+  ],
+  "heroes": [
+    {
+      "id": "hero-alaric",
+      "filename": "hero-alaric.png",
+      "category": "heroes",
+      "width": 128,
+      "height": 128,
+      "description": "Young male adventurer with short dark hair, determined expression, leather armor with a short sword at his belt, blue magical aura"
+    },
+    {
+      "id": "hero-brynn",
+      "filename": "hero-brynn.png",
+      "category": "heroes",
+      "width": 128,
+      "height": 128,
+      "description": "Female ranger with auburn hair in a braid, sharp green eyes, forest-green hooded cloak, bow slung over shoulder, nature motif"
+    },
+    {
+      "id": "hero-cassiel",
+      "filename": "hero-cassiel.png",
+      "category": "heroes",
+      "width": 128,
+      "height": 128,
+      "description": "Androgynous mage with silver-white hair, pale skin, ornate purple robes with golden trim, glowing arcane staff, ethereal presence"
+    }
+  ],
+  "ingredients": [
+    { "id": "moonpetal", "filename": "moonpetal.png", "category": "ingredients", "width": 128, "height": 128, "description": "A luminous white-silver flower petal that glows faintly with moonlight, delicate curved shape", "zoneColor": "#4a9e4a" },
+    { "id": "dewmoss", "filename": "dewmoss.png", "category": "ingredients", "width": 128, "height": 128, "description": "A clump of soft green moss with glistening dew droplets, lush and damp", "zoneColor": "#4a9e4a" },
+    { "id": "river-clay", "filename": "river-clay.png", "category": "ingredients", "width": 128, "height": 128, "description": "A smooth round ball of reddish-brown river clay, slightly wet with a matte finish", "zoneColor": "#4a9e4a" },
+    { "id": "copper-dust", "filename": "copper-dust.png", "category": "ingredients", "width": 128, "height": 128, "description": "A small pile of shimmering copper-orange metallic dust with green patina flecks", "zoneColor": "#4a9e4a" },
+    { "id": "nightberry", "filename": "nightberry.png", "category": "ingredients", "width": 128, "height": 128, "description": "A cluster of small dark purple-black berries with a faint inner glow, attached to a dark stem", "zoneColor": "#4a9e4a" },
+
+    { "id": "crimson-lichen", "filename": "crimson-lichen.png", "category": "ingredients", "width": 128, "height": 128, "description": "A patch of deep crimson-red lichen growing on grey stone, branching fractal pattern", "zoneColor": "#4a7a9e" },
+    { "id": "fog-essence", "filename": "fog-essence.png", "category": "ingredients", "width": 128, "height": 128, "description": "A small glass vial containing swirling pale blue-white fog that moves on its own", "zoneColor": "#4a7a9e" },
+    { "id": "iron-filing", "filename": "iron-filing.png", "category": "ingredients", "width": 128, "height": 128, "description": "A small heap of dark grey metallic iron filings with a magnetic sheen", "zoneColor": "#4a7a9e" },
+    { "id": "stoneroot", "filename": "stoneroot.png", "category": "ingredients", "width": 128, "height": 128, "description": "A gnarled root that looks half-petrified, grey-brown with stone-like texture and living tendrils", "zoneColor": "#4a7a9e" },
+    { "id": "amber-sap", "filename": "amber-sap.png", "category": "ingredients", "width": 128, "height": 128, "description": "A drop of golden-amber tree sap, translucent and warm-glowing, suspended in mid-drip", "zoneColor": "#4a7a9e" },
+
+    { "id": "crystal-shard", "filename": "crystal-shard.png", "category": "ingredients", "width": 128, "height": 128, "description": "A sharp faceted crystal shard glowing amber-gold, translucent with internal light", "zoneColor": "#b8860b" },
+    { "id": "drake-moss", "filename": "drake-moss.png", "category": "ingredients", "width": 128, "height": 128, "description": "Dark emerald moss with tiny scale-like leaves, faintly warm to the touch, dragon-fire residue", "zoneColor": "#b8860b" },
+    { "id": "sulfur-bloom", "filename": "sulfur-bloom.png", "category": "ingredients", "width": 128, "height": 128, "description": "A bright yellow crystalline flower-like sulfur formation with sharp geometric petals", "zoneColor": "#b8860b" },
+    { "id": "shadow-silk", "filename": "shadow-silk.png", "category": "ingredients", "width": 128, "height": 128, "description": "A wisp of pure black silk thread that seems to absorb light, floating ethereally", "zoneColor": "#b8860b" },
+    { "id": "venom-drop", "filename": "venom-drop.png", "category": "ingredients", "width": 128, "height": 128, "description": "A single drop of luminous green-yellow venom, viscous and glowing with toxic energy", "zoneColor": "#b8860b" },
+
+    { "id": "phoenix-ash", "filename": "phoenix-ash.png", "category": "ingredients", "width": 128, "height": 128, "description": "A pinch of shimmering red-orange ash with embedded ember sparks that still glow", "zoneColor": "#9e4a4a" },
+    { "id": "void-salt", "filename": "void-salt.png", "category": "ingredients", "width": 128, "height": 128, "description": "Dark crystalline salt grains that appear to contain tiny starfields within each crystal", "zoneColor": "#9e4a4a" },
+    { "id": "starlight-dew", "filename": "starlight-dew.png", "category": "ingredients", "width": 128, "height": 128, "description": "A single droplet of liquid starlight, brilliant white-blue with prismatic refractions", "zoneColor": "#9e4a4a" },
+    { "id": "obsidian-flake", "filename": "obsidian-flake.png", "category": "ingredients", "width": 128, "height": 128, "description": "A razor-thin flake of volcanic obsidian glass, jet black with iridescent purple edge", "zoneColor": "#9e4a4a" },
+    { "id": "spirit-vine", "filename": "spirit-vine.png", "category": "ingredients", "width": 128, "height": 128, "description": "A coiled tendril of ghostly translucent vine, pale green with spectral glow", "zoneColor": "#9e4a4a" },
+
+    { "id": "dragon-scale", "filename": "dragon-scale.png", "category": "ingredients", "width": 128, "height": 128, "description": "A single large iridescent dragon scale, deep purple with rainbow shimmer, thick and armored", "zoneColor": "#9e4a9e" },
+    { "id": "aether-core", "filename": "aether-core.png", "category": "ingredients", "width": 128, "height": 128, "description": "A small orb of concentrated purple-white aether energy, crackling with arcane lightning", "zoneColor": "#9e4a9e" },
+    { "id": "titan-blood", "filename": "titan-blood.png", "category": "ingredients", "width": 128, "height": 128, "description": "A vial of thick luminous magenta-red blood that pulses with inner power", "zoneColor": "#9e4a9e" },
+    { "id": "celestial-dust", "filename": "celestial-dust.png", "category": "ingredients", "width": 128, "height": 128, "description": "A pinch of sparkling cosmic dust with tiny stars and nebula colors within", "zoneColor": "#9e4a9e" },
+    { "id": "abyssal-pearl", "filename": "abyssal-pearl.png", "category": "ingredients", "width": 128, "height": 128, "description": "A dark lustrous pearl with deep purple-black surface and an inner void-like glow", "zoneColor": "#9e4a9e" }
+  ],
+  "potions": [
+    { "id": "potion-hp", "filename": "potion-hp.png", "category": "potions", "width": 128, "height": 128, "description": "A round glass potion bottle filled with glowing red liquid, heart-shaped stopper, warm crimson glow" },
+    { "id": "potion-power", "filename": "potion-power.png", "category": "potions", "width": 128, "height": 128, "description": "A tall angular potion bottle filled with electric blue liquid, sword-shaped stopper, crackling energy" },
+    { "id": "potion-regen", "filename": "potion-regen.png", "category": "potions", "width": 128, "height": 128, "description": "A bulbous potion bottle filled with verdant green liquid, leaf-shaped stopper, gentle healing glow" },
+    { "id": "potion-soup", "filename": "potion-soup.png", "category": "potions", "width": 128, "height": 128, "description": "A crude wooden bowl of murky brown-grey soup with lazy steam, failed alchemy experiment" }
+  ]
+}

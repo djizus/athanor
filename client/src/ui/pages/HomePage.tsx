@@ -44,20 +44,12 @@ export function HomePage() {
   }
 
   return (
-    <main style={{ padding: '2rem', maxWidth: 760, margin: '0 auto' }}>
-      <h1 style={{ margin: 0 }}>Athanor</h1>
-      <p style={{ color: 'rgba(255,255,255,0.72)', marginTop: '0.5rem' }}>Transmute, explore, survive.</p>
+    <main className="page-center">
+      <h1 className="page-title">Athanor</h1>
+      <p style={{ color: 'var(--text-secondary)' }}>Transmute, explore, survive.</p>
 
       {!address ? (
-        <div
-          style={{
-            marginTop: '1.25rem',
-            padding: '1rem',
-            border: '1px solid #2f2f2f',
-            borderRadius: 12,
-            background: '#1d1d1d',
-          }}
-        >
+        <div className="panel">
           <button
             disabled={!primaryConnector}
             onClick={() => {
@@ -70,25 +62,17 @@ export function HomePage() {
           </button>
         </div>
       ) : (
-        <div
-          style={{
-            display: 'grid',
-            gap: '0.75rem',
-            marginTop: '1.25rem',
-            padding: '1rem',
-            border: '1px solid #2f2f2f',
-            borderRadius: 12,
-            background: '#1d1d1d',
-          }}
-        >
+        <div className="panel">
           <p style={{ margin: 0, wordBreak: 'break-all' }}>Player: {address}</p>
-          <p style={{ margin: 0, color: 'rgba(255,255,255,0.72)' }}>Total runs: {playerMeta?.total_games ?? 0}</p>
-          <button onClick={handleCreateGame} disabled={isCreatingGame}>
+          <p style={{ margin: 0, color: 'var(--text-secondary)' }}>Total runs: {playerMeta?.total_games ?? 0}</p>
+          <button className="btn-primary" onClick={handleCreateGame} disabled={isCreatingGame}>
             {isCreatingGame ? 'Creating Game...' : 'New Game'}
           </button>
-          <button onClick={() => navigate('mygames')}>My Games</button>
-          <button onClick={() => navigate('leaderboard')}>Leaderboard</button>
-          {error ? <p style={{ margin: 0, color: '#f44336' }}>{error}</p> : null}
+          <div className="game-list">
+            <button onClick={() => navigate('mygames')}>My Games</button>
+            <button onClick={() => navigate('leaderboard')}>Leaderboard</button>
+          </div>
+          {error ? <p style={{ margin: 0, color: 'var(--accent-red)' }}>{error}</p> : null}
         </div>
       )}
     </main>

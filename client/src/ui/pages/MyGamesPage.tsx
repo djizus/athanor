@@ -14,43 +14,41 @@ export function MyGamesPage() {
   )
 
   return (
-    <main style={{ padding: '2rem', maxWidth: 860, margin: '0 auto', display: 'grid', gap: '1rem' }}>
-      <section style={{ background: '#1d1d1d', border: '1px solid #2f2f2f', borderRadius: 12, padding: '1rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem' }}>
-          <h1 style={{ margin: 0 }}>My Games</h1>
+    <div className="page">
+      <section className="status-bar">
+        <h1 className="status-bar-title">My Games</h1>
+        <div className="status-bar-actions">
           <button onClick={() => navigate('home')}>Back</button>
         </div>
       </section>
 
       {sortedGames.length === 0 ? (
-        <section style={{ background: '#1d1d1d', border: '1px solid #2f2f2f', borderRadius: 12, padding: '1rem' }}>
-          <p style={{ margin: 0, color: 'rgba(255,255,255,0.72)' }}>No games yet</p>
+        <section className="page-scroll">
+          <div className="panel">
+            <p>No games yet</p>
+          </div>
         </section>
       ) : (
-        <section style={{ display: 'grid', gap: '0.75rem' }}>
-          {sortedGames.map((game) => (
-            <button
-              key={game.game_id}
-              onClick={() => navigate('play', game.game_id)}
-              style={{
-                textAlign: 'left',
-                background: '#1d1d1d',
-                border: '1px solid #2f2f2f',
-                borderRadius: 12,
-                padding: '1rem',
-              }}
-            >
-              <div style={{ display: 'grid', gap: '0.3rem' }}>
-                <strong>Game #{game.game_id}</strong>
-                <span style={{ color: 'rgba(255,255,255,0.84)' }}>{game.discovered_count}/10 recipes discovered</span>
-                <span style={{ color: game.game_over ? '#7ed67e' : 'rgba(255,255,255,0.72)' }}>
-                  {game.game_over ? 'Completed' : 'In Progress'}
-                </span>
-              </div>
-            </button>
-          ))}
+        <section className="page-scroll">
+          <div className="game-list">
+            {sortedGames.map((game) => (
+              <button
+                key={game.game_id}
+                className="game-card"
+                onClick={() => navigate('play', game.game_id)}
+              >
+                <div className="game-card-info">
+                  <strong>Game #{game.game_id}</strong>
+                  <span style={{ color: 'var(--text-secondary)' }}>{game.discovered_count}/10 recipes discovered</span>
+                  <span style={{ color: game.game_over ? 'var(--accent-green)' : 'var(--text-secondary)' }}>
+                    {game.game_over ? 'Completed' : 'In Progress'}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
         </section>
       )}
-    </main>
+    </div>
   )
 }
