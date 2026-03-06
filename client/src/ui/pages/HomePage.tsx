@@ -25,7 +25,7 @@ export function HomePage() {
   const { connect, connectors } = useConnect()
   const playerMeta = usePlayerMeta(address)
   const games = useGameTokens(address)
-  const { displayName } = usePlayerName(address)
+  const { displayName, isUsername } = usePlayerName(address)
   const rank = usePlayerRank(address)
   const [isCreatingGame, setIsCreatingGame] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -89,27 +89,32 @@ export function HomePage() {
               <span key={`menu-disconnected-particle-${idx}`} className="ambient-particle" />
             ))}
           </div>
-          <div className="home-menu-hero">
+          <div className="home-menu-topbar">
+            <div className="home-menu-topbar-side" />
             <img
               src="/assets/branding/logo-loading-gold-shadow.png"
               alt="Athanor"
               draggable={false}
               className="home-menu-logo"
             />
-            <p className="home-menu-tagline">Rank #— · Best: NA · Runs: 0</p>
+            <div className="home-menu-topbar-side" />
           </div>
-          <div className="home-menu-bottom">
-            <button
-              className="home-menu-button home-menu-button-primary"
-              disabled={!primaryConnector}
-              onClick={() => {
-                if (primaryConnector) {
-                  connect({ connector: primaryConnector })
-                }
-              }}
-            >
-              Connect Wallet
-            </button>
+
+          <div className="home-menu-center">
+            <p className="home-menu-tagline">Rank #— · Best: NA · Runs: 0</p>
+            <div className="home-menu-actions">
+              <button
+                className="home-menu-button home-menu-button-primary"
+                disabled={!primaryConnector}
+                onClick={() => {
+                  if (primaryConnector) {
+                    connect({ connector: primaryConnector })
+                  }
+                }}
+              >
+                Connect Wallet
+              </button>
+            </div>
           </div>
         </section>
       </div>
@@ -125,31 +130,38 @@ export function HomePage() {
           ))}
         </div>
         <div className="home-menu-topbar">
-          <div className="home-menu-player-chip">
-            <span className="home-menu-player-name">{displayName}</span>
-            <span className="home-menu-player-address">👤 {truncatedAddress}</span>
+          <div className="home-menu-topbar-side home-menu-topbar-left">
+            <button className="home-menu-player-chip" type="button" onClick={() => {}}>
+              {isUsername ? (
+                <>
+                  <span className="home-menu-player-name">{displayName}</span>
+                  <span className="home-menu-player-address">👤 {truncatedAddress}</span>
+                </>
+              ) : (
+                <span className="home-menu-player-name">👤 {displayName}</span>
+              )}
+            </button>
           </div>
-          <button
-            className="home-menu-gear"
-            onClick={() => setSettingsOpen(true)}
-            aria-label="Settings"
-          >
-            <span aria-hidden>⚙</span>
-            <span>Settings</span>
-          </button>
-        </div>
-
-        <div className="home-menu-hero">
           <img
             src="/assets/branding/logo-loading-gold-shadow.png"
             alt="Athanor"
             draggable={false}
             className="home-menu-logo"
           />
-          <p className="home-menu-tagline">{rankText}</p>
+          <div className="home-menu-topbar-side home-menu-topbar-right">
+            <button
+              className="home-menu-gear"
+              onClick={() => setSettingsOpen(true)}
+              aria-label="Settings"
+            >
+              <span aria-hidden>⚙</span>
+              <span>Settings</span>
+            </button>
+          </div>
         </div>
 
-        <div className="home-menu-bottom">
+        <div className="home-menu-center">
+          <p className="home-menu-tagline">{rankText}</p>
           <div className="home-menu-actions">
             {activeGame ? (
               <button
