@@ -1,7 +1,6 @@
 import Phaser from 'phaser';
 import { COLORS, ZONE_TINTS } from '../utils/colors';
 import {
-  BASE_CAMP_X,
   GAME_HEIGHT,
   WORLD_WIDTH,
   ZONE_0_X,
@@ -17,7 +16,6 @@ export class ZoneBackground {
   private readonly scene: Phaser.Scene;
   private readonly container: Phaser.GameObjects.Container;
   private readonly mapImage: Phaser.GameObjects.Image;
-  private readonly labOverlay: Phaser.GameObjects.Image;
   private readonly ambientLayers: AmbientLayer[] = [];
 
   constructor(scene: Phaser.Scene) {
@@ -28,45 +26,20 @@ export class ZoneBackground {
     this.mapImage.setDisplaySize(WORLD_WIDTH, GAME_HEIGHT);
     this.mapImage.setDepth(0);
 
-    this.labOverlay = scene.add.image(BASE_CAMP_X + 180, GAME_HEIGHT / 2, 'lab-bg');
-    this.labOverlay.setDisplaySize(460, GAME_HEIGHT);
-    this.labOverlay.setAlpha(0.18);
-    this.labOverlay.setDepth(1);
-
-    this.container.add([this.mapImage, this.labOverlay]);
+    this.container.add(this.mapImage);
     this.createAmbientEmitters();
   }
 
   destroy(): void {
     for (const layer of this.ambientLayers) layer.emitter.destroy();
     this.mapImage.destroy();
-    this.labOverlay.destroy();
     this.container.destroy();
   }
 
   private createAmbientEmitters(): void {
-    this.ambientLayers.push(this.createLabDust());
     this.ambientLayers.push(this.createMeadowSparkles());
     this.ambientLayers.push(this.createCavernSparks());
     this.ambientLayers.push(this.createSpireArcane());
-  }
-
-  private createLabDust(): AmbientLayer {
-    const emitter = this.scene.add.particles(0, 0, 'particle-dust', {
-      x: { min: 0, max: 480 },
-      y: { min: 0, max: GAME_HEIGHT },
-      quantity: 1,
-      frequency: 420,
-      lifespan: 8000,
-      speedX: { min: -4, max: 4 },
-      speedY: { min: -8, max: -2 },
-      scale: { start: 0.55, end: 0.1 },
-      alpha: { start: 0.2, end: 0 },
-      tint: COLORS.white,
-    });
-    emitter.setDepth(2);
-    this.container.add(emitter);
-    return { emitter };
   }
 
   private createMeadowSparkles(): AmbientLayer {
