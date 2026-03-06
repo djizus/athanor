@@ -73,17 +73,13 @@ export function buildLogoPrompt(): string {
 
 export function buildLoadingBgPrompt(): string {
   return [
-    `A vast dark alchemist's sanctum viewed from within, cinematic key art.`,
-    `Towering stone walls covered in faintly glowing arcane runes and alchemical diagrams.`,
-    `Central massive athanor furnace radiating warm amber-gold light (#f0c040) from its core.`,
-    `Shelves of potions and ingredients line the walls, their contents softly bioluminescent.`,
-    `Floating motes of golden light drift upward like embers. Wisps of purple (#a050d0) arcane energy curl through the air.`,
-    `Deep shadows in indigo-black (#080810) with warm highlights from the furnace.`,
-    `Mysterious, reverent, magical atmosphere - the moment before a grand transmutation.`,
+    `A vast dark alchemist's sanctum — towering stone walls with glowing arcane runes, massive athanor furnace at center radiating warm amber light, shelves of bioluminescent potions, floating golden motes like embers, wisps of purple arcane energy.`,
+    `Painted as a wide panoramic scene suitable as a full-screen game background.`,
     GLOBAL_ART_STYLE,
-    `Full-bleed seamless scene extending edge-to-edge. No borders, no frames, no framing elements.`,
-    `Vignette edges: outermost 10% on all sides smoothly fades to near-black #080810.`,
-    `No people, no text, no UI elements, no watermarks.`,
+    `Primary color tones: #080810 with warm accent #f0c040. Dark moody atmosphere.`,
+    `Full-bleed seamless scene extending edge-to-edge. No borders, no frames.`,
+    `Vignette edges: outermost 8% on all sides smoothly fades to near-black #080810.`,
+    `No people, no text, no letters, no runic glyphs as readable text, no UI elements, no logos, no signatures, no artist marks, no watermarks.`,
   ].join(' ');
 }
 

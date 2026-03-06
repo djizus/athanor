@@ -20,12 +20,13 @@ const OUTPUT_ROOT = resolve(__dirname, '../../client/public/assets');
 interface CliOptions {
   dryRun: boolean;
   asset: ImageCategory | null;
+  id: string | null;
   force: boolean;
 }
 
 function parseArgs(): CliOptions {
   const args = process.argv.slice(2);
-  const opts: CliOptions = { dryRun: false, asset: null, force: false };
+  const opts: CliOptions = { dryRun: false, asset: null, id: null, force: false };
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -41,6 +42,8 @@ function parseArgs(): CliOptions {
         process.exit(1);
       }
       opts.asset = val;
+    } else if (arg === '--id' && i + 1 < args.length) {
+      opts.id = args[++i];
     } else if (arg === '--help' || arg === '-h') {
       printUsage();
       process.exit(0);
@@ -61,6 +64,7 @@ Usage: npx tsx scripts/generate-assets/generate-images.ts [options]
 Options:
   --dry-run              Show what would be generated without calling API
   --asset <category>     Generate only one category: ${IMAGE_CATEGORIES.join(', ')}
+  --id <asset-id>        Generate a single asset by its id (e.g. lab-bg, loading-bg)
   --force                Regenerate even if file already exists
   --help, -h             Show this help
 
@@ -68,6 +72,7 @@ Examples:
   npx tsx scripts/generate-assets/generate-images.ts
   npx tsx scripts/generate-assets/generate-images.ts --dry-run
   npx tsx scripts/generate-assets/generate-images.ts --asset backgrounds
+  npx tsx scripts/generate-assets/generate-images.ts --id lab-bg --force
   npx tsx scripts/generate-assets/generate-images.ts --asset ingredients --force
 `.trim());
 }
@@ -81,6 +86,17 @@ function collectAssets(opts: CliOptions): ImageAssetDef[] {
 
   for (const cat of categories) {
     assets.push(...(typed[cat] ?? []));
+  }
+
+  if (opts.id) {
+    const matched = assets.filter((a) => a.id === opts.id);
+    if (matched.length === 0) {
+      const allIds = assets.map((a) => a.id);
+      console.error(`Unknown asset id: ${opts.id}`);
+      console.error(`Available ids${opts.asset ? ` in ${opts.asset}` : ''}: ${allIds.join(', ')}`);
+      process.exit(1);
+    }
+    return matched;
   }
 
   return assets;
