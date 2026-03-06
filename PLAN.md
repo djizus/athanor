@@ -1,642 +1,788 @@
 # Athanor v0.1 — Implementation Plan
 
-> Fully on-chain competitive grimoire race on Starknet. Port of Alchemist PoC using the Dojo engine, Cartridge Controller, and Torii indexer. Reference implementations: `references/alchemist/` (game logic) and `references/zkube/` (Dojo architecture).
+> Fully on-chain competitive grimoire race on Starknet. Port of Alchemist PoC using the Dojo engine, Cartridge Controller, and Torii indexer. Uses the Provable Games embeddable game standard (game-components). Reference implementations: `references/alchemist/` (game logic) and `references/zkube/` (Dojo architecture).
 
 ---
 
-## 1. Game Summary
+## 1. Game Summary (MVP Scope)
 
-Players send heroes on expeditions through dangerous zones, gather ingredients, craft potions by trial-and-error, and race to discover all 30 recipes in their grimoire. First to complete the grimoire wins.
+Players send heroes on expeditions through dangerous zones, gather ingredients, craft potions by trial-and-error, and race to discover all recipes in their grimoire.
 
-**Core loop**: Explore → Gather → Craft → Buff heroes → Explore deeper → Discover all 30 recipes.
+**Core loop**: Explore → Gather → Craft → Buff heroes → Explore deeper → Discover all 10 recipes.
+
+### MVP Simplifications (v0.1)
+
+| Aspect | Full Game (PoC) | MVP (v0.1) |
+|--------|----------------|------------|
+| Zones | 5 (D→S) | **3** (Verdant Meadow, Crystal Cavern, Aether Spire) |
+| Ingredients per zone | 5 | **3** |
+| Total ingredients | 25 | **9** |
+| Possible combinations | 325 (25C2) | **36** (9C2) |
+| Recipes to discover | 30 | **10** |
+| Heroes | 3 | 3 (unchanged) |
 
 ### What Changes Going On-Chain
 
 | Aspect | Browser PoC | On-Chain (Athanor) |
 |--------|-------------|-------------------|
 | State | React useReducer + localStorage | Dojo models on Starknet |
-| Tick system | 100ms client-side tick | Lazy evaluation at claim time |
+| Exploration | 100ms client tick | **Computed at send_expedition, events emitted** |
+| Claim | Instant | **Timer-locked until hero returns** |
 | RNG | Mulberry32 (seeded PRNG) | Cartridge VRF (verifiable) |
-| Multiplayer | Solo only | Competitive (shared seed races) |
+| Multiplayer | Solo only | Solo with leaderboard ranking (fastest completion) |
 | Wallet | None | Cartridge Controller (session keys) |
 | Persistence | localStorage | Starknet L2 state |
 | Events | In-memory notifications | Dojo events (indexed by Torii) |
-| Floats | f64 everywhere | u32 fixed-point (x1000 or x10000) |
-| Strings | JavaScript strings | felt252 (short strings or IDs) |
-
-### The Big Architectural Shift: Lazy Evaluation
-
-The browser PoC ticks 10x/sec and simulates exploration in real-time. On-chain, that's impossible (and unnecessary). Instead:
-
-1. **Send Expedition** → Record `(hero_id, start_time, seed)` on-chain
-2. **Hero explores off-screen** — no transactions needed
-3. **Claim Loot** → Contract computes ALL exploration events that *would have occurred* between `start_time` and `now`, deterministically from the seed
-4. **Result is identical** to what the real-time simulation would have produced
-
-This is the same pattern used in idle/incremental games on-chain. The seed + elapsed time fully determines the outcome. VRF provides the seed at expedition start; the rest is pure math.
+| Floats | f64 everywhere | u32 fixed-point (x100) |
+| Strings | JavaScript strings | u8 IDs (0-8 for ingredients) |
 
 ---
 
-## 2. Tech Stack
+## 2. Exploration Architecture: Compute-at-Send
+
+The browser PoC ticks 10x/sec and simulates exploration in real-time. On-chain, we compute the FULL expedition outcome at `send_expedition` time and emit events for each second of exploration.
+
+### Why Compute at Send (not at Claim)
+
+**The problem**: If we compute at claim time, a player who knows the seed could predict outcomes and choose an optimal claim moment.
+
+**The solution**: Compute everything when the expedition starts. The outcome is committed to chain immediately and can't be manipulated.
+
+### Flow
+
+```
+1. Player calls send_expedition(hero_id)
+   ├─ Contract generates expedition sub-seed (VRF)
+   ├─ Runs FULL simulation: second-by-second events until hero HP = 0
+   ├─ Stores result on-chain: death_depth, gold, ingredients, return_at
+   ├─ Emits events for every exploration event (trap, gold, heal, beast, drop)
+   ├─ Sets hero.status = Exploring
+   └─ Sets hero.return_at = now + death_depth + (death_depth / 2)
+
+2. Client reads events from Torii
+   ├─ Replays them as animations (zone progress, HP bar, event popups)
+   └─ Shows countdown timer until hero returns
+
+3. Player calls claim_loot(hero_id)
+   ├─ Contract checks: get_block_timestamp() >= hero.return_at
+   ├─ If too early → REVERT ("Hero hasn't returned yet")
+   ├─ If ready → Transfer pre-computed loot to player inventory
+   └─ Set hero.status = Idle, apply idle regen
+```
+
+### Timer Security
+
+| Attack Vector | Defense |
+|---------------|---------|
+| Call claim_loot early | `assert!(timestamp >= hero.return_at)` — block timestamp set by sequencer, not caller |
+| Call contract directly (bypass UI) | Same contract logic applies — timer check is on-chain |
+| Predict seed to game expeditions | Outcome committed at send time — can't change it after |
+| Manipulate block timestamp | Starknet sequencer sets timestamps — not manipulable by tx submitter |
+| Replay/double claim | `hero.status` guard — must be `Idle` to send, `Returning` to claim |
+
+### Gas Considerations
+
+Worst case expedition: hero survives to zone 3 (Aether Spire) = ~90 seconds of simulation. That's 90 loop iterations of simple arithmetic (add, compare, modulo). Well within Starknet's step limit.
+
+---
+
+## 3. Tech Stack
 
 | Layer | Technology | Version | Notes |
 |-------|-----------|---------|-------|
 | Smart Contracts | Cairo | 2.13.1 | Same as zkube |
 | Framework | Dojo | 1.8.0 | ECS: models, systems, events |
+| Game Standard | game-components | v2.13.1 | NFT-gated sessions (Provable Games) |
 | Frontend | React 19 + TypeScript + Vite | Latest | Same as zkube client |
 | Wallet | Cartridge Controller | ^0.13.9 | Session keys for gasless play |
-| Indexer | Torii | ^1.8.2 | Real-time state sync |
+| Indexer | Torii | ^1.8.2 | Real-time state sync via RECS |
 | RNG | Cartridge VRF | - | Verifiable randomness |
 | Deployment | Slot (dev) → Sepolia → Mainnet | - | Progressive rollout |
-| Package Manager | pnpm | - | Workspace: contracts + client |
 
-### Key Dependencies (from zkube reference)
+### Key Dependencies
 
 **Contracts (Scarb.toml)**:
-- `dojo = "1.8.0"`
-- `starknet = "2.13.1"`
-- `origami_random` (VRF helpers)
-- `openzeppelin_*` (if token needed later)
+```toml
+dojo = "1.8.0"
+starknet = "2.13.1"
+origami_random = { git = "dojoengine/origami", tag = "v1.7.0" }
+game_components_minigame = { git = "Provable-Games/game-components", tag = "v2.13.1" }
+game_components_token = { git = "Provable-Games/game-components", tag = "v2.13.1" }
+```
 
 **Client (package.json)**:
-- `@dojoengine/sdk`, `@dojoengine/core`, `@dojoengine/react`, `@dojoengine/recs`
-- `@cartridge/connector`, `@cartridge/controller`
-- `@starknet-react/core`, `starknet`
+```json
+"@dojoengine/sdk": "^1.9.0",
+"@dojoengine/core": "^1.8.8",
+"@dojoengine/react": "^1.8.11",
+"@dojoengine/recs": "2.0.13",
+"@cartridge/connector": "^0.13.9",
+"@cartridge/controller": "^0.13.9",
+"@starknet-react/core": "^5.0.1",
+"starknet": "8.5.2"
+```
 
 ---
 
-## 3. Project Structure
+## 4. User Flow
+
+Following zkube's pattern: landing page → play/resume → leaderboard → profile.
+
+### Page Map
+
+```
+home            → Landing page (connect, new game, my games, leaderboard)
+play            → Active game screen (heroes, crafting, grimoire, inventory)
+mygames         → Resume / game history
+leaderboard     → Rankings (fastest grimoire completion)
+settings        → Audio, theme, account
+profile         → Player stats, best runs
+```
+
+### Navigation (Zustand store, zkube pattern)
+
+```typescript
+navigationStore: {
+  currentPage: "home" | "play" | "mygames" | "leaderboard" | "settings" | "profile",
+  gameId: number | null,
+  navigate(page, gameId?),
+  goBack(),
+}
+```
+
+### Complete User Journey
+
+```
+1. LANDING PAGE (home)
+   ├─ If not connected → "Connect" button (Cartridge Controller)
+   ├─ If connected:
+   │  ├─ "NEW GAME" → freeMint() → create(game_id) → navigate("play", game_id)
+   │  ├─ "MY GAMES" → shows active game count badge → navigate("mygames")
+   │  ├─ "LEADERBOARD" → navigate("leaderboard")
+   │  └─ "SETTINGS" → navigate("settings")
+   └─ Top bar: profile, settings, CUBE/gold balance
+
+2. MY GAMES PAGE (mygames)
+   ├─ List of owned game NFTs
+   ├─ Active games: show heroes status, recipes discovered, "Resume" button
+   ├─ Finished games: show final stats, grimoire completion
+   └─ Click "Resume" → navigate("play", gameId)
+
+3. GAME SCREEN (play) — Main gameplay
+   ├─ LEFT PANEL: Hero cards (HP bar, stats, status, Explore/Claim buttons)
+   ├─ CENTER: Exploration feed (events from Torii, animated)
+   ├─ RIGHT PANEL: Craft panel + Grimoire + Inventory
+   └─ Win: all 10 recipes discovered → Victory overlay
+
+4. LEADERBOARD PAGE
+   ├─ Ranked by: fastest grimoire completion time
+   ├─ Shows: player name, time, recipes found, heroes used
+   └─ Filters: all time / this week / today
+```
+
+### Game Creation Flow (matches zkube exactly)
+
+```
+User clicks "NEW GAME"
+  ↓
+freeMint(settingsId=0) on FullTokenContract → ERC721 minted → game_id = token_id
+  ↓
+create(game_id) on game_system
+  ├─ pre_action(token_address, game_id)  // game-components: lock token
+  ├─ assert_token_ownership + is_playable check
+  ├─ VRF seed generation
+  ├─ Generate 10 recipes from seed (deterministic)
+  ├─ Spawn Hero #0 (Alaric)
+  ├─ Write GameSession, GameSeed, Recipe[0..9], Hero models
+  ├─ Emit GameCreated event
+  └─ post_action(token_address, game_id)  // game-components: release token
+  ↓
+Client navigates to play screen
+```
+
+---
+
+## 5. Game-Components Integration (Embeddable Game Standard)
+
+Following zkube's exact pattern with Provable Games' game-components library.
+
+### What game-components provides
+
+| Component | Purpose | Used By |
+|-----------|---------|---------|
+| `MinigameComponent` | Core framework: token registration, metadata | game_system |
+| `FullTokenContract` | Soulbound ERC721 NFT for game sessions | External deploy |
+| `MinigameRegistryContract` | Registry for minigame tokens | External deploy |
+| `SettingsComponent` | Game settings management | config_system |
+| `pre_action / post_action` | Token lifecycle hooks (lock/release) | All systems |
+| `assert_token_ownership` | Verify caller owns the game NFT | All systems |
+| `LifecycleTrait` | Check if token is in playable state | All systems |
+
+### Required Trait Implementations (in our game_system)
+
+```cairo
+// 1. Embed MinigameComponent
+component!(path: MinigameComponent, storage: minigame, event: MinigameEvent);
+
+// 2. Implement IMinigameTokenData (score + game_over for NFT metadata)
+impl GameTokenDataImpl of IMinigameTokenData<ContractState> {
+    fn score(self: @ContractState, token_id: u64) -> u32 { ... }
+    fn game_over(self: @ContractState, token_id: u64) -> bool { ... }
+}
+
+// 3. Initialize in dojo_init
+self.minigame.initializer(
+    creator_address, "Athanor", "On-chain grimoire race",
+    "djizus", "djizus", "Strategy",
+    "icon_url", Option::Some("#color"),
+    Option::None, Option::Some(renderer_address),
+    Option::Some(config_system_address), Option::None,
+    denshokan_address,  // FullTokenContract address
+);
+```
+
+### Every Game Action Wraps with Token Lifecycle
+
+```cairo
+fn send_expedition(ref self: ContractState, game_id: u64, hero_id: u8) {
+    let token_address = self.token_address();
+    pre_action(token_address, game_id);               // Lock token
+
+    let token_metadata = token_dispatcher.token_metadata(game_id);
+    assert!(token_metadata.lifecycle.is_playable(get_block_timestamp()));
+    assert_token_ownership(token_address, game_id);
+
+    // ... game logic ...
+
+    post_action(token_address, game_id);              // Release token
+}
+```
+
+---
+
+## 6. Settings System
+
+### Settings Presets (0-5)
+
+| ID | Name | Description | Active |
+|----|------|-------------|:------:|
+| 0 | Default | Standard balancing, official games | ✅ |
+| 1-5 | Reserved | For future game modes / daily challenges | ❌ (v0.2+) |
+
+### GameSettings Model (Athanor-specific)
+
+```cairo
+#[dojo::model]
+struct GameSettings {
+    #[key]
+    settings_id: u32,
+
+    // Zone configuration
+    zone_count: u8,                    // 3 (MVP)
+    ingredients_per_zone: u8,          // 3 (MVP)
+    recipes_to_discover: u8,           // 10 (MVP)
+
+    // Hero configuration
+    max_heroes: u8,                    // 3
+    hero_base_hp: u16,                 // 10000 (x100 fixed-point = 100.00 HP)
+    hero_base_power: u16,              // 500 (x100 = 5.00)
+    hero_base_regen: u16,              // 100 (x100 = 1.00 HP/s)
+    hero_costs: felt252,               // Packed: [0, 8000, 20000] (x100)
+
+    // Crafting
+    hint_base_cost: u16,               // 1000 (10 gold)
+    hint_cost_multiplier: u8,          // 3
+    soup_gold_value: u8,               // 1
+
+    // Progressive discovery
+    progressive_cap: u16,              // 8000 (x10000 = 0.80)
+}
+```
+
+### Initialization (dojo_init)
+
+```cairo
+fn dojo_init(ref self: ContractState, creator_address: ContractAddress, ...) {
+    // Create only preset 0 (official default)
+    world.write_model(@get_default_settings());
+    world.write_model(@get_default_settings_metadata(timestamp, creator_address));
+    self.settings_counter.write(0);
+}
+```
+
+Only games using `settings_id = 0` are considered "official" for leaderboard ranking.
+
+---
+
+## 7. Contract Architecture
+
+### 7.1 Project Structure
 
 ```
 athanor/
-├── contracts/                  # Cairo smart contracts
+├── contracts/
 │   ├── Scarb.toml
 │   ├── src/
-│   │   ├── lib.cairo           # Module declarations
-│   │   ├── constants.cairo     # All game parameters (zones, costs, probabilities)
-│   │   ├── types.cairo         # Enums and shared types
+│   │   ├── lib.cairo
+│   │   ├── constants.cairo         # Zones, ingredients, probabilities, namespace
+│   │   ├── types.cairo             # Enums (HeroStatus, EventKind, EffectType, Zone)
 │   │   ├── models/
-│   │   │   ├── game.cairo      # GameSession, GameSeed
-│   │   │   ├── hero.cairo      # Hero, HeroPendingLoot
-│   │   │   ├── recipe.cairo    # Recipe (per-session, generated from seed)
-│   │   │   ├── inventory.cairo # Inventory, IngredientBalance, PotionItem
-│   │   │   └── crafting.cairo  # CraftingState, FailedCombo, HintedRecipe
+│   │   │   ├── game.cairo          # GameSession, GameSeed
+│   │   │   ├── hero.cairo          # Hero, HeroPendingIngredient
+│   │   │   ├── recipe.cairo        # Recipe (10 per session)
+│   │   │   ├── inventory.cairo     # Inventory (packed ingredients), PotionItem
+│   │   │   ├── crafting.cairo      # FailedCombo, HintedRecipe
+│   │   │   ├── config.cairo        # GameSettings, GameSettingsMetadata
+│   │   │   └── player.cairo        # PlayerMeta (persistent across games)
 │   │   ├── systems/
-│   │   │   ├── game.cairo      # create_game, end_game (lifecycle)
-│   │   │   ├── exploration.cairo # send_expedition, claim_loot (lazy eval)
-│   │   │   ├── crafting.cairo  # craft, craft_recipe, buy_hint
-│   │   │   ├── hero.cairo      # recruit_hero, apply_potion
-│   │   │   └── config.cairo    # Game settings management
+│   │   │   ├── game.cairo          # create, surrender + MinigameComponent
+│   │   │   ├── exploration.cairo   # send_expedition (VRF + compute + emit), claim_loot (timer + transfer)
+│   │   │   ├── crafting.cairo      # craft, craft_recipe, buy_hint (VRF)
+│   │   │   ├── hero.cairo          # recruit_hero, apply_potion
+│   │   │   ├── config.cairo        # GameSettings + IMinigameSettings
+│   │   │   └── renderer.cairo      # IMinigameDetails, IMinigameDetailsSVG
 │   │   ├── helpers/
-│   │   │   ├── random.cairo    # VRF wrapper (from zkube pattern)
-│   │   │   ├── recipes.cairo   # Deterministic recipe generation
-│   │   │   ├── exploration.cairo # Lazy evaluation engine
-│   │   │   └── math.cairo      # Fixed-point arithmetic helpers
-│   │   ├── events.cairo        # All Dojo events
+│   │   │   ├── random.cairo        # VRF wrapper (from zkube)
+│   │   │   ├── recipes.cairo       # Deterministic 10-recipe generation
+│   │   │   ├── exploration.cairo   # Full expedition simulation engine
+│   │   │   └── math.cairo          # Fixed-point helpers
+│   │   ├── events.cairo            # All Dojo events
 │   │   └── tests/
-│   │       ├── test_recipes.cairo
-│   │       ├── test_exploration.cairo
-│   │       ├── test_crafting.cairo
-│   │       └── test_hero.cairo
-│   ├── dojo_dev.toml           # Local Katana config
-│   ├── dojo_slot.toml          # Slot deployment config
-│   └── dojo_sepolia.toml       # Sepolia deployment config
-├── client/                     # React frontend
+│   └── Scarb.toml
+├── client/
 │   ├── package.json
 │   ├── vite.config.ts
 │   ├── dojo.config.ts
 │   ├── src/
-│   │   ├── main.tsx            # Provider hierarchy
-│   │   ├── App.tsx             # Router + layout
+│   │   ├── main.tsx                # Provider hierarchy (StarknetConfig → DojoProvider)
+│   │   ├── App.tsx                 # Page router
+│   │   ├── cartridgeConnector.tsx  # Controller + session policies from manifest
+│   │   ├── stores/
+│   │   │   └── navigationStore.ts  # Page navigation (zustand)
 │   │   ├── dojo/
-│   │   │   ├── setup.ts        # Dojo SDK init + Torii sync
-│   │   │   ├── context.tsx     # DojoProvider
-│   │   │   ├── useDojo.tsx     # Hook
-│   │   │   ├── contractModels.ts # RECS component definitions
-│   │   │   ├── models.ts       # Client model wrappers
-│   │   │   ├── systems.ts      # System call wrappers
-│   │   │   └── world.ts        # RECS world instance
-│   │   ├── cartridgeConnector.tsx # Controller + session policies
-│   │   ├── hooks/              # Game-specific hooks
-│   │   ├── ui/                 # React components (pure presentational)
-│   │   │   ├── TopBar.tsx
-│   │   │   ├── HeroPanel.tsx
-│   │   │   ├── ExplorationPanel.tsx
-│   │   │   ├── CraftPanel.tsx
-│   │   │   ├── GrimoirePanel.tsx
-│   │   │   ├── InventoryPanel.tsx
-│   │   │   └── EventLog.tsx
+│   │   │   ├── setup.ts            # Dojo SDK init + Torii sync
+│   │   │   ├── context.tsx         # DojoProvider
+│   │   │   ├── useDojo.tsx
+│   │   │   ├── contractModels.ts   # RECS definitions
+│   │   │   ├── systems.ts          # System call wrappers
+│   │   │   └── world.ts            # RECS world instance
+│   │   ├── hooks/
+│   │   │   ├── useGame.tsx         # Fetch game state + entity ID normalization
+│   │   │   ├── useGameTokens.tsx   # Owned game NFTs (active/finished)
+│   │   │   └── useSettings.tsx     # GameSettings from RECS
+│   │   ├── ui/
+│   │   │   ├── pages/
+│   │   │   │   ├── HomePage.tsx
+│   │   │   │   ├── PlayScreen.tsx
+│   │   │   │   ├── MyGamesPage.tsx
+│   │   │   │   ├── LeaderboardPage.tsx
+│   │   │   │   └── SettingsPage.tsx
+│   │   │   ├── components/         # Reusable UI components
+│   │   │   └── navigation/
+│   │   │       ├── TopBar.tsx
+│   │   │       └── PageNavigator.tsx  # Slide transitions
 │   │   └── styles/
 │   └── index.html
-├── Scarb.toml                  # Workspace root
+├── Scarb.toml                      # Workspace root
+├── dojo_dev.toml                   # Local Katana config
+├── dojo_slot.toml                  # Slot deployment config
 ├── .gitignore
-├── PLAN.md                     # This file
-└── references/                 # (gitignored) alchemist + zkube codebases
+├── PLAN.md
+└── references/                     # (gitignored)
 ```
 
----
+### 7.2 Models
 
-## 4. Contract Architecture
-
-### 4.1 Models
-
-#### GameSession — Core game state per player session
+#### GameSession
 ```cairo
 #[dojo::model]
 struct GameSession {
     #[key]
-    session_id: u64,              // Unique session identifier
+    game_id: u64,                     // = NFT token_id (game-components pattern)
     player: ContractAddress,
-    seed: felt252,                // VRF seed (set once at game creation)
-    discovered_count: u8,         // Recipes discovered (0-30)
-    craft_attempts: u16,          // Total craft attempts (for progressive chance)
-    hints_used: u8,               // Hints purchased
-    gold: u32,                    // Current gold balance
-    hero_count: u8,               // Heroes recruited (1-3)
-    game_over: bool,              // Win or quit
-    started_at: u64,              // Timestamp
+    seed: felt252,                    // VRF seed (set once)
+    settings_id: u32,                 // Always 0 for v0.1
+    discovered_count: u8,             // 0-10
+    craft_attempts: u16,
+    hints_used: u8,
+    gold: u32,
+    hero_count: u8,                   // 1-3
+    potion_count: u16,                // Auto-incrementing potion index
+    game_over: bool,
+    started_at: u64,
 }
 ```
 
-#### GameSeed — VRF seed storage (same pattern as zkube)
-```cairo
-#[dojo::model]
-struct GameSeed {
-    #[key]
-    session_id: u64,
-    seed: felt252,                // Original VRF seed
-    vrf_enabled: bool,
-}
-```
-
-#### Hero — Per-hero state (3 max per session)
+#### Hero
 ```cairo
 #[dojo::model]
 struct Hero {
     #[key]
-    session_id: u64,
+    game_id: u64,
     #[key]
-    hero_id: u8,                  // 0, 1, 2
-    hp: u32,                      // Current HP (x100 fixed-point for regen precision)
-    max_hp: u32,                  // Max HP (x100)
-    power: u32,                   // Combat power
-    regen_per_sec: u32,           // HP regen when idle (x100)
-    status: u8,                   // 0=idle, 1=exploring, 2=returning
-    expedition_seed: felt252,     // Sub-seed for this expedition
-    expedition_start: u64,        // Timestamp when expedition began
-    pending_gold: u32,            // Unclaimed gold from last expedition
-    loot_ready: bool,             // True when returned with loot
+    hero_id: u8,                      // 0, 1, 2
+    hp: u16,                          // x100 fixed-point (10000 = 100.00 HP)
+    max_hp: u16,
+    power: u16,                       // x100
+    regen_per_sec: u16,               // x100
+    status: u8,                       // 0=Idle, 1=Exploring, 2=Returning
+    // Expedition result (computed at send_expedition)
+    expedition_seed: felt252,
+    expedition_start: u64,            // Timestamp
+    return_at: u64,                   // Timestamp when hero is back with loot
+    death_depth: u16,                 // Seconds explored (max 300)
+    // Pre-computed loot
+    pending_gold: u32,
 }
 ```
 
-#### HeroPendingIngredient — Ingredients from an expedition
+#### HeroPendingIngredient — Loot from expedition
 ```cairo
 #[dojo::model]
 struct HeroPendingIngredient {
     #[key]
-    session_id: u64,
+    game_id: u64,
     #[key]
     hero_id: u8,
     #[key]
-    ingredient_id: u8,            // 0-24 (index into INGREDIENTS array)
+    ingredient_id: u8,                // 0-8
     quantity: u16,
 }
 ```
 
-#### Recipe — Per-session recipe (30 per game, generated from seed)
+#### Recipe — 10 per game, generated from seed
 ```cairo
 #[dojo::model]
 struct Recipe {
     #[key]
-    session_id: u64,
+    game_id: u64,
     #[key]
-    recipe_id: u8,                // 0-29
-    ingredient_a: u8,             // Ingredient index (0-24), sorted a < b
+    recipe_id: u8,                    // 0-9
+    ingredient_a: u8,                 // 0-8 (sorted: a < b)
     ingredient_b: u8,
-    effect_type: u8,              // 0=max_hp, 1=power, 2=regen_speed
-    effect_value: u8,             // Magnitude of buff
+    effect_type: u8,                  // 0=max_hp, 1=power, 2=regen
+    effect_value: u8,
     discovered: bool,
 }
 ```
 
-#### IngredientBalance — Player's ingredient inventory
+#### IngredientBalance — Player's inventory (could pack all 9 into one felt252)
 ```cairo
 #[dojo::model]
 struct IngredientBalance {
     #[key]
-    session_id: u64,
+    game_id: u64,
     #[key]
-    ingredient_id: u8,            // 0-24
+    ingredient_id: u8,                // 0-8
     quantity: u16,
 }
 ```
 
-#### PotionInventory — Crafted potions in inventory
+#### PotionItem — Crafted potions in inventory
 ```cairo
 #[dojo::model]
-struct PotionInventory {
+struct PotionItem {
     #[key]
-    session_id: u64,
+    game_id: u64,
     #[key]
-    potion_index: u16,            // Auto-incrementing
+    potion_index: u16,
     recipe_id: u8,
     effect_type: u8,
     effect_value: u8,
 }
 ```
 
-#### FailedCombo — Tracks tried-and-failed ingredient combos
+#### FailedCombo — Tried and failed combos
 ```cairo
 #[dojo::model]
 struct FailedCombo {
     #[key]
-    session_id: u64,
+    game_id: u64,
     #[key]
-    ingredient_a: u8,             // Sorted: a < b
-    #[key]
-    ingredient_b: u8,
-    failed: bool,                 // Always true (existence = failed)
+    combo_key: u16,                   // ingredient_a * 9 + ingredient_b (unique per pair)
+    attempted: bool,                  // Dojo requires at least one non-key member
 }
 ```
 
-#### HintedRecipe — Recipes with a hint purchased
+#### PlayerMeta — Persistent across games
 ```cairo
 #[dojo::model]
-struct HintedRecipe {
+struct PlayerMeta {
     #[key]
-    session_id: u64,
-    #[key]
-    recipe_id: u8,
-    revealed_ingredient: u8,      // Which ingredient was revealed
+    player: ContractAddress,
+    total_games: u32,
+    best_time: u64,                   // Fastest grimoire completion (seconds)
+    total_recipes_discovered: u32,
 }
 ```
 
-### 4.2 Systems
+### 7.3 Systems
 
-#### game_system — Lifecycle management
-```
-create_game(session_id) → Create session, generate VRF seed, generate 30 recipes, spawn hero #0
-end_game(session_id)    → Mark game over (surrender)
-```
-
-#### exploration_system — Hero expeditions (lazy evaluation)
-```
-send_expedition(session_id, hero_id)  → Validate hero idle + no pending loot, record start time + sub-seed
-claim_loot(session_id, hero_id)       → Compute all exploration events from start_time to now,
-                                         resolve HP drain + events + ingredient drops,
-                                         determine when hero dies and starts returning,
-                                         calculate return timer, transfer loot to pending
-```
-
-#### crafting_system — Potion crafting
-```
-craft(session_id, ingredient_a, ingredient_b)    → Consume ingredients, check recipes, handle discovery/soup
-craft_recipe(session_id, recipe_id)              → Re-brew a known recipe (max possible)
-buy_hint(session_id)                             → Spend gold, reveal one ingredient of random undiscovered recipe
-```
-
-#### hero_system — Hero management
-```
-recruit_hero(session_id)                                → Spend gold, add hero
-apply_potion(session_id, potion_index, hero_id)         → Consume potion, buff hero stats permanently
-```
-
-### 4.3 Lazy Evaluation Engine (the hard part)
-
-The core of the on-chain exploration. When `claim_loot` is called:
+#### game_system — Lifecycle (embeds MinigameComponent)
 
 ```
-fn resolve_expedition(seed: felt252, hero: Hero, elapsed_seconds: u64) -> ExpeditionResult {
-    let mut rng = create_rng(seed);
-    let mut hp = hero.hp;
-    let mut gold = 0;
-    let mut ingredients: Array<(u8, u16)> = array![];
-    let mut depth_seconds = 0;
-
-    // Simulate second-by-second
-    loop {
-        if depth_seconds >= elapsed_seconds { break; }
-
-        let zone = get_zone_at_depth(depth_seconds);
-
-        // HP drain from zone
-        hp -= zone.hp_drain_per_sec;  // (zone_index + 1) * 100 in fixed-point
-        if hp <= 0 { break; }
-
-        // Roll exploration event
-        let roll = rng.next() % 10000;
-        if roll < zone.trap_chance {
-            hp -= rand_int(ref rng, zone.trap_damage_min, zone.trap_damage_max);
-        } else if roll < zone.trap_chance + zone.gold_chance {
-            gold += rand_int(ref rng, zone.gold_min, zone.gold_max);
-        } else if roll < zone.trap_chance + zone.gold_chance + zone.heal_chance {
-            hp = min(hp + rand_int(ref rng, zone.heal_min, zone.heal_max), hero.max_hp);
-        } else if roll < zone.trap_chance + zone.gold_chance + zone.heal_chance + zone.beast_chance {
-            // Beast encounter
-            let beast_power = rand_int(ref rng, zone.beast_power_min, zone.beast_power_max);
-            if hero.power >= beast_power {
-                let loot = rand_int(ref rng, zone.beast_loot_min, zone.beast_loot_max);
-                gold += loot;
-                hp -= loot / 5;  // 20% of loot as damage
-            } else {
-                hp -= rand_int(ref rng, zone.trap_damage_min, zone.trap_damage_max) + beast_power;
-            }
-        }
-        // else: nothing happens
-
-        if hp <= 0 { break; }
-
-        // Independent ingredient drop roll
-        let drop_roll = rng.next() % 10000;
-        if drop_roll < zone.ingredient_drop_chance {
-            let qty = rand_int(ref rng, zone.ingredient_qty_min, zone.ingredient_qty_max);
-            let ingredient = zone.ingredients[rng.next() % 5];
-            // accumulate ingredient
-        }
-
-        depth_seconds += 1;
-    };
-
-    // Hero died at depth_seconds → return timer = depth_seconds / 2
-    ExpeditionResult { gold, ingredients, death_depth: depth_seconds, hp_at_death: max(0, hp) }
-}
+create(game_id)     → pre_action, VRF seed, generate 10 recipes, spawn hero #0, post_action
+surrender(game_id)  → pre_action, set game_over, update PlayerMeta, post_action
 ```
 
-**Key insight**: The elapsed time since `send_expedition` caps the simulation. If the hero's HP would run out at depth 45s but 120s have elapsed, the hero died at 45s, spent 22.5s returning, and has been idle for 52.5s (regenerating). All computed in one transaction.
+#### exploration_system — Expedition compute + claim
 
-**Gas considerations**: Worst case is ~90 seconds of simulation (hero survives to zone S). That's 90 loop iterations with simple math — well within Starknet's step limit.
+```
+send_expedition(game_id, hero_id)
+  → pre_action
+  → Validate: hero idle, HP > 0
+  → Generate expedition seed via VRF (unique salt = poseidon(game_id, hero_id, timestamp))
+  → Run full simulation (loop until HP=0 or max_depth=300):
+      for each second:
+        zone = get_zone(depth)
+        hp -= zone.drain
+        roll event (trap/gold/heal/beast/nothing)
+        roll ingredient drop
+        emit ExplorationEvent for each event
+  → Store: death_depth, pending_gold, pending ingredients, return_at, remaining_hp
+  → Set hero.status = Exploring, hero.hp = remaining_hp (0 if died, >0 if survived)
+  → post_action
 
-### 4.4 Events
+claim_loot(game_id, hero_id)
+  → pre_action
+  → Validate: get_block_timestamp() >= hero.return_at (allowed even if game_over)
+  → If too early → REVERT ("Hero hasn't returned yet")
+  → If ready → Transfer pre-computed loot to player inventory
+  → Apply idle regen: (rest_time * regen_per_sec) + existing_hp, capped at max_hp
+  → Set hero.status = Idle
+  → post_action
+```
+send_expedition(game_id, hero_id)
+  → pre_action
+  → Validate: hero idle, no pending loot, HP > 0
+  → Generate expedition sub-seed
+  → Run full simulation (loop until HP=0):
+      for each second:
+        zone = get_zone(depth)
+        hp -= zone.drain
+        roll event (trap/gold/heal/beast/nothing)
+        roll ingredient drop
+        emit ExplorationEvent for each event
+  → Store: death_depth, pending_gold, pending ingredients, return_at
+  → Set hero.status = Exploring
+  → post_action
+
+claim_loot(game_id, hero_id)
+  → pre_action
+  → Validate: get_block_timestamp() >= hero.return_at
+  → Transfer pending_gold → session.gold
+  → Transfer pending ingredients → IngredientBalance
+  → Apply idle regen: elapsed_since_return * regen_per_sec
+  → Set hero.status = Idle
+  → post_action
+```
+
+#### crafting_system
+
+```
+craft(game_id, ingredient_a, ingredient_b)
+  → Consume ingredients, check recipe match
+  → If match: mark discovered, create PotionItem, emit RecipeDiscovered
+  → If no match: record FailedCombo, roll progressive luck, or +1 gold soup
+
+craft_recipe(game_id, recipe_id)
+  → Re-brew known recipe (max possible from inventory)
+
+buy_hint(game_id)
+  → Spend gold (10 * 3^n), VRF-seeded selection of random undiscovered recipe, reveal one ingredient
+```
+
+#### hero_system
+
+```
+recruit_hero(game_id)    → Spend gold [0, 80, 200], add hero
+apply_potion(game_id, potion_index, hero_id)  → Consume potion, permanent stat buff
+```
+
+#### config_system — Settings (embeds SettingsComponent)
+
+```
+dojo_init()              → Create preset 0 (default)
+add_game_settings()      → Create custom preset (future)
+get_game_settings()      → Read settings by ID
+```
+
+### 7.4 Events (emitted, indexed by Torii)
 
 ```cairo
+// Exploration events (emitted per-second during send_expedition)
 #[dojo::event]
-struct GameCreated {
-    #[key]
-    session_id: u64,
-    player: ContractAddress,
-    seed: felt252,
+struct ExplorationEvent {
+    #[key] game_id: u64,
+    #[key] event_index: u16,         // Sequential within expedition
+    hero_id: u8,
+    depth: u16,                       // Second of exploration
+    zone_id: u8,                      // 0, 1, 2
+    event_kind: u8,                   // 0=nothing, 1=trap, 2=gold, 3=heal, 4=beast_win, 5=beast_lose, 6=ingredient
+    value: u16,                       // Damage, gold, heal amount, ingredient_id, etc.
+    hp_after: u16,                    // Hero HP after event (x100)
 }
+
+// Lifecycle events
+#[dojo::event]
+struct GameCreated { ... }
 
 #[dojo::event]
 struct ExpeditionStarted {
-    #[key]
-    session_id: u64,
+    #[key] game_id: u64,
     hero_id: u8,
+    death_depth: u16,
+    return_at: u64,
 }
 
 #[dojo::event]
-struct ExpeditionResolved {
-    #[key]
-    session_id: u64,
-    hero_id: u8,
-    death_depth: u32,
-    gold_earned: u32,
-    ingredients_earned: u8,   // Count of distinct ingredients
-}
+struct LootClaimed { ... }
 
 #[dojo::event]
-struct RecipeDiscovered {
-    #[key]
-    session_id: u64,
-    recipe_id: u8,
-    player: ContractAddress,
-}
+struct RecipeDiscovered { ... }
 
 #[dojo::event]
-struct PotionApplied {
-    #[key]
-    session_id: u64,
-    hero_id: u8,
-    effect_type: u8,
-    effect_value: u8,
-}
+struct PotionApplied { ... }
 
 #[dojo::event]
-struct HeroRecruited {
-    #[key]
-    session_id: u64,
-    hero_id: u8,
-    cost: u32,
-}
+struct HeroRecruited { ... }
 
 #[dojo::event]
 struct GrimoireCompleted {
-    #[key]
-    session_id: u64,
+    #[key] game_id: u64,
     player: ContractAddress,
-    elapsed_seconds: u64,
+    completion_time: u64,             // Seconds from game start
 }
 ```
 
----
+### 7.5 MVP Constants
 
-## 5. Client Architecture
+```cairo
+// Zones (3 for MVP)
+const ZONE_COUNT: u8 = 3;
+const INGREDIENTS_PER_ZONE: u8 = 3;
+const TOTAL_INGREDIENTS: u8 = 9;    // 3 * 3
 
-### 5.1 Provider Hierarchy (following zkube pattern)
+// Zone 0: Verdant Meadow — depth 0s, drain 1 HP/s
+//   Ingredients: Moonpetal (0), Dewmoss (1), River Clay (2)
+// Zone 1: Crystal Cavern — depth 20s, drain 2 HP/s
+//   Ingredients: Crystal Shard (3), Drake Moss (4), Sulfur Bloom (5)
+// Zone 2: Aether Spire — depth 45s, drain 3 HP/s
+//   Ingredients: Dragon Scale (6), Aether Core (7), Titan Blood (8)
 
-```tsx
-<StarknetConfig
-  chains={[slotChain, sepolia, mainnet]}
-  connectors={[cartridgeConnector]}
-  provider={jsonRpcProvider({ rpc })}
->
-  <DojoProvider value={setupResult}>
-    <App />
-  </DojoProvider>
-</StarknetConfig>
+// Recipes
+const RECIPES_TO_DISCOVER: u8 = 10;
+
+// Heroes
+const MAX_HEROES: u8 = 3;
+const HERO_BASE_HP: u16 = 10000;     // 100.00 HP (x100)
+const HERO_BASE_POWER: u16 = 500;    // 5.00 (x100)
+const HERO_BASE_REGEN: u16 = 100;    // 1.00 HP/s (x100)
+
+// Event probabilities (x10000)
+//                     Zone 0    Zone 1    Zone 2
+// Trap:               500       1000      1400
+// Gold:               1000      700       500
+// Heal:               800       500       300
+// Beast:              300       700       1200
+// Nothing:            7400      7100      6600
+// Ingredient drop:    2500      1800      1200
 ```
-
-### 5.2 Torii Subscriptions
-
-Subscribe to these models in `setup.ts`:
-- `athanor-GameSession`
-- `athanor-Hero`
-- `athanor-Recipe`
-- `athanor-IngredientBalance`
-- `athanor-PotionInventory`
-- `athanor-FailedCombo`
-- `athanor-HintedRecipe`
-
-### 5.3 System Calls
-
-```typescript
-// Wrapped via handleTransaction (zkube pattern)
-systemCalls.createGame({ account, sessionId })
-systemCalls.sendExpedition({ account, sessionId, heroId })
-systemCalls.claimLoot({ account, sessionId, heroId })
-systemCalls.craft({ account, sessionId, ingredientA, ingredientB })
-systemCalls.craftRecipe({ account, sessionId, recipeId })
-systemCalls.buyHint({ account, sessionId })
-systemCalls.recruitHero({ account, sessionId })
-systemCalls.applyPotion({ account, sessionId, potionIndex, heroId })
-systemCalls.endGame({ account, sessionId })
-```
-
-### 5.4 Session Policies
-
-Controller session keys auto-approve these system calls so the player doesn't sign every transaction:
-- `exploration_system::send_expedition`
-- `exploration_system::claim_loot`
-- `crafting_system::craft`
-- `crafting_system::craft_recipe`
-- `crafting_system::buy_hint`
-- `hero_system::recruit_hero`
-- `hero_system::apply_potion`
-
-### 5.5 Client-Side Exploration Simulation
-
-While a hero is exploring on-chain (between `send_expedition` and `claim_loot`), the client runs a **client-side simulation** of the exploration for visual feedback:
-
-1. Read `expedition_seed` and `expedition_start` from Torii
-2. Run the same `resolve_expedition` logic in TypeScript (deterministic from seed)
-3. Animate the hero progressing through zones, show events, HP draining
-4. When player clicks "Claim Loot", the on-chain result will match exactly
-
-This gives the same real-time feel as the PoC while the actual state lives on-chain.
 
 ---
 
-## 6. Implementation Phases
+## 8. Implementation Phases
 
-### Phase 0: Project Scaffolding (Day 1)
-- [ ] Initialize Dojo project with `sozo init`
-- [ ] Set up Scarb workspace (contracts package)
+### Phase 0: Project Scaffolding ✅
+- [x] Scarb workspace with game-components v2.13.1, dojo 1.8.0, origami_random
+- [x] All models defined (GameSession, GameSeed, Hero, HeroPendingIngredient, Recipe, IngredientBalance, PotionItem, FailedCombo, GameSettings, GameSettingsMetadata, PlayerMeta)
+- [x] All events defined (8 Dojo events)
+- [x] dojo_dev.toml for local Katana
 - [ ] Set up client with Vite + React 19 + TypeScript
-- [ ] Configure dojo_dev.toml for local Katana
-- [ ] Wire up Dojo SDK, Torii, and Controller connector
+- [ ] Wire Dojo SDK, Torii, Controller connector
 - [ ] Deploy empty world to local Katana
 - [ ] Verify round-trip: client → Katana → Torii → client
 
-### Phase 1: Core Models + Game Lifecycle (Days 2-3)
-- [ ] Define all models in Cairo (GameSession, Hero, Recipe, etc.)
-- [ ] Implement `game_system::create_game`:
-  - VRF seed generation (pseudo-random on Katana)
-  - Recipe generation (port `generateRecipes` from TypeScript)
-  - Hero #0 spawning (Alaric, 100 HP, 5 Power, 1 Regen)
-- [ ] Implement `game_system::end_game`
-- [ ] Write tests for recipe generation determinism
-- [ ] Deploy to Katana, verify models in Torii
+### Phase 1: Game Lifecycle + MinigameComponent ✅
+- [x] Integrate MinigameComponent into game_system (dojo_init, IMinigameTokenData)
+- [x] Config system with preset 0 (GameSettings defaults in dojo_init)
+- [x] VRF random helper (from_vrf_address + pseudo-random fallback)
+- [x] Recipe generation (Phase 1: 3 pinned per zone, Phase 2: 7 random cross-zone biased)
+- [x] Full create() flow: pre_action → seed → recipes → hero #0 → PlayerMeta → post_action
+- [x] Full surrender() flow: pre_action → game_over → post_action
+- [ ] Tests: recipe determinism, game creation, config init
 
-### Phase 2: Exploration System (Days 4-6)
-- [ ] Implement `exploration_system::send_expedition`
-- [ ] Port lazy evaluation engine to Cairo:
-  - Zone detection from depth
-  - Event probability rolls
-  - HP drain calculation
-  - Beast combat resolution
-  - Ingredient drop rolls
-- [ ] Implement `exploration_system::claim_loot`
-  - Resolve expedition → write pending loot to models
-  - Handle return timer + idle regen
-- [ ] Write exhaustive tests:
-  - Known seed → known expedition outcome
-  - Edge cases: immediate death, survive to zone S
-  - Gas profiling for worst-case (90s simulation)
+### Phase 2: Exploration System ✅
+- [x] Expedition simulation engine (helpers/exploration.cairo) — tick-by-tick, 3 zones, events + drops
+- [x] send_expedition: full compute + event emission + pending loot storage
+- [x] claim_loot: timer check + gold/ingredient transfer + idle regen
+- [x] Idle regen calculation (rest_time * regen_per_sec, capped at max_hp)
+- [ ] Tests: known seed → known outcome, timer enforcement, gas profiling
 
-### Phase 3: Crafting System (Days 7-8)
-- [ ] Implement `crafting_system::craft`
-  - Recipe lookup from sorted ingredient pair
-  - Discovery vs re-brew vs failed combo
-  - Progressive probability for lucky discoveries
-  - Soup (1 gold) on failure
-- [ ] Implement `crafting_system::craft_recipe` (batch re-brew)
-- [ ] Implement `crafting_system::buy_hint`
-- [ ] Win condition check: discovered_count == 30
-- [ ] Write tests for all crafting paths
+### Phase 3: Crafting System ✅
+- [x] craft: recipe lookup, discovery, PotionItem creation, FailedCombo recording, soup gold
+- [x] craft_recipe: batch re-brew (max possible from inventory)
+- [x] buy_hint: exponential cost (10 * 3^n gold), random undiscovered recipe, partial reveal
+- [x] Win condition: discovered_count >= 10 → game_over + GrimoireCompleted event
+- [ ] Tests: all crafting paths
 
-### Phase 4: Hero System (Day 9)
-- [ ] Implement `hero_system::recruit_hero`
-- [ ] Implement `hero_system::apply_potion`
-- [ ] Validate stat buff permanence across expeditions
-- [ ] Write tests
+### Phase 4: Hero System ✅
+- [x] recruit_hero: gold cost [0, 80, 200], base stats spawn
+- [x] apply_potion: permanent stat buff (max_hp +val×100, power +val×100, regen +val×10)
+- [ ] Tests
 
-### Phase 5: Client MVP (Days 10-14)
-- [ ] Set up Dojo provider hierarchy + Torii sync
-- [ ] Build UI components (port from alchemist PoC, adapt for on-chain):
-  - TopBar (gold, grimoire progress, timer)
-  - HeroPanel (hero cards, expedition status, claim button)
-  - ExplorationPanel (zone progress visualization)
-  - CraftPanel (ingredient selector, brew button)
-  - GrimoirePanel (discovered recipes, hints, re-brew)
-  - InventoryPanel (ingredients by zone, potions)
-- [ ] Wire system calls to UI actions
-- [ ] Client-side exploration simulation (visual feedback)
+### Phase 5: Client MVP
+- [ ] Dojo setup, Torii sync, Controller connector
+- [ ] Navigation store (zustand) + page transitions
+- [ ] HomePage: connect, new game, my games, leaderboard
+- [ ] PlayScreen: hero panel, exploration feed (from events), craft panel, grimoire, inventory
+- [ ] MyGamesPage: active/finished games list
+- [ ] LeaderboardPage: fastest completion times
+- [ ] SettingsPage: basic settings
 - [ ] Session policies for Controller
 
-### Phase 6: Polish + Deploy (Days 15-17)
-- [ ] Deploy to Slot for team testing
+### Phase 6: Polish + Deploy
+- [ ] Deploy to Slot for testing
 - [ ] VRF integration on Sepolia
-- [ ] Balancing pass (zone difficulty, drop rates, hint costs)
-- [ ] Error handling and edge cases
+- [ ] Balancing pass
+- [ ] Error handling + edge cases
 - [ ] Deploy to Sepolia testnet
 
 ---
 
-## 7. Open Questions / Decisions Needed
+## 9. Resolved Decisions
 
-### 7.1 Session Identity
-**Options:**
-- **A) NFT-based** (zkube pattern): Mint an NFT per game session, game_id = token_id. Enables on-chain game history, tradeable sessions.
-- **B) Counter-based**: Simple incrementing session_id. Lighter, no NFT overhead.
+### 9.1 Session Identity — NFT-based (soulbound)
 
-**Recommendation**: Start with B (counter-based) for v0.1. Add NFTs in v0.2 if needed for marketplace/history features.
+Each game session mints a soulbound NFT via `FullTokenContract.free_mint()`. `game_id = token_id`. The NFT is non-transferable — it represents a player's game history on-chain, not a tradeable asset. Follows the zkube pattern exactly.
 
-### 7.2 Multiplayer / Competitive Mode
-The README says "competitive grimoire race" — how does this work?
+### 9.2 Competitive Mode — Leaderboard
 
-**Options:**
-- **A) Shared seed races**: N players get the same seed. Same recipes, same RNG for exploration. First to 30 wins. Requires matchmaking.
-- **B) Leaderboard**: Each player plays solo. Fastest time to 30 recipes = best rank. Daily/weekly leaderboards.
-- **C) Solo first**: Ship solo in v0.1. Add competitive in v0.2.
+Solo play only. Each player races to complete their grimoire independently. Ranked by:
+1. **Time to completion** — fastest grimoire completion wins
+2. **Tiebreaker** — on-chain timestamp (first submission stays first)
 
-**Recommendation**: C for v0.1. The core loop needs to be fun solo before adding competitive pressure.
+Leaderboard periods: all-time / weekly / daily. Only games using `settings_id = 0` are leaderboard-eligible.
 
-### 7.3 Timing Model for Exploration
-**Options:**
-- **A) Real-time (block-based)**: Expedition uses actual wall-clock time. More idle-game feel. Hero explores while player does other things.
-- **B) Action-based**: Player explicitly "advances" exploration in discrete steps. More strategic, less idle. Each step is a transaction.
+For full game (v1.0+): 30 recipes to discover. For MVP (v0.1): 10 recipes, same ranking logic.
 
-**Recommendation**: A (real-time). It matches the PoC design and creates natural downtime for crafting between expeditions. The lazy evaluation pattern handles this cleanly.
+### 9.3 Exploration Timing — Real-time (block-based)
 
-### 7.4 Token Economy (v0.2+)
-Not in scope for v0.1, but worth noting:
-- Should there be an ATHANOR token (like zkube's CUBE)?
-- Entry fee for competitive races?
-- Ingredient/potion trading between players?
+Expeditions use actual wall-clock time via Starknet block timestamps. Hero explores while the player crafts, manages other heroes, or goes AFK. This gives the intended idle-game feel. The `return_at` timestamp is enforced on-chain; `claim_loot` reverts until the hero has returned.
 
----
+### 9.4 VRF Per Action — Expedition + Hint
 
-## 8. Risk Assessment
+Cartridge VRF is called per expedition start and per hint purchase (not just at game creation). This prevents players from predicting expedition outcomes or hint targets by reading the on-chain game seed.
 
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Lazy eval gas too high for deep expeditions | Can't claim loot | Profile early. Cap at ~90 iterations. Optimize with bit-packing. |
-| Recipe generation diverges TS vs Cairo | Client simulation doesn't match on-chain | Extensive cross-language determinism tests with known seeds |
-| VRF latency on mainnet | Slow game creation | Use pseudo-random on Slot/Katana, VRF only on Sepolia/Mainnet |
-| Session key UX | Player confused by approval flow | Follow zkube's Controller pattern exactly — proven in production |
-| Ingredient storage bloat (25 items x N players) | High storage costs | Pack all 25 ingredient quantities into a single felt252 (10 bits each = 250 bits) |
+**Pattern** (matches zkube's per-level-transition VRF):
+- Salt = `poseidon(game_id, hero_id, timestamp)` for expeditions
+- Salt = `poseidon(game_id, hints_used, timestamp)` for hints
+- `from_vrf_address(vrf_addr, salt)` abstracts VRF vs pseudo-random fallback (zero address = dev mode)
+- exploration_system and crafting_system each store `vrf_address` in their own Storage
 
----
+### 9.5 Token Economy — None
 
-## 9. Storage Optimization Notes
-
-### Ingredient Packing
-25 ingredients x 10 bits each = 250 bits → fits in one felt252 (252 bits).
-```cairo
-// Pack all ingredient quantities into one felt252
-fn pack_ingredients(quantities: @Array<u16>) -> felt252
-fn unpack_ingredient(packed: felt252, ingredient_id: u8) -> u16
-```
-This replaces 25 separate `IngredientBalance` models with a single field on `GameSession`.
-
-### Recipe Packing
-Each recipe: ingredient_a (5 bits) + ingredient_b (5 bits) + effect_type (2 bits) + effect_value (5 bits) + discovered (1 bit) = 18 bits.
-30 recipes x 18 bits = 540 bits → 3 felt252 values.
-
-### Hero Packing
-3 heroes with all stats could pack into 1-2 felt252 values using zkube's bit-packing pattern.
-
-**Decision**: Start with readable separate models. Optimize to packed fields if storage costs become an issue.
+No ATHANOR token for v0.1. No entry fees, no ingredient/potion trading. Gold is an in-game-only resource scoped to each game session. Revisit for v0.2+ if competitive modes need staking or prize pools.
 
 ---
 
@@ -644,16 +790,21 @@ Each recipe: ingredient_a (5 bits) + ingredient_b (5 bits) + effect_type (2 bits
 
 | Athanor Component | Reference File |
 |-------------------|---------------|
+| MinigameComponent setup | `references/zkube/contracts/src/systems/game.cairo` |
+| pre_action/post_action | `references/zkube/contracts/src/systems/moves.cairo` |
 | VRF/Random | `references/zkube/contracts/src/helpers/random.cairo` |
-| Game lifecycle | `references/zkube/contracts/src/systems/game.cairo` |
-| Model patterns | `references/zkube/contracts/src/models/game.cairo` |
-| Scarb config | `references/zkube/Scarb.toml` |
-| Client setup | `references/zkube/client-budokan/src/dojo/setup.ts` |
+| Config system + settings | `references/zkube/contracts/src/systems/config.cairo` |
+| Default settings init | `references/zkube/contracts/src/constants.cairo` |
+| Settings model | `references/zkube/contracts/src/models/config.cairo` |
+| Client Dojo setup | `references/zkube/client-budokan/src/dojo/setup.ts` |
 | Controller config | `references/zkube/client-budokan/src/cartridgeConnector.tsx` |
+| Navigation store | `references/zkube/client-budokan/src/stores/navigationStore.ts` |
 | System calls | `references/zkube/client-budokan/src/dojo/systems.ts` |
+| Entity ID normalization | `references/zkube/client-budokan/src/hooks/useGame.tsx` |
+| Page structure | `references/zkube/client-budokan/src/App.tsx` |
+| Landing page | `references/zkube/client-budokan/src/ui/pages/HomePage.tsx` |
 | Game logic (TypeScript) | `references/alchemist/src/game/engine.ts` |
 | Recipe generation | `references/alchemist/src/game/recipes.ts` |
 | RNG system | `references/alchemist/src/game/rng.ts` |
 | Game constants | `references/alchemist/src/game/constants.ts` |
-| State types | `references/alchemist/src/game/state.ts` |
 | Full game spec | `references/alchemist/Alchemist_POC.md` |

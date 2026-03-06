@@ -1,0 +1,141 @@
+import { defineComponent, Type as RecsType } from '@dojoengine/recs'
+import { world } from './world'
+
+export const contractComponents = {
+  GameSession: defineComponent(
+    world,
+    {
+      game_id: RecsType.BigInt,
+      player: RecsType.BigInt,
+      seed: RecsType.BigInt,
+      settings_id: RecsType.Number,
+      discovered_count: RecsType.Number,
+      craft_attempts: RecsType.Number,
+      hints_used: RecsType.Number,
+      gold: RecsType.Number,
+      hero_count: RecsType.Number,
+      potion_count: RecsType.Number,
+      game_over: RecsType.Boolean,
+      started_at: RecsType.BigInt,
+    },
+    { id: 'GameSession' },
+  ),
+  GameSeed: defineComponent(
+    world,
+    {
+      game_id: RecsType.BigInt,
+      seed: RecsType.BigInt,
+    },
+    { id: 'GameSeed' },
+  ),
+  Hero: defineComponent(
+    world,
+    {
+      game_id: RecsType.BigInt,
+      hero_id: RecsType.Number,
+      hp: RecsType.Number,
+      max_hp: RecsType.Number,
+      power: RecsType.Number,
+      regen_per_sec: RecsType.Number,
+      status: RecsType.Number,
+      expedition_seed: RecsType.BigInt,
+      expedition_start: RecsType.BigInt,
+      return_at: RecsType.BigInt,
+      death_depth: RecsType.Number,
+      pending_gold: RecsType.Number,
+      loot_ready: RecsType.Boolean,
+    },
+    { id: 'Hero' },
+  ),
+  HeroPendingIngredient: defineComponent(
+    world,
+    {
+      game_id: RecsType.BigInt,
+      hero_id: RecsType.Number,
+      ingredient_id: RecsType.Number,
+      quantity: RecsType.Number,
+    },
+    { id: 'HeroPendingIngredient' },
+  ),
+  Recipe: defineComponent(
+    world,
+    {
+      game_id: RecsType.BigInt,
+      recipe_id: RecsType.Number,
+      ingredient_a: RecsType.Number,
+      ingredient_b: RecsType.Number,
+      effect_type: RecsType.Number,
+      effect_value: RecsType.Number,
+      discovered: RecsType.Boolean,
+    },
+    { id: 'Recipe' },
+  ),
+  IngredientBalance: defineComponent(
+    world,
+    {
+      game_id: RecsType.BigInt,
+      ingredient_id: RecsType.Number,
+      quantity: RecsType.Number,
+    },
+    { id: 'IngredientBalance' },
+  ),
+  PotionItem: defineComponent(
+    world,
+    {
+      game_id: RecsType.BigInt,
+      potion_index: RecsType.Number,
+      recipe_id: RecsType.Number,
+      effect_type: RecsType.Number,
+      effect_value: RecsType.Number,
+    },
+    { id: 'PotionItem' },
+  ),
+  FailedCombo: defineComponent(
+    world,
+    {
+      game_id: RecsType.BigInt,
+      combo_key: RecsType.Number,
+      attempted: RecsType.Boolean,
+    },
+    { id: 'FailedCombo' },
+  ),
+  GameSettings: defineComponent(
+    world,
+    {
+      settings_id: RecsType.Number,
+      zone_count: RecsType.Number,
+      ingredients_per_zone: RecsType.Number,
+      recipes_to_discover: RecsType.Number,
+      max_heroes: RecsType.Number,
+      hero_base_hp: RecsType.Number,
+      hero_base_power: RecsType.Number,
+      hero_base_regen: RecsType.Number,
+      hint_base_cost: RecsType.Number,
+      hint_cost_multiplier: RecsType.Number,
+      soup_gold_value: RecsType.Number,
+      progressive_cap: RecsType.Number,
+    },
+    { id: 'GameSettings' },
+  ),
+  GameSettingsMetadata: defineComponent(
+    world,
+    {
+      settings_id: RecsType.Number,
+      name: RecsType.BigInt,
+      created_by: RecsType.BigInt,
+      created_at: RecsType.BigInt,
+      is_active: RecsType.Boolean,
+    },
+    { id: 'GameSettingsMetadata' },
+  ),
+  PlayerMeta: defineComponent(
+    world,
+    {
+      player: RecsType.BigInt,
+      total_games: RecsType.Number,
+      best_time: RecsType.BigInt,
+      total_recipes_discovered: RecsType.Number,
+    },
+    { id: 'PlayerMeta' },
+  ),
+}

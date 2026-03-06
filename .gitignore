@@ -27,6 +27,8 @@ Thumbs.db
 
 # Dojo
 manifests/
+manifest_*.json
+Scarb.lock
 katana.log
 
 # Misc

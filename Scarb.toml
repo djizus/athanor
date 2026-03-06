@@ -1,0 +1,32 @@
+[workspace]
+members = ["contracts"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024_07"
+cairo-version = "2.13.1"
+
+[workspace.dependencies]
+# Starknet core
+starknet = "2.13.1"
+
+# Dojo
+dojo = "1.8.0"
+
+# Game components (Provable Games embeddable game standard)
+game_components_minigame = { git = "https://github.com/Provable-Games/game-components", tag = "v2.13.1" }
+game_components_token = { git = "https://github.com/Provable-Games/game-components", tag = "v2.13.1" }
+
+# OpenZeppelin (required by game-components for SRC5)
+openzeppelin_introspection = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", tag = "v3.0.0-alpha.3" }
+
+# Randomness
+origami_random = { git = "https://github.com/dojoengine/origami", tag = "v1.7.0" }
+
+# Testing
+dojo_cairo_test = "1.8.0"
+cairo_test = "2.13.1"
+
+# Deployment profiles
+[profile.slot]
+[profile.sepolia]
