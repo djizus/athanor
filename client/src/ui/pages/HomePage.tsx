@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAccount, useConnect } from '@starknet-react/core'
 import { RpcProvider } from 'starknet'
 import { usePlayerMeta } from '@/hooks/usePlayerMeta'
+import { useGameTokens } from '@/hooks/useGameTokens'
 import { useDojo } from '@/dojo/useDojo'
 import { extractGameId } from '@/dojo/systems'
 import { useNavigationStore } from '@/stores/navigationStore'
@@ -12,10 +13,23 @@ export function HomePage() {
   const { address, account } = useAccount()
   const { connect, connectors } = useConnect()
   const playerMeta = usePlayerMeta(address)
+  const games = useGameTokens(address)
   const [isCreatingGame, setIsCreatingGame] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const primaryConnector = connectors[0]
+
+  const activeGame = useMemo(
+    () => games.find((g) => !g.game_over) ?? null,
+    [games],
+  )
+
+  useEffect(() => {
+    if (activeGame) {
+      console.info('[HomePage] active game detected, resuming game #', activeGame.game_id)
+      navigate('play', activeGame.game_id)
+    }
+  }, [activeGame, navigate])
 
   const handleCreateGame = async () => {
     if (!account) return
@@ -74,15 +88,24 @@ export function HomePage() {
             </div>
 
             <div className="home-menu-actions">
-              <button
-                className="home-menu-button home-menu-button-primary"
-                onClick={handleCreateGame}
-                disabled={isCreatingGame}
-              >
-                {isCreatingGame ? 'Forging Run...' : 'New Game'}
-              </button>
+              {activeGame ? (
+                <button
+                  className="home-menu-button home-menu-button-primary"
+                  onClick={() => navigate('play', activeGame.game_id)}
+                >
+                  Continue Game #{activeGame.game_id}
+                </button>
+              ) : (
+                <button
+                  className="home-menu-button home-menu-button-primary"
+                  onClick={handleCreateGame}
+                  disabled={isCreatingGame}
+                >
+                  {isCreatingGame ? 'Forging Run...' : 'New Game'}
+                </button>
+              )}
               <button className="home-menu-button" onClick={() => navigate('mygames')}>
-                My Games
+                My Games{games.length > 0 ? ` (${games.length})` : ''}
               </button>
               <button className="home-menu-button" onClick={() => navigate('leaderboard')}>
                 Leaderboard

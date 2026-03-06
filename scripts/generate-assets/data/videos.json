@@ -1,0 +1,15 @@
+[
+  {
+    "id": "menu-loop",
+    "source": "branding/loading-bg.png",
+    "filename": "menu-loop.webm",
+    "outputDir": "menu",
+    "width": 1280,
+    "height": 720,
+    "fps": 24,
+    "numFrames": 97,
+    "format": "webm",
+    "prompt": "Dark alchemist sanctum with gently flickering furnace light, drifting embers rising slowly, subtle pulsing glow from arcane runes on walls, wisps of purple arcane energy curling through air. Seamless loop, no camera movement, atmospheric and mysterious.",
+    "cameraLora": "static"
+  }
+]

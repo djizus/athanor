@@ -15,6 +15,8 @@ export function useGameTokens(playerAddress: string | undefined) {
   const entities = useEntityQuery([Has(contractComponents.GameSession)])
 
   return useMemo(() => {
+    console.info('[useGameTokens] entities:', entities.length, 'playerAddress:', playerAddress)
+
     if (!playerAddress) return []
 
     const normalizedPlayer = BigInt(playerAddress)
@@ -22,7 +24,16 @@ export function useGameTokens(playerAddress: string | undefined) {
 
     for (const entity of entities) {
       const data = getComponentValue(contractComponents.GameSession, entity)
-      if (!data) continue
+      if (!data) {
+        console.info('[useGameTokens] entity has no data:', entity)
+        continue
+      }
+      console.info('[useGameTokens] session:', {
+        game_id: Number(data.game_id),
+        player: `0x${BigInt(data.player).toString(16)}`,
+        game_over: data.game_over,
+        started_at: Number(data.started_at),
+      })
       if (BigInt(data.player) !== normalizedPlayer) continue
 
       result.push({
@@ -33,6 +44,7 @@ export function useGameTokens(playerAddress: string | undefined) {
       })
     }
 
+    console.info('[useGameTokens] matched games:', result.length)
     return result.sort((a, b) => b.started_at - a.started_at)
   }, [contractComponents.GameSession, entities, playerAddress])
 }

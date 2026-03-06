@@ -1,0 +1,11 @@
+[
+  {
+    "id": "menu-bg",
+    "source": "branding/loading-bg.png",
+    "numLayers": 4,
+    "outputDir": "menu",
+    "outputPrefix": "layer",
+    "width": 1280,
+    "height": 720
+  }
+]
