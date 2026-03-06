@@ -48,7 +48,7 @@ export class BootScene extends Phaser.Scene {
     const gfx = this.add.graphics();
 
     this.generateGradient(gfx, 'lab-bg', GAME_WIDTH, GAME_HEIGHT, COLORS.bgPrimary, COLORS.bgSecondary);
-    this.generateGradient(gfx, 'world-map', WORLD_WIDTH, WORLD_WIDTH, COLORS.bgPrimary, COLORS.bgSecondary);
+    this.generateGradient(gfx, 'world-map', WORLD_WIDTH, GAME_HEIGHT, COLORS.bgPrimary, COLORS.bgSecondary);
 
     for (let i = 0; i < ZONE_TINTS.length; i++) {
       const top = this.blend(ZONE_TINTS[i], COLORS.black, 0.45);

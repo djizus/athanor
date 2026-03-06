@@ -25,7 +25,7 @@ export class ZoneBackground {
     this.container = scene.add.container(0, 0);
 
     this.mapImage = scene.add.image(WORLD_WIDTH / 2, GAME_HEIGHT / 2, 'world-map');
-    this.mapImage.setDisplaySize(WORLD_WIDTH, WORLD_WIDTH);
+    this.mapImage.setDisplaySize(WORLD_WIDTH, GAME_HEIGHT);
     this.mapImage.setDepth(0);
 
     this.labOverlay = scene.add.image(BASE_CAMP_X + 180, GAME_HEIGHT / 2, 'lab-bg');

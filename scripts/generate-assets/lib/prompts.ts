@@ -33,18 +33,17 @@ export function buildBackgroundPrompt(asset: ImageAssetDef): string {
 
 export function buildWorldMapPrompt(): string {
   return [
-    `A top-down bird's-eye view fantasy world map for an alchemy RPG game, square 1:1 composition.`,
-    `Three large distinct biome zones arranged left-to-right, connected by winding paths:`,
-    `LEFT ZONE (30% of width): Verdant Meadow — lush green fields, wildflowers, ancient standing stones, a small glowing camp at the far left edge as a starting point.`,
-    `CENTER ZONE (35% of width): Crystal Cavern — exposed underground cavern viewed from above, amber and amethyst crystal formations, dark stone walls, warm mineral glow emanating from crystal clusters.`,
-    `RIGHT ZONE (35% of width): Aether Spire — ethereal purple floating island with a central tower, swirling arcane energy trails, glowing runes on the ground, starlit atmosphere.`,
-    `Each zone should be large and clearly defined with space for game tokens to move through them.`,
-    `Winding dirt paths connect the zones with clear waypoints along the routes.`,
-    `The zones occupy the central 80% of the image, with dark atmospheric borders.`,
+    `A wide panoramic top-down bird's-eye view fantasy world map for an alchemy RPG game.`,
+    `Ultra-wide horizontal composition (3.5:1 aspect ratio), three distinct biome zones arranged left-to-right filling the entire width:`,
+    `LEFT THIRD: Verdant Meadow — lush green fields seen from above, scattered wildflowers, ancient standing stones, a small glowing alchemist camp at the far left edge. Soft golden-green light.`,
+    `CENTER THIRD: Crystal Cavern — exposed underground cavern viewed from above, clusters of amber and amethyst crystal formations jutting up, dark stone walls, warm mineral glow from crystal veins.`,
+    `RIGHT THIRD: Aether Spire — ethereal purple floating platforms with a central arcane tower, swirling energy trails on the ground, glowing rune circles, starlit purple atmosphere.`,
+    `A winding dirt path runs horizontally through all three zones from left to right, clearly visible.`,
+    `The zones fill the full width edge-to-edge with smooth transitions between biomes.`,
     GLOBAL_ART_STYLE,
     `Color palette: dark background #080810, green #4a9e4a for meadow, amber #b8860b for cavern, purple #9e4a9e for spire.`,
-    `Full-bleed seamless scene. Vignette edges: outermost 10% fades to near-black #080810.`,
-    `Top-down orthographic perspective, like a tabletop game board map.`,
+    `Full-bleed seamless panoramic scene. Vignette: left and right 5% fades to near-black #080810.`,
+    `Top-down orthographic perspective, like a tabletop RPG battle map viewed from directly above.`,
     `No people, no text, no labels, no UI elements, no watermarks, no icons.`,
   ].join(' ');
 }

@@ -12,9 +12,9 @@
       "id": "world-map",
       "filename": "world-map.png",
       "category": "backgrounds",
-      "width": 2048,
-      "height": 2048,
-      "description": "Top-down fantasy world map showing three connected zones: Verdant Meadow (lush green fields, wildflowers, standing stones) on the left, Crystal Cavern (amber crystals, dark stone walls, mineral glow) in the center, and Aether Spire (ethereal purple tower, swirling arcane energy, floating runes) on the right, connected by winding paths"
+      "width": 2560,
+      "height": 720,
+      "description": "Wide panoramic top-down fantasy world map with three biome zones arranged left-to-right connected by winding paths"
     }
   ],
   "heroes": [
