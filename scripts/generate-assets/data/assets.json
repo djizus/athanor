@@ -116,5 +116,9 @@
     { "id": "potion-power", "filename": "potion-power.png", "category": "potions", "width": 128, "height": 128, "description": "A tall angular potion bottle filled with electric blue liquid, sword-shaped stopper, crackling energy" },
     { "id": "potion-regen", "filename": "potion-regen.png", "category": "potions", "width": 128, "height": 128, "description": "A bulbous potion bottle filled with verdant green liquid, leaf-shaped stopper, gentle healing glow" },
     { "id": "potion-soup", "filename": "potion-soup.png", "category": "potions", "width": 128, "height": 128, "description": "A crude wooden bowl of murky brown-grey soup with lazy steam, failed alchemy experiment" }
+  ],
+  "branding": [
+    { "id": "logo", "filename": "logo.png", "category": "branding", "width": 1024, "height": 1024, "description": "ATHANOR game logo — alchemical serif text in molten gold on black" },
+    { "id": "loading-bg", "filename": "loading-bg.png", "category": "branding", "width": 2048, "height": 2048, "description": "Loading screen background — dark alchemist sanctum with glowing athanor furnace" }
   ]
 }

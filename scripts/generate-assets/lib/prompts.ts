@@ -58,11 +58,45 @@ export function buildPotionIconPrompt(asset: ImageAssetDef): string {
   ].join(' ');
 }
 
+export function buildLogoPrompt(): string {
+  return [
+    `The word "ATHANOR" as a bold flat 2D game logo on a solid black background.`,
+    `Chunky serif letterforms inspired by medieval alchemical manuscripts.`,
+    `Each letter filled with a molten gold-to-amber gradient (#f0c040 to #a08020), with subtle cracks revealing inner fire glow.`,
+    `Thin arcane rune engravings within the letterforms. Faint alchemical circle halo behind the text.`,
+    `Completely flat 2D design, no depth, no shadows, no 3D perspective.`,
+    `Clean sharp edges, centered composition on pure black #000000 background.`,
+    GLOBAL_ART_STYLE,
+    `No other elements - just the text centered on black. 1024x1024 pixels.`,
+  ].join(' ');
+}
+
+export function buildLoadingBgPrompt(): string {
+  return [
+    `A vast dark alchemist's sanctum viewed from within, cinematic key art.`,
+    `Towering stone walls covered in faintly glowing arcane runes and alchemical diagrams.`,
+    `Central massive athanor furnace radiating warm amber-gold light (#f0c040) from its core.`,
+    `Shelves of potions and ingredients line the walls, their contents softly bioluminescent.`,
+    `Floating motes of golden light drift upward like embers. Wisps of purple (#a050d0) arcane energy curl through the air.`,
+    `Deep shadows in indigo-black (#080810) with warm highlights from the furnace.`,
+    `Mysterious, reverent, magical atmosphere - the moment before a grand transmutation.`,
+    GLOBAL_ART_STYLE,
+    `Full-bleed seamless scene extending edge-to-edge. No borders, no frames, no framing elements.`,
+    `Vignette edges: outermost 10% on all sides smoothly fades to near-black #080810.`,
+    `No people, no text, no UI elements, no watermarks.`,
+  ].join(' ');
+}
+
 export function buildPrompt(asset: ImageAssetDef): string {
   switch (asset.category) {
     case 'backgrounds': return buildBackgroundPrompt(asset);
     case 'heroes': return buildHeroPortraitPrompt(asset);
     case 'ingredients': return buildIngredientIconPrompt(asset);
     case 'potions': return buildPotionIconPrompt(asset);
+    case 'branding': {
+      if (asset.id === 'logo') return buildLogoPrompt();
+      if (asset.id === 'loading-bg') return buildLoadingBgPrompt();
+      return buildBackgroundPrompt(asset);
+    }
   }
 }

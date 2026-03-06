@@ -5,6 +5,7 @@ import { type Chain } from '@starknet-react/chains'
 import { StarknetConfig, jsonRpcProvider } from '@starknet-react/core'
 import './index.css'
 import App from './App.tsx'
+import { LoadingScreen } from './ui/LoadingScreen'
 import { dojoConfig } from '../dojo.config'
 import { cartridgeConnector } from './cartridgeConnector'
 import { DojoProvider, type DojoSetup } from './dojo/context'
@@ -67,7 +68,7 @@ function Root() {
   }, [])
 
   if (isLoading || !dojo) {
-    return <div>Loading...</div>
+    return <LoadingScreen />
   }
 
   return (

@@ -1,0 +1,24 @@
+{
+  "name": "athanor",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate-images": "tsx scripts/generate-assets/generate-images.ts",
+    "generate-sfx": "tsx scripts/generate-assets/generate-sfx.ts"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "sharp",
+      "esbuild"
+    ]
+  },
+  "dependencies": {
+    "@fal-ai/client": "^1.9.1",
+    "dotenv": "^16.4.7",
+    "sharp": "^0.34.5",
+    "tsx": "^4.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.5"
+  }
+}

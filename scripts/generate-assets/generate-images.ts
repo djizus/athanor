@@ -13,7 +13,7 @@ import type { AssetManifest, ImageAssetDef, ImageCategory } from './lib/types';
 import { IMAGE_CATEGORIES } from './lib/types';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const OUTPUT_ROOT = resolve(__dirname, '../../public/assets');
+const OUTPUT_ROOT = resolve(__dirname, '../../client/public/assets');
 
 // ─── CLI Argument Parsing ───
 
