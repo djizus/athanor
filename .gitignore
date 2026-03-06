@@ -1,0 +1,34 @@
+# References (local only)
+references/
+
+# Environment
+.env
+.env.*
+.env.local
+.env.*.local
+
+# Dependencies
+node_modules/
+target/
+
+# Build
+dist/
+out/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dojo
+manifests/
+katana.log
+
+# Misc
+*.log
+.opencode/
