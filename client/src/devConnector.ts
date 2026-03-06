@@ -32,16 +32,19 @@ export class PredeployedConnector extends Connector {
   }
 
   async connect() {
+    console.info('[devConnector] connect called')
     this.emit('connect', { account: KATANA_PREDEPLOYED.address, chainId: KATANA_CHAIN_ID })
     return { account: KATANA_PREDEPLOYED.address, chainId: KATANA_CHAIN_ID }
   }
 
   async disconnect(): Promise<void> {
+    console.info('[devConnector] disconnect called')
     this._account = null
     this.emit('disconnect')
   }
 
   async account(provider: ProviderInterface): Promise<AccountInterface> {
+    console.info('[devConnector] account() called, existing:', !!this._account)
     if (!this._account) {
       this._account = new Account({
         provider,

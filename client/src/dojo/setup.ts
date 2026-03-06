@@ -115,15 +115,17 @@ export async function setupDojo() {
 
     const clientModels = Object.values(contractComponents) as Parameters<typeof getSyncEntities>[1]
 
-    logPhase('sync')
+    logPhase('sync', { entityModels })
     const sync = await withTimeout(
       getSyncEntities(toriiClient, clientModels, clause, undefined, entityModels),
       20000,
       'Entity sync initialization',
     )
+    console.info('[athanor:init] sync result:', sync)
 
     logPhase('systems')
     const client = createSystemCalls(config.manifest)
+    console.info('[athanor:init] system calls created, contracts:', config.manifest.contracts.map(c => c.tag))
 
     logPhase('done')
     return {

@@ -14,6 +14,7 @@ import { setupDojo } from './dojo/setup'
 
 const isDevMode = (import.meta.env.VITE_PUBLIC_DEPLOY_TYPE ?? 'dev') === 'dev'
 const connector = isDevMode ? devConnector : cartridgeConnector
+console.info('[athanor:init] connector mode:', isDevMode ? 'dev (PredeployedConnector)' : 'production (CartridgeController)')
 
 function createSlotChain(nodeUrl: string): Chain {
   return {
@@ -98,6 +99,8 @@ function Root() {
       mounted = false
     }
   }, [])
+
+  console.info('[athanor:render] Root render — isLoading:', isLoading, 'dojo:', !!dojo, 'error:', initError)
 
   if (isLoading || !dojo) {
     return <LoadingScreen status={initStatus} error={initError} />
