@@ -18,7 +18,7 @@ private_key = "0xc5b2fcab997346f3ea1c00b002ecf6f382c5f9c9659a3894eb783c5320f912"
 [init_call_args]
 "athanor-game_system" = [
     "0x127fd5f1fe78a71f8bcd1fec63e3fe2f0486b6ecd5c86a0466c3a21fa5cfcec",
-    "0x0",
+    "0x067e73954c97f36e4b3d137a7cd7c81445426c2d373fe60239a73e563c316cba",
     "1",
     "0x0",
 ]

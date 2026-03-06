@@ -28,9 +28,8 @@ set -e
 #   - FullTokenContract game_registry_address uses Option::Some = "0 <addr>"
 #   - FullTokenContract event_relayer_address uses Option::None = "1"
 #   - game_system dojo_init: creator_address, denshokan_address, renderer_address(Option::None=1), vrf_address
-#   - exploration_system & crafting_system dojo_init: token_address, vrf_address (TWO params)
-#   - hero_system dojo_init: token_address (ONE param)
 #   - config_system dojo_init: creator_address (ONE param)
+#   - exploration_system, crafting_system, hero_system: NO dojo_init (read from centralized Config model)
 #   - sozo migrate MUST run from workspace root, not from contracts/
 #   - Fresh katana required for dev (no schema upgrade support)
 
@@ -239,7 +238,6 @@ sleep 2
 # ---------------------------------------------------
 print_step 5 "Updating $DOJO_CONFIG with deployed addresses..."
 
-# game_system: creator_address, denshokan_address(token), renderer_address(Option::None=1), vrf_address
 sed -i "s|\"${NAMESPACE}-game_system\" = \[.*|\"${NAMESPACE}-game_system\" = [|" "$DOJO_CONFIG"
 python3 -c "
 import re
@@ -260,34 +258,12 @@ content = re.sub(
     flags=re.DOTALL
 )
 
-explore_block = '''\"${NAMESPACE}-exploration_system\" = [
-    \"$TOKEN_ADDRESS\",
-    \"$VRF_ADDRESS\",
+config_block = '''\"${NAMESPACE}-config_system\" = [
+    \"$ACCOUNT_ADDRESS\",
 ]'''
 content = re.sub(
-    r'\"${NAMESPACE}-exploration_system\" = \[.*?\]',
-    explore_block,
-    content,
-    flags=re.DOTALL
-)
-
-craft_block = '''\"${NAMESPACE}-crafting_system\" = [
-    \"$TOKEN_ADDRESS\",
-    \"$VRF_ADDRESS\",
-]'''
-content = re.sub(
-    r'\"${NAMESPACE}-crafting_system\" = \[.*?\]',
-    craft_block,
-    content,
-    flags=re.DOTALL
-)
-
-hero_block = '''\"${NAMESPACE}-hero_system\" = [
-    \"$TOKEN_ADDRESS\",
-]'''
-content = re.sub(
-    r'\"${NAMESPACE}-hero_system\" = \[.*?\]',
-    hero_block,
+    r'\"${NAMESPACE}-config_system\" = \[.*?\]',
+    config_block,
     content,
     flags=re.DOTALL
 )
