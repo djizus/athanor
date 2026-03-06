@@ -97,7 +97,7 @@ export async function setupDojo() {
     await probeConnectivity(config.rpcUrl, config.toriiUrl)
 
     logPhase('torii')
-    const toriiClient = new ToriiClient({
+    const toriiClient = await new ToriiClient({
       toriiUrl: config.toriiUrl,
       worldAddress: config.manifest.world.address,
     })
