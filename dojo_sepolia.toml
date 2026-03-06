@@ -24,14 +24,3 @@ private_key = "0x0"
 "athanor-config_system" = [
     "0x0",
 ]
-"athanor-exploration_system" = [
-    "0x0",
-    "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f",
-]
-"athanor-crafting_system" = [
-    "0x0",
-    "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f",
-]
-"athanor-hero_system" = [
-    "0x0",
-]
