@@ -44,13 +44,19 @@ export function HomePage() {
   }
 
   return (
-    <main className="page-center">
-      <h1 className="page-title">Athanor</h1>
-      <p style={{ color: 'var(--text-secondary)' }}>Transmute, explore, survive.</p>
+    <main className="home-menu">
+      <section className="home-menu-shell panel">
+        <img
+          src="/assets/branding/logo-loading-gold-shadow.png"
+          alt="Athanor"
+          draggable={false}
+          className="home-menu-logo"
+        />
+        <p className="home-menu-tagline">Transmute, explore, survive.</p>
 
-      {!address ? (
-        <div className="panel">
+        {!address ? (
           <button
+            className="home-menu-button home-menu-button-primary"
             disabled={!primaryConnector}
             onClick={() => {
               if (primaryConnector) {
@@ -60,21 +66,33 @@ export function HomePage() {
           >
             Connect Wallet
           </button>
-        </div>
-      ) : (
-        <div className="panel">
-          <p style={{ margin: 0, wordBreak: 'break-all' }}>Player: {address}</p>
-          <p style={{ margin: 0, color: 'var(--text-secondary)' }}>Total runs: {playerMeta?.total_games ?? 0}</p>
-          <button className="btn-primary" onClick={handleCreateGame} disabled={isCreatingGame}>
-            {isCreatingGame ? 'Creating Game...' : 'New Game'}
-          </button>
-          <div className="game-list">
-            <button onClick={() => navigate('mygames')}>My Games</button>
-            <button onClick={() => navigate('leaderboard')}>Leaderboard</button>
-          </div>
-          {error ? <p style={{ margin: 0, color: 'var(--accent-red)' }}>{error}</p> : null}
-        </div>
-      )}
+        ) : (
+          <>
+            <div className="home-menu-meta">
+              <p className="home-menu-address" title={address}>Player: {address}</p>
+              <p className="home-menu-runs">Total runs: {playerMeta?.total_games ?? 0}</p>
+            </div>
+
+            <div className="home-menu-actions">
+              <button
+                className="home-menu-button home-menu-button-primary"
+                onClick={handleCreateGame}
+                disabled={isCreatingGame}
+              >
+                {isCreatingGame ? 'Forging Run...' : 'New Game'}
+              </button>
+              <button className="home-menu-button" onClick={() => navigate('mygames')}>
+                My Games
+              </button>
+              <button className="home-menu-button" onClick={() => navigate('leaderboard')}>
+                Leaderboard
+              </button>
+            </div>
+
+            {error ? <p className="home-menu-error">{error}</p> : null}
+          </>
+        )}
+      </section>
     </main>
   )
 }

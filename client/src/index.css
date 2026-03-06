@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Crimson+Text:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=MedievalSharp&family=Cormorant+Garamond:wght@400;500;600;700&display=swap');
 
 :root {
   --bg-primary: #080810;
@@ -21,8 +21,8 @@
   --border-color: #252848;
   --border-glow: #353868;
 
-  --font-title: 'Cinzel', serif;
-  --font-body: 'Crimson Text', serif;
+  --font-title: 'MedievalSharp', serif;
+  --font-body: 'Cormorant Garamond', serif;
 
   --radius-sm: 4px;
   --radius-md: 8px;
@@ -523,8 +523,127 @@ button:disabled, .btn:disabled {
 }
 
 @keyframes pulse-glow {
-  0%, 100% { filter: drop-shadow(0 0 8px rgba(134, 112, 162, 0.22)); }
-  50% { filter: drop-shadow(0 0 16px rgba(134, 112, 162, 0.38)); }
+  0%, 100% { filter: drop-shadow(0 0 10px rgba(240, 192, 64, 0.25)); }
+  50% { filter: drop-shadow(0 0 20px rgba(240, 192, 64, 0.42)); }
+}
+
+.home-menu {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  padding: 1.25rem;
+}
+
+.home-menu-shell {
+  width: min(56rem, 96vw);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  background: linear-gradient(160deg, rgba(13, 16, 32, 0.78), rgba(15, 13, 28, 0.86));
+  border: 1px solid rgba(240, 192, 64, 0.2);
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  padding: 1.2rem 1rem 1.1rem;
+}
+
+.home-menu-logo {
+  width: clamp(11rem, 36vw, 20rem);
+  max-width: 92%;
+  user-select: none;
+  animation: float 3s ease-in-out infinite, pulse-glow 3.4s ease-in-out infinite;
+}
+
+.home-menu-tagline {
+  margin-top: -0.35rem;
+  font-family: var(--font-body);
+  font-size: clamp(1.05rem, 2.8vw, 1.45rem);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: #c8bfd8;
+  text-align: center;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.45);
+}
+
+.home-menu-meta {
+  width: 100%;
+  text-align: center;
+  display: grid;
+  gap: 0.22rem;
+  padding: 0.2rem 0.2rem 0.1rem;
+}
+
+.home-menu-address {
+  margin: 0;
+  color: #e4dff0;
+  font-size: clamp(0.95rem, 2.3vw, 1.25rem);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-menu-runs {
+  margin: 0;
+  color: #a8a0bc;
+  font-size: clamp(1rem, 2.35vw, 1.25rem);
+}
+
+.home-menu-actions {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.6rem;
+}
+
+.home-menu-button {
+  width: 100%;
+  min-height: 3rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(121, 113, 170, 0.35);
+  background: linear-gradient(180deg, rgba(42, 40, 74, 0.84), rgba(31, 30, 57, 0.84));
+  color: #f2eef8;
+  font-family: var(--font-title);
+  font-size: clamp(1rem, 2.5vw, 1.45rem);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.home-menu-button:hover:not(:disabled) {
+  border-color: rgba(240, 192, 64, 0.55);
+  background: linear-gradient(180deg, rgba(58, 54, 91, 0.95), rgba(37, 34, 64, 0.95));
+}
+
+.home-menu-button-primary {
+  border-color: rgba(240, 192, 64, 0.45);
+  background: linear-gradient(180deg, rgba(89, 63, 28, 0.88), rgba(58, 42, 18, 0.9));
+  box-shadow: 0 0 16px rgba(240, 192, 64, 0.2);
+}
+
+.home-menu-button-primary:hover:not(:disabled) {
+  border-color: rgba(255, 214, 123, 0.82);
+  background: linear-gradient(180deg, rgba(111, 79, 38, 0.92), rgba(74, 53, 23, 0.94));
+}
+
+.home-menu-error {
+  width: 100%;
+  margin: 0.2rem 0 0;
+  color: #ffbcbc;
+  background: rgba(46, 14, 16, 0.68);
+  border: 1px solid rgba(208, 64, 80, 0.45);
+  border-radius: 0.6rem;
+  padding: 0.5rem 0.7rem;
+  text-align: center;
+  font-size: 1rem;
+}
+
+@media (min-width: 768px) {
+  .home-menu {
+    padding: 1.75rem;
+  }
+
+  .home-menu-shell {
+    padding: 1.6rem 1.6rem 1.35rem;
+  }
 }
 
 .loading-screen {
