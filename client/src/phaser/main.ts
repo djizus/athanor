@@ -10,7 +10,6 @@ export function createPhaserGame(parent: string, bridge: PhaserBridge): Phaser.G
     backgroundColor: '#080810',
     transparent: true,
     banner: false,
-    disableVisibilityChange: true,
     dom: { createContainer: false },
     scale: {
       mode: Phaser.Scale.RESIZE,
