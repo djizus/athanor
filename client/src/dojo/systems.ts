@@ -76,6 +76,15 @@ export function createSystemCalls(manifest: Manifest) {
         },
       ]),
 
+    glean: (account: AccountInterface, game_id: BigNumberish) =>
+      account.execute([
+        {
+          contractAddress: gameSystemAddress,
+          entrypoint: 'glean',
+          calldata: [game_id],
+        },
+      ]),
+
     surrender: (account: AccountInterface, game_id: BigNumberish) =>
       account.execute([
         {
@@ -114,6 +123,21 @@ export function createSystemCalls(manifest: Manifest) {
           contractAddress: craftingSystemAddress,
           entrypoint: 'craft',
           calldata: [game_id, ingredient_a, ingredient_b],
+        },
+      ]),
+
+    gameCraft: (
+      account: AccountInterface,
+      game_id: BigNumberish,
+      ingredient_a: BigNumberish,
+      ingredient_b: BigNumberish,
+      quantity: BigNumberish = 1,
+    ) =>
+      account.execute([
+        {
+          contractAddress: gameSystemAddress,
+          entrypoint: 'craft',
+          calldata: [game_id, ingredient_a, ingredient_b, quantity],
         },
       ]),
 

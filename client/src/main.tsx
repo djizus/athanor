@@ -2,13 +2,19 @@ import { StrictMode } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { type Chain } from '@starknet-react/chains'
-import { StarknetConfig, jsonRpcProvider } from '@starknet-react/core'
+import { StarknetConfig, jsonRpcProvider, paymasterRpcProvider } from '@starknet-react/core'
 import './index.css'
 import App from './App.tsx'
+import { LoadingScreen } from './ui/LoadingScreen'
 import { dojoConfig } from '../dojo.config'
 import { cartridgeConnector } from './cartridgeConnector'
+import { devConnector } from './devConnector'
 import { DojoProvider, type DojoSetup } from './dojo/context'
 import { setupDojo } from './dojo/setup'
+
+const isDevMode = (import.meta.env.VITE_PUBLIC_DEPLOY_TYPE ?? 'dev') === 'dev'
+const connector = isDevMode ? devConnector : cartridgeConnector
+console.info('[athanor:init] connector mode:', isDevMode ? 'dev (PredeployedConnector)' : 'production (CartridgeController)')
 
 function createSlotChain(nodeUrl: string): Chain {
   return {
@@ -35,6 +41,8 @@ function createSlotChain(nodeUrl: string): Chain {
 function Root() {
   const [dojo, setDojo] = useState<DojoSetup | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [initStatus, setInitStatus] = useState('Bootstrapping client...')
+  const [initError, setInitError] = useState<string | null>(null)
 
   const chain = useMemo(() => createSlotChain(dojoConfig().rpcUrl), [])
   const provider = useMemo(
@@ -44,21 +52,45 @@ function Root() {
       }),
     [],
   )
+  const paymaster = useMemo(
+    () =>
+      paymasterRpcProvider({
+        rpc: () => ({ nodeUrl: dojoConfig().rpcUrl }),
+      }),
+    [],
+  )
 
   useEffect(() => {
     let mounted = true
 
-    setupDojo()
+    console.groupCollapsed('[athanor:init] root')
+    console.info('[athanor:init] env', {
+      rpcUrl: dojoConfig().rpcUrl,
+      toriiUrl: dojoConfig().toriiUrl,
+      worldAddress: dojoConfig().manifest.world.address,
+      deployType: import.meta.env.VITE_PUBLIC_DEPLOY_TYPE ?? 'dev',
+    })
+
+    setupDojo(setInitStatus)
       .then((result) => {
+        console.info('[athanor:init] setupDojo resolved')
         if (mounted) {
           setDojo(result)
+          setInitStatus('Initialization complete')
           setIsLoading(false)
         }
       })
-      .catch(() => {
+      .catch((error: unknown) => {
+        console.error('[athanor:init] setupDojo failed', error)
+        const message = error instanceof Error ? error.message : String(error)
         if (mounted) {
+          setInitError(message)
+          setInitStatus('Initialization failed')
           setIsLoading(false)
         }
+      })
+      .finally(() => {
+        console.groupEnd()
       })
 
     return () => {
@@ -66,12 +98,14 @@ function Root() {
     }
   }, [])
 
+  console.info('[athanor:render] Root render — isLoading:', isLoading, 'dojo:', !!dojo, 'error:', initError)
+
   if (isLoading || !dojo) {
-    return <div>Loading...</div>
+    return <LoadingScreen status={initStatus} error={initError} />
   }
 
   return (
-    <StarknetConfig autoConnect chains={[chain]} provider={provider} connectors={[cartridgeConnector]}>
+    <StarknetConfig autoConnect chains={[chain]} provider={provider} paymasterProvider={paymaster} connectors={[connector]}>
       <DojoProvider value={dojo}>
         <App />
       </DojoProvider>

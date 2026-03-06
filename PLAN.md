@@ -981,15 +981,51 @@ pub mod systems { ... }  // unchanged
 After each step, run `sozo build` to verify. The refactor is purely structural —
 no behavioral changes. Every system call produces identical state transitions.
 
-### Phase 5: Client MVP
-- [ ] Dojo setup, Torii sync, Controller connector
-- [ ] Navigation store (zustand) + page transitions
-- [ ] HomePage: connect, new game, my games, leaderboard
-- [ ] PlayScreen: hero panel, exploration feed (from events), craft panel, grimoire, inventory
-- [ ] MyGamesPage: active/finished games list
-- [ ] LeaderboardPage: fastest completion times
-- [ ] SettingsPage: basic settings
-- [ ] Session policies for Controller
+### Phase 5: Client MVP (in progress)
+
+#### 5.1 Foundation ✅
+- [x] Dojo setup, Torii sync, Controller connector (from initial scaffold)
+- [x] Navigation store (zustand) + page routing
+- [x] Session policies for Controller
+- [x] System call wrappers (dojo/systems.ts)
+- [x] All game hooks: useGame, useHeroes, useRecipes, useInventory, useGameTokens, usePlayerMeta
+
+#### 5.2 Asset Pipeline ✅
+- [x] Copy alchemist assets → client/public/assets/ (backgrounds, heroes, ingredients, potions, sounds)
+- [x] Copy asset generation pipeline → scripts/generate-assets/ (fal.ai Flux 2 Pro integration)
+- [x] Aligned game constants with contract names (Moonpetal, Dewmoss, etc.)
+- [x] Asset URL helpers (heroAssetUrl, ingredientAssetUrl)
+
+#### 5.3 Phaser 3 Integration ✅
+- [x] Install Phaser 3.90.0
+- [x] PhaserBridge (EventEmitter linking React ↔ Phaser): hero updates, session state, zone changes, effects
+- [x] createPhaserGame(parent, bridge) entry point
+- [x] BootScene: fallback texture generation + real asset loading with HEAD checks
+- [x] MainScene: manages ZoneBackground, HeroSprite[], EventEffect; listens to bridge events
+- [x] ZoneBackground: crossfade between zones + 4 ambient particle layers (meadow sparkles, cavern sparks, spire arcane, lab dust)
+- [x] HeroSprite: circle-masked portrait, HP bar, name label, aura glow, bob/move tweens, trail emitter
+- [x] EventEffect: particle effects for trap, gold, heal, beastWin, beastLose, ingredientDrop, craftSuccess, craftFail, discovery, gameOver
+- [x] Color/layout utility modules
+
+#### 5.4 Dark Glass HUD Theme ✅
+- [x] Full CSS theme (~520 lines): CSS variables, Google Fonts (Cinzel + Crimson Text), glassmorphism panels
+- [x] Component classes: .panel, .tab-bar/.tab, .hero-card, .recipe-card, .stat-bar, .craft-panel, .leaderboard-table, .game-card, .game-over-banner
+- [x] Layout classes: .page, .page-center, .page-title, .page-scroll, .status-bar, .nav-bar
+- [x] Button variants: .btn-primary (gold glow), .btn-danger (red)
+- [x] Scrollbar styling, select inputs
+
+#### 5.5 UI Pages ✅
+- [x] App.tsx: Phaser canvas (#game-container z:0) + React overlay (.app z:1, pointer-events:none) + PageRouter
+- [x] PlayScreen (Draft C tabbed layout): status bar (gold, progress, seed) + tab bar (Heroes/Craft/Grimoire/Bag) + full tab content with hero cards, craft selects, recipe grid, ingredient inventory by zone
+- [x] HomePage: connect wallet, new game, my games, leaderboard (CSS class migration)
+- [x] MyGamesPage: sorted game list with status badges (CSS class migration)
+- [x] LeaderboardPage: ranked table with gold-highlighted top 3 (CSS class migration)
+
+#### 5.6 Remaining
+- [ ] Wire remaining Phaser interactions (craft effect trigger, sound on actions, zone change on hero focus)
+- [ ] Visual smoke test with pnpm dev
+- [ ] Restyle SettingsPage (if it exists)
+- [ ] Error states & loading skeletons
 
 ### Phase 6: Polish + Deploy
 - [ ] Deploy to Slot for testing

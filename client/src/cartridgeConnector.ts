@@ -19,6 +19,8 @@ function buildPolicies(): SessionPolicies {
       [game]: {
         methods: [
           { name: 'create', entrypoint: 'create' },
+          { name: 'glean', entrypoint: 'glean' },
+          { name: 'craft', entrypoint: 'craft' },
           { name: 'surrender', entrypoint: 'surrender' },
         ],
       },
@@ -48,4 +50,8 @@ function buildPolicies(): SessionPolicies {
 export const cartridgeConnector = new ControllerConnector({
   chains: [{ rpcUrl: dojoConfig().rpcUrl }],
   policies: buildPolicies(),
+})
+
+console.info('[athanor:init] cartridgeConnector configured', {
+  rpcUrl: dojoConfig().rpcUrl,
 })

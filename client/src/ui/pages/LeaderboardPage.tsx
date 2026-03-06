@@ -51,46 +51,46 @@ export function LeaderboardPage() {
   }, [contractComponents.GameSession, entities])
 
   return (
-    <main style={{ padding: '2rem', maxWidth: 980, margin: '0 auto', display: 'grid', gap: '1rem' }}>
-      <section style={{ background: '#1d1d1d', border: '1px solid #2f2f2f', borderRadius: 12, padding: '1rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem' }}>
-          <h1 style={{ margin: 0 }}>Leaderboard</h1>
+    <div className="glass-page">
+      <div className="glass-page-panel">
+        <div className="glass-page-header">
+          <h1 className="glass-page-title">Leaderboard</h1>
           <button onClick={() => navigate('home')}>Back</button>
         </div>
-      </section>
 
-      <section style={{ background: '#1d1d1d', border: '1px solid #2f2f2f', borderRadius: 12, padding: '1rem' }}>
-        {rows.length === 0 ? (
-          <p style={{ margin: 0, color: 'rgba(255,255,255,0.72)' }}>No completed games yet.</p>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ textAlign: 'left', borderBottom: '1px solid #333' }}>
-                  <th style={{ padding: '0.5rem' }}>Rank</th>
-                  <th style={{ padding: '0.5rem' }}>Player</th>
-                  <th style={{ padding: '0.5rem' }}>Game</th>
-                  <th style={{ padding: '0.5rem' }}>Recipes Discovered</th>
-                  <th style={{ padding: '0.5rem' }}>Time</th>
-                  <th style={{ padding: '0.5rem' }}>Started At</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row, index) => (
-                  <tr key={row.gameId} style={{ borderBottom: '1px solid #2a2a2a' }}>
-                    <td style={{ padding: '0.5rem' }}>{index + 1}</td>
-                    <td style={{ padding: '0.5rem' }}>{truncateAddress(row.player)}</td>
-                    <td style={{ padding: '0.5rem' }}>#{row.gameId}</td>
-                    <td style={{ padding: '0.5rem' }}>{row.discoveredCount}/10</td>
-                    <td style={{ padding: '0.5rem', color: 'rgba(255,255,255,0.7)' }}>N/A</td>
-                    <td style={{ padding: '0.5rem' }}>{formatStartedAt(row.startedAt)}</td>
+        <div className="glass-page-body">
+          {rows.length === 0 ? (
+            <p style={{ color: 'var(--text-secondary)' }}>No completed games yet.</p>
+          ) : (
+            <div className="table-scroll">
+              <table className="leaderboard-table">
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Player</th>
+                    <th>Game</th>
+                    <th>Recipes Discovered</th>
+                    <th>Time</th>
+                    <th>Started At</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-    </main>
+                </thead>
+                <tbody>
+                  {rows.map((row, index) => (
+                    <tr key={row.gameId}>
+                      <td>{index + 1}</td>
+                      <td>{truncateAddress(row.player)}</td>
+                      <td>#{row.gameId}</td>
+                      <td>{row.discoveredCount}/10</td>
+                      <td>N/A</td>
+                      <td>{formatStartedAt(row.startedAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }

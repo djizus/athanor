@@ -1,10 +1,23 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAccount, useConnect } from '@starknet-react/core'
 import { RpcProvider } from 'starknet'
 import { usePlayerMeta } from '@/hooks/usePlayerMeta'
+import { usePlayerName } from '@/hooks/usePlayerName'
+import { usePlayerRank } from '@/hooks/usePlayerRank'
+import { useGameTokens } from '@/hooks/useGameTokens'
 import { useDojo } from '@/dojo/useDojo'
 import { extractGameId } from '@/dojo/systems'
 import { useNavigationStore } from '@/stores/navigationStore'
+import { txToast } from '@/stores/toastStore'
+import { SettingsOverlay } from '@/ui/components/SettingsOverlay'
+
+function formatBestTime(bestTimeBigInt: bigint | undefined): string {
+  if (!bestTimeBigInt || bestTimeBigInt <= 0n) return 'NA'
+  const totalSeconds = Number(bestTimeBigInt)
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${minutes}m ${seconds}s`
+}
 
 export function HomePage() {
   const { client, config } = useDojo()
@@ -12,10 +25,26 @@ export function HomePage() {
   const { address, account } = useAccount()
   const { connect, connectors } = useConnect()
   const playerMeta = usePlayerMeta(address)
+  const games = useGameTokens(address)
+  const { displayName, isUsername } = usePlayerName(address)
+  const rank = usePlayerRank(address)
   const [isCreatingGame, setIsCreatingGame] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   const primaryConnector = connectors[0]
+
+  const activeGame = useMemo(
+    () => games.find((g) => !g.game_over) ?? null,
+    [games],
+  )
+
+  useEffect(() => {
+    if (activeGame) {
+      console.info('[HomePage] active game detected, resuming game #', activeGame.game_id)
+      navigate('play', activeGame.game_id)
+    }
+  }, [activeGame, navigate])
 
   const handleCreateGame = async () => {
     if (!account) return
@@ -23,6 +52,7 @@ export function HomePage() {
     setError(null)
     setIsCreatingGame(true)
 
+    const t = txToast('Creating game')
     try {
       const provider = new RpcProvider({ nodeUrl: config.rpcUrl })
       const mintResult = await client.mintGame(account)
@@ -34,63 +64,148 @@ export function HomePage() {
       }
 
       await client.create(account, gameId)
+      t.success('Game created')
       navigate('play', gameId)
     } catch (creationError) {
       const message = creationError instanceof Error ? creationError.message : 'Game creation failed'
+      t.error(message)
       setError(message)
     } finally {
       setIsCreatingGame(false)
     }
   }
 
-  return (
-    <main style={{ padding: '2rem', maxWidth: 760, margin: '0 auto' }}>
-      <h1 style={{ margin: 0 }}>Athanor</h1>
-      <p style={{ color: 'rgba(255,255,255,0.72)', marginTop: '0.5rem' }}>Transmute, explore, survive.</p>
+  const truncatedAddress = address
+    ? `${address.slice(0, 6)}...${address.slice(-4)}`
+    : ''
 
-      {!address ? (
-        <div
-          style={{
-            marginTop: '1.25rem',
-            padding: '1rem',
-            border: '1px solid #2f2f2f',
-            borderRadius: 12,
-            background: '#1d1d1d',
-          }}
-        >
+  const bestTime = formatBestTime(playerMeta?.best_time as bigint | undefined)
+  const totalGames = playerMeta?.total_games ?? 0
+  const particles = Array.from({ length: 12 }, (_, idx) => idx)
+
+  function getRankIcon(r: number | null): string {
+    if (r === null) return '🔮'
+    if (r === 1) return '👑'
+    if (r === 2) return '🥈'
+    if (r === 3) return '🥉'
+    if (r <= 10) return '⚔️'
+    return '🔮'
+  }
+  const rankIcon = getRankIcon(rank)
+
+  if (!address) {
+    return (
+      <div className="glass-page home-menu-page">
+        <section className="home-menu-shell">
+          <div className="ambient-particles" aria-hidden>
+            {particles.map((idx) => (
+              <span key={`menu-disconnected-particle-${idx}`} className="ambient-particle" />
+            ))}
+          </div>
+          <div className="home-menu-center">
+            <img
+              src="/assets/branding/logo-loading-gold-shadow.png"
+              alt="Athanor"
+              draggable={false}
+              className="home-menu-logo"
+            />
+            <div className="home-menu-rank-panel">
+              <span className="home-menu-rank-icon">🔮</span>
+              <span className="home-menu-rank-text">Rank #— · Best: NA · Runs: 0</span>
+            </div>
+            <div className="home-menu-actions">
+              <button
+                className="home-menu-button home-menu-button-primary"
+                disabled={!primaryConnector}
+                onClick={() => {
+                  if (primaryConnector) {
+                    connect({ connector: primaryConnector })
+                  }
+                }}
+              >
+                Connect Wallet
+              </button>
+            </div>
+          </div>
+        </section>
+      </div>
+    )
+  }
+
+  return (
+    <div className="glass-page home-menu-page">
+      <section className="home-menu-shell">
+        <div className="ambient-particles" aria-hidden>
+          {particles.map((idx) => (
+            <span key={`menu-connected-particle-${idx}`} className="ambient-particle" />
+          ))}
+        </div>
+        <div className="home-menu-topbar">
+          <button className="home-menu-player-chip" type="button" onClick={() => {}}>
+            {isUsername ? (
+              <>
+                <span className="home-menu-player-name">{displayName}</span>
+                <span className="home-menu-player-address">👤 {truncatedAddress}</span>
+              </>
+            ) : (
+              <span className="home-menu-player-name">👤 {displayName}</span>
+            )}
+          </button>
           <button
-            disabled={!primaryConnector}
-            onClick={() => {
-              if (primaryConnector) {
-                connect({ connector: primaryConnector })
-              }
-            }}
+            className="home-menu-gear"
+            onClick={() => setSettingsOpen(true)}
+            aria-label="Settings"
           >
-            Connect Wallet
+            <span aria-hidden>⚙</span>
+            <span>Settings</span>
           </button>
         </div>
-      ) : (
-        <div
-          style={{
-            display: 'grid',
-            gap: '0.75rem',
-            marginTop: '1.25rem',
-            padding: '1rem',
-            border: '1px solid #2f2f2f',
-            borderRadius: 12,
-            background: '#1d1d1d',
-          }}
-        >
-          <p style={{ margin: 0, wordBreak: 'break-all' }}>Player: {address}</p>
-          <p style={{ margin: 0, color: 'rgba(255,255,255,0.72)' }}>Total runs: {playerMeta?.total_games ?? 0}</p>
-          <button onClick={handleCreateGame} disabled={isCreatingGame}>
-            {isCreatingGame ? 'Creating Game...' : 'New Game'}
-          </button>
-          <button onClick={() => navigate('mygames')}>My Games</button>
-          <button onClick={() => navigate('leaderboard')}>Leaderboard</button>
-          {error ? <p style={{ margin: 0, color: '#f44336' }}>{error}</p> : null}
+
+        <div className="home-menu-center">
+          <img
+            src="/assets/branding/logo-loading-gold-shadow.png"
+            alt="Athanor"
+            draggable={false}
+            className="home-menu-logo"
+          />
+          <div className="home-menu-rank-panel">
+            <span className="home-menu-rank-icon">{rankIcon}</span>
+            <span className="home-menu-rank-text">Rank #{rank ?? '—'} · Best: {bestTime} · Runs: {totalGames}</span>
+          </div>
+          <div className="home-menu-actions">
+            {activeGame ? (
+              <button
+                className="home-menu-button home-menu-button-primary"
+                onClick={() => navigate('play', activeGame.game_id)}
+              >
+                Continue Game #{activeGame.game_id}
+              </button>
+            ) : (
+              <button
+                className="home-menu-button home-menu-button-primary"
+                onClick={handleCreateGame}
+                disabled={isCreatingGame}
+              >
+                {isCreatingGame ? 'Forging Run...' : 'New Game'}
+              </button>
+            )}
+            <button className="home-menu-button" onClick={() => navigate('mygames')}>
+              My Games{games.length > 0 ? ` (${games.length})` : ''}
+            </button>
+            <button className="home-menu-button" onClick={() => navigate('leaderboard')}>
+              Leaderboard
+            </button>
+          </div>
+
+          {error ? <p className="home-menu-error">{error}</p> : null}
         </div>
-      )}
-    </main>
+
+        <SettingsOverlay
+          open={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
+          address={address}
+        />
+      </section>
+    </div>
   )
 }

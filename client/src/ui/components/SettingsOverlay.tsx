@@ -1,0 +1,93 @@
+import { useCallback, useState } from 'react'
+import { useSettingsStore } from '@/stores/settingsStore'
+
+type SettingsOverlayProps = {
+  open: boolean
+  onClose: () => void
+  address: string
+  isGameOver?: boolean
+  onSurrender?: () => void
+}
+
+export function SettingsOverlay({ open, onClose, address, isGameOver, onSurrender }: SettingsOverlayProps) {
+  const { sfxVolume, musicVolume, setSfxVolume, setMusicVolume } = useSettingsStore()
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(address)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // clipboard API unavailable
+    }
+  }, [address])
+
+  if (!open) return null
+
+  return (
+    <>
+      <div className="settings-overlay-backdrop" onClick={onClose} />
+      <div className="settings-overlay panel">
+        <h2 className="settings-overlay-title">Settings</h2>
+
+        <div className="settings-section">
+          <h3 className="settings-section-label">Sound</h3>
+          <div className="settings-slider-row">
+            <span className="settings-slider-label">Effects</span>
+            <input
+              type="range"
+              className="settings-slider"
+              min={0}
+              max={1}
+              step={0.05}
+              value={sfxVolume}
+              onChange={(e) => setSfxVolume(Number(e.target.value))}
+            />
+            <span className="settings-slider-value">{Math.round(sfxVolume * 100)}%</span>
+          </div>
+          <div className="settings-slider-row">
+            <span className="settings-slider-label">Music</span>
+            <input
+              type="range"
+              className="settings-slider"
+              min={0}
+              max={1}
+              step={0.05}
+              value={musicVolume}
+              onChange={(e) => setMusicVolume(Number(e.target.value))}
+            />
+            <span className="settings-slider-value">{Math.round(musicVolume * 100)}%</span>
+          </div>
+        </div>
+
+        <div className="settings-section">
+          <h3 className="settings-section-label">Wallet</h3>
+          <div className="settings-wallet">
+            <span className="settings-wallet-address">{address}</span>
+            <button className="settings-wallet-copy" onClick={handleCopy}>
+              {copied ? 'Copied!' : 'Copy'}
+            </button>
+          </div>
+        </div>
+
+        {onSurrender && (
+          <div className="settings-section settings-surrender-section">
+            <h3 className="settings-section-label">Game</h3>
+            <button
+              className="settings-surrender-btn btn-danger"
+              onClick={onSurrender}
+              disabled={isGameOver}
+            >
+              Surrender
+            </button>
+          </div>
+        )}
+
+        <button className="home-menu-button settings-close-btn" onClick={onClose}>
+          Close
+        </button>
+      </div>
+    </>
+  )
+}
