@@ -8,6 +8,7 @@ default = "ATHANOR"
 
 [env]
 rpc_url = "https://api.cartridge.gg/x/starknet/sepolia"
+world_address = "0x0105c803b39505fc491487fd171f22a8dd5f115e7ef74cdde8edc4a255dd4c15"
 account_address = "0x059b1a0c489b635d7c7f43594d187362ddd2dcea6c82db4eef2579fd185b3753"
 keystore_path = "./keystore_sepolia.json"
 
