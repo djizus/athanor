@@ -12,7 +12,7 @@ export function LoadingScreen({ status, error }: LoadingScreenProps) {
       />
       <div className="loading-content">
         <img
-          src="/assets/branding/logo-loading-black.png"
+          src="/assets/branding/logo-loading-gold-shadow.png"
           alt="Athanor"
           draggable={false}
           className="loading-logo"
