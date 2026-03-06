@@ -7,7 +7,6 @@ pub trait IConfigSystem<T> {
 
 #[dojo::contract]
 pub mod config_system {
-    use dojo::model::ModelStorage;
     use dojo::world::{WorldStorage, WorldStorageTrait};
     use game_components_minigame::extensions::settings::interface::{
         IMinigameSettings, IMinigameSettingsDetails,
@@ -18,10 +17,12 @@ pub mod config_system {
     use openzeppelin_introspection::src5::SRC5Component;
     use starknet::storage::StoragePointerWriteAccess;
     use starknet::{ContractAddress, get_block_timestamp};
+
     use athanor::constants::DEFAULT_NS;
     use athanor::models::config::{
         GameSettings, GameSettingsMetadata, GameSettingsTrait,
     };
+    use athanor::store::{StoreImpl, StoreTrait};
     use super::IConfigSystem;
 
     component!(path: SettingsComponent, storage: settings, event: SettingsEvent);
@@ -51,14 +52,15 @@ pub mod config_system {
     }
 
     fn dojo_init(ref self: ContractState, creator_address: ContractAddress) {
-        let mut world: WorldStorage = self.world(@DEFAULT_NS());
+        let world: WorldStorage = self.world(@DEFAULT_NS());
         let timestamp = get_block_timestamp();
+        let mut store = StoreImpl::new(world);
 
         self.settings.initializer();
 
-        world.write_model(@GameSettingsTrait::new_default());
-        world
-            .write_model(
+        store.set_settings(@GameSettingsTrait::new_default());
+        store
+            .set_settings_meta(
                 @GameSettingsMetadata {
                     settings_id: 0,
                     name: 'Default',
@@ -94,8 +96,8 @@ pub mod config_system {
     #[abi(embed_v0)]
     impl MinigameSettingsImpl of IMinigameSettings<ContractState> {
         fn settings_exist(self: @ContractState, settings_id: u32) -> bool {
-            let world: WorldStorage = self.world(@DEFAULT_NS());
-            let settings: GameSettings = world.read_model(settings_id);
+            let store = StoreImpl::new(self.world(@DEFAULT_NS()));
+            let settings = store.settings(settings_id);
             settings.exists()
         }
     }
@@ -103,8 +105,8 @@ pub mod config_system {
     #[abi(embed_v0)]
     impl MinigameSettingsDetailsImpl of IMinigameSettingsDetails<ContractState> {
         fn settings_details(self: @ContractState, settings_id: u32) -> GameSettingDetails {
-            let world: WorldStorage = self.world(@DEFAULT_NS());
-            let metadata: GameSettingsMetadata = world.read_model(settings_id);
+            let store = StoreImpl::new(self.world(@DEFAULT_NS()));
+            let metadata = store.settings_meta(settings_id);
 
             GameSettingDetails {
                 name: format!("{}", metadata.name),
@@ -119,8 +121,8 @@ pub mod config_system {
     #[abi(embed_v0)]
     impl ConfigSystemImpl of IConfigSystem<ContractState> {
         fn get_game_settings(self: @ContractState, settings_id: u32) -> GameSettings {
-            let world: WorldStorage = self.world(@DEFAULT_NS());
-            world.read_model(settings_id)
+            let store = StoreImpl::new(self.world(@DEFAULT_NS()));
+            store.settings(settings_id)
         }
     }
 }

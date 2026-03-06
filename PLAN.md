@@ -731,7 +731,7 @@ const HERO_BASE_REGEN: u16 = 100;    // 1.00 HP/s (x100)
 - [x] apply_potion: permanent stat buff (max_hp +val×100, power +val×100, regen +val×10)
 - [ ] Tests
 
-### Phase 4.5: Architecture Refactor (nums patterns)
+### Phase 4.5: Architecture Refactor (nums patterns) ✅
 
 Adopt Store pattern, centralized Config, model assertions, and event constructors from the
 `references/nums/` codebase. **NOT adopting** full component architecture — Athanor's systems
@@ -765,10 +765,10 @@ world.write_model(@Config { key: 0, token_address: denshokan_address, vrf_addres
 **Other systems** — Remove `token_address` / `vrf_address` from Storage and dojo_init.
 Read via Store instead.
 
-- [ ] Add Config model to models/config.cairo
-- [ ] Write Config in game_system.dojo_init
-- [ ] Remove token_address/vrf_address from exploration_system, crafting_system, hero_system Storage
-- [ ] Remove their dojo_init functions (no longer needed)
+- [x] Add Config model to models/config.cairo
+- [x] Write Config in game_system.dojo_init
+- [x] Remove token_address/vrf_address from exploration_system, crafting_system, hero_system Storage
+- [x] Remove their dojo_init functions (no longer needed)
 
 #### Step 2: Store abstraction
 
@@ -820,12 +820,12 @@ pub impl StoreImpl of StoreTrait {
 }
 ```
 
-- [ ] Create store.cairo with Store struct
-- [ ] Add typed getters for all 11 models
-- [ ] Add typed setters for all 11 models
-- [ ] Add dispatcher getters (token, vrf) reading from Config
-- [ ] Add event emission methods for all 8 events
-- [ ] Export from lib.cairo
+- [x] Create store.cairo with Store struct
+- [x] Add typed getters for all 11 models
+- [x] Add typed setters for all 11 models
+- [x] Add dispatcher getters (token, vrf) reading from Config
+- [x] Add event emission methods for all 8 events
+- [x] Export from lib.cairo
 
 #### Step 3: Event constructors
 
@@ -855,11 +855,11 @@ pub impl GameCreatedImpl of GameCreatedTrait {
 }
 ```
 
-- [ ] Create events/index.cairo (move struct definitions from events.cairo)
-- [ ] Create constructor files for each event group
-- [ ] Delete old events.cairo
-- [ ] Update lib.cairo module tree
-- [ ] Update Store event methods to use constructors
+- [x] Create events/index.cairo (move struct definitions from events.cairo)
+- [x] Create constructor files for each event group
+- [x] Delete old events.cairo
+- [x] Update lib.cairo module tree
+- [x] Update Store event methods to use constructors
 
 #### Step 4: Model assertions
 
@@ -893,9 +893,9 @@ pub impl HeroAssert of HeroAssertTrait {
 }
 ```
 
-- [ ] Add GameSessionAssert to models/game.cairo
-- [ ] Add HeroAssert to models/hero.cairo
-- [ ] Replace inline assertions in systems with trait method calls
+- [x] Add GameSessionAssert to models/game.cairo
+- [x] Add HeroAssert to models/hero.cairo
+- [x] Replace inline assertions in systems with trait method calls
 
 #### Step 5: Model logic traits
 
@@ -922,9 +922,9 @@ pub impl GameSessionImpl of GameSessionTrait {
 }
 ```
 
-- [ ] Add HeroTrait to models/hero.cairo
-- [ ] Add GameSessionTrait to models/game.cairo
-- [ ] Update systems to use model methods
+- [x] Add HeroTrait to models/hero.cairo (new, apply_buff, idle_regen, complete_expedition)
+- [x] Add GameSessionTrait to models/game.cairo (new)
+- [x] Update systems to use model methods
 
 #### Step 6: System migration
 
@@ -942,11 +942,11 @@ Rewrite each system to use Store. This is the largest step but mechanical — re
 7. Read token_address/vrf_address from Store config instead of self.storage
 
 **Systems to migrate (in order):**
-- [ ] game_system (most complex — has MinigameComponent, keeps its own Storage for that)
-- [ ] exploration_system (remove Storage entirely)
-- [ ] crafting_system (remove Storage entirely)
-- [ ] hero_system (remove Storage entirely)
-- [ ] config_system (keeps SettingsComponent Storage)
+- [x] game_system (MinigameComponent kept, Storage reduced to component-only, reads Config via Store)
+- [x] exploration_system (Storage removed entirely, reads Config via Store)
+- [x] crafting_system (Storage removed entirely, reads Config via Store)
+- [x] hero_system (Storage removed entirely, reads Config via Store)
+- [x] config_system (SettingsComponent kept, uses Store for model access)
 
 #### Step 7: Module tree + cleanup
 
@@ -971,10 +971,10 @@ pub mod interfaces { ... }  // unchanged
 pub mod systems { ... }  // unchanged
 ```
 
-- [ ] Update lib.cairo
-- [ ] Remove dead imports
-- [ ] `sozo build` passes clean
-- [ ] Update PLAN.md decision 9.4 (VRF addresses now in Config, not per-system Storage)
+- [x] Update lib.cairo (events/ module tree, store module)
+- [x] Remove dead imports (zero warnings from our code)
+- [x] `sozo build` passes clean
+- [x] Update PLAN.md decision 9.4 + 9.5 (architecture decisions documented)
 
 #### Verification
 
@@ -1028,7 +1028,7 @@ Cartridge VRF is called per expedition start and per hint purchase (not just at 
 - Salt = `poseidon(game_id, hero_id, timestamp)` for expeditions
 - Salt = `poseidon(game_id, hints_used, timestamp)` for hints
 - `from_vrf_address(vrf_addr, salt)` abstracts VRF vs pseudo-random fallback (zero address = dev mode)
-- exploration_system and crafting_system each store `vrf_address` in their own Storage
+- `vrf_address` stored in centralized Config model, read via Store (not per-system Storage)
 
 ### 9.5 Architecture — Store Pattern (not Components)
 

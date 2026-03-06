@@ -1,6 +1,19 @@
 use starknet::ContractAddress;
 use athanor::constants;
 
+// --- Singleton system config (key = 0) ---
+// Stores external addresses used by all systems.
+// Written once in game_system.dojo_init, read via Store.
+
+#[derive(Copy, Drop, Serde)]
+#[dojo::model]
+pub struct Config {
+    #[key]
+    pub key: felt252,
+    pub token_address: ContractAddress,
+    pub vrf_address: ContractAddress,
+}
+
 #[derive(Copy, Drop, Serde)]
 #[dojo::model]
 pub struct GameSettings {

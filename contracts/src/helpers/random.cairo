@@ -1,5 +1,4 @@
 use core::num::traits::Zero;
-use core::pedersen::pedersen;
 use core::poseidon::poseidon_hash_span;
 use starknet::{
     ContractAddress, get_block_timestamp, get_caller_address, get_contract_address, get_tx_info,
@@ -51,7 +50,7 @@ pub impl RandomImpl of RandomTrait {
 
     fn next_seed(ref self: Random) -> felt252 {
         self.nonce += 1;
-        self.seed = pedersen(self.seed, self.nonce.into());
+        self.seed = poseidon_hash_span(array![self.seed, self.nonce.into()].span());
         self.seed
     }
 

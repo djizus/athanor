@@ -1,6 +1,15 @@
 pub mod constants;
 pub mod types;
-pub mod events;
+pub mod store;
+
+pub mod events {
+    pub mod index;
+    pub mod exploration;
+    pub mod game;
+    pub mod crafting;
+    pub mod hero;
+    pub mod loot;
+}
 
 pub mod interfaces {
     pub mod vrf;
