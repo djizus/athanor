@@ -45,17 +45,20 @@ export class BootScene extends Phaser.Scene {
   }
 
   private async loadAssets(): Promise<void> {
+    // Collect all valid URLs first (async), then queue loads synchronously.
+    // Phaser's loader nulls its internal list between async yields in create().
+    const imageLoads: { key: string; url: string; replace?: boolean }[] = [];
+    const audioLoads: { key: string; url: string }[] = [];
+
     const labUrl = '/assets/backgrounds/lab-bg.png';
     if (await this.urlExists(labUrl)) {
-      this.textures.remove('lab-bg');
-      this.load.image('lab-bg', labUrl);
+      imageLoads.push({ key: 'lab-bg', url: labUrl, replace: true });
     }
 
     for (let i = 0; i < ZONE_BG_KEYS.length; i++) {
       const url = `/assets/backgrounds/${ZONE_BG_KEYS[i]}.png`;
       if (await this.urlExists(url)) {
-        this.textures.remove(`zone-${i}`);
-        this.load.image(`zone-${i}`, url);
+        imageLoads.push({ key: `zone-${i}`, url, replace: true });
       }
     }
 
@@ -63,18 +66,27 @@ export class BootScene extends Phaser.Scene {
     for (const name of heroNames) {
       const url = `/assets/heroes/hero-${name}.png`;
       if (await this.urlExists(url)) {
-        this.load.image(`hero-${name}`, url);
+        imageLoads.push({ key: `hero-${name}`, url });
       }
     }
 
     for (const key of SFX_KEYS) {
       const url = `/assets/sounds/effects/${key}.mp3`;
       if (await this.urlExists(url)) {
-        this.load.audio(key, url);
+        audioLoads.push({ key, url });
       }
     }
 
-    if (this.load.list.size === 0) return;
+    if (imageLoads.length === 0 && audioLoads.length === 0) return;
+
+    // Queue all loads synchronously — no awaits between loader calls
+    for (const { key, url, replace } of imageLoads) {
+      if (replace) this.textures.remove(key);
+      this.load.image(key, url);
+    }
+    for (const { key, url } of audioLoads) {
+      this.load.audio(key, url);
+    }
 
     await new Promise<void>((resolve) => {
       this.load.once(Phaser.Loader.Events.COMPLETE, () => resolve());
