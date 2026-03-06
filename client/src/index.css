@@ -659,8 +659,8 @@ button:disabled, .btn:disabled {
 
 .home-menu-rank-text {
   font-family: var(--font-title);
-  font-size: clamp(0.85rem, 2vw, 1rem);
-  font-weight: 700;
+  font-size: clamp(1rem, 2.5vw, 1.45rem);
+  font-weight: normal;
   letter-spacing: 0.06em;
   color: #2a1208;
   -webkit-text-stroke: 1px rgba(248, 196, 116, 0.86);
@@ -1011,8 +1011,8 @@ button:disabled, .btn:disabled {
 
 .loading-status {
   font-family: var(--font-title);
-  font-size: 1rem;
-  font-weight: 700;
+  font-size: clamp(1rem, 2.5vw, 1.45rem);
+  font-weight: normal;
   color: #2a1208;
   display: inline-block;
   padding: 0.45rem 0.85rem;
