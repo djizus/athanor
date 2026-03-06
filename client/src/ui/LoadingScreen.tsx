@@ -7,7 +7,7 @@ export function LoadingScreen() {
       />
       <div className="loading-content">
         <img
-          src="/assets/branding/logo.svg"
+          src="/assets/branding/logo.png"
           alt="Athanor"
           draggable={false}
           className="loading-logo"

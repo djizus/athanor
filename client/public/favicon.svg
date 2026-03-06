@@ -1,22 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Athanor icon">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Athanor icon">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#141224" />
-      <stop offset="100%" stop-color="#080810" />
+      <stop offset="100%" stop-color="#070714" />
     </linearGradient>
     <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#ffe8a3" />
-      <stop offset="55%" stop-color="#f0c040" />
-      <stop offset="100%" stop-color="#a08020" />
+      <stop offset="0%" stop-color="#f4d982" />
+      <stop offset="100%" stop-color="#b7942b" />
     </linearGradient>
   </defs>
 
-  <rect width="256" height="256" rx="52" fill="url(#bg)" />
-  <circle cx="128" cy="128" r="92" fill="none" stroke="#2a243f" stroke-width="6" />
-  <circle cx="128" cy="128" r="72" fill="none" stroke="#3a3256" stroke-width="2" opacity="0.8" />
+  <rect width="512" height="512" rx="80" fill="url(#bg)" />
 
-  <path d="M128 58L71 194h27l10-26h40l10 26h27L128 58zm-9 85l9-24 9 24h-18z" fill="url(#gold)" />
-  <rect x="103" y="145" width="50" height="10" rx="5" fill="#f6d27a" />
+  <circle cx="256" cy="256" r="204" fill="none" stroke="#8e7527" stroke-opacity="0.9" stroke-width="4" />
+  <circle cx="256" cy="256" r="175" fill="none" stroke="#30295c" stroke-width="10" />
+  <circle cx="256" cy="256" r="137" fill="none" stroke="#3d336f" stroke-width="4" />
 
-  <circle cx="128" cy="128" r="104" fill="none" stroke="#f0c040" stroke-opacity="0.35" stroke-width="2" />
+  <polygon points="256,110 142,404 196,404 256,242 316,404 370,404" fill="url(#gold)" />
 </svg>
