@@ -937,6 +937,19 @@ button:disabled, .btn:disabled {
   margin-top: 0.25rem;
 }
 
+.settings-surrender-section {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 0.75rem;
+}
+
+.settings-surrender-btn {
+  width: 100%;
+  padding: 0.5rem 1rem;
+  font-family: var(--font-title);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
 @media (min-width: 768px) {
   .home-menu-shell {
     padding: 1.5rem 2.5rem 2rem;
@@ -1112,17 +1125,6 @@ button:disabled, .btn:disabled {
 .play-settings-btn:hover {
   color: var(--text-primary);
   border-color: var(--border-glow);
-}
-
-.play-surrender-btn {
-  position: absolute;
-  bottom: 12px;
-  right: 12px;
-  z-index: 12;
-  padding: 0.4rem 1rem;
-  font-family: var(--font-title);
-  font-size: 0.8rem;
-  cursor: pointer;
 }
 
 .play-left-panels {
