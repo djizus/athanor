@@ -1,18 +1,19 @@
 import Phaser from 'phaser';
 import { HERO_NAMES } from '@/game/constants';
 import type { AthanorHero } from '../PhaserBridge';
+import { PhaserBridge } from '../PhaserBridge';
 import { COLORS } from '../utils/colors';
-import { FONTS } from '../utils/layout';
+import { BASE_CAMP_X, FONTS, WORLD_WIDTH } from '../utils/layout';
 import type { EventEffect } from './EventEffect';
 
 const HERO_TINTS = [0x4080d0, 0x40c060, 0xa050d0];
 const HERO_PORTRAIT_KEYS = ['hero-alaric', 'hero-brynn', 'hero-cassiel'];
 const PORTRAIT_SIZE = 48;
-const EXPLORE_RANGE = 220;
 const HP_BAR_WIDTH = 40;
 
 const STATUS_IDLE = 0;
 const STATUS_EXPLORING = 1;
+const STATUS_RETURNING = 2;
 
 export class HeroSprite extends Phaser.GameObjects.Container {
   private readonly sceneRef: Phaser.Scene;
@@ -23,18 +24,27 @@ export class HeroSprite extends Phaser.GameObjects.Container {
 
   private readonly aura: Phaser.GameObjects.Arc;
   private readonly hpFill: Phaser.GameObjects.Rectangle;
+  private readonly selectionRing: Phaser.GameObjects.Arc;
   private readonly trailEmitter: Phaser.GameObjects.Particles.ParticleEmitter;
+  private readonly bridge: PhaserBridge | null;
+  private heroId: number;
 
   private bobTween: Phaser.Tweens.Tween;
   private auraTween: Phaser.Tweens.Tween | null = null;
   private hpTween: Phaser.Tweens.Tween | null = null;
   private moveTween: Phaser.Tweens.Tween | null = null;
+  private ringTween: Phaser.Tweens.Tween | null = null;
 
   private lastStatus = -1;
   private lastHpRatio = -1;
   private lastTargetX = -1;
   private lastDefeated = false;
   private maskGfx: Phaser.GameObjects.Graphics | null = null;
+  private isSelected = false;
+
+  private readonly onHeroSelected = (selectedHeroId: number): void => {
+    this.updateSelection(selectedHeroId === this.heroId);
+  };
 
   constructor(
     scene: Phaser.Scene,
@@ -48,8 +58,11 @@ export class HeroSprite extends Phaser.GameObjects.Container {
     this.sceneRef = scene;
     this.baseX = baseX;
     this.baseY = baseY;
+    this.heroId = hero.hero_id;
     this.heroTint = HERO_TINTS[heroIndex] ?? COLORS.white;
     this.eventEffect = eventEffect;
+    const bridgeFromRegistry = scene.registry.get('bridge');
+    this.bridge = bridgeFromRegistry instanceof PhaserBridge ? bridgeFromRegistry : null;
 
     this.aura = scene.add.circle(0, 6, 36, COLORS.white, 0.08);
     this.aura.setBlendMode(Phaser.BlendModes.ADD);
@@ -60,6 +73,11 @@ export class HeroSprite extends Phaser.GameObjects.Container {
 
     this.hpFill = scene.add.rectangle(-HP_BAR_WIDTH / 2, -44, HP_BAR_WIDTH, 4, COLORS.hpGreen, 1);
     this.hpFill.setOrigin(0, 0.5);
+
+    this.selectionRing = scene.add.circle(0, 8, 36);
+    this.selectionRing.setStrokeStyle(3, COLORS.gold, 0.95);
+    this.selectionRing.setFillStyle(0x000000, 0);
+    this.selectionRing.setVisible(false);
 
     const portraitKey = HERO_PORTRAIT_KEYS[heroIndex];
     const hasPortrait = portraitKey && scene.textures.exists(portraitKey);
@@ -85,8 +103,13 @@ export class HeroSprite extends Phaser.GameObjects.Container {
     const label = scene.add.text(0, 60, name, FONTS.bodySmall);
     label.setOrigin(0.5, 0);
 
-    this.add([this.aura, hpBg, this.hpFill, ...bodyParts, label]);
+    this.add([this.aura, this.selectionRing, hpBg, this.hpFill, ...bodyParts, label]);
     scene.add.existing(this);
+
+    this.setInteractive(new Phaser.Geom.Circle(0, 8, 36), Phaser.Geom.Circle.Contains);
+    this.on(Phaser.Input.Events.POINTER_DOWN, () => {
+      this.bridge?.selectHero(this.heroId);
+    });
 
     this.bobTween = scene.tweens.add({
       targets: this,
@@ -110,6 +133,9 @@ export class HeroSprite extends Phaser.GameObjects.Container {
     });
     this.trailEmitter.startFollow(this, -18, 14);
 
+    this.bridge?.on('heroSelected', this.onHeroSelected);
+    this.updateSelection(this.bridge?.selectedHeroId === this.heroId);
+
     this.syncToHero(hero);
   }
 
@@ -118,6 +144,7 @@ export class HeroSprite extends Phaser.GameObjects.Container {
   };
 
   syncToHero(hero: AthanorHero): void {
+    this.heroId = hero.hero_id;
     const hpRatio = hero.max_hp > 0 ? Phaser.Math.Clamp(hero.hp / hero.max_hp, 0, 1) : 0;
     const defeated = hero.hp <= 0;
     const targetX = this.getTargetX(hero);
@@ -161,6 +188,9 @@ export class HeroSprite extends Phaser.GameObjects.Container {
         if (hero.status === STATUS_EXPLORING) {
           this.trailEmitter.start();
           this.configureAura(COLORS.blue, 0.2, 1.18, 1000);
+        } else if (hero.status === STATUS_RETURNING) {
+          this.trailEmitter.stop();
+          this.configureAura(COLORS.gold, 0.24, 1.2, 900);
         } else {
           this.trailEmitter.stop();
           this.configureAura(COLORS.gold, 0.24, 1.2, 900);
@@ -188,20 +218,24 @@ export class HeroSprite extends Phaser.GameObjects.Container {
 
   override destroy(fromScene?: boolean): void {
     this.sceneRef.events.off(Phaser.Scenes.Events.PRE_UPDATE, this.updateMaskPos, this);
+    this.bridge?.off('heroSelected', this.onHeroSelected);
     this.maskGfx?.destroy();
     this.bobTween.stop();
     this.stopAuras();
     this.hpTween?.stop();
     this.moveTween?.stop();
+    this.ringTween?.stop();
     this.trailEmitter.destroy();
     super.destroy(fromScene);
   }
 
   private getTargetX(hero: AthanorHero): number {
     if (hero.status === STATUS_EXPLORING) {
-      return this.baseX + Math.min(EXPLORE_RANGE, hero.death_depth * 5);
+      const progress = Phaser.Math.Clamp(hero.death_depth / 60, 0, 1);
+      return BASE_CAMP_X + progress * (WORLD_WIDTH - BASE_CAMP_X - 100);
     }
-    return this.baseX;
+    if (hero.status === STATUS_RETURNING) return BASE_CAMP_X;
+    return BASE_CAMP_X;
   }
 
   private updateHpBar(hpRatio: number): void {
@@ -235,5 +269,32 @@ export class HeroSprite extends Phaser.GameObjects.Container {
     this.auraTween?.stop();
     this.auraTween = null;
     this.aura.setVisible(false);
+  }
+
+  private updateSelection(selected: boolean): void {
+    if (this.isSelected === selected) return;
+    this.isSelected = selected;
+    this.selectionRing.setVisible(selected);
+
+    this.ringTween?.stop();
+    this.ringTween = null;
+
+    if (!selected) {
+      this.selectionRing.setAlpha(1);
+      this.selectionRing.setScale(1);
+      this.selectionRing.setAngle(0);
+      return;
+    }
+
+    this.ringTween = this.sceneRef.tweens.add({
+      targets: this.selectionRing,
+      alpha: 0.45,
+      scale: 1.08,
+      angle: 360,
+      duration: 900,
+      ease: 'Sine.InOut',
+      yoyo: true,
+      repeat: -1,
+    });
   }
 }

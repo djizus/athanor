@@ -1,83 +1,59 @@
 import Phaser from 'phaser';
 import { COLORS, ZONE_TINTS } from '../utils/colors';
-import { GAME_HEIGHT, GAME_WIDTH } from '../utils/layout';
+import {
+  BASE_CAMP_X,
+  GAME_HEIGHT,
+  WORLD_WIDTH,
+  ZONE_0_X,
+  ZONE_1_X,
+  ZONE_2_X,
+} from '../utils/layout';
 
 interface AmbientLayer {
   emitter: Phaser.GameObjects.Particles.ParticleEmitter;
-  activeZone: number | null;
 }
 
 export class ZoneBackground {
   private readonly scene: Phaser.Scene;
   private readonly container: Phaser.GameObjects.Container;
-  private readonly currentBg: Phaser.GameObjects.Image;
-  private readonly transitionBg: Phaser.GameObjects.Image;
-  private targetKey = 'lab-bg';
+  private readonly zoneBackgrounds: Phaser.GameObjects.Image[] = [];
+  private readonly labOverlay: Phaser.GameObjects.Image;
   private readonly ambientLayers: AmbientLayer[] = [];
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
     this.container = scene.add.container(0, 0);
 
-    this.currentBg = scene.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'lab-bg');
-    this.currentBg.setDisplaySize(GAME_WIDTH, GAME_HEIGHT);
-    this.transitionBg = scene.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'lab-bg');
-    this.transitionBg.setDisplaySize(GAME_WIDTH, GAME_HEIGHT);
-    this.transitionBg.setAlpha(0);
+    this.createZoneBackgrounds();
+    this.labOverlay = scene.add.image(BASE_CAMP_X + 180, GAME_HEIGHT / 2, 'lab-bg');
+    this.labOverlay.setDisplaySize(460, GAME_HEIGHT);
+    this.labOverlay.setAlpha(0.18);
+    this.labOverlay.setDepth(1);
 
-    this.container.add([this.currentBg, this.transitionBg]);
+    this.container.add([...this.zoneBackgrounds, this.labOverlay]);
     this.createAmbientEmitters();
-    this.setActiveZone(null);
-  }
-
-  setActiveZone(zoneId: number | null): void {
-    const nextKey = zoneId === null ? 'lab-bg' : `zone-${zoneId}`;
-    this.crossfade(nextKey);
-
-    for (const layer of this.ambientLayers) {
-      const active = layer.activeZone === zoneId;
-      if (active) layer.emitter.start(); else layer.emitter.stop();
-      layer.emitter.setVisible(active);
-    }
   }
 
   destroy(): void {
-    this.scene.tweens.killTweensOf(this.currentBg);
-    this.scene.tweens.killTweensOf(this.transitionBg);
     for (const layer of this.ambientLayers) layer.emitter.destroy();
-    this.currentBg.destroy();
-    this.transitionBg.destroy();
+    for (const bg of this.zoneBackgrounds) bg.destroy();
+    this.labOverlay.destroy();
     this.container.destroy();
   }
 
-  private crossfade(nextKey: string): void {
-    if (this.targetKey === nextKey) return;
-    this.targetKey = nextKey;
+  private createZoneBackgrounds(): void {
+    const zoneDefs = [
+      { key: 'zone-0', x: ZONE_0_X, width: ZONE_1_X - ZONE_0_X },
+      { key: 'zone-1', x: ZONE_1_X, width: ZONE_2_X - ZONE_1_X },
+      { key: 'zone-2', x: ZONE_2_X, width: WORLD_WIDTH - ZONE_2_X },
+    ] as const;
 
-    this.scene.tweens.killTweensOf(this.currentBg);
-    this.scene.tweens.killTweensOf(this.transitionBg);
-
-    this.transitionBg.setTexture(nextKey);
-    this.transitionBg.setAlpha(0);
-
-    this.scene.tweens.add({
-      targets: this.currentBg,
-      alpha: 0,
-      duration: 500,
-      ease: 'Sine.Out',
-    });
-
-    this.scene.tweens.add({
-      targets: this.transitionBg,
-      alpha: 1,
-      duration: 500,
-      ease: 'Sine.Out',
-      onComplete: () => {
-        this.currentBg.setTexture(nextKey);
-        this.currentBg.setAlpha(1);
-        this.transitionBg.setAlpha(0);
-      },
-    });
+    for (const zone of zoneDefs) {
+      const bg = this.scene.add.image(zone.x + zone.width / 2, GAME_HEIGHT / 2, zone.key);
+      bg.setDisplaySize(zone.width, GAME_HEIGHT);
+      bg.setDepth(0);
+      this.zoneBackgrounds.push(bg);
+    }
   }
 
   private createAmbientEmitters(): void {
@@ -89,7 +65,7 @@ export class ZoneBackground {
 
   private createLabDust(): AmbientLayer {
     const emitter = this.scene.add.particles(0, 0, 'particle-dust', {
-      x: { min: 0, max: GAME_WIDTH },
+      x: { min: 0, max: 480 },
       y: { min: 0, max: GAME_HEIGHT },
       quantity: 1,
       frequency: 420,
@@ -102,12 +78,12 @@ export class ZoneBackground {
     });
     emitter.setDepth(2);
     this.container.add(emitter);
-    return { emitter, activeZone: null };
+    return { emitter };
   }
 
   private createMeadowSparkles(): AmbientLayer {
     const emitter = this.scene.add.particles(0, 0, 'particle-gold', {
-      x: { min: 0, max: GAME_WIDTH },
+      x: { min: ZONE_0_X, max: ZONE_1_X },
       y: { min: GAME_HEIGHT * 0.3, max: GAME_HEIGHT * 0.95 },
       quantity: 1,
       frequency: 180,
@@ -121,12 +97,12 @@ export class ZoneBackground {
     });
     emitter.setDepth(2);
     this.container.add(emitter);
-    return { emitter, activeZone: 0 };
+    return { emitter };
   }
 
   private createCavernSparks(): AmbientLayer {
     const emitter = this.scene.add.particles(0, 0, 'particle-spark', {
-      x: { min: 0, max: GAME_WIDTH },
+      x: { min: ZONE_1_X, max: ZONE_2_X },
       y: { min: 0, max: GAME_HEIGHT * 0.85 },
       quantity: 1,
       frequency: 120,
@@ -139,11 +115,12 @@ export class ZoneBackground {
     });
     emitter.setDepth(2);
     this.container.add(emitter);
-    return { emitter, activeZone: 1 };
+    return { emitter };
   }
 
   private createSpireArcane(): AmbientLayer {
-    const emitter = this.scene.add.particles(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'particle-arcane', {
+    const spireWidth = WORLD_WIDTH - ZONE_2_X;
+    const emitter = this.scene.add.particles(ZONE_2_X + spireWidth / 2, GAME_HEIGHT / 2, 'particle-arcane', {
       emitZone: {
         type: 'edge',
         source: new Phaser.Geom.Circle(0, 0, 180),
@@ -162,6 +139,6 @@ export class ZoneBackground {
     });
     emitter.setDepth(2);
     this.container.add(emitter);
-    return { emitter, activeZone: 2 };
+    return { emitter };
   }
 }

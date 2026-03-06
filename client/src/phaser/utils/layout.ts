@@ -1,5 +1,12 @@
 export const GAME_WIDTH = 1280;
 export const GAME_HEIGHT = 720;
+export const WORLD_WIDTH = 2560;
+
+export const ZONE_0_X = 0;
+export const ZONE_1_X = 854;
+export const ZONE_2_X = 1707;
+
+export const BASE_CAMP_X = 120;
 
 export const FONTS = {
   title: {

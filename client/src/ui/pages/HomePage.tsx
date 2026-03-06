@@ -80,8 +80,8 @@ export function HomePage() {
 
   if (!address) {
     return (
-      <main className="home-menu">
-        <section className="home-menu-shell">
+      <div className="glass-page">
+        <section className="home-menu-shell floating-panel">
           <div className="home-menu-hero">
             <img
               src="/assets/branding/logo-loading-gold-shadow.png"
@@ -105,13 +105,13 @@ export function HomePage() {
             </button>
           </div>
         </section>
-      </main>
+      </div>
     )
   }
 
   return (
-    <main className="home-menu">
-      <section className="home-menu-shell">
+    <div className="glass-page">
+      <section className="home-menu-shell floating-panel">
         <div className="home-menu-topbar">
           <div className="home-menu-player-chip">
             <span className="home-menu-player-name">{displayName}</span>
@@ -140,11 +140,11 @@ export function HomePage() {
 
         <div className="home-menu-bottom">
           <div className="home-menu-stats">
-            <span>🏆 Rank #{rank ?? '—'}</span>
+            <span>Rank #{rank ?? '—'}</span>
             <span className="home-menu-stats-sep">·</span>
-            <span>⏱ Best: {bestTime}</span>
+            <span>Best: {bestTime}</span>
             <span className="home-menu-stats-sep">·</span>
-            <span>🎮 Runs: {totalGames}</span>
+            <span>Runs: {totalGames}</span>
           </div>
 
           <div className="home-menu-actions">
@@ -181,6 +181,6 @@ export function HomePage() {
           address={address}
         />
       </section>
-    </main>
+    </div>
   )
 }

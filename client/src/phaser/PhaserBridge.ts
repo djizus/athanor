@@ -29,6 +29,7 @@ export interface HeroChangePayload {
 export class PhaserBridge extends Phaser.Events.EventEmitter {
   private gameInstance: Phaser.Game | null = null;
   private _focusedHeroId = 0;
+  private _selectedHeroId = -1;
   private previousHeroes = new Map<number, AthanorHero>();
   private previousSession: AthanorSession | null = null;
 
@@ -44,10 +45,24 @@ export class PhaserBridge extends Phaser.Events.EventEmitter {
     return this._focusedHeroId;
   }
 
+  get selectedHeroId(): number {
+    return this._selectedHeroId;
+  }
+
   setFocusedHero(heroId: number): void {
     if (this._focusedHeroId === heroId) return;
     this._focusedHeroId = heroId;
     this.emit('focusedHeroChange', heroId);
+  }
+
+  selectHero(heroId: number): void {
+    this._selectedHeroId = heroId;
+    this.emit('heroSelected', heroId);
+  }
+
+  deselectHero(): void {
+    this._selectedHeroId = -1;
+    this.emit('heroSelected', -1);
   }
 
   updateHeroes(heroes: AthanorHero[]): void {

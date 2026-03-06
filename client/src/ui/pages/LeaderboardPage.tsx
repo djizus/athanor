@@ -51,21 +51,17 @@ export function LeaderboardPage() {
   }, [contractComponents.GameSession, entities])
 
   return (
-    <div className="page">
-      <section className="status-bar">
-        <h1 className="status-bar-title">Leaderboard</h1>
-        <div className="status-bar-actions">
+    <div className="glass-page">
+      <div className="glass-page-panel">
+        <div className="glass-page-header">
+          <h1 className="glass-page-title">Leaderboard</h1>
           <button onClick={() => navigate('home')}>Back</button>
         </div>
-      </section>
 
-      <div className="page-scroll">
-        {rows.length === 0 ? (
-          <div className="panel">
-            <p className="text-secondary">No completed games yet.</p>
-          </div>
-        ) : (
-          <div className="panel">
+        <div className="glass-page-body">
+          {rows.length === 0 ? (
+            <p style={{ color: 'var(--text-secondary)' }}>No completed games yet.</p>
+          ) : (
             <div className="table-scroll">
               <table className="leaderboard-table">
                 <thead>
@@ -92,8 +88,8 @@ export function LeaderboardPage() {
                 </tbody>
               </table>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   )

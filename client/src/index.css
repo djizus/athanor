@@ -918,6 +918,569 @@ button:disabled, .btn:disabled {
   .loading-logo { width: 20rem; }
 }
 
+/* ── Play Screen — Floating Panel System ──────────────────────── */
+
+.play-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.play-screen > * {
+  pointer-events: auto;
+}
+
+.floating-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--glass-shadow);
+}
+
+/* Status HUD — top center pill */
+.status-hud {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0.45rem 1.25rem;
+  font-family: var(--font-title);
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  z-index: 10;
+}
+
+.status-hud-gold { color: var(--accent-gold); }
+.status-hud-recipes { color: var(--text-primary); }
+.status-hud-seed { color: var(--text-muted); font-size: 0.75rem; }
+
+.status-hud-actions {
+  display: flex;
+  gap: 0.4rem;
+  margin-left: 0.5rem;
+}
+
+.status-hud-actions button {
+  font-size: 0.7rem;
+  padding: 0.25rem 0.6rem;
+}
+
+/* Mini Hero Roster — top left */
+.mini-roster {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.6rem;
+  min-width: 200px;
+  z-index: 10;
+}
+
+.mini-roster-hero {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.4rem;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  border: 1px solid transparent;
+}
+
+.mini-roster-hero:hover { background: var(--bg-hover); }
+
+.mini-roster-hero.selected {
+  border-color: var(--accent-gold-dim);
+  background: rgba(240, 192, 64, 0.06);
+}
+
+.mini-roster-portrait {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid var(--border-color);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.mini-roster-hero.selected .mini-roster-portrait {
+  border-color: var(--accent-gold);
+}
+
+.mini-roster-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.mini-roster-name {
+  font-family: var(--font-title);
+  font-size: 0.78rem;
+  color: var(--text-primary);
+}
+
+.mini-roster-hp {
+  width: 100%;
+  height: 4px;
+  background: var(--bg-secondary);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.mini-roster-hp-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.mini-roster-status {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.mini-roster-status.exploring { color: var(--accent-blue); }
+.mini-roster-status.returning { color: var(--accent-gold); }
+.mini-roster-status.loot-ready { color: var(--accent-green); font-weight: 600; }
+
+.mini-roster-locked {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.4rem;
+}
+
+.mini-roster-locked-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px dashed var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.mini-roster-recruit-btn {
+  font-size: 0.7rem;
+  padding: 0.2rem 0.5rem;
+}
+
+/* Action Bar — bottom center contextual */
+.action-bar {
+  position: absolute;
+  bottom: 56px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1.25rem;
+  z-index: 10;
+  animation: action-bar-in 0.2s ease;
+}
+
+@keyframes action-bar-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.action-bar-label {
+  font-family: var(--font-title);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+}
+
+.action-bar-timer {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--accent-blue);
+}
+
+.action-bar .btn-primary {
+  font-size: 0.85rem;
+  padding: 0.5rem 1.5rem;
+}
+
+.action-bar .btn-loot {
+  border-color: var(--accent-green);
+  box-shadow: 0 0 12px rgba(64, 192, 96, 0.2);
+  animation: pulse-loot 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-loot {
+  0%, 100% { box-shadow: 0 0 12px rgba(64, 192, 96, 0.2); }
+  50% { box-shadow: 0 0 20px rgba(64, 192, 96, 0.4); }
+}
+
+/* Right Panel — togglable craft/grimoire/inventory */
+.right-panel {
+  position: absolute;
+  top: 64px;
+  right: 16px;
+  bottom: 56px;
+  width: 300px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: right-panel-in 0.25s ease;
+}
+
+@keyframes right-panel-in {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.right-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.right-panel-title {
+  font-family: var(--font-title);
+  font-size: 0.85rem;
+  color: var(--accent-gold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.right-panel-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1rem;
+  padding: 0.15rem 0.35rem;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.right-panel-close:hover {
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+}
+
+.right-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Hotkey Bar — bottom */
+.hotkey-bar {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.6rem;
+  z-index: 10;
+  opacity: 0.7;
+  transition: opacity var(--transition-fast);
+}
+
+.hotkey-bar:hover { opacity: 1; }
+
+.hotkey-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-family: var(--font-title);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.hotkey-btn:hover {
+  color: var(--text-secondary);
+  border-color: var(--border-glow);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.hotkey-btn.active {
+  color: var(--accent-gold);
+  border-color: var(--accent-gold-dim);
+  background: rgba(240, 192, 64, 0.06);
+}
+
+.hotkey-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  font-size: 0.65rem;
+  background: var(--bg-secondary);
+  border-radius: 3px;
+  color: var(--text-secondary);
+}
+
+.hotkey-btn.active .hotkey-key {
+  background: rgba(240, 192, 64, 0.15);
+  color: var(--accent-gold);
+}
+
+/* Craft section inside right panel */
+.craft-slot-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.craft-slot-row select {
+  flex: 1;
+  padding: 0.45rem;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+}
+
+.craft-slot-row select:focus {
+  outline: none;
+  border-color: var(--accent-gold-dim);
+}
+
+.craft-plus {
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.craft-btn-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.craft-btn-row button { flex: 1; }
+
+/* Grimoire inside right panel */
+.grimoire-progress {
+  width: 100%;
+  height: 6px;
+  background: var(--bg-secondary);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 0.25rem;
+}
+
+.grimoire-progress-fill {
+  height: 100%;
+  background: var(--accent-gold);
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+.grimoire-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+}
+
+.grimoire-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.grimoire-card.discovered { border-color: var(--accent-gold-dim); }
+
+.grimoire-card-title {
+  font-family: var(--font-title);
+  font-size: 0.72rem;
+  color: var(--accent-gold);
+  margin-bottom: 0.15rem;
+}
+
+.grimoire-card-info {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.grimoire-card-undiscovered {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 0.78rem;
+}
+
+/* Inventory inside right panel */
+.inventory-zone-header {
+  font-family: var(--font-title);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  padding: 0.3rem 0 0.15rem;
+  margin-top: 0.35rem;
+}
+
+.inventory-zone-header:first-child { margin-top: 0; }
+
+.inventory-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0;
+}
+
+.inventory-row-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+}
+
+.inventory-row-name { flex: 1; font-size: 0.82rem; }
+.inventory-row-qty { color: var(--text-secondary); font-size: 0.78rem; }
+.inventory-row-zero { opacity: 0.4; }
+
+/* Game over overlay */
+.game-over-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  pointer-events: auto;
+}
+
+.game-over-card {
+  text-align: center;
+  padding: 2rem 3rem;
+}
+
+.game-over-card h2 {
+  font-family: var(--font-title);
+  font-size: 1.8rem;
+  color: var(--accent-gold);
+  margin-bottom: 0.5rem;
+}
+
+.game-over-card.won {
+  border-color: var(--accent-gold-dim);
+  box-shadow: var(--shadow-glow-gold);
+}
+
+.game-over-card.lost { border-color: rgba(208, 64, 80, 0.3); }
+.game-over-card.lost h2 { color: var(--accent-red); }
+
+/* ── Glass Page Overlay (Menu, MyGames, Leaderboard) ─────── */
+
+.glass-page {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.glass-page > * { pointer-events: auto; }
+
+.glass-page-panel {
+  background: rgba(13, 15, 30, 0.82);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--glass-shadow);
+  width: min(56rem, 94vw);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.glass-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.glass-page-title {
+  font-family: var(--font-title);
+  font-size: 1rem;
+  color: var(--accent-gold);
+  letter-spacing: 0.08em;
+}
+
+.glass-page-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+/* ── Responsive — Play Screen ─────────────────────────────── */
+
+@media (max-width: 1023px) {
+  .right-panel { width: 260px; }
+  .mini-roster { min-width: 170px; }
+}
+
+@media (max-width: 767px) {
+  .mini-roster {
+    top: 56px;
+    left: 8px;
+    min-width: auto;
+    padding: 0.4rem;
+  }
+
+  .mini-roster-info { display: none; }
+  .mini-roster-portrait { width: 32px; height: 32px; }
+
+  .right-panel {
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-width: 340px;
+    border-radius: 0;
+  }
+
+  .status-hud {
+    top: 8px;
+    font-size: 0.75rem;
+    gap: 1rem;
+    padding: 0.35rem 1rem;
+  }
+
+  .action-bar { bottom: 48px; }
+  .hotkey-bar { bottom: 6px; }
+}
+
 select::-ms-expand { display: none; }
 
 ::-webkit-scrollbar {
