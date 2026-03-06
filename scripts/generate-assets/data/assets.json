@@ -13,8 +13,8 @@
       "filename": "world-map.png",
       "category": "backgrounds",
       "width": 2560,
-      "height": 720,
-      "description": "Wide panoramic top-down fantasy world map with three biome zones arranged left-to-right connected by winding paths"
+      "height": 1440,
+      "description": "Top-down fantasy world map with three biome zones centered and connected by winding paths, surrounded by decorative wilderness filler"
     }
   ],
   "heroes": [

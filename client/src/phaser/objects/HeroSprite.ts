@@ -3,7 +3,7 @@ import { HERO_NAMES } from '@/game/constants';
 import type { AthanorHero } from '../PhaserBridge';
 import { PhaserBridge } from '../PhaserBridge';
 import { COLORS } from '../utils/colors';
-import { BASE_CAMP_X, FONTS, WORLD_WIDTH } from '../utils/layout';
+import { baseCampWorldX, FONTS, heroWorldX } from '../utils/layout';
 import type { EventEffect } from './EventEffect';
 
 const HERO_TINTS = [0x4080d0, 0x40c060, 0xa050d0];
@@ -230,12 +230,11 @@ export class HeroSprite extends Phaser.GameObjects.Container {
   }
 
   private getTargetX(hero: AthanorHero): number {
+    const sw = this.sceneRef.scale.width;
     if (hero.status === STATUS_EXPLORING) {
-      const progress = Phaser.Math.Clamp(hero.death_depth / 60, 0, 1);
-      return BASE_CAMP_X + progress * (WORLD_WIDTH - BASE_CAMP_X - 100);
+      return heroWorldX(hero.death_depth, sw);
     }
-    if (hero.status === STATUS_RETURNING) return BASE_CAMP_X;
-    return BASE_CAMP_X;
+    return baseCampWorldX(sw);
   }
 
   private updateHpBar(hpRatio: number): void {

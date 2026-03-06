@@ -5,11 +5,8 @@ import { PhaserBridge } from '../PhaserBridge';
 import { EventEffect } from '../objects/EventEffect';
 import { HeroSprite } from '../objects/HeroSprite';
 import { ZoneBackground } from '../objects/ZoneBackground';
-import { BASE_CAMP_X, GAME_HEIGHT, GAME_WIDTH, WORLD_WIDTH } from '../utils/layout';
+import { baseCampWorldX, HERO_ROW_SPACING, HERO_Y_RATIO } from '../utils/layout';
 
-const HERO_START_Y = 430;
-const HERO_ROW_SPACING = 48;
-const HERO_STATUS_EXPLORING = 1;
 const MUSIC_PLAYLIST = ['menu-theme', 'game-loop-1', 'game-loop-2'] as const;
 
 export class MainScene extends Phaser.Scene {
@@ -21,10 +18,6 @@ export class MainScene extends Phaser.Scene {
   private heroContainer!: Phaser.GameObjects.Container;
   private heroSprites = new Map<number, HeroSprite>();
   private lastHeroes: AthanorHero[] = [];
-  private cameraTargetX = BASE_CAMP_X;
-  private dragActive = false;
-  private lastPointerX = 0;
-  private manualPanUntil = 0;
   private currentMusicIndex = 0;
   private currentMusicSound: Phaser.Sound.BaseSound | null = null;
 
@@ -41,43 +34,6 @@ export class MainScene extends Phaser.Scene {
   private readonly onHeroesUpdated = (heroes: AthanorHero[]): void => {
     this.lastHeroes = heroes;
     this.syncHeroes(heroes);
-  };
-
-  private readonly onFocusedHeroChange = (): void => {
-    this.updateCameraTarget();
-  };
-
-  private readonly onHeroSelected = (heroId: number): void => {
-    const selectedSprite = this.heroSprites.get(heroId);
-    if (!selectedSprite) return;
-    this.cameraTargetX = selectedSprite.x;
-    this.manualPanUntil = 0;
-  };
-
-  private readonly onPointerDown = (pointer: Phaser.Input.Pointer): void => {
-    const isDragButton = pointer.rightButtonDown() || pointer.middleButtonDown();
-    if (!isDragButton) return;
-    this.dragActive = true;
-    this.lastPointerX = pointer.x;
-  };
-
-  private readonly onPointerMove = (pointer: Phaser.Input.Pointer): void => {
-    if (!this.dragActive || !pointer.isDown) return;
-    const isDragButton = pointer.rightButtonDown() || pointer.middleButtonDown();
-    if (!isDragButton) return;
-
-    const deltaX = pointer.x - this.lastPointerX;
-    this.lastPointerX = pointer.x;
-
-    const cam = this.cameras.main;
-    const maxScrollX = Math.max(0, WORLD_WIDTH - GAME_WIDTH);
-    cam.scrollX = Phaser.Math.Clamp(cam.scrollX - deltaX, 0, maxScrollX);
-    this.manualPanUntil = this.time.now + 1800;
-    this.cameraTargetX = cam.midPoint.x;
-  };
-
-  private readonly onPointerUp = (): void => {
-    this.dragActive = false;
   };
 
   private readonly onCraftResult = (payload: { discovered: boolean }): void => {
@@ -110,25 +66,14 @@ export class MainScene extends Phaser.Scene {
     this.heroContainer = this.add.container(0, 0);
     this.heroContainer.setDepth(12);
 
-    const cam = this.cameras.main;
-    cam.setBounds(0, 0, WORLD_WIDTH, GAME_HEIGHT);
-    cam.centerOn(BASE_CAMP_X, GAME_HEIGHT / 2);
-    this.cameraTargetX = cam.midPoint.x;
-
     this.input.mouse?.disableContextMenu();
     this.sound.pauseOnBlur = false;
 
     this.bridge.on('heroesUpdated', this.onHeroesUpdated);
-    this.bridge.on('focusedHeroChange', this.onFocusedHeroChange);
-    this.bridge.on('heroSelected', this.onHeroSelected);
     this.bridge.on('craftResult', this.onCraftResult);
     this.bridge.on('gameOver', this.onGameOver);
 
-    this.input.on(Phaser.Input.Events.POINTER_DOWN, this.onPointerDown);
-    this.input.on(Phaser.Input.Events.POINTER_MOVE, this.onPointerMove);
-    this.input.on(Phaser.Input.Events.POINTER_UP, this.onPointerUp);
-    this.input.on(Phaser.Input.Events.GAME_OUT, this.onPointerUp);
-    this.input.on(Phaser.Input.Events.POINTER_UP_OUTSIDE, this.onPointerUp);
+    this.scale.on(Phaser.Scale.Events.RESIZE, this.onResize, this);
 
     console.info('[MainScene:music] audio setup', {
       locked: this.sound.locked,
@@ -146,16 +91,24 @@ export class MainScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.shutdown, this);
   }
 
-  update(_time: number, delta: number): void {
-    if (this.manualPanUntil > this.time.now) return;
+  private onResize(gameSize: Phaser.Structs.Size): void {
+    const w = gameSize.width;
+    const h = gameSize.height;
 
-    this.updateCameraTarget();
+    this.zoneBackground?.resize(w, h);
+    this.repositionHeroes(w, h);
+  }
 
-    const cam = this.cameras.main;
-    const maxScrollX = Math.max(0, WORLD_WIDTH - GAME_WIDTH);
-    const desiredScrollX = Phaser.Math.Clamp(this.cameraTargetX - GAME_WIDTH / 2, 0, maxScrollX);
-    const lerpFactor = 1 - Math.exp(-delta * 0.008);
-    cam.scrollX = Phaser.Math.Linear(cam.scrollX, desiredScrollX, lerpFactor);
+  private repositionHeroes(w: number, h: number): void {
+    const bx = baseCampWorldX(w);
+
+    this.lastHeroes.forEach((hero, index) => {
+      const by = h * HERO_Y_RATIO + index * HERO_ROW_SPACING;
+      const sprite = this.heroSprites.get(hero.hero_id);
+      if (!sprite) return;
+      sprite.setBasePosition(bx, by);
+      sprite.syncToHero(hero);
+    });
   }
 
   private startMusicPlaylist(): void {
@@ -198,6 +151,9 @@ export class MainScene extends Phaser.Scene {
 
   private syncHeroes(heroes: AthanorHero[]): void {
     const activeIds = new Set(heroes.map((h) => h.hero_id));
+    const w = this.scale.width;
+    const h = this.scale.height;
+    const bx = baseCampWorldX(w);
 
     for (const [heroId, sprite] of this.heroSprites.entries()) {
       if (!activeIds.has(heroId)) {
@@ -207,13 +163,11 @@ export class MainScene extends Phaser.Scene {
     }
 
     heroes.forEach((hero, index) => {
-      const by = HERO_START_Y + index * HERO_ROW_SPACING;
-      const sprite = this.getOrCreateHeroSprite(hero, index, BASE_CAMP_X, by);
-      sprite.setBasePosition(BASE_CAMP_X, by);
+      const by = h * HERO_Y_RATIO + index * HERO_ROW_SPACING;
+      const sprite = this.getOrCreateHeroSprite(hero, index, bx, by);
+      sprite.setBasePosition(bx, by);
       sprite.syncToHero(hero);
     });
-
-    this.updateCameraTarget();
   }
 
   private getOrCreateHeroSprite(hero: AthanorHero, idx: number, bx: number, by: number): HeroSprite {
@@ -228,39 +182,6 @@ export class MainScene extends Phaser.Scene {
     return sprite;
   }
 
-  private updateCameraTarget(): void {
-    const selectedHeroId = this.bridge?.selectedHeroId ?? -1;
-    const focusedHeroId = this.bridge?.focusedHeroId ?? -1;
-
-    const selectedHero = this.lastHeroes.find((hero) => hero.hero_id === selectedHeroId);
-    if (selectedHero) {
-      this.cameraTargetX = this.getHeroWorldX(selectedHero);
-      return;
-    }
-
-    const focusedHero = this.lastHeroes.find((hero) => hero.hero_id === focusedHeroId);
-    if (focusedHero?.status === HERO_STATUS_EXPLORING) {
-      this.cameraTargetX = this.getHeroWorldX(focusedHero);
-      return;
-    }
-
-    const exploringHero = this.lastHeroes.find((hero) => hero.status === HERO_STATUS_EXPLORING);
-    if (exploringHero) {
-      this.cameraTargetX = this.getHeroWorldX(exploringHero);
-      return;
-    }
-
-    this.cameraTargetX = BASE_CAMP_X;
-  }
-
-  private getHeroWorldX(hero: AthanorHero): number {
-    if (hero.status === HERO_STATUS_EXPLORING) {
-      const progress = Phaser.Math.Clamp(hero.death_depth / 60, 0, 1);
-      return BASE_CAMP_X + progress * (WORLD_WIDTH - BASE_CAMP_X - 100);
-    }
-    return BASE_CAMP_X;
-  }
-
   private tryPlaySound(key: string, volume = 0.5): void {
     if (!this.cache.audio.exists(key)) return;
     const { sfxVolume } = getSettingsSnapshot();
@@ -268,19 +189,14 @@ export class MainScene extends Phaser.Scene {
   }
 
   private shutdown(): void {
+    this.scale.off(Phaser.Scale.Events.RESIZE, this.onResize, this);
+
     if (this.bridge) {
       this.bridge.off('heroesUpdated', this.onHeroesUpdated);
-      this.bridge.off('focusedHeroChange', this.onFocusedHeroChange);
-      this.bridge.off('heroSelected', this.onHeroSelected);
       this.bridge.off('craftResult', this.onCraftResult);
       this.bridge.off('gameOver', this.onGameOver);
     }
 
-    this.input.off(Phaser.Input.Events.POINTER_DOWN, this.onPointerDown);
-    this.input.off(Phaser.Input.Events.POINTER_MOVE, this.onPointerMove);
-    this.input.off(Phaser.Input.Events.POINTER_UP, this.onPointerUp);
-    this.input.off(Phaser.Input.Events.GAME_OUT, this.onPointerUp);
-    this.input.off(Phaser.Input.Events.POINTER_UP_OUTSIDE, this.onPointerUp);
     this.input.off(Phaser.Input.Events.POINTER_DOWN, this.onFirstInteractionMusic);
     this.sound.off(Phaser.Sound.Events.UNLOCKED, this.startMusicPlaylist, this);
 

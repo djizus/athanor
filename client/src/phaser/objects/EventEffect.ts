@@ -1,6 +1,5 @@
 import Phaser from 'phaser';
 import { COLORS } from '../utils/colors';
-import { GAME_HEIGHT, GAME_WIDTH } from '../utils/layout';
 
 export class EventEffect {
   private readonly scene: Phaser.Scene;
@@ -8,6 +7,9 @@ export class EventEffect {
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
   }
+
+  private get vw(): number { return this.scene.scale.width; }
+  private get vh(): number { return this.scene.scale.height; }
 
   playTrap(x: number, y: number): void {
     this.scene.cameras.main.shake(120, 0.005);
@@ -81,8 +83,8 @@ export class EventEffect {
   }
 
   playCraftSuccess(): void {
-    const cx = GAME_WIDTH / 2;
-    const emitter = this.scene.add.particles(cx, GAME_HEIGHT - 80, 'particle-arcane', {
+    const cx = this.vw / 2;
+    const emitter = this.scene.add.particles(cx, this.vh - 80, 'particle-arcane', {
       quantity: 4,
       frequency: 35,
       lifespan: 900,
@@ -99,7 +101,7 @@ export class EventEffect {
   }
 
   playCraftFail(): void {
-    const emitter = this.scene.add.particles(GAME_WIDTH / 2, GAME_HEIGHT - 120, 'particle-smoke', {
+    const emitter = this.scene.add.particles(this.vw / 2, this.vh - 120, 'particle-smoke', {
       quantity: 3,
       frequency: 50,
       lifespan: 620,
@@ -114,8 +116,8 @@ export class EventEffect {
   }
 
   playDiscovery(): void {
-    const cx = GAME_WIDTH / 2;
-    const cy = GAME_HEIGHT / 2;
+    const cx = this.vw / 2;
+    const cy = this.vh / 2;
 
     this.burst('particle-gold', cx, cy, 64, 120, 280, 980);
     this.scene.time.delayedCall(120, () =>
@@ -131,7 +133,7 @@ export class EventEffect {
 
   playGameOver(): void {
     const rain = this.scene.add.particles(0, -20, 'particle-gold', {
-      x: { min: 0, max: GAME_WIDTH },
+      x: { min: 0, max: this.vw },
       quantity: 6,
       frequency: 35,
       lifespan: 2400,

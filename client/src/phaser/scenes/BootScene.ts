@@ -1,6 +1,9 @@
 import Phaser from 'phaser';
 import { COLORS, ZONE_TINTS } from '../utils/colors';
-import { GAME_HEIGHT, GAME_WIDTH, WORLD_WIDTH } from '../utils/layout';
+import { MAP_HEIGHT, MAP_WIDTH } from '../utils/layout';
+
+const FALLBACK_W = 1920;
+const FALLBACK_H = 1080;
 
 const SFX_KEYS = [
   'click', 'brew-success', 'brew-fail', 'discovery',
@@ -47,13 +50,13 @@ export class BootScene extends Phaser.Scene {
   create(): void {
     const gfx = this.add.graphics();
 
-    this.generateGradient(gfx, 'lab-bg', GAME_WIDTH, GAME_HEIGHT, COLORS.bgPrimary, COLORS.bgSecondary);
-    this.generateGradient(gfx, 'world-map', WORLD_WIDTH, GAME_HEIGHT, COLORS.bgPrimary, COLORS.bgSecondary);
+    this.generateGradient(gfx, 'lab-bg', FALLBACK_W, FALLBACK_H, COLORS.bgPrimary, COLORS.bgSecondary);
+    this.generateGradient(gfx, 'world-map', MAP_WIDTH, MAP_HEIGHT, COLORS.bgPrimary, COLORS.bgSecondary);
 
     for (let i = 0; i < ZONE_TINTS.length; i++) {
       const top = this.blend(ZONE_TINTS[i], COLORS.black, 0.45);
       const bottom = this.blend(ZONE_TINTS[i], COLORS.black, 0.2);
-      this.generateGradient(gfx, `zone-${i}`, GAME_WIDTH, GAME_HEIGHT, top, bottom);
+      this.generateGradient(gfx, `zone-${i}`, FALLBACK_W, FALLBACK_H, top, bottom);
     }
 
     this.generateCircle(gfx, 'hero-sprite', 64, COLORS.white);

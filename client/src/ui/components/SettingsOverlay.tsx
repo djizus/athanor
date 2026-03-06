@@ -5,9 +5,11 @@ type SettingsOverlayProps = {
   open: boolean
   onClose: () => void
   address: string
+  isGameOver?: boolean
+  onSurrender?: () => void
 }
 
-export function SettingsOverlay({ open, onClose, address }: SettingsOverlayProps) {
+export function SettingsOverlay({ open, onClose, address, isGameOver, onSurrender }: SettingsOverlayProps) {
   const { sfxVolume, musicVolume, setSfxVolume, setMusicVolume } = useSettingsStore()
   const [copied, setCopied] = useState(false)
 
@@ -68,6 +70,19 @@ export function SettingsOverlay({ open, onClose, address }: SettingsOverlayProps
             </button>
           </div>
         </div>
+
+        {onSurrender && (
+          <div className="settings-section settings-surrender-section">
+            <h3 className="settings-section-label">Game</h3>
+            <button
+              className="settings-surrender-btn btn-danger"
+              onClick={onSurrender}
+              disabled={isGameOver}
+            >
+              Surrender
+            </button>
+          </div>
+        )}
 
         <button className="home-menu-button settings-close-btn" onClick={onClose}>
           Close

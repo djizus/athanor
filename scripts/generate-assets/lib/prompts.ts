@@ -33,16 +33,17 @@ export function buildBackgroundPrompt(asset: ImageAssetDef): string {
 
 export function buildWorldMapPrompt(): string {
   return [
-    `A wide panoramic top-down bird's-eye view fantasy world map for an alchemy RPG game.`,
-    `Ultra-wide horizontal composition (3.5:1 aspect ratio), three distinct biome zones arranged left-to-right filling the entire width:`,
-    `LEFT THIRD: Verdant Meadow — lush green fields seen from above, scattered wildflowers, ancient standing stones, a small glowing alchemist camp at the far left edge. Soft golden-green light.`,
-    `CENTER THIRD: Crystal Cavern — exposed underground cavern viewed from above, clusters of amber and amethyst crystal formations jutting up, dark stone walls, warm mineral glow from crystal veins.`,
-    `RIGHT THIRD: Aether Spire — ethereal purple floating platforms with a central arcane tower, swirling energy trails on the ground, glowing rune circles, starlit purple atmosphere.`,
-    `A winding dirt path runs horizontally through all three zones from left to right, clearly visible.`,
-    `The zones fill the full width edge-to-edge with smooth transitions between biomes.`,
+    `A top-down bird's-eye view fantasy world map for an alchemy RPG game. 16:9 widescreen composition.`,
+    `Three distinct biome zones arranged LEFT-TO-RIGHT in the CENTER of the image, occupying the central 65% of the width and 50% of the height:`,
+    `LEFT ZONE: Verdant Meadow — lush green fields, scattered wildflowers, ancient standing stones, a small glowing alchemist base camp on the far left. Soft golden-green light.`,
+    `CENTER ZONE: Crystal Cavern — exposed underground cavern, clusters of amber and amethyst crystal formations, dark stone walls, warm mineral glow from crystal veins.`,
+    `RIGHT ZONE: Aether Spire — ethereal purple floating platforms with a central arcane tower, swirling energy trails, glowing rune circles, starlit purple atmosphere.`,
+    `A clearly visible winding dirt path runs horizontally through all three zones from left to right, connecting them in sequence.`,
+    `SURROUNDING AREAS (outside the zones): Dense dark enchanted forest, misty mountains, deep ravines, dark wilderness terrain. This decorative filler extends to all edges of the image.`,
+    `The three zones are CENTERED in the image — they do NOT touch the edges. Dark wilderness filler surrounds them on all four sides.`,
     GLOBAL_ART_STYLE,
-    `Color palette: dark background #080810, green #4a9e4a for meadow, amber #b8860b for cavern, purple #9e4a9e for spire.`,
-    `Full-bleed seamless panoramic scene. Vignette: left and right 5% fades to near-black #080810.`,
+    `Color palette: dark background #080810, green #4a9e4a for meadow, amber #b8860b for cavern, purple #9e4a9e for spire, dark greens and blacks for surrounding wilderness.`,
+    `Full-bleed seamless scene extending edge-to-edge. Vignette: outermost 10% on ALL sides smoothly fades to near-black #080810.`,
     `Top-down orthographic perspective, like a tabletop RPG battle map viewed from directly above.`,
     `No people, no text, no labels, no UI elements, no watermarks, no icons.`,
   ].join(' ');

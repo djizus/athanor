@@ -1,11 +1,12 @@
 import Phaser from 'phaser';
 import { COLORS, ZONE_TINTS } from '../utils/colors';
 import {
-  GAME_HEIGHT,
-  WORLD_WIDTH,
-  ZONE_0_X,
-  ZONE_1_X,
-  ZONE_2_X,
+  MAP_HEIGHT,
+  MAP_WIDTH,
+  ZONE_FRAC_0,
+  ZONE_FRAC_1,
+  ZONE_FRAC_2,
+  zoneWorldX,
 } from '../utils/layout';
 
 interface AmbientLayer {
@@ -14,38 +15,58 @@ interface AmbientLayer {
 
 export class ZoneBackground {
   private readonly scene: Phaser.Scene;
-  private readonly container: Phaser.GameObjects.Container;
   private readonly mapImage: Phaser.GameObjects.Image;
-  private readonly ambientLayers: AmbientLayer[] = [];
+  private ambientLayers: AmbientLayer[] = [];
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
-    this.container = scene.add.container(0, 0);
 
-    this.mapImage = scene.add.image(WORLD_WIDTH / 2, GAME_HEIGHT / 2, 'world-map');
-    this.mapImage.setDisplaySize(WORLD_WIDTH, GAME_HEIGHT);
+    this.mapImage = scene.add.image(0, 0, 'world-map');
+    this.mapImage.setOrigin(0.5, 0.5);
     this.mapImage.setDepth(0);
 
-    this.container.add(this.mapImage);
-    this.createAmbientEmitters();
+    const w = scene.scale.width;
+    const h = scene.scale.height;
+    this.applyCoverFit(w, h);
+    this.createAmbientEmitters(w, h);
+  }
+
+  resize(w: number, h: number): void {
+    this.applyCoverFit(w, h);
+    this.destroyEmitters();
+    this.createAmbientEmitters(w, h);
   }
 
   destroy(): void {
-    for (const layer of this.ambientLayers) layer.emitter.destroy();
+    this.destroyEmitters();
     this.mapImage.destroy();
-    this.container.destroy();
   }
 
-  private createAmbientEmitters(): void {
-    this.ambientLayers.push(this.createMeadowSparkles());
-    this.ambientLayers.push(this.createCavernSparks());
-    this.ambientLayers.push(this.createSpireArcane());
+  private applyCoverFit(w: number, h: number): void {
+    const scaleX = w / MAP_WIDTH;
+    const scaleY = h / MAP_HEIGHT;
+    const coverScale = Math.max(scaleX, scaleY);
+    this.mapImage.setDisplaySize(MAP_WIDTH * coverScale, MAP_HEIGHT * coverScale);
+    this.mapImage.setPosition(w / 2, h / 2);
   }
 
-  private createMeadowSparkles(): AmbientLayer {
+  private destroyEmitters(): void {
+    for (const layer of this.ambientLayers) layer.emitter.destroy();
+    this.ambientLayers = [];
+  }
+
+  private createAmbientEmitters(w: number, h: number): void {
+    this.ambientLayers.push(this.createMeadowSparkles(w, h));
+    this.ambientLayers.push(this.createCavernSparks(w, h));
+    this.ambientLayers.push(this.createSpireArcane(w, h));
+  }
+
+  private createMeadowSparkles(w: number, h: number): AmbientLayer {
+    const x0 = zoneWorldX(ZONE_FRAC_0, w);
+    const x1 = zoneWorldX(ZONE_FRAC_1, w);
     const emitter = this.scene.add.particles(0, 0, 'particle-gold', {
-      x: { min: ZONE_0_X, max: ZONE_1_X },
-      y: { min: GAME_HEIGHT * 0.3, max: GAME_HEIGHT * 0.95 },
+      x: { min: x0, max: x1 },
+      y: { min: h * 0.3, max: h * 0.95 },
       quantity: 1,
       frequency: 180,
       lifespan: 4200,
@@ -57,14 +78,15 @@ export class ZoneBackground {
       blendMode: Phaser.BlendModes.ADD,
     });
     emitter.setDepth(2);
-    this.container.add(emitter);
     return { emitter };
   }
 
-  private createCavernSparks(): AmbientLayer {
+  private createCavernSparks(w: number, h: number): AmbientLayer {
+    const x1 = zoneWorldX(ZONE_FRAC_1, w);
+    const x2 = zoneWorldX(ZONE_FRAC_2, w);
     const emitter = this.scene.add.particles(0, 0, 'particle-spark', {
-      x: { min: ZONE_1_X, max: ZONE_2_X },
-      y: { min: 0, max: GAME_HEIGHT * 0.85 },
+      x: { min: x1, max: x2 },
+      y: { min: 0, max: h * 0.85 },
       quantity: 1,
       frequency: 120,
       lifespan: 1700,
@@ -75,13 +97,14 @@ export class ZoneBackground {
       blendMode: Phaser.BlendModes.ADD,
     });
     emitter.setDepth(2);
-    this.container.add(emitter);
     return { emitter };
   }
 
-  private createSpireArcane(): AmbientLayer {
-    const spireWidth = WORLD_WIDTH - ZONE_2_X;
-    const emitter = this.scene.add.particles(ZONE_2_X + spireWidth / 2, GAME_HEIGHT / 2, 'particle-arcane', {
+  private createSpireArcane(w: number, h: number): AmbientLayer {
+    const x2 = zoneWorldX(ZONE_FRAC_2, w);
+    const x3 = zoneWorldX(1, w);
+    const cx = (x2 + x3) / 2;
+    const emitter = this.scene.add.particles(cx, h / 2, 'particle-arcane', {
       emitZone: {
         type: 'edge',
         source: new Phaser.Geom.Circle(0, 0, 180),
@@ -99,7 +122,6 @@ export class ZoneBackground {
       blendMode: Phaser.BlendModes.ADD,
     });
     emitter.setDepth(2);
-    this.container.add(emitter);
     return { emitter };
   }
 }

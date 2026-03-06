@@ -174,7 +174,7 @@ export function PlayScreen({ bridge }: Props) {
       />
 
       <button className="play-settings-btn floating-panel" onClick={() => setSettingsOpen(true)}>
-        ⚙
+        ⚙ Settings
       </button>
 
       <div className="play-left-panels">
@@ -251,14 +251,6 @@ export function PlayScreen({ bridge }: Props) {
         </div>
       </div>
 
-      <button
-        className="play-surrender-btn floating-panel btn-danger"
-        onClick={() => void handleSurrender()}
-        disabled={isGameOver}
-      >
-        Surrender
-      </button>
-
       {isGameOver && (
         <div className="game-over-overlay">
           <div className={`game-over-card floating-panel ${discoveredCount >= 10 ? 'won' : 'lost'}`}>
@@ -275,6 +267,8 @@ export function PlayScreen({ bridge }: Props) {
           open={settingsOpen}
           onClose={() => setSettingsOpen(false)}
           address={address}
+          isGameOver={isGameOver}
+          onSurrender={() => void handleSurrender()}
         />
       )}
     </div>
