@@ -12,7 +12,7 @@ account_address = "0x0"
 private_key = "0x0"
 
 [writers]
-"athanor" = ["athanor-game_system", "athanor-config_system", "athanor-exploration_system", "athanor-crafting_system", "athanor-hero_system"]
+"athanor" = ["athanor-game_system", "athanor-config_system", "athanor-exploration_system", "athanor-crafting_system", "athanor-hero_system", "athanor-play_system"]
 
 [init_call_args]
 "athanor-game_system" = [

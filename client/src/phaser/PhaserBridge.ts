@@ -10,7 +10,6 @@ export interface AthanorHero {
   return_at: number;
   death_depth: number;
   pending_gold: number;
-  loot_ready: boolean;
 }
 
 export interface AthanorSession {
@@ -97,8 +96,7 @@ export class PhaserBridge extends Phaser.Events.EventEmitter {
     return (
       prev.status !== next.status ||
       prev.hp !== next.hp ||
-      prev.death_depth !== next.death_depth ||
-      prev.loot_ready !== next.loot_ready
+      prev.death_depth !== next.death_depth
     );
   }
 }

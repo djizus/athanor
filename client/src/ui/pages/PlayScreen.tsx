@@ -70,7 +70,6 @@ export function PlayScreen({ bridge }: Props) {
         return_at: Number(h.return_at),
         death_depth: h.death_depth,
         pending_gold: h.pending_gold,
-        loot_ready: h.loot_ready,
       })),
     )
   }, [heroes, bridge])
@@ -207,7 +206,7 @@ export function PlayScreen({ bridge }: Props) {
               const isIdle = hero.status === HERO_STATUS_IDLE
               const isExploring = hero.status === HERO_STATUS_EXPLORING
               const isReturning = hero.status === HERO_STATUS_RETURNING
-              const lootReady = hero.loot_ready || (isReturning && remaining === 0)
+              const lootReady = isReturning && remaining === 0
 
               let statusText = 'Ready'
               let statusClass = ''

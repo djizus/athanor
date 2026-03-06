@@ -18,6 +18,9 @@ const modelNames = [
   'GameSettings',
   'GameSettingsMetadata',
   'PlayerMeta',
+  'Game',
+  'Discovery',
+  'Hint',
 ] as const
 
 type SetupPhase = 'config' | 'connectivity' | 'torii' | 'sync' | 'systems' | 'done'

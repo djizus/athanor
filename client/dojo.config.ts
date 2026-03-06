@@ -21,6 +21,7 @@ const SYSTEM_TAGS = [
   'athanor-crafting_system',
   'athanor-hero_system',
   'athanor-config_system',
+  'athanor-play_system',
 ] as const
 
 function loadManifest(): ManifestJson | null {

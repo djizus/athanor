@@ -334,6 +334,7 @@ CONFIG_SYSTEM=""
 EXPLORE_SYSTEM=""
 CRAFTING_SYSTEM=""
 HERO_SYSTEM=""
+PLAY_SYSTEM=""
 
 if [ -f "$MANIFEST_FILE" ]; then
     GAME_SYSTEM=$(jq -r ".contracts[] | select(.tag == \"${NAMESPACE}-game_system\") | .address" "$MANIFEST_FILE" 2>/dev/null)
@@ -341,6 +342,7 @@ if [ -f "$MANIFEST_FILE" ]; then
     EXPLORE_SYSTEM=$(jq -r ".contracts[] | select(.tag == \"${NAMESPACE}-exploration_system\") | .address" "$MANIFEST_FILE" 2>/dev/null)
     CRAFTING_SYSTEM=$(jq -r ".contracts[] | select(.tag == \"${NAMESPACE}-crafting_system\") | .address" "$MANIFEST_FILE" 2>/dev/null)
     HERO_SYSTEM=$(jq -r ".contracts[] | select(.tag == \"${NAMESPACE}-hero_system\") | .address" "$MANIFEST_FILE" 2>/dev/null)
+    PLAY_SYSTEM=$(jq -r ".contracts[] | select(.tag == \"${NAMESPACE}-play_system\") | .address" "$MANIFEST_FILE" 2>/dev/null)
 fi
 
 print_info "game_system:        $GAME_SYSTEM"
@@ -348,6 +350,7 @@ print_info "config_system:      $CONFIG_SYSTEM"
 print_info "exploration_system: $EXPLORE_SYSTEM"
 print_info "crafting_system:    $CRAFTING_SYSTEM"
 print_info "hero_system:        $HERO_SYSTEM"
+print_info "play_system:        $PLAY_SYSTEM"
 
 # ---------------------------------------------------
 # Step 9: Copy manifest to client
@@ -409,6 +412,7 @@ echo "  config_system:      $CONFIG_SYSTEM"
 echo "  exploration_system: $EXPLORE_SYSTEM"
 echo "  crafting_system:    $CRAFTING_SYSTEM"
 echo "  hero_system:        $HERO_SYSTEM"
+echo "  play_system:        $PLAY_SYSTEM"
 echo ""
 echo "Updated files:"
 echo "  $DOJO_CONFIG"

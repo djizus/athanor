@@ -19,6 +19,8 @@ function buildPolicies(): SessionPolicies {
       [game]: {
         methods: [
           { name: 'create', entrypoint: 'create' },
+          { name: 'glean', entrypoint: 'glean' },
+          { name: 'craft', entrypoint: 'craft' },
           { name: 'surrender', entrypoint: 'surrender' },
         ],
       },
