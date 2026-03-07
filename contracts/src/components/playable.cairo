@@ -2,6 +2,7 @@
 pub mod PlayableComponent {
     // Imports
 
+    use core::poseidon::poseidon_hash_span;
     use dojo::world::WorldStorage;
     use crate::models::character::{CharacterAssert, CharacterTrait};
     use crate::models::discovery::DiscoveryTrait;
@@ -87,12 +88,14 @@ pub mod PlayableComponent {
             // [Check] Discovery
             let mut discovery = store.discovery(game_id, ingredient_a.into(), ingredient_b.into());
             if !discovery.discovered {
+                // [Compute] Random number unique with the remaining tries
+                let rng = poseidon_hash_span([seed, game.remaining_tries.into()].span());
                 // [Effect] Discover
                 let hint_a = store.hint(game_id, ingredient_a.into());
                 let hint_b = store.hint(game_id, ingredient_b.into());
                 let effect = game
                     .discover(
-                        ingredient_a, ingredient_b, hint_a.recipes, hint_b.recipes, seed.into(),
+                        ingredient_a, ingredient_b, hint_a.recipes, hint_b.recipes, rng.into(),
                     );
                 // [Effect] Update discovery
                 discovery.discover(effect);
