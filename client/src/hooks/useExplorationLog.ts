@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useDojo } from '@/dojo/useDojo'
 import {
-  ROLE_NAMES,
   INGREDIENT_NAMES,
   ZONE_NAMES,
   EFFECT_NAMES,
@@ -17,16 +16,13 @@ export interface LogEntry {
   kind: 'exploration' | 'loot' | 'recipe' | 'recruit' | 'potion' | 'expedition' | 'info'
 }
 
-const EVENT_KINDS: Record<number, string> = {
-  0: 'found gold',
-  1: 'found ingredient',
-  2: 'took damage',
-  3: 'found nothing',
-}
-
-function heroName(heroId: number): string {
-  return ROLE_NAMES[heroId] ?? `Hero ${heroId}`
-}
+// Contract Category enum: None=0, Trap=1, Gold=2, Heal=3, BeastWin=4, BeastLose=5, Ingredient=6
+const CATEGORY_TRAP = 1
+const CATEGORY_GOLD = 2
+const CATEGORY_HEAL = 3
+const CATEGORY_BEAST_WIN = 4
+const CATEGORY_BEAST_LOSE = 5
+const CATEGORY_INGREDIENT = 6
 
 // Torii wraps field values as nested { value: { value: N } } — recursively unwrap to number
 function extractNumber(val: unknown): number {
@@ -55,43 +51,43 @@ function parseModelValues(model: Record<string, unknown>): Record<string, number
   return out
 }
 
+function formatExplorationDetail(eventKind: number, value: number, hpAfter: number): string {
+  switch (eventKind) {
+    case CATEGORY_TRAP: return `took ${value} trap damage (HP: ${hpAfter})`
+    case CATEGORY_GOLD: return `found ${displayGold(value)}g`
+    case CATEGORY_HEAL: return `healed ${value} HP (HP: ${hpAfter})`
+    case CATEGORY_BEAST_WIN: return `slew a beast, looted ${displayGold(value)}g`
+    case CATEGORY_BEAST_LOSE: return `lost to a beast, took ${value} damage (HP: ${hpAfter})`
+    case CATEGORY_INGREDIENT: return `found ${INGREDIENT_NAMES[value] ?? `ingredient #${value}`}`
+    default: return `unknown event ${eventKind}`
+  }
+}
+
 function formatEvent(modelName: string, values: Record<string, number>): LogEntry | null {
   switch (modelName) {
     case 'ExplorationEvent': {
-      const name = heroName(values.hero_id)
       const zone = ZONE_NAMES[values.zone_id] ?? `Zone ${values.zone_id}`
-      const kind = EVENT_KINDS[values.event_kind] ?? `event ${values.event_kind}`
-      const detail = values.event_kind === 1
-        ? `found ${INGREDIENT_NAMES[values.value] ?? `ingredient #${values.value}`}`
-        : values.event_kind === 0
-          ? `found ${displayGold(values.value)}g`
-          : values.event_kind === 2
-            ? `took ${values.value} damage (HP: ${values.hp_after})`
-            : kind
-      return { ts: Date.now(), text: `${name} in ${zone} (depth ${values.depth}): ${detail}`, kind: 'exploration' }
+      const detail = formatExplorationDetail(values.event_kind, values.value, values.hp_after)
+      return { ts: Date.now(), text: `Hero ${values.hero_id} in ${zone} (depth ${values.depth}): ${detail}`, kind: 'exploration' }
     }
     case 'ExpeditionStarted': {
-      const name = heroName(values.hero_id)
-      return { ts: Date.now(), text: `${name} departed on expedition`, kind: 'expedition' }
+      return { ts: Date.now(), text: `Hero ${values.hero_id} departed on expedition`, kind: 'expedition' }
     }
     case 'LootClaimed': {
-      const name = heroName(values.hero_id)
-      return { ts: Date.now(), text: `${name} claimed ${displayGold(values.gold)}g loot`, kind: 'loot' }
+      return { ts: Date.now(), text: `Hero ${values.hero_id} claimed ${displayGold(values.gold)}g loot`, kind: 'loot' }
     }
     case 'RecipeDiscovered': {
-      const a = INGREDIENT_NAMES[values.ingredient_a] ?? '?'
-      const b = INGREDIENT_NAMES[values.ingredient_b] ?? '?'
-      const effect = EFFECT_NAMES[values.effect_type] ?? '?'
+      const a = INGREDIENT_NAMES[values.ingredient_a - 1] ?? '?'
+      const b = INGREDIENT_NAMES[values.ingredient_b - 1] ?? '?'
+      const effect = EFFECT_NAMES[values.effect_type - 1] ?? '?'
       return { ts: Date.now(), text: `Discovered: ${a} + ${b} → ${effect} (${values.discovered_count}/30)`, kind: 'recipe' }
     }
     case 'HeroRecruited': {
-      const name = heroName(values.hero_id)
-      return { ts: Date.now(), text: `${name} recruited for ${displayGold(values.cost)}g`, kind: 'recruit' }
+      return { ts: Date.now(), text: `Hero ${values.hero_id} recruited for ${displayGold(values.cost)}g`, kind: 'recruit' }
     }
     case 'PotionApplied': {
-      const name = heroName(values.hero_id)
-      const effect = EFFECT_NAMES[values.effect_type] ?? '?'
-      return { ts: Date.now(), text: `${name} consumed potion: ${effect} +${values.effect_value}`, kind: 'potion' }
+      const effect = EFFECT_NAMES[values.effect_type - 1] ?? '?'
+      return { ts: Date.now(), text: `Hero ${values.hero_id} consumed potion: ${effect} +${values.effect_value}`, kind: 'potion' }
     }
     default:
       return null

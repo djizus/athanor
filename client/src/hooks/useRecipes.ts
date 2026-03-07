@@ -25,9 +25,9 @@ export function useDiscoveries(gameId: number | null) {
       if (data.game_id !== gameId) continue
 
       result.push({
-        ingredient_a: data.ingredient_a,
-        ingredient_b: data.ingredient_b,
-        effect: data.effect,
+        ingredient_a: data.ingredient_a - 1,
+        ingredient_b: data.ingredient_b - 1,
+        effect: data.effect - 1,
         discovered: data.discovered,
       })
     }
