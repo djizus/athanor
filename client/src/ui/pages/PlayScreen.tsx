@@ -7,6 +7,7 @@ import { useInventory } from '@/hooks/useInventory'
 import { useRecipes } from '@/hooks/useRecipes'
 import { useHints } from '@/hooks/useHints'
 import { useExplorationLog } from '@/hooks/useExplorationLog'
+import type { RawExplorationEvent, HeroOverride } from '@/hooks/useExplorationLog'
 import { useNavigationStore } from '@/stores/navigationStore'
 import { txToast } from '@/stores/toastStore'
 import type { PhaserBridge } from '@/phaser'
@@ -90,7 +91,12 @@ export function PlayScreen({ bridge }: Props) {
   const [logsCollapsed, setLogsCollapsed] = useState(false)
   const [potionTargetHeroId, setPotionTargetHeroId] = useState<number | null>(null)
   const [mobilePanel, setMobilePanel] = useState<string | null>(null)
-  const { logs, pushInfo } = useExplorationLog(gameId ?? null, heroes)
+  const bridgeRef = useRef(bridge)
+  bridgeRef.current = bridge
+  const onExplorationEvent = useCallback((event: RawExplorationEvent) => {
+    bridgeRef.current.playExplorationEvent({ heroId: event.heroId, kind: event.kind, value: event.value, hpAfter: event.hpAfter })
+  }, [])
+  const { logs, pushInfo, heroOverrides } = useExplorationLog(gameId ?? null, heroes, onExplorationEvent)
   const logsEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -146,12 +152,13 @@ export function PlayScreen({ bridge }: Props) {
   }, [])
 
   const handlePickIngredient = useCallback((id: number) => {
+    bridge.playUiClick()
     if (slotA === id) { setSlotA(null); return }
     if (slotB === id) { setSlotB(null); return }
     if (slotA === null) { setSlotA(id) }
     else if (slotB === null) { setSlotB(id) }
     else { setSlotA(id); setSlotB(null) }
-  }, [slotA, slotB])
+  }, [slotA, slotB, bridge])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -178,6 +185,7 @@ export function PlayScreen({ bridge }: Props) {
     const hero = heroes.find((h) => h.id === characterId)
     const name = hero ? ROLE_NAMES[hero.role > 0 ? hero.role - 1 : characterId] : `Hero ${characterId}`
     pushInfo(`${name} sent on expedition...`)
+    bridge.playExpeditionStart(characterId)
     const t = txToast('Sending expedition')
     try { await client.explore(account, gameId, characterId); t.success() } catch (e) { t.error(); pushInfo(`${name} expedition failed`); console.error('Explore failed:', e) }
   }
@@ -187,6 +195,7 @@ export function PlayScreen({ bridge }: Props) {
     const hero = heroes.find((h) => h.id === characterId)
     const name = hero ? ROLE_NAMES[hero.role > 0 ? hero.role - 1 : characterId] : `Hero ${characterId}`
     pushInfo(`${name} claiming loot...`)
+    bridge.playClaimLoot(characterId, hero?.gold ?? 0)
     const t = txToast('Claiming loot')
     try { await client.claim(account, gameId, characterId); t.success() } catch (e) { t.error(); pushInfo(`${name} claim failed`); console.error('Claim failed:', e) }
   }
@@ -194,8 +203,23 @@ export function PlayScreen({ bridge }: Props) {
   const handleCraft = async (ingredientA: number, ingredientB: number) => {
     if (!account || gameId == null) return
     pushInfo(`Brewing potion...`)
+    const lo = Math.min(ingredientA, ingredientB)
+    const hi = Math.max(ingredientA, ingredientB)
+    const existingRecipe = recipes.find(
+      (r) => r.discovered && Math.min(r.ingredient_a, r.ingredient_b) === lo && Math.max(r.ingredient_a, r.ingredient_b) === hi,
+    )
+    const isSoup = existingRecipe != null && EFFECT_CATEGORIES[existingRecipe.effect] === undefined
     const t = txToast('Brewing potion')
-    try { await client.craft(account, gameId, ingredientA, ingredientB); t.success() } catch (e) { t.error(); pushInfo('Brew failed'); console.error('Craft failed:', e) }
+    try {
+      await client.craft(account, gameId, ingredientA, ingredientB)
+      t.success()
+      bridge.playCraftEffect({
+        discovered: false,
+        isSoup: existingRecipe ? isSoup : false,
+        goldEarned: isSoup ? 1 : 0,
+        effectIdx: existingRecipe?.effect ?? -1,
+      })
+    } catch (e) { t.error(); pushInfo('Brew failed'); console.error('Craft failed:', e) }
   }
 
   const handleBrewAll = async () => {
@@ -204,28 +228,32 @@ export function PlayScreen({ bridge }: Props) {
     if (pairs.length === 0) return
     pushInfo(`Brewing ${pairs.length} new combinations...`)
     const t = txToast(`Brewing ${pairs.length} potions`)
-    try { await client.craftBatch(account, gameId, pairs); t.success() } catch (e) { t.error(); pushInfo('Batch brew failed'); console.error('Batch craft failed:', e) }
+    try {
+      await client.craftBatch(account, gameId, pairs)
+      t.success()
+      bridge.playCraftEffect({ discovered: false, isSoup: false, goldEarned: 0, effectIdx: -1 })
+    } catch (e) { t.error(); pushInfo('Batch brew failed'); console.error('Batch craft failed:', e) }
   }
 
   const handleClue = async () => {
     if (!account || gameId == null) return
     pushInfo('Buying hint...')
     const t = txToast('Buying hint')
-    try { await client.clue(account, gameId); t.success() } catch (e) { t.error(); pushInfo('Hint purchase failed'); console.error('Clue failed:', e) }
+    try { await client.clue(account, gameId); t.success(); bridge.playHintReveal() } catch (e) { t.error(); pushInfo('Hint purchase failed'); console.error('Clue failed:', e) }
   }
 
   const handleRecruit = async () => {
     if (!account || gameId == null) return
     pushInfo('Recruiting hero...')
     const t = txToast('Recruiting hero')
-    try { await client.recruit(account, gameId); t.success() } catch (e) { t.error(); pushInfo('Recruitment failed'); console.error('Recruit failed:', e) }
+    try { await client.recruit(account, gameId); t.success(); bridge.playRecruit() } catch (e) { t.error(); pushInfo('Recruitment failed'); console.error('Recruit failed:', e) }
   }
 
   const handleBuff = async (effect: number, heroId: number, quantity: number) => {
     if (!account || gameId == null) return
     pushInfo(`Applying potion to hero...`)
     const t = txToast('Applying potion')
-    try { await client.buff(account, gameId, heroId, effect, quantity); t.success() } catch (e) { t.error(); pushInfo('Potion application failed'); console.error('Buff failed:', e) }
+    try { await client.buff(account, gameId, heroId, effect, quantity); t.success(); bridge.playBuff(heroId, effect) } catch (e) { t.error(); pushInfo('Potion application failed'); console.error('Buff failed:', e) }
   }
 
   if (gameId == null) {
@@ -276,6 +304,7 @@ export function PlayScreen({ bridge }: Props) {
                   gold={gold}
                   isGameOver={isGameOver}
                   now={now}
+                  heroOverrides={heroOverrides}
                   onSelectHero={(id) => bridge.selectHero(id)}
                   onRecruit={() => void handleRecruit()}
                   onExplore={(id) => void handleExplore(id)}
@@ -562,6 +591,7 @@ interface HeroSlotProps {
   gold: number
   isGameOver: boolean
   now: number
+  heroOverrides: Map<number, HeroOverride>
   onSelectHero: (heroId: number) => void
   onRecruit: () => void
   onExplore: (characterId: number) => void
@@ -578,6 +608,7 @@ function HeroSlot({
   gold,
   isGameOver,
   now,
+  heroOverrides,
   onSelectHero,
   onRecruit,
   onExplore,
@@ -622,15 +653,13 @@ function HeroSlot({
   let statusClass = ''
   if (isExploring) { statusText = `Exploring ${remaining}s`; statusClass = 'exploring' }
 
-  /* ── Optimistic HP regen ──────────────────────── */
-  const healthRef = useRef({ health: hero.health, ts: now })
-  if (hero.health !== healthRef.current.health) {
-    healthRef.current = { health: hero.health, ts: now }
-  }
-  const elapsedSinceUpdate = now - healthRef.current.ts
-  const optimisticHp = isIdle
-    ? Math.min(hero.health + hero.regen * elapsedSinceUpdate, hero.max_health)
-    : hero.health
+  /* ── HP: override during playback, regen after available_at ── */
+  const override = heroOverrides.get(hero.id)
+  const regenElapsed = isIdle ? Math.max(0, now - availableAt) : 0
+  const baseHp = override ? override.health : hero.health
+  const optimisticHp = override
+    ? baseHp
+    : Math.min(baseHp + hero.regen * regenElapsed, hero.max_health)
 
   const hpPct = hero.max_health > 0 ? Math.min(100, (optimisticHp / hero.max_health) * 100) : 0
   const regenPreviewPct = (isIdle && optimisticHp < hero.max_health && hero.regen > 0)
