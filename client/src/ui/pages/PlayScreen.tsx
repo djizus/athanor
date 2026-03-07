@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAccount } from '@starknet-react/core'
 import { useDojo } from '@/dojo/useDojo'
 import { useGame } from '@/hooks/useGame'
@@ -267,6 +267,8 @@ interface HeroSlotProps {
     role: number
     health: number
     max_health: number
+    power: number
+    regen: number
     available_at: number
     gold: number
   }>
@@ -296,32 +298,31 @@ function HeroSlot({
 }: HeroSlotProps) {
   const hero = heroes.find((h) => h.id === slot)
 
+  /* ── Recruit slot ─────────────────────────────── */
   if (!hero) {
     if (slot < heroCount) return null
     if (slot === heroCount && heroCount < 3) {
       const cost = HERO_RECRUIT_COSTS[Math.min(heroCount, 2)]
+      const canAfford = gold >= cost && !isGameOver
       return (
         <div className="hero-card hero-card-locked">
           <div className="hero-card-locked-icon">+</div>
-          <div className="hero-card-info">
-            <span className="hero-card-name">Recruit</span>
-            <button
-              className="hero-card-recruit btn-primary"
-              onClick={onRecruit}
-              disabled={isGameOver || gold < cost}
-            >
-              Recruit ({displayGold(cost)}g)
-            </button>
-          </div>
+          <button
+            className={`hero-card-recruit btn-primary${canAfford ? ' pulse-afford' : ''}`}
+            onClick={onRecruit}
+            disabled={!canAfford}
+          >
+            Recruit ({displayGold(cost)}g)
+          </button>
         </div>
       )
     }
     return null
   }
 
+  /* ── Active hero ──────────────────────────────── */
   const roleIdx = hero.role > 0 ? hero.role - 1 : slot
   const roleName = ROLE_NAMES[roleIdx] ?? `Hero ${slot}`
-  const hpPct = hero.max_health > 0 ? Math.min(100, (hero.health / hero.max_health) * 100) : 0
   const availableAt = Number(hero.available_at)
   const remaining = Math.max(0, availableAt - now)
   const isIdle = remaining === 0
@@ -332,7 +333,24 @@ function HeroSlot({
   let statusClass = ''
   if (isExploring) { statusText = `Exploring ${remaining}s`; statusClass = 'exploring' }
 
+  /* ── Optimistic HP regen ──────────────────────── */
+  const healthRef = useRef({ health: hero.health, ts: now })
+  if (hero.health !== healthRef.current.health) {
+    healthRef.current = { health: hero.health, ts: now }
+  }
+  const elapsedSinceUpdate = now - healthRef.current.ts
+  const optimisticHp = isIdle
+    ? Math.min(hero.health + hero.regen * elapsedSinceUpdate, hero.max_health)
+    : hero.health
+
+  const hpPct = hero.max_health > 0 ? Math.min(100, (optimisticHp / hero.max_health) * 100) : 0
+  const regenPreviewPct = (isIdle && optimisticHp < hero.max_health && hero.regen > 0)
+    ? Math.min(100 - hpPct, (hero.regen / hero.max_health) * 100)
+    : 0
   const hpColor = hpPct > 50 ? 'var(--accent-green)' : hpPct > 25 ? '#ff9800' : 'var(--accent-red)'
+
+  /* ── Power bar ────────────────────────────────── */
+  const powerPct = Math.min(100, (hero.power / 255) * 100)
 
   return (
     <div
@@ -347,10 +365,19 @@ function HeroSlot({
         />
         <div className="hero-card-info">
           <span className="hero-card-name">
-            {roleName} — {displayHp(hero.health)}/{displayHp(hero.max_health)}
+            {roleName} — {displayHp(Math.floor(optimisticHp))}/{displayHp(hero.max_health)}
           </span>
           <div className="hero-card-hp">
             <div className="hero-card-hp-fill" style={{ width: `${hpPct}%`, background: hpColor }} />
+            {regenPreviewPct > 0 && (
+              <div
+                className="hero-card-hp-regen"
+                style={{ left: `${hpPct}%`, width: `${regenPreviewPct}%`, background: hpColor }}
+              />
+            )}
+          </div>
+          <div className="hero-card-power">
+            <div className="hero-card-power-fill" style={{ width: `${powerPct}%` }} />
           </div>
           <span className={`hero-card-status ${statusClass}`}>{statusText}</span>
         </div>
