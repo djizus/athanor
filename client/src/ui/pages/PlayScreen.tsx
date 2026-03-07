@@ -374,14 +374,8 @@ export function PlayScreen({ bridge }: Props) {
                   gold={gold}
                   hintCost={hintCost}
                   isGameOver={isGameOver}
-                  heroes={heroes.map(h => ({ id: h.id, role: h.role }))}
                   inventory={inventory}
                   onBuyHint={() => void handleClue()}
-                  onApplyPotions={async (heroId, selections) => {
-                    for (const { effect, quantity } of selections) {
-                      await handleBuff(effect, heroId, quantity)
-                    }
-                  }}
                   onSelectIngredients={(a, b) => {
                     setSlotA(a >= 0 ? a : null)
                     setSlotB(b >= 0 ? b : null)
