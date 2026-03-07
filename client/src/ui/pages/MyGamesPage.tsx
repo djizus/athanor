@@ -76,8 +76,8 @@ function GamesTable({
             <th>Game</th>
             <th>Time</th>
             <th>Recipes</th>
-            <th className="td-right">Gold</th>
-            <th className="td-right">Heroes</th>
+            <th>Gold</th>
+            <th>Heroes</th>
           </tr>
         </thead>
         <tbody>
@@ -86,8 +86,8 @@ function GamesTable({
               <td>#{g.game_id}</td>
               <td>{formatElapsed(g.started_at, g.ended_at)}</td>
               <td>{g.discovered_count}/30</td>
-              <td className="td-right">{g.gold}</td>
-              <td className="td-right">{g.hero_count}/3</td>
+              <td>{g.gold}</td>
+              <td>{g.hero_count}/3</td>
             </tr>
           ))}
         </tbody>

@@ -1814,7 +1814,7 @@ button:disabled, .btn:disabled {
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--glass-shadow);
-  width: min(72rem, 94vw);
+  width: min(48rem, 94vw);
   max-height: 90vh;
   display: flex;
   flex-direction: column;

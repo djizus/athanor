@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Has, getComponentValue } from '@dojoengine/recs'
 import { useEntityQuery } from '@dojoengine/react'
+import { RpcProvider, num } from 'starknet'
 import { useDojo } from '@/dojo/useDojo'
 import { useNavigationStore } from '@/stores/navigationStore'
 import { bitmapPopcount } from '@/game/packer'
-import { padAddress } from '@/dojo/entityId'
 
-const { VITE_PUBLIC_TORII_URL, VITE_PUBLIC_TOKEN_ADDRESS } = import.meta.env
+const { VITE_PUBLIC_NODE_URL, VITE_PUBLIC_TOKEN_ADDRESS } = import.meta.env
 
 type LeaderboardRow = {
   gameId: number
@@ -29,25 +29,27 @@ function truncateAddress(hex: string): string {
   return `${hex.slice(0, 6)}...${hex.slice(-4)}`
 }
 
-async function fetchTokenOwners(): Promise<Map<number, string>> {
+async function fetchTokenOwners(gameIds: number[]): Promise<Map<number, string>> {
   const map = new Map<number, string>()
-  if (!VITE_PUBLIC_TORII_URL || !VITE_PUBLIC_TOKEN_ADDRESS) return map
+  if (!VITE_PUBLIC_NODE_URL || !VITE_PUBLIC_TOKEN_ADDRESS || gameIds.length === 0) return map
 
-  try {
-    const paddedContract = padAddress(VITE_PUBLIC_TOKEN_ADDRESS)
-    const res = await fetch(`${VITE_PUBLIC_TORII_URL}/sql`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: `SELECT account_address, token_id FROM token_balances WHERE contract_address = '${paddedContract}' AND balance != '0x0000000000000000000000000000000000000000000000000000000000000000'`,
-    })
-    if (!res.ok) return map
-    const rows: { account_address: string; token_id: string }[] = await res.json()
-    for (const row of rows) {
-      const tokenId = Number(BigInt(row.token_id))
-      if (tokenId > 0) map.set(tokenId, row.account_address)
+  const provider = new RpcProvider({ nodeUrl: VITE_PUBLIC_NODE_URL })
+
+  const results = await Promise.allSettled(
+    gameIds.map(async (gameId) => {
+      const result = await provider.callContract({
+        contractAddress: VITE_PUBLIC_TOKEN_ADDRESS,
+        entrypoint: 'owner_of',
+        calldata: [num.toHex(gameId), '0x0'],
+      })
+      return { gameId, owner: num.toHex(result[0]) }
+    }),
+  )
+
+  for (const result of results) {
+    if (result.status === 'fulfilled') {
+      map.set(result.value.gameId, result.value.owner)
     }
-  } catch {
-    // Torii SQL not available — fallback to no player info
   }
   return map
 }
@@ -57,16 +59,17 @@ async function resolveUsernames(addresses: string[]): Promise<Map<string, string
   if (addresses.length === 0) return map
 
   try {
+    const normalized = addresses.map(num.toHex)
     const res = await fetch('https://api.cartridge.gg/lookup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ addresses }),
+      body: JSON.stringify({ addresses: normalized }),
     })
     if (!res.ok) return map
     const data: { results?: { username: string; addresses: string[] }[] } = await res.json()
     for (const result of data.results ?? []) {
       for (const addr of result.addresses) {
-        map.set(addr.toLowerCase(), result.username)
+        map.set(num.toHex(addr), result.username)
       }
     }
   } catch {
@@ -98,8 +101,10 @@ export function LeaderboardPage() {
   }, [contractComponents.Game, gameEntities])
 
   useEffect(() => {
-    fetchTokenOwners().then(setOwners)
-  }, [completedGames.length])
+    const ids = completedGames.map((g) => g.id)
+    if (ids.length === 0) return
+    fetchTokenOwners(ids).then(setOwners)
+  }, [completedGames])
 
   useEffect(() => {
     const addresses = [...new Set(owners.values())]
@@ -111,12 +116,12 @@ export function LeaderboardPage() {
     return completedGames
       .map((g) => {
         const ownerAddr = owners.get(g.id) ?? ''
-        const username = usernames.get(ownerAddr.toLowerCase()) ?? ''
+        const username = ownerAddr ? usernames.get(num.toHex(ownerAddr)) ?? '' : ''
         return {
           gameId: g.id,
           discoveredCount: g.discoveredCount,
           duration: g.duration,
-          player: username || (ownerAddr ? truncateAddress(ownerAddr) : `Game #${g.id}`),
+          player: username || (ownerAddr ? truncateAddress(ownerAddr) : '...'),
         }
       })
       .sort((a, b) => {
@@ -143,7 +148,7 @@ export function LeaderboardPage() {
                   <tr>
                     <th>Rank</th>
                     <th>Player</th>
-                    <th className="td-right">Time</th>
+                    <th>Time</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -151,7 +156,7 @@ export function LeaderboardPage() {
                     <tr key={row.gameId}>
                       <td>{index + 1}</td>
                       <td>{row.player}</td>
-                      <td className="td-right">{formatDuration(row.duration)}</td>
+                      <td>{formatDuration(row.duration)}</td>
                     </tr>
                   ))}
                 </tbody>
