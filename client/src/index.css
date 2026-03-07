@@ -1108,6 +1108,7 @@ button:disabled, .btn:disabled {
   letter-spacing: 0.04em;
   white-space: nowrap;
   z-index: 12;
+  zoom: 1.15;
 }
 
 .status-hud-btn {
