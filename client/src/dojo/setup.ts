@@ -1,29 +1,15 @@
 import { getSyncEntities } from '@dojoengine/state'
-import type { Clause } from '@dojoengine/torii-client'
+import { KeysClause } from '@dojoengine/sdk'
 import { ToriiClient } from '@dojoengine/torii-client'
 import { dojoConfig } from '../../dojo.config'
-import { contractComponents } from './contractModels'
+import { defineContractComponents } from './contractModels'
 import { createSystemCalls } from './systems'
 import { world } from './world'
 
-const modelNames = [
-  'Game',
-  'Character',
-  'Discovery',
-  'Hint',
-  'GameSession',
-  'GameSeed',
-  'GameSettings',
-  'GameSettingsMetadata',
-  'Config',
-] as const
+export type SetupResult = Awaited<ReturnType<typeof setupDojo>>
 
-type SetupPhase = 'config' | 'connectivity' | 'torii' | 'sync' | 'systems' | 'done'
-
-function logPhase(phase: SetupPhase, details: Record<string, unknown> = {}) {
-  const timestamp = new Date().toISOString()
-  console.info(`[athanor:init] ${timestamp} phase=${phase}`, details)
-}
+const { VITE_PUBLIC_NAMESPACE } = import.meta.env
+const namespace = VITE_PUBLIC_NAMESPACE || 'ATHANOR'
 
 async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
   let timeoutId: ReturnType<typeof setTimeout> | undefined
@@ -41,103 +27,105 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): P
 }
 
 async function probeConnectivity(rpcUrl: string, toriiUrl: string): Promise<void> {
-  const rpcCheck = fetch(rpcUrl, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'starknet_chainId', params: [] }),
-  })
-
-  const toriiCheck = fetch(`${toriiUrl}/graphql`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ query: '{ __typename }' }),
-  })
-
   const [rpcResponse, toriiResponse] = await Promise.allSettled([
-    withTimeout(rpcCheck, 7000, 'RPC probe'),
-    withTimeout(toriiCheck, 7000, 'Torii probe'),
+    withTimeout(
+      fetch(rpcUrl, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'starknet_chainId', params: [] }),
+      }),
+      7000,
+      'RPC probe',
+    ),
+    withTimeout(
+      fetch(`${toriiUrl}/graphql`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ query: '{ __typename }' }),
+      }),
+      7000,
+      'Torii probe',
+    ),
   ])
 
   if (rpcResponse.status === 'rejected') {
-    throw new Error(`RPC probe failed (${rpcUrl}): ${String(rpcResponse.reason)}`)
+    throw new Error(`RPC unreachable (${rpcUrl}): ${String(rpcResponse.reason)}`)
   }
   if (!rpcResponse.value.ok) {
-    throw new Error(`RPC probe failed (${rpcUrl}): HTTP ${rpcResponse.value.status}`)
+    throw new Error(`RPC error (${rpcUrl}): HTTP ${rpcResponse.value.status}`)
   }
-
   if (toriiResponse.status === 'rejected') {
-    throw new Error(`Torii probe failed (${toriiUrl}): ${String(toriiResponse.reason)}`)
+    throw new Error(`Torii unreachable (${toriiUrl}): ${String(toriiResponse.reason)}`)
   }
   if (!toriiResponse.value.ok) {
-    throw new Error(`Torii probe failed (${toriiUrl}): HTTP ${toriiResponse.value.status}`)
+    throw new Error(`Torii error (${toriiUrl}): HTTP ${toriiResponse.value.status}`)
   }
 }
 
 export async function setupDojo(onStatus?: (status: string) => void) {
-  console.groupCollapsed('[athanor:init] setupDojo')
-  try {
-    onStatus?.('Validating configuration...')
-    const config = dojoConfig()
-    const namespace = import.meta.env.VITE_PUBLIC_NAMESPACE ?? 'ATHANOR'
-    const entityModels = modelNames.map((name) => `${namespace}-${name}`)
+  const config = dojoConfig()
+  const worldAddress = config.manifest.world.address
 
-    logPhase('config', {
-      rpcUrl: config.rpcUrl,
-      toriiUrl: config.toriiUrl,
-      worldAddress: config.manifest.world.address,
-      modelCount: entityModels.length,
-    })
+  if (!worldAddress || worldAddress === '0x0') {
+    throw new Error('Invalid world address. Check client/.env.')
+  }
 
-    if (!config.manifest.world.address || config.manifest.world.address === '0x0') {
-      throw new Error('Invalid world address (0x0). Check VITE_PUBLIC_WORLD_ADDRESS in client/.env.')
-    }
+  onStatus?.('Connecting to RPC and Torii...')
+  await probeConnectivity(config.rpcUrl, config.toriiUrl)
 
-    onStatus?.('Connecting to RPC and Torii...')
-    logPhase('connectivity')
-    await probeConnectivity(config.rpcUrl, config.toriiUrl)
+  onStatus?.('Initializing indexer...')
+  const toriiClient = await new ToriiClient({
+    toriiUrl: config.toriiUrl,
+    worldAddress,
+  })
 
-    onStatus?.('Initializing indexer...')
-    logPhase('torii')
-    const toriiClient = await new ToriiClient({
-      toriiUrl: config.toriiUrl,
-      worldAddress: config.manifest.world.address,
-    })
+  const contractComponents = defineContractComponents(world)
 
-    const clause: Clause = {
-      Keys: {
-        keys: [],
-        pattern_matching: 'VariableLen',
-        models: entityModels,
-      },
-    }
+  const modelsToSync = [
+    `${namespace}-Game`,
+    `${namespace}-Character`,
+    `${namespace}-Discovery`,
+    `${namespace}-Hint`,
+    `${namespace}-GameSession`,
+    `${namespace}-GameSeed`,
+  ] as `${string}-${string}`[]
 
-    const clientModels = Object.values(contractComponents) as Parameters<typeof getSyncEntities>[1]
+  const modelsToWatch = [
+    `${namespace}-Game`,
+    `${namespace}-Character`,
+    `${namespace}-Discovery`,
+    `${namespace}-Hint`,
+    `${namespace}-GameSession`,
+    `${namespace}-GameSeed`,
+    `${namespace}-GameSettings`,
+    `${namespace}-GameSettingsMetadata`,
+    `${namespace}-Config`,
+  ]
 
-    onStatus?.('Syncing game state...')
-    logPhase('sync', { entityModels })
-    const sync = await withTimeout(
-      getSyncEntities(toriiClient, clientModels, clause, undefined, entityModels),
-      20000,
-      'Entity sync initialization',
-    )
-    console.info('[athanor:init] sync result:', sync)
-
-    onStatus?.('Preparing game systems...')
-    logPhase('systems')
-    const client = createSystemCalls(config.manifest)
-    console.info('[athanor:init] system calls created, contracts:', config.manifest.contracts.map(c => c.tag))
-
-    logPhase('done')
-    return {
-      client,
-      clientModels,
-      contractComponents,
-      config,
-      world,
-      sync,
+  onStatus?.('Syncing game state...')
+  const sync = await withTimeout(
+    getSyncEntities(
       toriiClient,
-    }
-  } finally {
-    console.groupEnd()
+      contractComponents as any,
+      KeysClause(modelsToSync, [undefined], 'VariableLen').build(),
+      [],
+      modelsToWatch,
+      10000,
+      false,
+    ),
+    30000,
+    'Entity sync',
+  )
+
+  onStatus?.('Preparing game systems...')
+  const client = createSystemCalls(config.manifest)
+
+  return {
+    client,
+    contractComponents,
+    config,
+    world,
+    sync,
+    toriiClient,
   }
 }

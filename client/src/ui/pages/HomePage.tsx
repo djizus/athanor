@@ -16,7 +16,7 @@ export function HomePage() {
   const { navigate } = useNavigationStore()
   const { address, account } = useAccount()
   const { connect, connectors } = useConnect()
-  const games = useGameTokens(address)
+  const { games } = useGameTokens(address)
   const { displayName } = usePlayerName(address)
   const rank = usePlayerRank(address)
   const [isCreatingGame, setIsCreatingGame] = useState(false)

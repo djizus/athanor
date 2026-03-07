@@ -5,7 +5,7 @@ import { useNavigationStore } from '@/stores/navigationStore'
 
 export function MyGamesPage() {
   const { address } = useAccount()
-  const games = useGameTokens(address)
+  const { games } = useGameTokens(address)
   const { navigate } = useNavigationStore()
 
   const sortedGames = useMemo(
