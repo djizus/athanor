@@ -30,6 +30,7 @@ pub mod Play {
     use crate::constants::NAMESPACE;
     use crate::helpers::random::{RandomImpl, RandomTrait};
     use crate::models::config::Config;
+    use crate::models::game::GameTrait;
     use crate::store::{StoreImpl, StoreTrait};
     use crate::systems::setup::NAME as SETUP;
     use super::*;
@@ -104,14 +105,14 @@ pub mod Play {
     impl GameTokenDataImpl of IMinigameTokenData<ContractState> {
         fn score(self: @ContractState, token_id: u64) -> u32 {
             let store = StoreImpl::new(self.world(@NAMESPACE()));
-            let session = store.session(token_id);
-            session.discovered_count.into()
+            let game = store.game(token_id);
+            game.score()
         }
 
         fn game_over(self: @ContractState, token_id: u64) -> bool {
             let store = StoreImpl::new(self.world(@NAMESPACE()));
-            let session = store.session(token_id);
-            session.game_over
+            let game = store.game(token_id);
+            game.is_over()
         }
     }
 

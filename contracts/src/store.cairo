@@ -14,7 +14,6 @@ use crate::interfaces::vrf::IVrfProviderDispatcher;
 use crate::models::character::Character;
 use crate::models::config::{Config, GameSettings, GameSettingsMetadata};
 use crate::models::discovery::Discovery;
-use crate::models::game::{GameSeed, GameSession};
 use crate::models::hint::Hint;
 use crate::models::index::Game;
 
@@ -95,30 +94,6 @@ pub impl StoreImpl of StoreTrait {
     }
 
     fn set_character(mut self: Store, model: @Character) {
-        self.world.write_model(model);
-    }
-
-    // -----------------------------------------------------------------------
-    // GameSession
-    // -----------------------------------------------------------------------
-
-    fn session(self: @Store, game_id: u64) -> GameSession {
-        self.world.read_model(game_id)
-    }
-
-    fn set_session(mut self: Store, model: @GameSession) {
-        self.world.write_model(model);
-    }
-
-    // -----------------------------------------------------------------------
-    // GameSeed
-    // -----------------------------------------------------------------------
-
-    fn game_seed(self: @Store, game_id: u64) -> GameSeed {
-        self.world.read_model(game_id)
-    }
-
-    fn set_game_seed(mut self: Store, model: @GameSeed) {
         self.world.write_model(model);
     }
 

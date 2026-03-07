@@ -33,7 +33,7 @@ set -e
 #   - sozo migrate MUST run from workspace root, not from contracts/
 #   - Fresh katana required for dev (no schema upgrade support)
 
-NAMESPACE="athanor"
+NAMESPACE="ATHANOR"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
