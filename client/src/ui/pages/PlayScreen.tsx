@@ -327,7 +327,8 @@ export function PlayScreen() {
   const heroCount = game ? bitmapPopcount(game.heroes) : heroes.length
   const hintCost = game?.hint_price ?? 4
   const startedAt = game ? Number(game.started_at) : now
-  const elapsedSeconds = Math.max(0, now - startedAt)
+  const endedAt = game && Number(game.ended_at) > 0 ? Number(game.ended_at) : now
+  const elapsedSeconds = Math.max(0, endedAt - startedAt)
 
   const journeyHeroes = useMemo(() =>
     heroes.map(h => {
@@ -872,7 +873,7 @@ function HeroSlot({
         <button
           className="btn-sm btn-potion"
           onClick={(e) => { e.stopPropagation(); onApplyPotion(hero.id) }}
-          disabled={isGameOver || !hasPotions}
+          disabled={isGameOver || !hasPotions || isExploring}
         >
           Apply Potion
         </button>
