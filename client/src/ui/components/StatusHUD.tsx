@@ -23,9 +23,9 @@ export function StatusHUD({ gold, discoveredCount, elapsedSeconds, onBack, onSet
         ← Back
       </button>
       <span className="status-hud-divider" />
-      <span className="status-hud-gold">Gold {displayGold(gold)}</span>
+      <span className="status-hud-time">Time {formatTime(elapsedSeconds)}</span>
       <span className="status-hud-sep">·</span>
-      <span className="status-hud-time">{formatTime(elapsedSeconds)}</span>
+      <span className="status-hud-gold">Gold {displayGold(gold)}</span>
       <span className="status-hud-sep">·</span>
       <div className="status-hud-progress">
         <div className="status-hud-progress-fill" style={{ width: `${pct}%` }} />
