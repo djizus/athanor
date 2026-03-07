@@ -234,9 +234,12 @@ function CraftResultPreview({ discovery }: { discovery: DiscoveryData }) {
 
   if (isSoup || effectIdx < 0 || effectIdx >= EFFECT_NAMES.length) {
     return (
-      <div className="craft-result-soup">
-        <img className="craft-result-icon" src="/assets/potions/craft-soup.webp" alt="Soup" />
-        <span className="craft-result-tag">+1g</span>
+      <div
+        className="grimoire-icon-wrap craft-result-circle"
+        style={{ ['--effect-color' as string]: '#8B6914' }}
+      >
+        <img className="grimoire-icon" src="/assets/potions/craft-soup.webp" alt="Soup" />
+        <span className="grimoire-badge-tr" style={{ background: '#8B6914' }}>+1g</span>
       </div>
     )
   }
@@ -383,7 +386,7 @@ export function GrimoireContent({
           return (
             <div
               key={effectIdx}
-              className={`grimoire-cell${isDiscovered ? ' discovered' : ''}${isHinted ? ' hinted' : ''}${isDiscovered || isHinted ? ' grimoire-cell-clickable' : ''}`}
+              className={`grimoire-cell${isDiscovered ? (canCraft ? ' discovered' : ' discovered inactive') : ''}${isHinted ? ' hinted' : ''}${isDiscovered || isHinted ? ' grimoire-cell-clickable' : ''}`}
               onClick={() => { console.log('[Grimoire cell]', { effectIdx, isDiscovered, isHinted }); if (isDiscovered || isHinted) handleClick() }}
             >
               <div
@@ -395,7 +398,6 @@ export function GrimoireContent({
                   src={effectAssetUrl(effectIdx)}
                   alt={isDiscovered ? EFFECT_NAMES[effectIdx] : '???'}
                 />
-                {canCraft && <span className="grimoire-badge-tl">{'\u26CF'}</span>}
                 {isHinted && <span className="grimoire-badge-tl grimoire-badge-hint">{'\u2605'}</span>}
                 {isDiscovered && (
                   <span className="grimoire-badge-tr">{effectStatLabel(effectIdx)}</span>

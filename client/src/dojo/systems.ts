@@ -156,5 +156,14 @@ export function createSystemCalls(manifest: Manifest) {
           calldata: [game_id, character_id],
         },
       ]),
+
+    surrender: (account: AccountInterface, game_id: BigNumberish) =>
+      account.execute([
+        {
+          contractAddress: playAddress,
+          entrypoint: 'surrender',
+          calldata: [game_id],
+        },
+      ]),
   }
 }

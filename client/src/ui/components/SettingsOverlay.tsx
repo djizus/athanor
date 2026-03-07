@@ -59,10 +59,7 @@ export function SettingsOverlay({ open, onClose, onSurrender }: SettingsOverlayP
               <div className="settings-confirm-row">
                 <span className="settings-confirm-text">Abandon this run?</span>
                 <button className="btn-danger" onClick={() => { onSurrender(); setConfirmSurrender(false) }}>
-                  Yes, surrender
-                </button>
-                <button className="home-menu-button" onClick={() => setConfirmSurrender(false)}>
-                  Cancel
+                  Confirm
                 </button>
               </div>
             )}

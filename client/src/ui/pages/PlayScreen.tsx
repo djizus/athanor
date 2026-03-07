@@ -473,7 +473,16 @@ export function PlayScreen() {
         <SettingsOverlay
           open={settingsOpen}
           onClose={() => setSettingsOpen(false)}
-          onSurrender={() => { setSettingsOpen(false); navigate('home') }}
+          onSurrender={async () => {
+            if (!account || gameId == null) return
+            try {
+              await client.surrender(account, gameId)
+              setSettingsOpen(false)
+              navigate('home')
+            } catch (e) {
+              console.error('Surrender failed:', e)
+            }
+          }}
         />
       )}
 
