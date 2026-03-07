@@ -1714,6 +1714,12 @@ button:disabled, .btn:disabled {
   pointer-events: none;
 }
 
+.craft-slot-qty-zero {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  color: var(--accent-red);
+}
+
 .craft-slot-empty {
   color: var(--text-muted);
   font-family: var(--font-title);
@@ -1785,6 +1791,21 @@ button:disabled, .btn:disabled {
   border-radius: 4px;
   padding: 0 3px;
   line-height: 1.3;
+}
+
+.craft-result-bonus {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  font-size: 0.55rem;
+  font-weight: 700;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 0 3px;
+  line-height: 1.4;
+  white-space: nowrap;
+  z-index: 2;
 }
 
 .craft-brew-btn {
@@ -1930,54 +1951,70 @@ button:disabled, .btn:disabled {
   filter: grayscale(1) brightness(0.5);
 }
 
-.grimoire-qty-badge {
+.grimoire-badge-tl {
   position: absolute;
-  bottom: -2px;
-  right: -2px;
+  top: -4px;
+  left: -4px;
   min-width: 16px;
   height: 16px;
-  padding: 0 3px;
+  padding: 0 2px;
   border-radius: 8px;
-  background: var(--bg-panel);
-  border: 1px solid var(--border-color);
-  color: var(--text-primary);
-  font-family: var(--font-body);
-  font-size: 0.62rem;
-  font-weight: 600;
+  background: var(--accent-gold);
+  color: var(--bg-primary);
+  font-size: 0.6rem;
+  font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
   line-height: 1;
   z-index: 2;
-}
-
-.grimoire-badge-star {
-  position: absolute;
-  top: -2px;
-  right: -2px;
-  font-size: 0.75rem;
-  color: var(--accent-gold);
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
-  z-index: 2;
   pointer-events: none;
 }
 
 .grimoire-badge-hint {
+  background: var(--accent-purple);
+}
+
+.grimoire-badge-tr {
   position: absolute;
-  top: -2px;
-  right: -2px;
-  font-size: 0.65rem;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+  top: -5px;
+  right: -6px;
+  font-size: 0.5rem;
+  font-weight: 700;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 0 2px;
+  line-height: 1.4;
+  white-space: nowrap;
   z-index: 2;
   pointer-events: none;
 }
 
-.grimoire-stat-badge {
+.grimoire-badge-br {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  border-radius: 8px;
+  background: var(--accent-gold);
+  color: var(--bg-primary);
   font-size: 0.58rem;
   font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   line-height: 1;
-  text-align: center;
-  white-space: nowrap;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.grimoire-badge-zero {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
 }
 
 /* ── Potion Use Popup ─────────────────────────── */
