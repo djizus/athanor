@@ -77,7 +77,8 @@
   "potions": [
     { "id": "potion-health", "filename": "potion-health.webp", "category": "potions", "width": 512, "height": 512, "description": "A round glass potion bottle filled with glowing red liquid, heart-shaped stopper, warm crimson glow" },
     { "id": "potion-power", "filename": "potion-power.webp", "category": "potions", "width": 512, "height": 512, "description": "A tall angular potion bottle filled with electric blue liquid, sword-shaped stopper, crackling energy" },
-    { "id": "potion-regen", "filename": "potion-regen.webp", "category": "potions", "width": 512, "height": 512, "description": "A bulbous potion bottle filled with verdant green liquid, leaf-shaped stopper, gentle healing glow" }
+    { "id": "potion-regen", "filename": "potion-regen.webp", "category": "potions", "width": 512, "height": 512, "description": "A bulbous potion bottle filled with verdant green liquid, leaf-shaped stopper, gentle healing glow" },
+    { "id": "craft-soup", "filename": "craft-soup.webp", "category": "potions", "width": 512, "height": 512, "description": "A crude cracked wooden bowl of murky brown-grey failed alchemical soup, lazy steam wisps, lumpy unappetizing sludge with occasional bubble" }
   ],
   "branding": [
     { "id": "logo", "filename": "logo.png", "category": "branding", "width": 1024, "height": 1024, "description": "ATHANOR game logo — alchemical serif text in molten gold on black" },
