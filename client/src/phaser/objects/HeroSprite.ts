@@ -86,6 +86,10 @@ export class HeroSprite extends Phaser.GameObjects.Container {
     const bodyParts: Phaser.GameObjects.GameObject[] = [];
 
     if (hasPortrait) {
+      // Solid backing circle provides contrast on the transparent canvas
+      const backing = scene.add.circle(0, PORTRAIT_Y, PORTRAIT_RADIUS + 1, COLORS.bgCard, 1);
+      bodyParts.push(backing);
+
       const portrait = scene.add.image(0, PORTRAIT_Y, portraitKey);
       portrait.setDisplaySize(PORTRAIT_RADIUS * 2, PORTRAIT_RADIUS * 2);
       portrait.setOrigin(0.5, 0.5);
