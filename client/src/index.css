@@ -1581,8 +1581,6 @@ button:disabled, .btn:disabled {
   flex-wrap: wrap;
   gap: 0.4rem;
   padding: 0.35rem 0;
-  max-height: 180px;
-  overflow-y: auto;
 }
 
 .craft-ingredient-grid .ing-cell {
@@ -1637,11 +1635,17 @@ button:disabled, .btn:disabled {
 
 .grimoire-card.discovered { border-color: var(--accent-gold-dim); }
 
+.grimoire-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.2rem;
+}
+
 .grimoire-card-title {
   font-family: var(--font-title);
   font-size: 0.7rem;
   color: var(--accent-gold);
-  margin-bottom: 0.2rem;
 }
 
 .grimoire-card-recipe {
@@ -1682,9 +1686,23 @@ button:disabled, .btn:disabled {
 }
 
 .grimoire-card-effect {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
   font-size: 0.72rem;
   color: var(--text-secondary);
-  padding-left: 0.15rem;
+}
+
+.grimoire-effect-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.grimoire-effect-category {
+  opacity: 0.7;
+  font-size: 0.65rem;
 }
 
 .grimoire-card-undiscovered {

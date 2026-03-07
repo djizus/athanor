@@ -10,7 +10,9 @@ import {
   displayGold,
   getZoneForIngredient,
   ingredientAssetUrl,
+  effectAssetUrl,
 } from '@/game/constants'
+import { bitmapGet } from '@/game/packer'
 import type { DiscoveryData } from '@/hooks/useRecipes'
 
 export type PanelMode = 'craft' | 'grimoire' | 'inventory'
@@ -74,21 +76,27 @@ export function CraftContent({
   gold,
   isGameOver,
   hintCost,
+  brewAllCount,
   onCraft,
   onBuyHint,
+  onBrewAll,
 }: {
   inventory: InventoryItem[]
   gold: number
   isGameOver: boolean
   hintCost: number
+  brewAllCount: number
   onCraft: (a: number, b: number) => void
   onBuyHint: () => void
+  onBrewAll: () => void
 }) {
-  const available = useMemo(() => inventory.filter((i) => i.quantity > 0), [inventory])
   const [slotA, setSlotA] = useState<number | null>(null)
   const [slotB, setSlotB] = useState<number | null>(null)
 
   const handlePickIngredient = (id: number) => {
+    if (slotA === id) { setSlotA(null); return }
+    if (slotB === id) { setSlotB(null); return }
+
     if (slotA === null) {
       setSlotA(id)
     } else if (slotB === null) {
@@ -138,27 +146,37 @@ export function CraftContent({
         </button>
       </div>
 
-      <div className="craft-ingredient-grid">
-        {available.map((item) => (
-          <IngredientIcon
-            key={item.ingredient_id}
-            ingredientId={item.ingredient_id}
-            quantity={item.quantity}
-            size={36}
-            selected={item.ingredient_id === slotA || item.ingredient_id === slotB}
-            onClick={() => handlePickIngredient(item.ingredient_id)}
-          />
-        ))}
-        {available.length === 0 && (
-          <div className="craft-empty-msg">No ingredients available</div>
-        )}
-      </div>
-
       <div className="craft-btn-row">
         <button onClick={onBuyHint} disabled={isGameOver || gold < hintCost}>
           Hint ({displayGold(hintCost)}g)
         </button>
+        <button onClick={onBrewAll} disabled={isGameOver || brewAllCount === 0}>
+          Brew All ({brewAllCount})
+        </button>
       </div>
+
+      {ZONE_NAMES.map((zoneName, zi) => {
+        const zoneItems = inventory.slice(
+          zi * INGREDIENTS_PER_ZONE,
+          zi * INGREDIENTS_PER_ZONE + INGREDIENTS_PER_ZONE,
+        )
+        return (
+          <div key={zoneName}>
+            <div className="inventory-zone-header" style={{ color: ZONE_COLORS[zi] }}>{zoneName}</div>
+            <div className="inventory-zone-grid">
+              {zoneItems.map((item) => (
+                <IngredientIcon
+                  key={item.ingredient_id}
+                  ingredientId={item.ingredient_id}
+                  quantity={item.quantity}
+                  selected={item.ingredient_id === slotA || item.ingredient_id === slotB}
+                  onClick={item.quantity > 0 ? () => handlePickIngredient(item.ingredient_id) : undefined}
+                />
+              ))}
+            </div>
+          </div>
+        )
+      })}
     </>
   )
 }
@@ -168,11 +186,25 @@ export function CraftContent({
 export function GrimoireContent({
   recipes,
   discoveredCount,
+  grimoire,
 }: {
   recipes: DiscoveryData[]
   discoveredCount: number
+  grimoire: number
 }) {
-  const discovered = useMemo(() => recipes.filter((r) => r.discovered), [recipes])
+  /* Show only recipes whose effect is actually marked in the grimoire bitmap,
+     deduplicated by effect (first recipe per effect wins). */
+  const discovered = useMemo(() => {
+    const seenEffects = new Set<number>()
+    const result: DiscoveryData[] = []
+    for (const r of recipes) {
+      if (bitmapGet(grimoire, r.effect) && !seenEffects.has(r.effect)) {
+        seenEffects.add(r.effect)
+        result.push(r)
+      }
+    }
+    return result
+  }, [recipes, grimoire])
 
   return (
     <>
@@ -186,11 +218,25 @@ export function GrimoireContent({
           discovered.map((recipe, idx) => {
             const effectCategory = EFFECT_CATEGORIES[recipe.effect]
             const effectColor = effectCategory ? EFFECT_COLORS[effectCategory] : undefined
+            const categoryLabel = effectCategory
+              ? effectCategory.charAt(0).toUpperCase() + effectCategory.slice(1)
+              : ''
             const zoneA = getZoneForIngredient(recipe.ingredient_a)
             const zoneB = getZoneForIngredient(recipe.ingredient_b)
             return (
               <div key={`${recipe.ingredient_a}-${recipe.ingredient_b}`} className="grimoire-card discovered">
-                <div className="grimoire-card-title">#{idx + 1}</div>
+                <div className="grimoire-card-header">
+                  <div className="grimoire-card-title">#{idx + 1}</div>
+                  <div className="grimoire-card-effect" style={{ color: effectColor }}>
+                    <img
+                      className="grimoire-effect-icon"
+                      src={effectAssetUrl(recipe.effect)}
+                      alt={EFFECT_NAMES[recipe.effect]}
+                    />
+                    {EFFECT_NAMES[recipe.effect]}
+                    <span className="grimoire-effect-category">({categoryLabel})</span>
+                  </div>
+                </div>
                 <div className="grimoire-card-recipe">
                   <div className="grimoire-ingredient">
                     <img
@@ -216,9 +262,6 @@ export function GrimoireContent({
                     </span>
                   </div>
                 </div>
-                <div className="grimoire-card-effect" style={{ color: effectColor }}>
-                  {EFFECT_NAMES[recipe.effect]}
-                </div>
               </div>
             )
           })
@@ -228,27 +271,4 @@ export function GrimoireContent({
   )
 }
 
-/* ── Inventory Panel Content ──────────────────── */
 
-export function InventoryContent({ inventory }: { inventory: InventoryItem[] }) {
-  return (
-    <>
-      {ZONE_NAMES.map((zoneName, zi) => (
-        <div key={zoneName}>
-          <div className="inventory-zone-header" style={{ color: ZONE_COLORS[zi] }}>{zoneName}</div>
-          <div className="inventory-zone-grid">
-            {inventory
-              .slice(zi * INGREDIENTS_PER_ZONE, zi * INGREDIENTS_PER_ZONE + INGREDIENTS_PER_ZONE)
-              .map((item) => (
-                <IngredientIcon
-                  key={item.ingredient_id}
-                  ingredientId={item.ingredient_id}
-                  quantity={item.quantity}
-                />
-              ))}
-          </div>
-        </div>
-      ))}
-    </>
-  )
-}

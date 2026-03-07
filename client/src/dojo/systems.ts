@@ -97,6 +97,19 @@ export function createSystemCalls(manifest: Manifest) {
         },
       ]),
 
+    craftBatch: (
+      account: AccountInterface,
+      game_id: BigNumberish,
+      pairs: [number, number][],
+    ) =>
+      account.execute(
+        pairs.map(([a, b]) => ({
+          contractAddress: playAddress,
+          entrypoint: 'craft',
+          calldata: [game_id, a + 1, b + 1, 1],
+        })),
+      ),
+
     recruit: (account: AccountInterface, game_id: BigNumberish) =>
       account.execute([
         {

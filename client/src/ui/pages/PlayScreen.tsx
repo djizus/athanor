@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAccount } from '@starknet-react/core'
 import { useDojo } from '@/dojo/useDojo'
 import { useGame } from '@/hooks/useGame'
@@ -17,9 +17,45 @@ import {
   roleAssetUrl,
 } from '@/game/constants'
 import { bitmapPopcount } from '@/game/packer'
+import type { DiscoveryData } from '@/hooks/useRecipes'
 import { StatusHUD } from '@/ui/components/StatusHUD'
-import { CraftContent, GrimoireContent, InventoryContent } from '@/ui/components/RightPanel'
+import { CraftContent, GrimoireContent } from '@/ui/components/RightPanel'
 import { SettingsOverlay } from '@/ui/components/SettingsOverlay'
+
+function computeUntriedPairs(
+  inventory: { ingredient_id: number; quantity: number }[],
+  recipes: DiscoveryData[],
+): [number, number][] {
+  const tried = new Set<string>()
+  for (const r of recipes) {
+    tried.add(`${r.ingredient_a}-${r.ingredient_b}`)
+    tried.add(`${r.ingredient_b}-${r.ingredient_a}`)
+  }
+
+  const inv = new Map<number, number>()
+  for (const item of inventory) {
+    if (item.quantity > 0) inv.set(item.ingredient_id, item.quantity)
+  }
+
+  const ids = [...inv.keys()].sort((a, b) => a - b)
+  const pairs: [number, number][] = []
+
+  for (let i = 0; i < ids.length; i++) {
+    for (let j = i + 1; j < ids.length; j++) {
+      const a = ids[i]
+      const b = ids[j]
+      if (tried.has(`${a}-${b}`)) continue
+      const qA = inv.get(a) ?? 0
+      const qB = inv.get(b) ?? 0
+      if (qA >= 1 && qB >= 1) {
+        pairs.push([a, b])
+        inv.set(a, qA - 1)
+        inv.set(b, qB - 1)
+      }
+    }
+  }
+  return pairs
+}
 
 interface Props {
   bridge: PhaserBridge
@@ -39,7 +75,6 @@ export function PlayScreen({ bridge }: Props) {
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000))
 
   const [heroesCollapsed, setHeroesCollapsed] = useState(false)
-  const [inventoryCollapsed, setInventoryCollapsed] = useState(false)
   const [craftCollapsed, setCraftCollapsed] = useState(false)
   const [grimoireCollapsed, setGrimoireCollapsed] = useState(false)
   const [logsCollapsed, setLogsCollapsed] = useState(false)
@@ -104,7 +139,6 @@ export function PlayScreen({ bridge }: Props) {
       switch (e.key.toLowerCase()) {
         case 'c': scrollPanelIntoView('panel-craft', setCraftCollapsed); break
         case 'g': scrollPanelIntoView('panel-grimoire', setGrimoireCollapsed); break
-        case 'i': scrollPanelIntoView('panel-inventory', setInventoryCollapsed); break
         case 'escape': setSelectedHeroId(-1); break
       }
     }
@@ -143,6 +177,15 @@ export function PlayScreen({ bridge }: Props) {
     try { await client.craft(account, gameId, ingredientA, ingredientB); t.success() } catch (e) { t.error(); pushInfo('Brew failed'); console.error('Craft failed:', e) }
   }
 
+  const handleBrewAll = async () => {
+    if (!account || gameId == null) return
+    const pairs = computeUntriedPairs(inventory, recipes)
+    if (pairs.length === 0) return
+    pushInfo(`Brewing ${pairs.length} new combinations...`)
+    const t = txToast(`Brewing ${pairs.length} potions`)
+    try { await client.craftBatch(account, gameId, pairs); t.success() } catch (e) { t.error(); pushInfo('Batch brew failed'); console.error('Batch craft failed:', e) }
+  }
+
   const handleClue = async () => {
     if (!account || gameId == null) return
     pushInfo('Buying hint...')
@@ -168,6 +211,7 @@ export function PlayScreen({ bridge }: Props) {
 
   const gold = game?.gold ?? 0
   const discoveredCount = game ? bitmapPopcount(game.grimoire) : 0
+  const brewAllCount = useMemo(() => computeUntriedPairs(inventory, recipes).length, [inventory, recipes])
   const heroCount = game ? bitmapPopcount(game.heroes) : heroes.length
   const isGameOver = game ? Number(game.ended_at) > 0 : false
   const hintCost = game?.hint_price ?? 4
@@ -219,7 +263,7 @@ export function PlayScreen({ bridge }: Props) {
           </button>
           {!grimoireCollapsed && (
             <div className="side-panel-body">
-              <GrimoireContent recipes={recipes} discoveredCount={discoveredCount} />
+              <GrimoireContent recipes={recipes} discoveredCount={discoveredCount} grimoire={game?.grimoire ?? 0} />
             </div>
           )}
         </div>
@@ -260,24 +304,16 @@ export function PlayScreen({ bridge }: Props) {
                 gold={gold}
                 isGameOver={isGameOver}
                 hintCost={hintCost}
+                brewAllCount={brewAllCount}
                 onCraft={(a, b) => void handleCraft(a, b)}
                 onBuyHint={() => void handleClue()}
+                onBrewAll={() => void handleBrewAll()}
               />
             </div>
           )}
         </div>
 
-        <div className="side-panel floating-panel panel-inventory">
-          <button className="side-panel-header" onClick={() => setInventoryCollapsed((v) => !v)}>
-            <span className="side-panel-title">Inventory</span>
-            <span className="side-panel-chevron">{inventoryCollapsed ? '▸' : '▾'}</span>
-          </button>
-          {!inventoryCollapsed && (
-            <div className="side-panel-body">
-              <InventoryContent inventory={inventory} />
-            </div>
-          )}
-        </div>
+
       </div>
 
       {isGameOver && (
