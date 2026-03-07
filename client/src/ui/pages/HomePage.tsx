@@ -30,12 +30,13 @@ export function HomePage() {
     [games],
   )
 
-  useEffect(() => {
-    if (activeGame) {
-      console.info('[HomePage] active game detected, resuming game #', activeGame.game_id)
-      navigate('play', activeGame.game_id)
-    }
-  }, [activeGame, navigate])
+  // TODO: re-enable auto-nav to ongoing game
+  // useEffect(() => {
+  //   if (activeGame) {
+  //     console.info('[HomePage] active game detected, resuming game #', activeGame.game_id)
+  //     navigate('play', activeGame.game_id)
+  //   }
+  // }, [activeGame, navigate])
 
   const handleCreateGame = async () => {
     if (!account) return
