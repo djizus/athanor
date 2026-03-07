@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { HERO_NAMES } from '@/game/constants';
+import { ROLE_NAMES } from '@/game/constants';
 import type { AthanorHero } from '../PhaserBridge';
 import { PhaserBridge } from '../PhaserBridge';
 import { COLORS } from '../utils/colors';
@@ -7,13 +7,17 @@ import { baseCampWorldX, FONTS, heroWorldX } from '../utils/layout';
 import type { EventEffect } from './EventEffect';
 
 const HERO_TINTS = [0x4080d0, 0x40c060, 0xa050d0];
-const HERO_PORTRAIT_KEYS = ['hero-alaric', 'hero-brynn', 'hero-cassiel'];
+const HERO_PORTRAIT_KEYS = ['role-mage', 'role-rogue', 'role-warrior'];
 const PORTRAIT_SIZE = 48;
 const HP_BAR_WIDTH = 40;
 
+function deriveStatus(availableAt: number): number {
+  const now = Math.floor(Date.now() / 1000);
+  return availableAt > now ? 1 : 0;
+}
+
 const STATUS_IDLE = 0;
 const STATUS_EXPLORING = 1;
-const STATUS_RETURNING = 2;
 
 export class HeroSprite extends Phaser.GameObjects.Container {
   private readonly sceneRef: Phaser.Scene;
@@ -99,7 +103,8 @@ export class HeroSprite extends Phaser.GameObjects.Container {
       bodyParts.push(body, head);
     }
 
-    const name = HERO_NAMES[heroIndex] ?? `Hero ${heroIndex}`;
+    const roleIdx = hero.role > 0 ? hero.role - 1 : heroIndex;
+    const name = ROLE_NAMES[roleIdx] ?? `Hero ${heroIndex}`;
     const label = scene.add.text(0, 60, name, FONTS.bodySmall);
     label.setOrigin(0.5, 0);
 
@@ -145,8 +150,9 @@ export class HeroSprite extends Phaser.GameObjects.Container {
 
   syncToHero(hero: AthanorHero): void {
     this.heroId = hero.hero_id;
-    const hpRatio = hero.max_hp > 0 ? Phaser.Math.Clamp(hero.hp / hero.max_hp, 0, 1) : 0;
-    const defeated = hero.hp <= 0;
+    const hpRatio = hero.max_health > 0 ? Phaser.Math.Clamp(hero.health / hero.max_health, 0, 1) : 0;
+    const defeated = hero.health <= 0;
+    const status = deriveStatus(hero.available_at);
     const targetX = this.getTargetX(hero);
 
     if (Math.abs(hpRatio - this.lastHpRatio) > 0.001) {
@@ -163,7 +169,7 @@ export class HeroSprite extends Phaser.GameObjects.Container {
       this.setPosition(this.baseX, this.baseY);
       this.setAlpha(0.3);
       this.lastDefeated = true;
-      this.lastStatus = hero.status;
+      this.lastStatus = status;
       this.lastTargetX = this.baseX;
       return;
     }
@@ -174,29 +180,20 @@ export class HeroSprite extends Phaser.GameObjects.Container {
     }
     if (defeated) return;
 
-    if (hero.status !== this.lastStatus) {
+    if (status !== this.lastStatus) {
       this.setAlpha(1);
 
-      if (hero.status === STATUS_IDLE) {
+      if (status === STATUS_IDLE) {
         if (this.bobTween.isPaused()) this.bobTween.resume();
         this.trailEmitter.stop();
         this.configureAura(COLORS.white, 0.08, 1.06, 1400);
       } else {
         if (!this.bobTween.isPaused()) this.bobTween.pause();
         this.y = this.baseY;
-
-        if (hero.status === STATUS_EXPLORING) {
-          this.trailEmitter.start();
-          this.configureAura(COLORS.blue, 0.2, 1.18, 1000);
-        } else if (hero.status === STATUS_RETURNING) {
-          this.trailEmitter.stop();
-          this.configureAura(COLORS.gold, 0.24, 1.2, 900);
-        } else {
-          this.trailEmitter.stop();
-          this.configureAura(COLORS.gold, 0.24, 1.2, 900);
-        }
+        this.trailEmitter.start();
+        this.configureAura(COLORS.blue, 0.2, 1.18, 1000);
       }
-      this.lastStatus = hero.status;
+      this.lastStatus = status;
     }
 
     if (Math.abs(targetX - this.lastTargetX) > 1) {
@@ -231,8 +228,9 @@ export class HeroSprite extends Phaser.GameObjects.Container {
 
   private getTargetX(hero: AthanorHero): number {
     const sw = this.sceneRef.scale.width;
-    if (hero.status === STATUS_EXPLORING) {
-      return heroWorldX(hero.death_depth, sw);
+    const status = deriveStatus(hero.available_at);
+    if (status === STATUS_EXPLORING) {
+      return heroWorldX(50, sw);
     }
     return baseCampWorldX(sw);
   }

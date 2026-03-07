@@ -35,7 +35,7 @@ export function MyGamesPage() {
                   <div className="game-card-info">
                     <strong>Game #{game.game_id}</strong>
                     <span style={{ color: 'var(--text-secondary)' }}>
-                      {game.discovered_count}/10 recipes discovered
+                      {game.discovered_count}/30 recipes discovered
                     </span>
                     <span style={{ color: game.game_over ? 'var(--accent-green)' : 'var(--text-secondary)' }}>
                       {game.game_over ? 'Completed' : 'In Progress'}

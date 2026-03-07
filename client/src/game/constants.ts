@@ -1,63 +1,73 @@
-// ── Zone Configuration ──────────────────────────────────────
+export const ZONE_COUNT = 5
+export const INGREDIENTS_PER_ZONE = 5
+export const TOTAL_INGREDIENTS = 25
+export const TOTAL_EFFECTS = 30
+export const MAX_HEROES = 3
 
-export const ZONE_NAMES = ['Verdant Meadow', 'Crystal Cavern', 'Aether Spire'] as const
+export const ZONE_NAMES = [
+  'Verdant Meadow', 'Crystal Cavern', 'Aether Spire', 'Shadowed Depths', 'Twilight Grove',
+] as const
 
-export const ZONE_COLORS = ['#4a9e4a', '#b8860b', '#9e4a9e'] as const
+export const ZONE_COLORS = ['#4a9e4a', '#b8860b', '#9e4a9e', '#5a3a7a', '#2a6a4a'] as const
 
-export const ZONE_BG_KEYS = ['zone-meadow', 'zone-cavern', 'zone-spire'] as const
+export const ZONE_BG_KEYS = [
+  'zone-meadow', 'zone-cavern', 'zone-spire', 'zone-depths', 'zone-grove',
+] as const
 
-// ── Ingredients (3 per zone, 9 total) ───────────────────────
+export const ZONE_DEPTHS = [0, 20, 40, 60, 90] as const
 
 export const INGREDIENT_NAMES = [
-  // Zone 0 — Verdant Meadow
-  'Moonpetal',
-  'Dewmoss',
-  'River Clay',
-  // Zone 1 — Crystal Cavern
-  'Crystal Shard',
-  'Drake Moss',
-  'Sulfur Bloom',
-  // Zone 2 — Aether Spire
-  'Dragon Scale',
-  'Aether Core',
-  'Titan Blood',
+  'Amber Sap', 'Copper Dust', 'Fog Essence', 'Iron Filing', 'Moonpetal',
+  'Nightberry', 'Crystal Shard', 'Drake Moss', 'Sulfur Bloom', 'Dragon Scale',
+  'Aether Core', 'Titan Blood', 'Void Salt', 'Aether Bloom', 'Star Dust',
+  'Cave Pearl', 'River Clay', 'Echo Moss', 'Dripstone', 'Starfall',
+  'Echoleaf', 'Crystalbloom', 'Feather', 'Frostbloom', 'Gemstone',
 ] as const
 
 export const INGREDIENT_KEYS = [
-  'moonpetal',
-  'dewmoss',
-  'river-clay',
-  'crystal-shard',
-  'drake-moss',
-  'sulfur-bloom',
-  'dragon-scale',
-  'aether-core',
-  'titan-blood',
+  'amber-sap', 'copper-dust', 'fog-essence', 'iron-filing', 'moonpetal',
+  'nightberry', 'crystal-shard', 'drake-moss', 'sulfur-bloom', 'dragon-scale',
+  'aether-core', 'titan-blood', 'void-salt', 'aether-bloom', 'star-dust',
+  'cave-pearl', 'river-clay', 'echo-moss', 'dripstone', 'starfall',
+  'echoleaf', 'crystalbloom', 'feather', 'frostbloom', 'gemstone',
 ] as const
 
-export const INGREDIENTS_PER_ZONE = 3
+export const EFFECT_NAMES = [
+  'Blue', 'Green', 'Red', 'Yellow', 'Purple',
+  'Orange', 'Pink', 'Brown', 'Gray', 'Black',
+  'White', 'Cyan', 'Magenta', 'Lime', 'Teal',
+  'Maroon', 'Navy', 'Indigo', 'Violet', 'Gold',
+  'Silver', 'Copper', 'Mauve', 'Ruby', 'Sapphire',
+  'Emerald', 'Diamond', 'Amethyst', 'Topaz', 'Aquamarine',
+] as const
 
-// ── Heroes ──────────────────────────────────────────────────
+export const EFFECT_CATEGORIES = [
+  'health', 'health', 'health', 'health', 'health',
+  'health', 'health', 'health', 'health', 'health',
+  'power', 'power', 'power', 'power', 'power',
+  'power', 'power', 'power', 'power', 'power',
+  'regen', 'regen', 'regen', 'regen', 'regen',
+  'regen', 'regen', 'regen', 'regen', 'regen',
+] as const
 
-export const HERO_NAMES = ['Alaric', 'Brynn', 'Cassiel'] as const
+export const EFFECT_COLORS: Record<string, string> = {
+  health: '#d04050',
+  power: '#4080d0',
+  regen: '#40c060',
+}
 
-export const HERO_KEYS = ['hero-alaric', 'hero-brynn', 'hero-cassiel'] as const
+export const ROLE_NAMES = ['Mage', 'Rogue', 'Warrior'] as const
 
-export const HERO_RECRUIT_COSTS = [0, 8000, 20000] as const // x100 fixed-point
+export const ROLE_KEYS = ['role-mage', 'role-rogue', 'role-warrior'] as const
 
-export const HERO_STATUS_IDLE = 0
-export const HERO_STATUS_EXPLORING = 1
-export const HERO_STATUS_RETURNING = 2
+export const ROLE_STATS = [
+  { maxHealth: 50, power: 20, regen: 1 },
+  { maxHealth: 100, power: 5, regen: 5 },
+  { maxHealth: 150, power: 5, regen: 2 },
+] as const
 
-// ── Effects & Potions ───────────────────────────────────────
+export const HERO_RECRUIT_COSTS = [0, 80, 200] as const
 
-export const EFFECT_NAMES = ['Max HP', 'Power', 'Regen'] as const
-
-export const EFFECT_COLORS = ['#d04050', '#4080d0', '#40c060'] as const
-
-export const POTION_KEYS = ['potion-hp', 'potion-power', 'potion-regen', 'potion-soup'] as const
-
-// Potion name generation (from alchemist)
 export const POTION_ADJECTIVES = [
   'Luminous', 'Shadow', 'Crystal', 'Ember', 'Frost',
   'Void', 'Celestial', 'Ancient', 'Mystic', 'Storm',
@@ -74,15 +84,10 @@ export const POTION_NOUNS = [
   'Infusion', 'Concentrate', 'Decoction', 'Distillate', 'Remedy',
 ] as const
 
-// ── Zone Depth Thresholds ───────────────────────────────────
-
-export const ZONE_0_DEPTH = 0
-export const ZONE_1_DEPTH = 20
-export const ZONE_2_DEPTH = 45
-
 export function getZoneForDepth(depth: number): number {
-  if (depth >= ZONE_2_DEPTH) return 2
-  if (depth >= ZONE_1_DEPTH) return 1
+  for (let i = ZONE_DEPTHS.length - 1; i >= 0; i--) {
+    if (depth >= ZONE_DEPTHS[i]) return i
+  }
   return 0
 }
 
@@ -90,26 +95,25 @@ export function getZoneForIngredient(ingredientId: number): number {
   return Math.floor(ingredientId / INGREDIENTS_PER_ZONE)
 }
 
-// ── Display Helpers ─────────────────────────────────────────
-
 export function displayHp(hp: number): string {
-  return (hp / 100).toFixed(0)
+  return String(hp)
 }
 
 export function displayGold(gold: number): string {
-  return (gold / 100).toFixed(0)
+  return String(gold)
 }
 
 export function ingredientAssetUrl(ingredientId: number): string {
   return `/assets/ingredients/${INGREDIENT_KEYS[ingredientId]}.png`
 }
 
-export function heroAssetUrl(heroId: number): string {
-  return `/assets/heroes/${HERO_KEYS[heroId]}.png`
+export function roleAssetUrl(roleIndex: number): string {
+  return `/assets/heroes/${ROLE_KEYS[roleIndex]}.png`
 }
 
-export function potionAssetUrl(effectType: number): string {
-  return `/assets/potions/${POTION_KEYS[effectType]}.png`
+export function effectAssetUrl(effectIndex: number): string {
+  const category = EFFECT_CATEGORIES[effectIndex]
+  return `/assets/potions/potion-${category}.png`
 }
 
 export function zoneBackgroundUrl(zoneId: number): string {

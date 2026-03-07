@@ -1,14 +1,11 @@
 import {
-  HERO_NAMES,
-  HERO_STATUS_EXPLORING,
-  HERO_STATUS_IDLE,
-  HERO_STATUS_RETURNING,
+  ROLE_NAMES,
 } from '@/game/constants'
 
 interface HeroData {
-  hero_id: number
-  status: number
-  return_at: bigint | number
+  id: number
+  role: number
+  available_at: bigint | number
 }
 
 interface Props {
@@ -16,8 +13,8 @@ interface Props {
   selectedHeroId: number
   isGameOver: boolean
   now: number
-  onSendExpedition: (heroId: number) => void
-  onClaimLoot: (heroId: number) => void
+  onExplore: (characterId: number) => void
+  onClaim: (characterId: number) => void
 }
 
 export function ActionBar({
@@ -25,20 +22,19 @@ export function ActionBar({
   selectedHeroId,
   isGameOver,
   now,
-  onSendExpedition,
-  onClaimLoot,
+  onExplore,
+  onClaim,
 }: Props) {
   if (selectedHeroId < 0) return null
 
-  const hero = heroes.find((h) => h.hero_id === selectedHeroId)
+  const hero = heroes.find((h) => h.id === selectedHeroId)
   if (!hero) return null
 
-  const remaining = Math.max(0, Number(hero.return_at) - now)
-  const isIdle = hero.status === HERO_STATUS_IDLE
-  const isExploring = hero.status === HERO_STATUS_EXPLORING
-  const isReturning = hero.status === HERO_STATUS_RETURNING
-  const lootReady = isReturning && remaining === 0
-  const name = HERO_NAMES[hero.hero_id] ?? `Hero ${hero.hero_id}`
+  const remaining = Math.max(0, Number(hero.available_at) - now)
+  const isIdle = remaining === 0
+  const isExploring = remaining > 0
+  const roleIdx = hero.role > 0 ? hero.role - 1 : hero.id
+  const name = ROLE_NAMES[roleIdx] ?? `Hero ${hero.id}`
 
   return (
     <div className="action-bar floating-panel">
@@ -47,7 +43,7 @@ export function ActionBar({
       {isIdle && (
         <button
           className="btn-primary"
-          onClick={() => onSendExpedition(hero.hero_id)}
+          onClick={() => onExplore(hero.id)}
           disabled={isGameOver}
         >
           Send Expedition
@@ -56,20 +52,6 @@ export function ActionBar({
 
       {isExploring && (
         <span className="action-bar-timer">Exploring... {remaining}s</span>
-      )}
-
-      {isReturning && !lootReady && (
-        <span className="action-bar-timer">Returning... {remaining}s</span>
-      )}
-
-      {lootReady && (
-        <button
-          className="btn-primary btn-loot"
-          onClick={() => onClaimLoot(hero.hero_id)}
-          disabled={isGameOver}
-        >
-          Claim Loot
-        </button>
       )}
     </div>
   )

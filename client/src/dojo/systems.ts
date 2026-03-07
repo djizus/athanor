@@ -41,26 +41,23 @@ export function extractGameId(receipt: { events?: { keys?: string[]; data?: stri
 }
 
 export function createSystemCalls(manifest: Manifest) {
-  const gameSystemAddress = getContractAddress(manifest, 'athanor-game_system')
-  const explorationSystemAddress = getContractAddress(manifest, 'athanor-exploration_system')
-  const craftingSystemAddress = getContractAddress(manifest, 'athanor-crafting_system')
-  const heroSystemAddress = getContractAddress(manifest, 'athanor-hero_system')
+  const playAddress = getContractAddress(manifest, 'ATHANOR-Play')
 
   return {
     mintGame: (account: AccountInterface, settingsId: number = 0) =>
       account.execute([
         {
-          contractAddress: gameSystemAddress,
+          contractAddress: playAddress,
           entrypoint: 'mint_game',
           calldata: CallData.compile([
             new CairoOption(CairoOptionVariant.None),
             new CairoOption(CairoOptionVariant.Some, settingsId),
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
+            new CairoOption(CairoOptionVariant.None),
+            new CairoOption(CairoOptionVariant.None),
+            new CairoOption(CairoOptionVariant.None),
+            new CairoOption(CairoOptionVariant.None),
+            new CairoOption(CairoOptionVariant.None),
+            new CairoOption(CairoOptionVariant.None),
             account.address,
             true,
           ]),
@@ -70,45 +67,18 @@ export function createSystemCalls(manifest: Manifest) {
     create: (account: AccountInterface, game_id: BigNumberish) =>
       account.execute([
         {
-          contractAddress: gameSystemAddress,
+          contractAddress: playAddress,
           entrypoint: 'create',
           calldata: [game_id],
         },
       ]),
 
-    glean: (account: AccountInterface, game_id: BigNumberish) =>
+    clue: (account: AccountInterface, game_id: BigNumberish) =>
       account.execute([
         {
-          contractAddress: gameSystemAddress,
-          entrypoint: 'glean',
+          contractAddress: playAddress,
+          entrypoint: 'clue',
           calldata: [game_id],
-        },
-      ]),
-
-    surrender: (account: AccountInterface, game_id: BigNumberish) =>
-      account.execute([
-        {
-          contractAddress: gameSystemAddress,
-          entrypoint: 'surrender',
-          calldata: [game_id],
-        },
-      ]),
-
-    sendExpedition: (account: AccountInterface, game_id: BigNumberish, hero_id: BigNumberish) =>
-      account.execute([
-        {
-          contractAddress: explorationSystemAddress,
-          entrypoint: 'send_expedition',
-          calldata: [game_id, hero_id],
-        },
-      ]),
-
-    claimLoot: (account: AccountInterface, game_id: BigNumberish, hero_id: BigNumberish) =>
-      account.execute([
-        {
-          contractAddress: explorationSystemAddress,
-          entrypoint: 'claim_loot',
-          calldata: [game_id, hero_id],
         },
       ]),
 
@@ -117,68 +87,55 @@ export function createSystemCalls(manifest: Manifest) {
       game_id: BigNumberish,
       ingredient_a: BigNumberish,
       ingredient_b: BigNumberish,
-    ) =>
-      account.execute([
-        {
-          contractAddress: craftingSystemAddress,
-          entrypoint: 'craft',
-          calldata: [game_id, ingredient_a, ingredient_b],
-        },
-      ]),
-
-    gameCraft: (
-      account: AccountInterface,
-      game_id: BigNumberish,
-      ingredient_a: BigNumberish,
-      ingredient_b: BigNumberish,
       quantity: BigNumberish = 1,
     ) =>
       account.execute([
         {
-          contractAddress: gameSystemAddress,
+          contractAddress: playAddress,
           entrypoint: 'craft',
           calldata: [game_id, ingredient_a, ingredient_b, quantity],
         },
       ]),
 
-    craftRecipe: (account: AccountInterface, game_id: BigNumberish, recipe_id: BigNumberish) =>
+    recruit: (account: AccountInterface, game_id: BigNumberish) =>
       account.execute([
         {
-          contractAddress: craftingSystemAddress,
-          entrypoint: 'craft_recipe',
-          calldata: [game_id, recipe_id],
-        },
-      ]),
-
-    buyHint: (account: AccountInterface, game_id: BigNumberish) =>
-      account.execute([
-        {
-          contractAddress: craftingSystemAddress,
-          entrypoint: 'buy_hint',
+          contractAddress: playAddress,
+          entrypoint: 'recruit',
           calldata: [game_id],
         },
       ]),
 
-    recruitHero: (account: AccountInterface, game_id: BigNumberish) =>
-      account.execute([
-        {
-          contractAddress: heroSystemAddress,
-          entrypoint: 'recruit_hero',
-          calldata: [game_id],
-        },
-      ]),
-
-    applyPotion: (
+    buff: (
       account: AccountInterface,
       game_id: BigNumberish,
-      potion_index: BigNumberish,
-      hero_id: BigNumberish,
+      character_id: BigNumberish,
+      effect: BigNumberish,
+      quantity: BigNumberish = 1,
     ) =>
       account.execute([
         {
-          contractAddress: heroSystemAddress,
-          entrypoint: 'apply_potion',
-          calldata: [game_id, potion_index, hero_id],
+          contractAddress: playAddress,
+          entrypoint: 'buff',
+          calldata: [game_id, character_id, effect, quantity],
+        },
+      ]),
+
+    explore: (account: AccountInterface, game_id: BigNumberish, character_id: BigNumberish) =>
+      account.execute([
+        {
+          contractAddress: playAddress,
+          entrypoint: 'explore',
+          calldata: [game_id, character_id],
+        },
+      ]),
+
+    claim: (account: AccountInterface, game_id: BigNumberish, character_id: BigNumberish) =>
+      account.execute([
+        {
+          contractAddress: playAddress,
+          entrypoint: 'claim',
+          calldata: [game_id, character_id],
         },
       ]),
   }

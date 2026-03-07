@@ -2,6 +2,61 @@ import { defineComponent, Type as RecsType } from '@dojoengine/recs'
 import { world } from './world'
 
 export const contractComponents = {
+  Game: defineComponent(
+    world,
+    {
+      id: RecsType.BigInt,
+      heroes: RecsType.Number,
+      started_at: RecsType.BigInt,
+      ended_at: RecsType.BigInt,
+      remaining_tries: RecsType.Number,
+      gold: RecsType.Number,
+      hint_price: RecsType.Number,
+      grimoire: RecsType.Number,
+      hints: RecsType.Number,
+      tries: RecsType.BigInt,
+      ingredients: RecsType.BigInt,
+      effects: RecsType.BigInt,
+      seed: RecsType.BigInt,
+    },
+    { id: 'Game' },
+  ),
+  Character: defineComponent(
+    world,
+    {
+      game_id: RecsType.BigInt,
+      id: RecsType.Number,
+      role: RecsType.Number,
+      health: RecsType.Number,
+      max_health: RecsType.Number,
+      power: RecsType.Number,
+      regen: RecsType.Number,
+      gold: RecsType.Number,
+      available_at: RecsType.BigInt,
+      ingredients: RecsType.BigInt,
+    },
+    { id: 'Character' },
+  ),
+  Discovery: defineComponent(
+    world,
+    {
+      game_id: RecsType.BigInt,
+      ingredient_a: RecsType.Number,
+      ingredient_b: RecsType.Number,
+      effect: RecsType.Number,
+      discovered: RecsType.Boolean,
+    },
+    { id: 'Discovery' },
+  ),
+  Hint: defineComponent(
+    world,
+    {
+      game_id: RecsType.BigInt,
+      ingredient: RecsType.Number,
+      recipes: RecsType.Number,
+    },
+    { id: 'Hint' },
+  ),
   GameSession: defineComponent(
     world,
     {
@@ -28,76 +83,6 @@ export const contractComponents = {
       seed: RecsType.BigInt,
     },
     { id: 'GameSeed' },
-  ),
-  Hero: defineComponent(
-    world,
-    {
-      game_id: RecsType.BigInt,
-      hero_id: RecsType.Number,
-      hp: RecsType.Number,
-      max_hp: RecsType.Number,
-      power: RecsType.Number,
-      regen_per_sec: RecsType.Number,
-      status: RecsType.Number,
-      expedition_seed: RecsType.BigInt,
-      expedition_start: RecsType.BigInt,
-      return_at: RecsType.BigInt,
-      death_depth: RecsType.Number,
-      pending_gold: RecsType.Number,
-    },
-    { id: 'Hero' },
-  ),
-  HeroPendingIngredient: defineComponent(
-    world,
-    {
-      game_id: RecsType.BigInt,
-      hero_id: RecsType.Number,
-      ingredient_id: RecsType.Number,
-      quantity: RecsType.Number,
-    },
-    { id: 'HeroPendingIngredient' },
-  ),
-  Recipe: defineComponent(
-    world,
-    {
-      game_id: RecsType.BigInt,
-      recipe_id: RecsType.Number,
-      ingredient_a: RecsType.Number,
-      ingredient_b: RecsType.Number,
-      effect_type: RecsType.Number,
-      effect_value: RecsType.Number,
-      discovered: RecsType.Boolean,
-    },
-    { id: 'Recipe' },
-  ),
-  IngredientBalance: defineComponent(
-    world,
-    {
-      game_id: RecsType.BigInt,
-      ingredient_id: RecsType.Number,
-      quantity: RecsType.Number,
-    },
-    { id: 'IngredientBalance' },
-  ),
-  PotionItem: defineComponent(
-    world,
-    {
-      game_id: RecsType.BigInt,
-      potion_index: RecsType.Number,
-      recipe_id: RecsType.Number,
-      effect_type: RecsType.Number,
-      effect_value: RecsType.Number,
-    },
-    { id: 'PotionItem' },
-  ),
-  FailedCombo: defineComponent(
-    world,
-    {
-      game_id: RecsType.BigInt,
-      combo_key: RecsType.Number,
-      attempted: RecsType.Boolean,
-    },
-    { id: 'FailedCombo' },
   ),
   GameSettings: defineComponent(
     world,
@@ -128,52 +113,13 @@ export const contractComponents = {
     },
     { id: 'GameSettingsMetadata' },
   ),
-  PlayerMeta: defineComponent(
+  Config: defineComponent(
     world,
     {
-      player: RecsType.BigInt,
-      total_games: RecsType.Number,
-      best_time: RecsType.BigInt,
-      total_recipes_discovered: RecsType.Number,
+      key: RecsType.BigInt,
+      token_address: RecsType.BigInt,
+      vrf_address: RecsType.BigInt,
     },
-    { id: 'PlayerMeta' },
-  ),
-  Game: defineComponent(
-    world,
-    {
-      id: RecsType.BigInt,
-      started_at: RecsType.BigInt,
-      ended_at: RecsType.BigInt,
-      remaining_tries: RecsType.Number,
-      gold: RecsType.Number,
-      hint_price: RecsType.Number,
-      grimoire: RecsType.Number,
-      hints: RecsType.Number,
-      tries: RecsType.BigInt,
-      ingredients: RecsType.BigInt,
-      effects: RecsType.BigInt,
-      seed: RecsType.BigInt,
-    },
-    { id: 'Game' },
-  ),
-  Discovery: defineComponent(
-    world,
-    {
-      game_id: RecsType.BigInt,
-      ingredient_a: RecsType.Number,
-      ingredient_b: RecsType.Number,
-      effect: RecsType.Number,
-      discovered: RecsType.Boolean,
-    },
-    { id: 'Discovery' },
-  ),
-  Hint: defineComponent(
-    world,
-    {
-      game_id: RecsType.BigInt,
-      ingredient: RecsType.Number,
-      recipes: RecsType.Number,
-    },
-    { id: 'Hint' },
+    { id: 'Config' },
   ),
 }

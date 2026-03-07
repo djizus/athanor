@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { Has, getComponentValue } from '@dojoengine/recs'
 import { useEntityQuery } from '@dojoengine/react'
 import { useDojo } from '@/dojo/useDojo'
+import { bitmapPopcount } from '@/game/packer'
 
 export type GameToken = {
   game_id: number
@@ -12,39 +13,33 @@ export type GameToken = {
 
 export function useGameTokens(playerAddress: string | undefined) {
   const { contractComponents } = useDojo()
-  const entities = useEntityQuery([Has(contractComponents.GameSession)])
+  const sessionEntities = useEntityQuery([Has(contractComponents.GameSession)])
+  const gameEntities = useEntityQuery([Has(contractComponents.Game)])
 
   return useMemo(() => {
-    console.info('[useGameTokens] entities:', entities.length, 'playerAddress:', playerAddress)
-
     if (!playerAddress) return []
 
     const normalizedPlayer = BigInt(playerAddress)
     const result: GameToken[] = []
 
-    for (const entity of entities) {
-      const data = getComponentValue(contractComponents.GameSession, entity)
-      if (!data) {
-        console.info('[useGameTokens] entity has no data:', entity)
-        continue
-      }
-      console.info('[useGameTokens] session:', {
-        game_id: Number(data.game_id),
-        player: `0x${BigInt(data.player).toString(16)}`,
-        game_over: data.game_over,
-        started_at: Number(data.started_at),
-      })
-      if (BigInt(data.player) !== normalizedPlayer) continue
+    for (const entity of sessionEntities) {
+      const session = getComponentValue(contractComponents.GameSession, entity)
+      if (!session) continue
+      if (BigInt(session.player) !== normalizedPlayer) continue
+
+      const gameId = Number(session.game_id)
+      const game = gameEntities
+        .map((e) => getComponentValue(contractComponents.Game, e))
+        .find((g) => g && Number(g.id) === gameId)
 
       result.push({
-        game_id: Number(data.game_id),
-        discovered_count: data.discovered_count,
-        game_over: data.game_over,
-        started_at: Number(data.started_at),
+        game_id: gameId,
+        discovered_count: game ? bitmapPopcount(game.grimoire) : session.discovered_count,
+        game_over: game ? Number(game.ended_at) > 0 : session.game_over,
+        started_at: game ? Number(game.started_at) : Number(session.started_at),
       })
     }
 
-    console.info('[useGameTokens] matched games:', result.length)
     return result.sort((a, b) => b.started_at - a.started_at)
-  }, [contractComponents.GameSession, entities, playerAddress])
+  }, [contractComponents.GameSession, contractComponents.Game, sessionEntities, gameEntities, playerAddress])
 }

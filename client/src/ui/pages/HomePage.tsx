@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAccount, useConnect } from '@starknet-react/core'
 import { RpcProvider } from 'starknet'
-import { usePlayerMeta } from '@/hooks/usePlayerMeta'
 import { usePlayerName } from '@/hooks/usePlayerName'
 import { usePlayerRank } from '@/hooks/usePlayerRank'
 import { useGameTokens } from '@/hooks/useGameTokens'
@@ -11,20 +10,11 @@ import { useNavigationStore } from '@/stores/navigationStore'
 import { txToast } from '@/stores/toastStore'
 import { SettingsOverlay } from '@/ui/components/SettingsOverlay'
 
-function formatBestTime(bestTimeBigInt: bigint | undefined): string {
-  if (!bestTimeBigInt || bestTimeBigInt <= 0n) return 'NA'
-  const totalSeconds = Number(bestTimeBigInt)
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-  return `${minutes}m ${seconds}s`
-}
-
 export function HomePage() {
   const { client, config } = useDojo()
   const { navigate } = useNavigationStore()
   const { address, account } = useAccount()
   const { connect, connectors } = useConnect()
-  const playerMeta = usePlayerMeta(address)
   const games = useGameTokens(address)
   const { displayName, isUsername } = usePlayerName(address)
   const rank = usePlayerRank(address)
@@ -79,8 +69,8 @@ export function HomePage() {
     ? `${address.slice(0, 6)}...${address.slice(-4)}`
     : ''
 
-  const bestTime = formatBestTime(playerMeta?.best_time as bigint | undefined)
-  const totalGames = playerMeta?.total_games ?? 0
+  const bestTime = 'NA'
+  const totalGames = games.length
   const particles = Array.from({ length: 12 }, (_, idx) => idx)
 
   function getRankIcon(r: number | null): string {

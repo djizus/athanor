@@ -17,7 +17,7 @@ export function StatusHUD({ gold, discoveredCount, elapsedSeconds }: Props) {
     <div className="status-hud floating-panel">
       <span className="status-hud-gold">Gold {displayGold(gold)}</span>
       <span className="status-hud-sep">-</span>
-      <span className="status-hud-recipes">Potions {discoveredCount}/10</span>
+      <span className="status-hud-recipes">Potions {discoveredCount}/30</span>
       <span className="status-hud-sep">-</span>
       <span className="status-hud-time">Time {formatTime(elapsedSeconds)}</span>
     </div>

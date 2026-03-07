@@ -2,14 +2,13 @@ import Phaser from 'phaser';
 
 export interface AthanorHero {
   hero_id: number;
-  hp: number;
-  max_hp: number;
+  role: number;
+  health: number;
+  max_health: number;
   power: number;
-  regen_per_sec: number;
-  status: number;
-  return_at: number;
-  death_depth: number;
-  pending_gold: number;
+  regen: number;
+  gold: number;
+  available_at: number;
 }
 
 export interface AthanorSession {
@@ -19,6 +18,7 @@ export interface AthanorSession {
   hero_count: number;
   game_over: boolean;
   started_at: number;
+  remaining_tries: number;
 }
 
 export interface HeroChangePayload {
@@ -113,9 +113,9 @@ export class PhaserBridge extends Phaser.Events.EventEmitter {
 
   private didHeroChange(prev: AthanorHero, next: AthanorHero): boolean {
     return (
-      prev.status !== next.status ||
-      prev.hp !== next.hp ||
-      prev.death_depth !== next.death_depth
+      prev.health !== next.health ||
+      prev.available_at !== next.available_at ||
+      prev.gold !== next.gold
     );
   }
 }

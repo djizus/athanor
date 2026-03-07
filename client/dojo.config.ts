@@ -17,9 +17,6 @@ type ManifestJson = {
 
 const SYSTEM_TAGS = [
   'ATHANOR-Play',
-  'athanor-exploration_system',
-  'athanor-crafting_system',
-  'athanor-hero_system',
   'ATHANOR-Setup',
 ] as const
 

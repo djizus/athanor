@@ -7,20 +7,15 @@ import { createSystemCalls } from './systems'
 import { world } from './world'
 
 const modelNames = [
-  'GameSession',
-  'GameSeed',
-  'Hero',
-  'HeroPendingIngredient',
-  'Recipe',
-  'IngredientBalance',
-  'PotionItem',
-  'FailedCombo',
-  'GameSettings',
-  'GameSettingsMetadata',
-  'PlayerMeta',
   'Game',
+  'Character',
   'Discovery',
   'Hint',
+  'GameSession',
+  'GameSeed',
+  'GameSettings',
+  'GameSettingsMetadata',
+  'Config',
 ] as const
 
 type SetupPhase = 'config' | 'connectivity' | 'torii' | 'sync' | 'systems' | 'done'

@@ -2,29 +2,21 @@ import { useMemo, useState } from 'react'
 import {
   EFFECT_COLORS,
   EFFECT_NAMES,
+  EFFECT_CATEGORIES,
   INGREDIENT_NAMES,
   INGREDIENTS_PER_ZONE,
   ZONE_COLORS,
   ZONE_NAMES,
   displayGold,
-  displayHp,
   ingredientAssetUrl,
 } from '@/game/constants'
+import type { DiscoveryData } from '@/hooks/useRecipes'
 
 export type PanelMode = 'craft' | 'grimoire' | 'inventory'
 
 export interface InventoryItem {
   ingredient_id: number
   quantity: number
-}
-
-export interface RecipeData {
-  recipe_id: number
-  discovered: boolean
-  ingredient_a: number
-  ingredient_b: number
-  effect_type: number
-  effect_value: number
 }
 
 /* ── Craft Panel Content ──────────────────────── */
@@ -99,36 +91,36 @@ export function GrimoireContent({
   recipes,
   discoveredCount,
 }: {
-  recipes: RecipeData[]
+  recipes: DiscoveryData[]
   discoveredCount: number
 }) {
+  const discovered = useMemo(() => recipes.filter((r) => r.discovered), [recipes])
+
   return (
     <>
       <div className="grimoire-progress">
-        <div className="grimoire-progress-fill" style={{ width: `${(discoveredCount / 10) * 100}%` }} />
+        <div className="grimoire-progress-fill" style={{ width: `${(discoveredCount / 30) * 100}%` }} />
       </div>
       <div className="grimoire-grid">
-        {Array.from({ length: 10 }, (_, recipeId) => {
-          const recipe = recipes.find((r) => r.recipe_id === recipeId)
-          const discovered = recipe?.discovered ?? false
-          return (
-            <div key={recipeId} className={`grimoire-card${discovered ? ' discovered' : ''}`}>
-              {discovered && recipe ? (
-                <>
-                  <div className="grimoire-card-title">#{recipeId + 1}</div>
-                  <div className="grimoire-card-info">
-                    {INGREDIENT_NAMES[recipe.ingredient_a]} + {INGREDIENT_NAMES[recipe.ingredient_b]}
-                  </div>
-                  <div className="grimoire-card-info" style={{ color: EFFECT_COLORS[recipe.effect_type] }}>
-                    {EFFECT_NAMES[recipe.effect_type]} +{displayHp(recipe.effect_value)}
-                  </div>
-                </>
-              ) : (
-                <div className="grimoire-card-undiscovered">#{recipeId + 1} — ???</div>
-              )}
-            </div>
-          )
-        })}
+        {discovered.length === 0 ? (
+          <div className="grimoire-card-undiscovered">No discoveries yet</div>
+        ) : (
+          discovered.map((recipe, idx) => {
+            const effectCategory = EFFECT_CATEGORIES[recipe.effect]
+            const effectColor = effectCategory ? EFFECT_COLORS[effectCategory] : undefined
+            return (
+              <div key={`${recipe.ingredient_a}-${recipe.ingredient_b}`} className="grimoire-card discovered">
+                <div className="grimoire-card-title">#{idx + 1}</div>
+                <div className="grimoire-card-info">
+                  {INGREDIENT_NAMES[recipe.ingredient_a]} + {INGREDIENT_NAMES[recipe.ingredient_b]}
+                </div>
+                <div className="grimoire-card-info" style={{ color: effectColor }}>
+                  {EFFECT_NAMES[recipe.effect]}
+                </div>
+              </div>
+            )
+          })
+        )}
       </div>
     </>
   )

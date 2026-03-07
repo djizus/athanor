@@ -3,6 +3,7 @@ import { Has, getComponentValue } from '@dojoengine/recs'
 import { useEntityQuery } from '@dojoengine/react'
 import { useDojo } from '@/dojo/useDojo'
 import { useNavigationStore } from '@/stores/navigationStore'
+import { bitmapPopcount } from '@/game/packer'
 
 type LeaderboardRow = {
   gameId: number
@@ -24,21 +25,30 @@ function formatStartedAt(unixSeconds: number): string {
 
 export function LeaderboardPage() {
   const { contractComponents } = useDojo()
-  const entities = useEntityQuery([Has(contractComponents.GameSession)])
+  const sessionEntities = useEntityQuery([Has(contractComponents.GameSession)])
+  const gameEntities = useEntityQuery([Has(contractComponents.Game)])
   const { navigate } = useNavigationStore()
 
   const rows = useMemo(() => {
     const leaderboardRows: LeaderboardRow[] = []
 
-    for (const entity of entities) {
+    for (const entity of sessionEntities) {
       const session = getComponentValue(contractComponents.GameSession, entity)
-      if (!session || !session.game_over) continue
+      if (!session) continue
+
+      const gameId = Number(session.game_id)
+      const game = gameEntities
+        .map((e) => getComponentValue(contractComponents.Game, e))
+        .find((g) => g && Number(g.id) === gameId)
+
+      const isOver = game ? Number(game.ended_at) > 0 : session.game_over
+      if (!isOver) continue
 
       leaderboardRows.push({
-        gameId: Number(session.game_id),
+        gameId,
         player: BigInt(session.player),
-        discoveredCount: session.discovered_count,
-        startedAt: Number(session.started_at),
+        discoveredCount: game ? bitmapPopcount(game.grimoire) : session.discovered_count,
+        startedAt: game ? Number(game.started_at) : Number(session.started_at),
       })
     }
 
@@ -48,7 +58,7 @@ export function LeaderboardPage() {
       }
       return a.startedAt - b.startedAt
     })
-  }, [contractComponents.GameSession, entities])
+  }, [contractComponents.GameSession, contractComponents.Game, sessionEntities, gameEntities])
 
   return (
     <div className="glass-page">
@@ -70,7 +80,6 @@ export function LeaderboardPage() {
                     <th>Player</th>
                     <th>Game</th>
                     <th>Recipes Discovered</th>
-                    <th>Time</th>
                     <th>Started At</th>
                   </tr>
                 </thead>
@@ -80,8 +89,7 @@ export function LeaderboardPage() {
                       <td>{index + 1}</td>
                       <td>{truncateAddress(row.player)}</td>
                       <td>#{row.gameId}</td>
-                      <td>{row.discoveredCount}/10</td>
-                      <td>N/A</td>
+                      <td>{row.discoveredCount}/30</td>
                       <td>{formatStartedAt(row.startedAt)}</td>
                     </tr>
                   ))}
