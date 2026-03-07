@@ -60,8 +60,10 @@ pub mod PlayableComponent {
             let mut game = store.game(game_id);
             game.assert_is_started();
             game.assert_not_over();
-            // [Effect] Add Hint
+            // [Effect] Buy hint
             let (effect, ingredient) = game.clue(seed.into());
+            store.set_game(@game);
+            // [Effect] Add hint
             let mut hint = store.hint(game_id, ingredient.into());
             hint.add(effect);
             store.set_hint(@hint);

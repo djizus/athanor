@@ -56,7 +56,7 @@ pub impl GameSettingsImpl of GameSettingsTrait {
             hero_base_power: constants::HERO_BASE_POWER,
             hero_base_regen: constants::HERO_BASE_REGEN,
             hint_base_cost: constants::HINT_BASE_COST,
-            hint_cost_multiplier: constants::HINT_COST_MULTIPLIER,
+            hint_cost_multiplier: constants::DEFAULT_HINT_MULTIPLIER,
             soup_gold_value: constants::SOUP_GOLD_VALUE,
             progressive_cap: constants::PROGRESSIVE_CAP,
         }

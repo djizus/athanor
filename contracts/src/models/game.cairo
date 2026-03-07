@@ -1,5 +1,7 @@
 use core::num::traits::{Bounded, Pow};
-use crate::constants::{DEFAULT_HERO_COSTS, DEFAULT_HINT_PRICE, DEFAULT_MAX_HEROES};
+use crate::constants::{
+    DEFAULT_HERO_COSTS, DEFAULT_HINT_COST, DEFAULT_HINT_MULTIPLIER, DEFAULT_MAX_HEROES,
+};
 use crate::helpers::bitmap::Bitmap;
 use crate::helpers::crafter::Crafter;
 use crate::helpers::packer::Packer;
@@ -36,7 +38,7 @@ pub impl GameImpl of GameTrait {
             ended_at: 0,
             remaining_tries: INGREDIENT_COUNT.into() * (INGREDIENT_COUNT.into() - 1) / 2,
             gold: 0,
-            hint_price: DEFAULT_HINT_PRICE,
+            hint_price: DEFAULT_HINT_COST,
             grimoire: 0,
             hints: 0,
             ingredients: 0,
@@ -195,7 +197,7 @@ pub impl GameImpl of GameTrait {
         // TODO: Can be optimized by unpacking directly inside this function
         // [Effect] Spend gold and update hint price
         self.spend(self.hint_price);
-        self.hint_price *= self.hint_price;
+        self.hint_price *= DEFAULT_HINT_MULTIPLIER.into();
         // [Compute] Randomly select a recipe withtout hint
         let mut bitmap: u32 = self.hints | self.grimoire;
         let mut eligibles: Array<Effect> = array![];
@@ -367,7 +369,7 @@ mod tests {
     fn test_game_clue_two_left() {
         let mut game = GameTrait::new(1, SEED);
         // bits 1-29 set, bit 0 clear → only Effect::None (index 0) is eligible
-        game.gold = 4 + 16;
+        game.gold = 10 + 30;
         game.grimoire = 2_u32.pow(EFFECT_COUNT.into() - 1) - 2;
         let (effect, ingredient) = game.clue(0);
         assert_eq!(effect, Effect::Blue);

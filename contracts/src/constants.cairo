@@ -2,7 +2,8 @@ pub fn NAMESPACE() -> ByteArray {
     "ATHANOR"
 }
 
-pub const DEFAULT_HINT_PRICE: u32 = 4;
+pub const DEFAULT_HINT_COST: u32 = 10;
+pub const DEFAULT_HINT_MULTIPLIER: u8 = 3;
 pub const DEFAULT_MAX_HEROES: u8 = 3;
 pub const DEFAULT_RECIPE_COUNT: u8 = 30;
 pub const DEFAULT_INGREDIENT_COUNT: u8 = 10;
@@ -51,7 +52,6 @@ pub const HERO_COST_2: u32 = 20000; // 200.00 gold (x100)
 // --- Crafting ---
 
 pub const HINT_BASE_COST: u16 = 1000; // 10.00 gold (x100)
-pub const HINT_COST_MULTIPLIER: u8 = 3;
 pub const SOUP_GOLD_VALUE: u8 = 1;
 pub const PROGRESSIVE_CAP: u16 = 8000; // 0.80 (x10000)
 
