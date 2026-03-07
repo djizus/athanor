@@ -1,9 +1,8 @@
 import Phaser from 'phaser';
 import { COLORS } from '../utils/colors';
 
-/** Dark golden gradient: deep brown-gold at top → near-black at bottom */
-const BG_TOP = 0x1a1408;
-const BG_BOTTOM = 0x080810;
+const BG_TOP = 0x2a2218;
+const BG_BOTTOM = 0x12101a;
 
 export class ZoneBackground {
   private readonly scene: Phaser.Scene;

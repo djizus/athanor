@@ -10,10 +10,6 @@ import { ZoneConnection } from '../objects/ZoneConnection';
 import { ZoneNode } from '../objects/ZoneNode';
 import { computeNodeLayout, NODE_COUNT } from '../utils/layout';
 
-const ZONE_TEXTURE_KEYS = [
-  'zone-athanor', 'zone-hollows', 'zone-cavern', 'zone-spire', 'zone-abyss', 'zone-crystalveil',
-];
-
 const ZONE_LABELS = ['The Athanor', ...ZONE_NAMES];
 
 const MUSIC_PLAYLIST = ['menu-theme', 'game-loop-1', 'game-loop-2'] as const;
@@ -125,7 +121,6 @@ export class MainScene extends Phaser.Scene {
         this,
         i,
         ZONE_LABELS[i],
-        ZONE_TEXTURE_KEYS[i],
         layout.centerX,
         layout.nodeY(i),
         layout.nodeWidth,

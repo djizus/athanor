@@ -19,12 +19,6 @@ export class BootScene extends Phaser.Scene {
 
   preload(): void {
     this.load.image('lab-bg-file', '/assets/backgrounds/lab-bg.webp');
-    this.load.image('zone-athanor', '/assets/backgrounds/zone-athanor.webp');
-    this.load.image('zone-hollows', '/assets/backgrounds/zone-hollows.webp');
-    this.load.image('zone-cavern', '/assets/backgrounds/zone-cavern.webp');
-    this.load.image('zone-spire', '/assets/backgrounds/zone-spire.webp');
-    this.load.image('zone-abyss', '/assets/backgrounds/zone-abyss.webp');
-    this.load.image('zone-crystalveil', '/assets/backgrounds/zone-crystalveil.webp');
 
     const roles = [
       { key: 'role-mage', file: 'role-mage.webp' },

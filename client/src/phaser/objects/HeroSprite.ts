@@ -8,10 +8,11 @@ import type { EventEffect } from './EventEffect';
 
 const HERO_TINTS = [0x4080d0, 0x40c060, 0xa050d0];
 const HERO_PORTRAIT_KEYS = ['role-mage', 'role-rogue', 'role-warrior'];
-const PORTRAIT_SIZE = 48;
-const HP_BAR_WIDTH = 52;
-const HP_BAR_HEIGHT = 6;
-const HP_BAR_Y = 42;
+const PORTRAIT_RADIUS = 26;
+const PORTRAIT_Y = 0;
+const HP_RING_RADIUS = 29;
+const HP_RING_WIDTH = 3;
+const SELECTION_RING_RADIUS = 33;
 
 function deriveStatus(availableAt: number): number {
   const now = Math.floor(Date.now() / 1000);
@@ -28,7 +29,7 @@ export class HeroSprite extends Phaser.GameObjects.Container {
   readonly eventEffect: EventEffect;
 
   private readonly aura: Phaser.GameObjects.Arc;
-  private readonly hpFill: Phaser.GameObjects.Rectangle;
+  private readonly hpRingGfx: Phaser.GameObjects.Graphics;
   private readonly selectionRing: Phaser.GameObjects.Arc;
   private readonly trailEmitter: Phaser.GameObjects.Particles.ParticleEmitter;
   private readonly bridge: PhaserBridge | null;
@@ -36,7 +37,6 @@ export class HeroSprite extends Phaser.GameObjects.Container {
 
   private bobTween: Phaser.Tweens.Tween;
   private auraTween: Phaser.Tweens.Tween | null = null;
-  private hpTween: Phaser.Tweens.Tween | null = null;
   private moveTween: Phaser.Tweens.Tween | null = null;
   private ringTween: Phaser.Tweens.Tween | null = null;
 
@@ -70,20 +70,15 @@ export class HeroSprite extends Phaser.GameObjects.Container {
     const bridgeFromRegistry = scene.registry.get('bridge');
     this.bridge = bridgeFromRegistry instanceof PhaserBridge ? bridgeFromRegistry : null;
 
-    this.aura = scene.add.circle(0, 6, 36, COLORS.white, 0.08);
+    this.aura = scene.add.circle(0, PORTRAIT_Y, SELECTION_RING_RADIUS + 4, COLORS.white, 0.08);
     this.aura.setBlendMode(Phaser.BlendModes.ADD);
 
-    const hpBg = scene.add.rectangle(-HP_BAR_WIDTH / 2, HP_BAR_Y, HP_BAR_WIDTH, HP_BAR_HEIGHT, COLORS.black, 0.6);
-    hpBg.setOrigin(0, 0.5);
-    hpBg.setStrokeStyle(1, 0xffffff, 0.2);
-
-    this.hpFill = scene.add.rectangle(-HP_BAR_WIDTH / 2, HP_BAR_Y, HP_BAR_WIDTH, HP_BAR_HEIGHT, COLORS.hpGreen, 1);
-    this.hpFill.setOrigin(0, 0.5);
-
-    this.selectionRing = scene.add.circle(0, 8, 36);
+    this.selectionRing = scene.add.circle(0, PORTRAIT_Y, SELECTION_RING_RADIUS);
     this.selectionRing.setStrokeStyle(3, COLORS.gold, 0.95);
     this.selectionRing.setFillStyle(0x000000, 0);
     this.selectionRing.setVisible(false);
+
+    this.hpRingGfx = scene.add.graphics();
 
     const roleIdx = hero.role > 0 ? hero.role - 1 : heroIndex;
     const portraitKey = HERO_PORTRAIT_KEYS[roleIdx];
@@ -91,29 +86,28 @@ export class HeroSprite extends Phaser.GameObjects.Container {
     const bodyParts: Phaser.GameObjects.GameObject[] = [];
 
     if (hasPortrait) {
-      const portrait = scene.add.image(0, 8, portraitKey);
-      portrait.setDisplaySize(PORTRAIT_SIZE, PORTRAIT_SIZE);
+      const portrait = scene.add.image(0, PORTRAIT_Y, portraitKey);
+      portrait.setDisplaySize(PORTRAIT_RADIUS * 2, PORTRAIT_RADIUS * 2);
       portrait.setOrigin(0.5, 0.5);
       const mask = scene.make.graphics({ x: 0, y: 0 });
-      mask.fillCircle(0, 0, PORTRAIT_SIZE / 2);
+      mask.fillCircle(0, 0, PORTRAIT_RADIUS);
       portrait.setMask(new Phaser.Display.Masks.GeometryMask(scene, mask));
       this.maskGfx = mask;
       this.sceneRef.events.on(Phaser.Scenes.Events.PRE_UPDATE, this.updateMaskPos, this);
       bodyParts.push(portrait);
     } else {
-      const head = scene.add.circle(0, -4, 24, this.heroTint, 1);
-      const body = scene.add.triangle(0, 32, -16, -8, 16, -8, 0, 26, this.heroTint, 0.9);
-      bodyParts.push(body, head);
+      const head = scene.add.circle(0, PORTRAIT_Y, PORTRAIT_RADIUS, this.heroTint, 1);
+      bodyParts.push(head);
     }
 
     const name = ROLE_NAMES[roleIdx] ?? `Hero ${heroIndex}`;
-    const label = scene.add.text(0, 54, name, FONTS.bodySmall);
+    const label = scene.add.text(0, PORTRAIT_RADIUS + 8, name, FONTS.bodySmall);
     label.setOrigin(0.5, 0);
 
-    this.add([this.aura, this.selectionRing, hpBg, this.hpFill, ...bodyParts, label]);
+    this.add([this.aura, this.selectionRing, this.hpRingGfx, ...bodyParts, label]);
     scene.add.existing(this);
 
-    this.setInteractive(new Phaser.Geom.Circle(0, 8, 36), Phaser.Geom.Circle.Contains);
+    this.setInteractive(new Phaser.Geom.Circle(0, PORTRAIT_Y, SELECTION_RING_RADIUS), Phaser.Geom.Circle.Contains);
     this.on(Phaser.Input.Events.POINTER_DOWN, () => {
       this.bridge?.selectHero(this.heroId);
     });
@@ -147,7 +141,7 @@ export class HeroSprite extends Phaser.GameObjects.Container {
   }
 
   private readonly updateMaskPos = (): void => {
-    if (this.maskGfx) this.maskGfx.setPosition(this.x, this.y + 8);
+    if (this.maskGfx) this.maskGfx.setPosition(this.x, this.y + PORTRAIT_Y);
   };
 
   syncToHero(hero: AthanorHero): void {
@@ -157,7 +151,7 @@ export class HeroSprite extends Phaser.GameObjects.Container {
     const status = deriveStatus(hero.available_at);
 
     if (Math.abs(hpRatio - this.lastHpRatio) > 0.001) {
-      this.updateHpBar(hpRatio);
+      this.drawHpRing(hpRatio);
       this.lastHpRatio = hpRatio;
     }
 
@@ -230,22 +224,30 @@ export class HeroSprite extends Phaser.GameObjects.Container {
     this.maskGfx?.destroy();
     this.bobTween.stop();
     this.stopAuras();
-    this.hpTween?.stop();
     this.moveTween?.stop();
     this.ringTween?.stop();
     this.trailEmitter.destroy();
     super.destroy(fromScene);
   }
 
-  private updateHpBar(hpRatio: number): void {
-    this.hpFill.setFillStyle(hpRatio > 0.3 ? COLORS.hpGreen : COLORS.hpRed, 1);
-    this.hpTween?.stop();
-    this.hpTween = this.sceneRef.tweens.add({
-      targets: this.hpFill,
-      scaleX: hpRatio,
-      duration: 220,
-      ease: 'Sine.Out',
-    });
+  private drawHpRing(hpRatio: number): void {
+    const g = this.hpRingGfx;
+    g.clear();
+
+    g.lineStyle(HP_RING_WIDTH, 0x000000, 0.4);
+    g.beginPath();
+    g.arc(0, PORTRAIT_Y, HP_RING_RADIUS, 0, Math.PI * 2);
+    g.strokePath();
+
+    if (hpRatio > 0.001) {
+      const color = hpRatio > 0.3 ? COLORS.hpGreen : COLORS.hpRed;
+      const startAngle = -Math.PI / 2;
+      const endAngle = startAngle + hpRatio * Math.PI * 2;
+      g.lineStyle(HP_RING_WIDTH, color, 0.9);
+      g.beginPath();
+      g.arc(0, PORTRAIT_Y, HP_RING_RADIUS, startAngle, endAngle);
+      g.strokePath();
+    }
   }
 
   private configureAura(color: number, alpha: number, scale: number, duration: number): void {
