@@ -273,7 +273,7 @@ interface HeroSlotProps {
     role: number
     health: number
     max_health: number
-    available_at: bigint | number
+    available_at: number
     gold: number
   }>
   heroCount: number

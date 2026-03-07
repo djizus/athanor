@@ -17,13 +17,12 @@ export function useDiscoveries(gameId: number | null) {
   return useMemo(() => {
     if (gameId == null) return []
 
-    const gameIdBigInt = BigInt(gameId)
     const result: DiscoveryData[] = []
 
     for (const entity of entities) {
       const data = getComponentValue(contractComponents.Discovery, entity)
       if (!data) continue
-      if (BigInt(data.game_id) !== gameIdBigInt) continue
+      if (data.game_id !== gameId) continue
 
       result.push({
         ingredient_a: data.ingredient_a,
