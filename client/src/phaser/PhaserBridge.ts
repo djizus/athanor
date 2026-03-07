@@ -40,6 +40,8 @@ export interface ExplorationEventPayload {
   kind: 'trap' | 'gold' | 'heal' | 'beastWin' | 'beastLose' | 'ingredient';
   value: number;
   hpAfter?: number;
+  zoneId?: number;
+  depth?: number;
 }
 
 export class PhaserBridge extends Phaser.Events.EventEmitter {

@@ -94,7 +94,14 @@ export function PlayScreen({ bridge }: Props) {
   const bridgeRef = useRef(bridge)
   bridgeRef.current = bridge
   const onExplorationEvent = useCallback((event: RawExplorationEvent) => {
-    bridgeRef.current.playExplorationEvent({ heroId: event.heroId, kind: event.kind, value: event.value, hpAfter: event.hpAfter })
+    bridgeRef.current.playExplorationEvent({
+      heroId: event.heroId,
+      kind: event.kind,
+      value: event.value,
+      hpAfter: event.hpAfter,
+      zoneId: event.zoneId,
+      depth: event.depth,
+    })
   }, [])
   const { logs, pushInfo, heroOverrides } = useExplorationLog(gameId ?? null, heroes, onExplorationEvent)
   const logsEndRef = useRef<HTMLDivElement>(null)

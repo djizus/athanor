@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { getSettingsSnapshot } from '@/stores/settingsStore';
+import { getZoneForDepth, ZONE_DEPTHS } from '@/game/constants';
 import type { AthanorHero, CraftResultPayload, ExplorationEventPayload } from '../PhaserBridge';
 import { PhaserBridge } from '../PhaserBridge';
 import { COLORS, ZONE_TINTS } from '../utils/colors';
@@ -9,6 +10,11 @@ import { ZoneBackground } from '../objects/ZoneBackground';
 import { Cauldron } from '../objects/Cauldron';
 import { ZonePortal } from '../objects/ZonePortal';
 import { computePortalLayout, PORTAL_COUNT } from '../utils/layout';
+
+interface HeroExpedition {
+  startTime: number;
+  lastKnownZone: number;
+}
 
 const MUSIC_PLAYLIST = ['menu-theme', 'game-loop-1', 'game-loop-2'] as const;
 
@@ -37,6 +43,7 @@ export class MainScene extends Phaser.Scene {
 
   private heroContainer!: Phaser.GameObjects.Container;
   private heroSprites = new Map<number, HeroSprite>();
+  private heroExpeditions = new Map<number, HeroExpedition>();
   private lastHeroes: AthanorHero[] = [];
   private currentMusicIndex = 0;
   private currentMusicSound: Phaser.Sound.BaseSound | null = null;
@@ -52,6 +59,7 @@ export class MainScene extends Phaser.Scene {
 
   private readonly onHeroesUpdated = (heroes: AthanorHero[]): void => {
     this.lastHeroes = heroes;
+    this.bootstrapExpeditions(heroes);
     this.syncHeroes(heroes);
     this.updatePortalExploringStates(heroes);
   };
@@ -70,18 +78,22 @@ export class MainScene extends Phaser.Scene {
 
   private readonly onExplorationEvent = (payload: ExplorationEventPayload): void => {
     if (!this.eventEffect) return;
+
+    if (payload.zoneId != null) {
+      const expedition = this.heroExpeditions.get(payload.heroId);
+      if (expedition) {
+        expedition.lastKnownZone = payload.zoneId;
+      }
+    }
+
     const sprite = this.heroSprites.get(payload.heroId);
     const x = sprite?.x ?? this.scale.width / 2;
     const y = sprite?.y ?? this.scale.height * 0.5;
 
-    const hero = this.lastHeroes.find((h) => h.hero_id === payload.heroId);
-    if (hero) {
-      const portalIdx = this.getExploringPortalIndex(hero);
-      const portal = this.portals[portalIdx];
-      if (portal) {
-        const eventColor = this.getEventColor(payload.kind);
-        portal.pulseEvent(eventColor);
-      }
+    const portalIdx = payload.zoneId ?? this.getExploringPortalIndex(payload.heroId);
+    const portal = this.portals[portalIdx];
+    if (portal) {
+      portal.pulseEvent(this.getEventColor(payload.kind));
     }
 
     switch (payload.kind) {
@@ -113,6 +125,11 @@ export class MainScene extends Phaser.Scene {
   };
 
   private readonly onExpeditionStart = (payload: { heroId: number }): void => {
+    this.heroExpeditions.set(payload.heroId, {
+      startTime: Math.floor(Date.now() / 1000),
+      lastKnownZone: 0,
+    });
+
     if (!this.eventEffect) return;
     const sprite = this.heroSprites.get(payload.heroId);
     const x = sprite?.x ?? this.scale.width / 2;
@@ -293,7 +310,10 @@ export class MainScene extends Phaser.Scene {
 
     for (const hero of heroes) {
       if (hero.available_at > now && hero.health > 0) {
-        activePortals.add(this.getExploringPortalIndex(hero));
+        const phase = this.getExpeditionPhase(hero);
+        if (!phase.returning) {
+          activePortals.add(phase.portalIndex);
+        }
       }
     }
 
@@ -362,14 +382,27 @@ export class MainScene extends Phaser.Scene {
     const layout = computePortalLayout(this.scale.width, this.scale.height);
 
     if (isExploring) {
-      const portalIdx = this.getExploringPortalIndex(hero);
-      const portal = this.portals[portalIdx];
+      const phase = this.getExpeditionPhase(hero);
+
+      if (phase.returning) {
+        const spacing = 70;
+        const totalWidth = (heroCount - 1) * spacing;
+        const startX = layout.heroIdleX - totalWidth / 2;
+        return {
+          x: startX + heroIndex * spacing,
+          y: layout.heroIdleY,
+        };
+      }
+
+      const portal = this.portals[phase.portalIndex];
       if (portal) {
         const anchor = portal.getHeroAnchor();
         const offset = this.getHeroPortalOffset(heroIndex, heroCount);
         return { x: anchor.x + offset.x, y: anchor.y + portal.portalRadius + 18 + offset.y };
       }
     }
+
+    this.heroExpeditions.delete(hero.hero_id);
 
     const spacing = 70;
     const totalWidth = (heroCount - 1) * spacing;
@@ -388,16 +421,75 @@ export class MainScene extends Phaser.Scene {
     return { x: offsetX, y: Math.abs(offsetX) * 0.15 };
   }
 
-  private getExploringPortalIndex(hero: AthanorHero): number {
+  private getExpeditionPhase(hero: AthanorHero): { portalIndex: number; returning: boolean } {
     const now = Math.floor(Date.now() / 1000);
-    const remaining = Math.max(0, hero.available_at - now);
+    const expedition = this.heroExpeditions.get(hero.hero_id);
 
-    if (remaining > 50) return 0;
-    if (remaining > 40) return 1;
-    if (remaining > 30) return 2;
-    if (remaining > 20) return 3;
-    if (remaining > 10) return 4;
-    return 0;
+    if (expedition) {
+      const totalTime = hero.available_at - expedition.startTime;
+      const forwardTime = Math.floor(totalTime * 2 / 3);
+      const elapsed = now - expedition.startTime;
+
+      if (elapsed >= forwardTime) {
+        return { portalIndex: expedition.lastKnownZone, returning: true };
+      }
+
+      const currentDepth = Math.min(elapsed, forwardTime);
+      const computedZone = getZoneForDepth(currentDepth);
+      return { portalIndex: Math.max(computedZone, expedition.lastKnownZone), returning: false };
+    }
+
+    return this.estimateExpeditionPhase(hero, now);
+  }
+
+  private estimateExpeditionPhase(hero: AthanorHero, now: number): { portalIndex: number; returning: boolean } {
+    const remaining = hero.available_at - now;
+    const maxDepth = ZONE_DEPTHS[ZONE_DEPTHS.length - 1];
+    const maxExpeditionTime = Math.floor(3 * maxDepth / 2);
+
+    if (remaining <= 0) return { portalIndex: 0, returning: true };
+
+    const estimatedTotal = Math.min(remaining * 3, maxExpeditionTime * 3);
+    const estimatedForward = Math.floor(estimatedTotal * 2 / 3);
+    const estimatedElapsed = estimatedTotal - remaining;
+
+    if (estimatedElapsed >= estimatedForward) {
+      return { portalIndex: 4, returning: true };
+    }
+
+    const depth = Math.min(estimatedElapsed, estimatedForward);
+    return { portalIndex: getZoneForDepth(depth), returning: false };
+  }
+
+  private bootstrapExpeditions(heroes: AthanorHero[]): void {
+    const now = Math.floor(Date.now() / 1000);
+    const activeHeroes = new Set<number>();
+
+    for (const hero of heroes) {
+      const isExploring = hero.available_at > now && hero.health > 0;
+      if (isExploring) {
+        activeHeroes.add(hero.hero_id);
+        if (!this.heroExpeditions.has(hero.hero_id)) {
+          this.heroExpeditions.set(hero.hero_id, {
+            startTime: now,
+            lastKnownZone: 0,
+          });
+        }
+      }
+    }
+
+    for (const heroId of this.heroExpeditions.keys()) {
+      if (!activeHeroes.has(heroId)) {
+        this.heroExpeditions.delete(heroId);
+      }
+    }
+  }
+
+  private getExploringPortalIndex(heroId: number): number {
+    const hero = this.lastHeroes.find((h) => h.hero_id === heroId);
+    if (!hero) return 0;
+    const phase = this.getExpeditionPhase(hero);
+    return phase.portalIndex;
   }
 
   private getEventColor(kind: ExplorationEventPayload['kind']): number {
@@ -460,6 +552,7 @@ export class MainScene extends Phaser.Scene {
 
     for (const sprite of this.heroSprites.values()) sprite.destroy();
     this.heroSprites.clear();
+    this.heroExpeditions.clear();
 
     for (const portal of this.portals) portal.destroy();
     this.portals = [];

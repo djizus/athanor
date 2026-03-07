@@ -24,6 +24,8 @@ export interface RawExplorationEvent {
   heroId: number
   value: number
   hpAfter: number
+  zoneId: number
+  depth: number
 }
 
 export interface HeroOverride {
@@ -114,7 +116,7 @@ function formatEvent(modelName: string, values: Record<string, number>, heroName
       const eventKind = CATEGORY_TO_KIND[values.event_kind]
       return {
         entry: { ts: Date.now(), text: `${heroName} in ${zone} (depth ${values.depth}): ${detail}`, kind: 'exploration' },
-        rawEvent: eventKind ? { kind: eventKind, heroId: values.hero_id, value: values.value, hpAfter: values.hp_after } : undefined,
+        rawEvent: eventKind ? { kind: eventKind, heroId: values.hero_id, value: values.value, hpAfter: values.hp_after, zoneId: values.zone_id, depth: values.depth } : undefined,
         eventKind: values.event_kind,
         value: values.value,
         hpAfter: values.hp_after,
