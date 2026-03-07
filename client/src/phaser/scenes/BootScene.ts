@@ -27,9 +27,13 @@ export class BootScene extends Phaser.Scene {
     this.load.image('lab-bg-file', '/assets/backgrounds/lab-bg.png');
     this.load.image('world-map-file', '/assets/backgrounds/world-map.png');
 
-    const heroNames = ['alaric', 'brynn', 'cassiel'];
-    for (const name of heroNames) {
-      this.load.image(`hero-${name}`, `/assets/heroes/hero-${name}.png`);
+    const roles = [
+      { key: 'role-mage', file: 'hero-alaric.png' },
+      { key: 'role-rogue', file: 'hero-brynn.png' },
+      { key: 'role-warrior', file: 'hero-cassiel.png' },
+    ];
+    for (const role of roles) {
+      this.load.image(role.key, `/assets/heroes/${role.file}`);
     }
 
     for (const key of SFX_KEYS) {

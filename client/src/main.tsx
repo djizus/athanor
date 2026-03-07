@@ -1,7 +1,7 @@
 import { StrictMode } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { type Chain } from '@starknet-react/chains'
+import { sepolia, type Chain } from '@starknet-react/chains'
 import { StarknetConfig, jsonRpcProvider, paymasterRpcProvider } from '@starknet-react/core'
 import './index.css'
 import App from './App.tsx'
@@ -12,11 +12,12 @@ import { devConnector } from './devConnector'
 import { DojoProvider, type DojoSetup } from './dojo/context'
 import { setupDojo } from './dojo/setup'
 
-const isDevMode = (import.meta.env.VITE_PUBLIC_DEPLOY_TYPE ?? 'dev') === 'dev'
+const deployType = import.meta.env.VITE_PUBLIC_DEPLOY_TYPE ?? 'dev'
+const isDevMode = deployType === 'dev'
 const connector = isDevMode ? devConnector : cartridgeConnector
 console.info('[athanor:init] connector mode:', isDevMode ? 'dev (PredeployedConnector)' : 'production (CartridgeController)')
 
-function createSlotChain(nodeUrl: string): Chain {
+function createKatanaChain(nodeUrl: string): Chain {
   return {
     id: 0x4b4154414e41n,
     network: 'slot-local',
@@ -38,13 +39,27 @@ function createSlotChain(nodeUrl: string): Chain {
   }
 }
 
+function getChain(nodeUrl: string): Chain {
+  if (deployType === 'sepolia') {
+    return {
+      ...sepolia,
+      rpcUrls: {
+        ...sepolia.rpcUrls,
+        default: { http: [nodeUrl] },
+        public: { http: [nodeUrl] },
+      },
+    }
+  }
+  return createKatanaChain(nodeUrl)
+}
+
 function Root() {
   const [dojo, setDojo] = useState<DojoSetup | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [initStatus, setInitStatus] = useState('Bootstrapping client...')
   const [initError, setInitError] = useState<string | null>(null)
 
-  const chain = useMemo(() => createSlotChain(dojoConfig().rpcUrl), [])
+  const chain = useMemo(() => getChain(dojoConfig().rpcUrl), [])
   const provider = useMemo(
     () =>
       jsonRpcProvider({

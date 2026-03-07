@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { Component, useEffect, useRef, useState } from 'react'
+import type { ErrorInfo, ReactNode } from 'react'
 import { useNavigationStore, type PageId } from '@/stores/navigationStore'
 import { createPhaserGame, PhaserBridge } from '@/phaser'
 import { LoadingScreen } from '@/ui/LoadingScreen'
@@ -7,6 +8,51 @@ import { HomePage } from '@/ui/pages/HomePage'
 import { LeaderboardPage } from '@/ui/pages/LeaderboardPage'
 import { MyGamesPage } from '@/ui/pages/MyGamesPage'
 import { PlayScreen } from '@/ui/pages/PlayScreen'
+
+class ErrorBoundary extends Component<
+  { children: ReactNode },
+  { error: Error | null }
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props)
+    this.state = { error: null }
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { error }
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('[athanor:error-boundary] UI crashed:', error, info.componentStack)
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 9999,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          background: '#080810', color: '#e0d0c0', fontFamily: 'monospace', padding: '2rem',
+        }}>
+          <h2 style={{ color: '#ff6b6b', marginBottom: '1rem' }}>Something went wrong</h2>
+          <p style={{ marginBottom: '1rem', maxWidth: '600px', textAlign: 'center', opacity: 0.8 }}>
+            {this.state.error.message}
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              padding: '0.75rem 2rem', background: '#c8a96e', color: '#080810',
+              border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '1rem',
+            }}
+          >
+            Reload
+          </button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 
 function PageRouter({ bridge }: { bridge: PhaserBridge }) {
   const currentPage = useNavigationStore((state) => state.currentPage)
@@ -56,7 +102,7 @@ export default function App() {
   console.info('[athanor:render] App render — ready:', ready, 'bridge:', !!bridge)
 
   return (
-    <>
+    <ErrorBoundary>
       <div id="game-container" />
       {bridge ? (
         <div className="app">
@@ -66,6 +112,6 @@ export default function App() {
         <LoadingScreen status="Loading game assets..." />
       )}
       <Toaster />
-    </>
+    </ErrorBoundary>
   )
 }

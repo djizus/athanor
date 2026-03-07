@@ -92,7 +92,7 @@ export async function setupDojo(onStatus?: (status: string) => void) {
       throw new Error('Invalid world address (0x0). Check VITE_PUBLIC_WORLD_ADDRESS in client/.env.')
     }
 
-    onStatus?.('Connecting to Katana and Torii...')
+    onStatus?.('Connecting to RPC and Torii...')
     logPhase('connectivity')
     await probeConnectivity(config.rpcUrl, config.toriiUrl)
 
