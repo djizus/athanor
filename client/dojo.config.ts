@@ -10,19 +10,15 @@ type DojoManifest = {
   contracts: DojoManifestContract[]
 }
 
-const SYSTEM_TAGS = [
-  'ATHANOR-Play',
-  'ATHANOR-Setup',
-] as const
-
 export function dojoConfig() {
   const toriiUrl = import.meta.env.VITE_PUBLIC_TORII_URL
   const rpcUrl = import.meta.env.VITE_PUBLIC_NODE_URL
   const worldAddress = import.meta.env.VITE_PUBLIC_WORLD_ADDRESS
+  const playAddress = import.meta.env.VITE_PUBLIC_PLAY_ADDRESS
 
-  if (!toriiUrl || !rpcUrl || !worldAddress) {
+  if (!toriiUrl || !rpcUrl || !worldAddress || !playAddress) {
     throw new Error(
-      'Missing required env vars: VITE_PUBLIC_TORII_URL, VITE_PUBLIC_NODE_URL, VITE_PUBLIC_WORLD_ADDRESS',
+      'Missing required env vars: VITE_PUBLIC_TORII_URL, VITE_PUBLIC_NODE_URL, VITE_PUBLIC_WORLD_ADDRESS, VITE_PUBLIC_PLAY_ADDRESS',
     )
   }
 
@@ -30,10 +26,10 @@ export function dojoConfig() {
     world: {
       address: worldAddress,
     },
-    contracts: SYSTEM_TAGS.map((tag) => ({
-      tag,
-      address: worldAddress,
-    })),
+    contracts: [
+      { tag: 'ATHANOR-Play', address: playAddress },
+      { tag: 'ATHANOR-Setup', address: worldAddress },
+    ],
   }
 
   return {

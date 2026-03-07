@@ -66,10 +66,6 @@ export function HomePage() {
     }
   }
 
-  const truncatedAddress = address
-    ? `${address.slice(0, 6)}...${address.slice(-4)}`
-    : ''
-
   const bestTime = 'NA'
   const totalGames = games.length
   const particles = Array.from({ length: 12 }, (_, idx) => idx)
@@ -136,14 +132,7 @@ export function HomePage() {
               if (ctrl?.controller) void ctrl.controller.openProfile()
             }}
           >
-            {isUsername ? (
-              <>
-                <span className="home-menu-player-name">{displayName}</span>
-                <span className="home-menu-player-address">👤 {truncatedAddress}</span>
-              </>
-            ) : (
-              <span className="home-menu-player-name">👤 {displayName}</span>
-            )}
+            <span className="home-menu-player-name">👤 {displayName}</span>
           </button>
           <button
             className="home-menu-gear"
@@ -197,7 +186,6 @@ export function HomePage() {
         <SettingsOverlay
           open={settingsOpen}
           onClose={() => setSettingsOpen(false)}
-          address={address}
         />
       </section>
     </div>

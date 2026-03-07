@@ -256,11 +256,10 @@ export function PlayScreen({ bridge }: Props) {
         </div>
       )}
 
-      {settingsOpen && address && (
+      {settingsOpen && (
         <SettingsOverlay
           open={settingsOpen}
           onClose={() => setSettingsOpen(false)}
-          address={address}
         />
       )}
     </div>

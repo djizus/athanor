@@ -762,12 +762,6 @@ button:disabled, .btn:disabled {
   text-transform: uppercase;
 }
 
-.home-menu-player-address {
-  font-family: 'Courier New', monospace;
-  font-size: clamp(0.65rem, 1.4vw, 0.75rem);
-  color: var(--text-muted);
-}
-
 .home-menu-gear {
   background: linear-gradient(180deg, rgba(42, 40, 74, 0.84), rgba(31, 30, 57, 0.84));
   border: 1px solid rgba(121, 113, 170, 0.35);
@@ -908,34 +902,6 @@ button:disabled, .btn:disabled {
   font-size: 0.85rem;
   color: var(--text-muted);
   font-family: 'Courier New', monospace;
-}
-
-.settings-wallet {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 0.45rem 0.6rem;
-}
-
-.settings-wallet-address {
-  flex: 1;
-  font-family: 'Courier New', monospace;
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  user-select: all;
-}
-
-.settings-wallet-copy {
-  flex-shrink: 0;
-  font-size: 0.7rem;
-  padding: 0.25rem 0.5rem;
-  min-height: auto;
 }
 
 .settings-close-btn {
