@@ -1,17 +1,14 @@
 import Phaser from 'phaser';
-import { ZONE_NAMES } from '@/game/constants';
 import { getSettingsSnapshot } from '@/stores/settingsStore';
 import type { AthanorHero, CraftResultPayload, ExplorationEventPayload } from '../PhaserBridge';
 import { PhaserBridge } from '../PhaserBridge';
-import { COLORS } from '../utils/colors';
+import { COLORS, ZONE_TINTS } from '../utils/colors';
 import { EventEffect } from '../objects/EventEffect';
 import { HeroSprite } from '../objects/HeroSprite';
 import { ZoneBackground } from '../objects/ZoneBackground';
-import { ZoneConnection } from '../objects/ZoneConnection';
-import { ZoneNode } from '../objects/ZoneNode';
-import { computeNodeLayout, NODE_COUNT } from '../utils/layout';
-
-const ZONE_LABELS = ['The Athanor', ...ZONE_NAMES];
+import { Cauldron } from '../objects/Cauldron';
+import { ZonePortal } from '../objects/ZonePortal';
+import { computePortalLayout, PORTAL_COUNT } from '../utils/layout';
 
 const MUSIC_PLAYLIST = ['menu-theme', 'game-loop-1', 'game-loop-2'] as const;
 
@@ -26,13 +23,17 @@ const EFFECT_TINTS: Record<string, number> = {
   regen: COLORS.blue,
 };
 
+const ENERGY_LINE_ALPHA = 0.08;
+const ENERGY_LINE_WIDTH = 1.5;
+
 export class MainScene extends Phaser.Scene {
   private bridge: PhaserBridge | null = null;
 
   private zoneBackground: ZoneBackground | null = null;
   private eventEffect: EventEffect | null = null;
-  private zoneNodes: ZoneNode[] = [];
-  private zoneConnections: ZoneConnection[] = [];
+  private cauldron: Cauldron | null = null;
+  private portals: ZonePortal[] = [];
+  private energyLinesGfx: Phaser.GameObjects.Graphics | null = null;
 
   private heroContainer!: Phaser.GameObjects.Container;
   private heroSprites = new Map<number, HeroSprite>();
@@ -52,10 +53,12 @@ export class MainScene extends Phaser.Scene {
   private readonly onHeroesUpdated = (heroes: AthanorHero[]): void => {
     this.lastHeroes = heroes;
     this.syncHeroes(heroes);
+    this.updatePortalExploringStates(heroes);
   };
 
   private readonly onCraftResult = (payload: CraftResultPayload): void => {
     if (!this.eventEffect) return;
+    this.cauldron?.playBrewReaction();
     if (payload.isSoup) {
       this.eventEffect.playCraftGold(payload.goldEarned);
       this.tryPlaySound('brew-success', 0.4);
@@ -70,6 +73,16 @@ export class MainScene extends Phaser.Scene {
     const sprite = this.heroSprites.get(payload.heroId);
     const x = sprite?.x ?? this.scale.width / 2;
     const y = sprite?.y ?? this.scale.height * 0.5;
+
+    const hero = this.lastHeroes.find((h) => h.hero_id === payload.heroId);
+    if (hero) {
+      const portalIdx = this.getExploringPortalIndex(hero);
+      const portal = this.portals[portalIdx];
+      if (portal) {
+        const eventColor = this.getEventColor(payload.kind);
+        portal.pulseEvent(eventColor);
+      }
+    }
 
     switch (payload.kind) {
       case 'trap':
@@ -144,6 +157,7 @@ export class MainScene extends Phaser.Scene {
 
   private readonly onDiscovery = (): void => {
     if (!this.eventEffect) return;
+    this.cauldron?.playDiscoveryReaction();
     this.eventEffect.playDiscovery();
     this.tryPlaySound('discovery', 0.6);
   };
@@ -165,7 +179,7 @@ export class MainScene extends Phaser.Scene {
     this.zoneBackground = new ZoneBackground(this);
     this.eventEffect = new EventEffect(this);
 
-    this.createNodeGraph();
+    this.createLabScene();
 
     this.heroContainer = this.add.container(0, 0);
     this.heroContainer.setDepth(12);
@@ -206,40 +220,38 @@ export class MainScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.shutdown, this);
   }
 
-  update(time: number, delta: number): void {
-    for (const conn of this.zoneConnections) {
-      conn.update(time, delta);
+  update(_time: number, _delta: number): void { /* noop */ }
+
+  private createLabScene(): void {
+    const layout = computePortalLayout(this.scale.width, this.scale.height);
+
+    this.energyLinesGfx = this.add.graphics();
+    this.energyLinesGfx.setDepth(3);
+
+    this.cauldron = new Cauldron(this, layout.cauldronX, layout.cauldronY);
+    this.cauldron.setDepth(6);
+
+    for (let i = 0; i < PORTAL_COUNT; i++) {
+      const pos = layout.portalPositions[i];
+      const portal = new ZonePortal(this, i, pos.x, pos.y);
+      portal.setDepth(5);
+      this.portals.push(portal);
     }
+
+    this.drawEnergyLines(layout);
   }
 
-  private createNodeGraph(): void {
-    const w = this.scale.width;
-    const h = this.scale.height;
-    const layout = computeNodeLayout(w, h);
+  private drawEnergyLines(layout: ReturnType<typeof computePortalLayout>): void {
+    const g = this.energyLinesGfx;
+    if (!g) return;
+    g.clear();
 
-    for (let i = 0; i < NODE_COUNT; i++) {
-      const node = new ZoneNode(
-        this,
-        i,
-        ZONE_LABELS[i],
-        layout.centerX,
-        layout.nodeY(i),
-        layout.nodeWidth,
-        layout.nodeHeight,
-      );
-      node.setDepth(5);
-      this.zoneNodes.push(node);
-    }
+    for (let i = 0; i < this.portals.length; i++) {
+      const portal = this.portals[i];
+      const tint = ZONE_TINTS[i] ?? COLORS.white;
 
-    for (let i = 0; i < NODE_COUNT - 1; i++) {
-      const conn = new ZoneConnection(this, i);
-      conn.setDepth(4);
-
-      const bottom = this.zoneNodes[i].getTopAnchor();
-      const top = this.zoneNodes[i + 1].getBottomAnchor();
-      conn.setEndpoints(bottom.x, bottom.y, top.x, top.y);
-
-      this.zoneConnections.push(conn);
+      g.lineStyle(ENERGY_LINE_WIDTH, tint, ENERGY_LINE_ALPHA);
+      g.lineBetween(layout.cauldronX, layout.cauldronY - 35, portal.x, portal.y);
     }
   }
 
@@ -248,22 +260,21 @@ export class MainScene extends Phaser.Scene {
     const h = gameSize.height;
 
     this.zoneBackground?.resize(w, h);
-    this.repositionNodeGraph(w, h);
+    this.repositionLabScene(w, h);
     this.repositionHeroes();
   }
 
-  private repositionNodeGraph(w: number, h: number): void {
-    const layout = computeNodeLayout(w, h);
+  private repositionLabScene(w: number, h: number): void {
+    const layout = computePortalLayout(w, h);
 
-    for (let i = 0; i < this.zoneNodes.length; i++) {
-      this.zoneNodes[i].resize(layout.centerX, layout.nodeY(i), layout.nodeWidth, layout.nodeHeight);
+    this.cauldron?.setPosition(layout.cauldronX, layout.cauldronY);
+
+    for (let i = 0; i < this.portals.length; i++) {
+      const pos = layout.portalPositions[i];
+      this.portals[i].reposition(pos.x, pos.y);
     }
 
-    for (let i = 0; i < this.zoneConnections.length; i++) {
-      const bottom = this.zoneNodes[i].getTopAnchor();
-      const top = this.zoneNodes[i + 1].getBottomAnchor();
-      this.zoneConnections[i].setEndpoints(bottom.x, bottom.y, top.x, top.y);
-    }
+    this.drawEnergyLines(layout);
   }
 
   private repositionHeroes(): void {
@@ -274,6 +285,21 @@ export class MainScene extends Phaser.Scene {
       sprite.setBasePosition(pos.x, pos.y);
       sprite.syncToHero(hero);
     });
+  }
+
+  private updatePortalExploringStates(heroes: AthanorHero[]): void {
+    const now = Math.floor(Date.now() / 1000);
+    const activePortals = new Set<number>();
+
+    for (const hero of heroes) {
+      if (hero.available_at > now && hero.health > 0) {
+        activePortals.add(this.getExploringPortalIndex(hero));
+      }
+    }
+
+    for (let i = 0; i < this.portals.length; i++) {
+      this.portals[i].setExploring(activePortals.has(i));
+    }
   }
 
   private startMusicPlaylist(): void {
@@ -332,34 +358,57 @@ export class MainScene extends Phaser.Scene {
 
   private getHeroTargetPosition(hero: AthanorHero, heroIndex: number, heroCount: number): { x: number; y: number } {
     const now = Math.floor(Date.now() / 1000);
-    const isExploring = hero.available_at > now;
+    const isExploring = hero.available_at > now && hero.health > 0;
+    const layout = computePortalLayout(this.scale.width, this.scale.height);
 
     if (isExploring) {
-      const zoneIndex = this.getExploringZoneIndex(hero);
-      const node = this.zoneNodes[zoneIndex];
-      if (node) {
-        return node.getHeroSlotWorldPosition(heroIndex, heroCount);
+      const portalIdx = this.getExploringPortalIndex(hero);
+      const portal = this.portals[portalIdx];
+      if (portal) {
+        const anchor = portal.getHeroAnchor();
+        const offset = this.getHeroPortalOffset(heroIndex, heroCount);
+        return { x: anchor.x + offset.x, y: anchor.y + portal.portalRadius + 18 + offset.y };
       }
     }
 
-    const athanorNode = this.zoneNodes[0];
-    if (athanorNode) {
-      return athanorNode.getHeroSlotWorldPosition(heroIndex, heroCount);
-    }
-
-    return { x: this.scale.width / 2, y: this.scale.height * 0.82 };
+    const spacing = 70;
+    const totalWidth = (heroCount - 1) * spacing;
+    const startX = layout.heroIdleX - totalWidth / 2;
+    return {
+      x: startX + heroIndex * spacing,
+      y: layout.heroIdleY,
+    };
   }
 
-  private getExploringZoneIndex(hero: AthanorHero): number {
+  private getHeroPortalOffset(heroIndex: number, heroCount: number): { x: number; y: number } {
+    if (heroCount <= 1) return { x: 0, y: 0 };
+    const spacing = 40;
+    const totalWidth = (heroCount - 1) * spacing;
+    const offsetX = -totalWidth / 2 + heroIndex * spacing;
+    return { x: offsetX, y: Math.abs(offsetX) * 0.15 };
+  }
+
+  private getExploringPortalIndex(hero: AthanorHero): number {
     const now = Math.floor(Date.now() / 1000);
     const remaining = Math.max(0, hero.available_at - now);
 
-    if (remaining > 50) return 1;
-    if (remaining > 40) return 2;
-    if (remaining > 30) return 3;
-    if (remaining > 20) return 4;
-    if (remaining > 10) return 5;
-    return 1;
+    if (remaining > 50) return 0;
+    if (remaining > 40) return 1;
+    if (remaining > 30) return 2;
+    if (remaining > 20) return 3;
+    if (remaining > 10) return 4;
+    return 0;
+  }
+
+  private getEventColor(kind: ExplorationEventPayload['kind']): number {
+    switch (kind) {
+      case 'trap': return COLORS.red;
+      case 'gold': return COLORS.gold;
+      case 'heal': return COLORS.green;
+      case 'beastWin': return COLORS.green;
+      case 'beastLose': return COLORS.red;
+      case 'ingredient': return COLORS.purple;
+    }
   }
 
   private getOrCreateHeroSprite(hero: AthanorHero, idx: number, bx: number, by: number): HeroSprite {
@@ -412,11 +461,14 @@ export class MainScene extends Phaser.Scene {
     for (const sprite of this.heroSprites.values()) sprite.destroy();
     this.heroSprites.clear();
 
-    for (const conn of this.zoneConnections) conn.destroy();
-    this.zoneConnections = [];
+    for (const portal of this.portals) portal.destroy();
+    this.portals = [];
 
-    for (const node of this.zoneNodes) node.destroy();
-    this.zoneNodes = [];
+    this.cauldron?.destroy();
+    this.cauldron = null;
+
+    this.energyLinesGfx?.destroy();
+    this.energyLinesGfx = null;
 
     this.zoneBackground?.destroy();
     this.zoneBackground = null;

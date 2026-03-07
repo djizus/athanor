@@ -13,6 +13,9 @@ const PORTRAIT_Y = 0;
 const HP_RING_RADIUS = 29;
 const HP_RING_WIDTH = 3;
 const SELECTION_RING_RADIUS = 33;
+const EXPLORING_SCALE = 0.72;
+const IDLE_SCALE = 1.0;
+const FLIGHT_DURATION = 600;
 
 function deriveStatus(availableAt: number): number {
   const now = Math.floor(Date.now() / 1000);
@@ -47,6 +50,7 @@ export class HeroSprite extends Phaser.GameObjects.Container {
   private lastDefeated = false;
   private maskGfx: Phaser.GameObjects.Graphics | null = null;
   private isSelected = false;
+  private scaleTween: Phaser.Tweens.Tween | null = null;
 
   private readonly onHeroSelected = (selectedHeroId: number): void => {
     this.updateSelection(selectedHeroId === this.heroId);
@@ -187,11 +191,13 @@ export class HeroSprite extends Phaser.GameObjects.Container {
         if (this.bobTween.isPaused()) this.bobTween.resume();
         this.trailEmitter.stop();
         this.configureAura(COLORS.white, 0.08, 1.06, 1400);
+        this.animateScaleTo(IDLE_SCALE);
       } else {
         if (!this.bobTween.isPaused()) this.bobTween.pause();
         this.y = this.baseY;
         this.trailEmitter.start();
         this.configureAura(COLORS.blue, 0.2, 1.18, 1000);
+        this.animateScaleTo(EXPLORING_SCALE);
       }
       this.lastStatus = status;
     }
@@ -204,13 +210,13 @@ export class HeroSprite extends Phaser.GameObjects.Container {
     if (dx > 1 || dy > 1) {
       this.moveTween?.stop();
       const distance = Math.sqrt(dx * dx + dy * dy);
-      const duration = Math.min(800, Math.max(250, distance * 1.5));
+      const duration = Math.min(FLIGHT_DURATION, Math.max(250, distance * 1.5));
       this.moveTween = this.sceneRef.tweens.add({
         targets: this,
         x: targetX,
         y: targetY,
         duration,
-        ease: 'Sine.Out',
+        ease: 'Cubic.Out',
       });
       this.lastTargetX = targetX;
       this.lastTargetY = targetY;
@@ -229,6 +235,7 @@ export class HeroSprite extends Phaser.GameObjects.Container {
     this.bobTween.stop();
     this.stopAuras();
     this.moveTween?.stop();
+    this.scaleTween?.stop();
     this.ringTween?.stop();
     this.trailEmitter.destroy();
     super.destroy(fromScene);
@@ -266,6 +273,17 @@ export class HeroSprite extends Phaser.GameObjects.Container {
       yoyo: true,
       repeat: -1,
       duration,
+      ease: 'Sine.InOut',
+    });
+  }
+
+  private animateScaleTo(target: number): void {
+    this.scaleTween?.stop();
+    this.scaleTween = this.sceneRef.tweens.add({
+      targets: this,
+      scaleX: target,
+      scaleY: target,
+      duration: 350,
       ease: 'Sine.InOut',
     });
   }
