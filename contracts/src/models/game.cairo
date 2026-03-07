@@ -93,7 +93,6 @@ pub impl GameImpl of GameTrait {
         self.remaining_tries -= 1;
         // [Effect] Give 1 gold if recipe is none
         if recipe == Effect::None {
-            self.earn(1);
             return;
         }
         // [Effect] Update grimoire
@@ -153,6 +152,8 @@ pub impl GameImpl of GameTrait {
     fn store(ref self: Game, effect: Effect, quantity: u16) {
         // [Check] Skip if effect is none
         if effect == Effect::None {
+            // [Effect] Earn 1 gold
+            self.earn(1);
             return;
         }
         // [Effect] Add effect to the balance
