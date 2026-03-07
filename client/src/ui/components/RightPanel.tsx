@@ -333,12 +333,6 @@ export function GrimoireContent({
         ))}
       </div>
 
-      <div className="grimoire-btn-row">
-        <button onClick={onBuyHint} disabled={isGameOver || gold < hintCost}>
-          Hint ({displayGold(hintCost)}g)
-        </button>
-      </div>
-
       <div className="grimoire-grid">
         {effects.map(effectIdx => {
           const isDiscovered = bitmapGet(grimoire, effectIdx + 1)
@@ -394,6 +388,11 @@ export function GrimoireContent({
         })}
       </div>
 
+      <div className="grimoire-btn-row">
+        <button onClick={onBuyHint} disabled={isGameOver || gold < hintCost}>
+          Hint ({displayGold(hintCost)}g)
+        </button>
+      </div>
     </>
   )
 }
