@@ -36,7 +36,7 @@ pub mod PlayableComponent {
             seed: felt252,
         ) {
             // [Setup] Store
-            let mut store = StoreTrait::new(world);
+            let store = StoreTrait::new(world);
             // [Check] Game does not exist
             let game = store.game(game_id);
             game.assert_not_started();
@@ -56,7 +56,7 @@ pub mod PlayableComponent {
             seed: felt252,
         ) {
             // [Setup] Store
-            let mut store = StoreTrait::new(world);
+            let store = StoreTrait::new(world);
             // [Check] Game exists
             let mut game = store.game(game_id);
             game.assert_is_started();
@@ -80,11 +80,14 @@ pub mod PlayableComponent {
             seed: felt252,
         ) {
             // [Setup] Store
-            let mut store = StoreTrait::new(world);
+            let store = StoreTrait::new(world);
             // [Check] Game exists
             let mut game = store.game(game_id);
             game.assert_is_started();
-            game.assert_not_over();
+            // [Check] If game is over, return silently
+            if game.is_over() {
+                return;
+            }
             // [Check] Discovery
             let mut discovery = store.discovery(game_id, ingredient_a.into(), ingredient_b.into());
             let variation = store.discovery(game_id, ingredient_b.into(), ingredient_a.into());
@@ -119,7 +122,7 @@ pub mod PlayableComponent {
             seed: felt252,
         ) {
             // [Setup] Store
-            let mut store = StoreTrait::new(world);
+            let store = StoreTrait::new(world);
             // [Check] Game exists
             let mut game = store.game(game_id);
             game.assert_is_started();
@@ -141,7 +144,7 @@ pub mod PlayableComponent {
             quantity: u16,
         ) {
             // [Setup] Store
-            let mut store = StoreTrait::new(world);
+            let store = StoreTrait::new(world);
             // [Check] Game exists
             let mut game = store.game(game_id);
             game.assert_is_started();
@@ -165,7 +168,7 @@ pub mod PlayableComponent {
             seed: felt252,
         ) {
             // [Setup] Store
-            let mut store = StoreTrait::new(world);
+            let store = StoreTrait::new(world);
             // [Check] Game exists
             let mut game = store.game(game_id);
             game.assert_is_started();
@@ -201,7 +204,7 @@ pub mod PlayableComponent {
             character_id: u8,
         ) {
             // [Setup] Store
-            let mut store = StoreTrait::new(world);
+            let store = StoreTrait::new(world);
             // [Check] Game exists
             let mut game = store.game(game_id);
             game.assert_is_started();
