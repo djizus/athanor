@@ -1207,18 +1207,17 @@ button:disabled, .btn:disabled {
 
 .hero-card-top {
   display: flex;
-  align-items: stretch;
+  align-items: center;
   gap: 0.5rem;
 }
 
 .hero-card-portrait {
   width: 56px;
-  min-height: 56px;
-  border-radius: var(--radius-md);
+  height: 56px;
+  border-radius: 50%;
   border: 2px solid var(--border-color);
   object-fit: cover;
   flex-shrink: 0;
-  align-self: stretch;
 }
 
 .hero-card.selected .hero-card-portrait {
@@ -1664,7 +1663,7 @@ button:disabled, .btn:disabled {
   .status-hud-btn { font-size: 0.72rem; padding: 0.15rem 0.3rem; }
   .status-hud-settings { font-size: 0.9rem; }
 
-  .hero-card-portrait { width: 40px; min-height: 40px; }
+  .hero-card-portrait { width: 44px; height: 44px; }
   .hero-card-actions { padding-left: 48px; }
 }
 
