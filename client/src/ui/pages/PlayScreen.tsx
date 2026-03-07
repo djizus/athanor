@@ -555,7 +555,7 @@ function HeroPotionPopup({
   const availablePotions = useMemo(() => {
     const result: { effectIdx: number; qty: number }[] = []
     for (let i = 0; i < 30; i++) {
-      if (bitmapGet(grimoire, i + 1) && effectQuantities[i] > 0) {
+      if (bitmapGet(grimoire, i) && effectQuantities[i] > 0) {
         result.push({ effectIdx: i, qty: effectQuantities[i] })
       }
     }

@@ -301,7 +301,7 @@ export function GrimoireContent({
   const discoveryMap = useMemo(() => {
     const map = new Map<number, DiscoveryData>()
     for (const r of recipes) {
-      if (bitmapGet(grimoire, r.effect + 1) && !map.has(r.effect)) {
+      if (bitmapGet(grimoire, r.effect) && !map.has(r.effect)) {
         map.set(r.effect, r)
       }
     }
@@ -310,12 +310,12 @@ export function GrimoireContent({
 
   const effects = useMemo(() => {
     const all = Array.from({ length: 30 }, (_, i) => i)
-    const visible = all.filter(i => bitmapGet(grimoire, i + 1) || hintIngredients.has(i))
+    const visible = all.filter(i => bitmapGet(grimoire, i) || hintIngredients.has(i))
     const filtered = filter === 'all' ? visible : visible.filter(i => EFFECT_CATEGORIES[i] === filter)
 
     return filtered.sort((a, b) => {
-      const aDisc = bitmapGet(grimoire, a + 1) ? 1 : 0
-      const bDisc = bitmapGet(grimoire, b + 1) ? 1 : 0
+      const aDisc = bitmapGet(grimoire, a) ? 1 : 0
+      const bDisc = bitmapGet(grimoire, b) ? 1 : 0
 
       // 1. Craftable discovered potions first
       const aCraft = aDisc && discoveryMap.has(a) && Math.min(invMap.get(discoveryMap.get(a)!.ingredient_a) ?? 0, invMap.get(discoveryMap.get(a)!.ingredient_b) ?? 0) > 0 ? 1 : 0
@@ -361,7 +361,7 @@ export function GrimoireContent({
 
       <div className="grimoire-grid">
         {effects.map(effectIdx => {
-          const isDiscovered = bitmapGet(grimoire, effectIdx + 1)
+          const isDiscovered = bitmapGet(grimoire, effectIdx)
           const isHinted = !isDiscovered && hintIngredients.has(effectIdx)
           const quantity = effectQuantities[effectIdx]
           const discovery = discoveryMap.get(effectIdx)
