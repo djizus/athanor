@@ -34,7 +34,7 @@
   "contracts": [
     {
       "address": "0x505d14c8c68fba8bee37651e39ded642d3cbaee2727b6a2f7463da369428b2",
-      "class_hash": "0x5fbee3032672485263808b0d02bc71daa250c0f4e136603b7b82e0a5e32018e",
+      "class_hash": "0x201a23b76aafe88fb2f9698502b740c199676a5db8e3dc7a80a0fb8b35b20e8",
       "init_calldata": [
         "0x059b1a0c489b635d7c7f43594d187362ddd2dcea6c82db4eef2579fd185b3753",
         "0x00ce6622be39efa11b4a50b7d2e0c342a218bc099bbd313365efe169ef0eb3e2",
@@ -52,6 +52,7 @@
         "buff",
         "explore",
         "claim",
+        "surrender",
         "upgrade"
       ]
     },
@@ -1623,6 +1624,18 @@
             {
               "name": "character_id",
               "type": "core::integer::u8"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "surrender",
+          "inputs": [
+            {
+              "name": "game_id",
+              "type": "core::integer::u64"
             }
           ],
           "outputs": [],

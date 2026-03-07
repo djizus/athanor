@@ -223,5 +223,17 @@ pub mod PlayableComponent {
             game.merge(ingredients.into());
             store.set_game(@game);
         }
+
+        fn surrender(ref self: ComponentState<TContractState>, world: WorldStorage, game_id: u64) {
+            // [Setup] Store
+            let store = StoreTrait::new(world);
+            // [Check] Game exists
+            let mut game = store.game(game_id);
+            game.assert_is_started();
+            game.assert_not_over();
+            // [Effect] Surrender game
+            game.surrender();
+            store.set_game(@game);
+        }
     }
 }

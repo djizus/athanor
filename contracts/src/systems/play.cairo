@@ -12,6 +12,7 @@ pub trait IPlay<T> {
     fn buff(ref self: T, game_id: u64, character_id: u8, effect: u8, quantity: u16);
     fn explore(ref self: T, game_id: u64, character_id: u8);
     fn claim(ref self: T, game_id: u64, character_id: u8);
+    fn surrender(ref self: T, game_id: u64);
 }
 
 #[dojo::contract]
@@ -210,6 +211,15 @@ pub mod Play {
             // [Effect] Claim
             self.before(world, game_id);
             self.playable.claim(world, game_id, character_id);
+            self.after(world, game_id);
+        }
+
+        fn surrender(ref self: ContractState, game_id: u64) {
+            // [Setup] World
+            let world = self.world(@NAMESPACE());
+            // [Effect] Surrender
+            self.before(world, game_id);
+            self.playable.surrender(world, game_id);
             self.after(world, game_id);
         }
     }

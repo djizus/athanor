@@ -71,6 +71,11 @@ pub impl GameImpl of GameTrait {
     }
 
     #[inline]
+    fn surrender(ref self: Game) {
+        self.ended_at = Bounded::MAX;
+    }
+
+    #[inline]
     fn assess(ref self: Game) {
         // [Check] All recipes must be discovered
         if Bitmap::popcount(self.grimoire) != EFFECT_COUNT {
