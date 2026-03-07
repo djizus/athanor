@@ -315,16 +315,22 @@ export function GrimoireContent({
     const visible = all.filter(i => bitmapGet(grimoire, i) || hintIngredients.has(i))
     const filtered = filter === 'all' ? visible : visible.filter(i => EFFECT_CATEGORIES[i] === filter)
 
+    const CAT_ORDER: Record<string, number> = { health: 0, power: 1, regen: 2 }
+
     return filtered.sort((a, b) => {
+      if (filter === 'all') {
+        const aCatOrd = CAT_ORDER[EFFECT_CATEGORIES[a]] ?? 9
+        const bCatOrd = CAT_ORDER[EFFECT_CATEGORIES[b]] ?? 9
+        if (aCatOrd !== bCatOrd) return aCatOrd - bCatOrd
+      }
+
       const aDisc = bitmapGet(grimoire, a) ? 1 : 0
       const bDisc = bitmapGet(grimoire, b) ? 1 : 0
 
-      // 1. Craftable discovered potions first
       const aCraft = aDisc && discoveryMap.has(a) && Math.min(invMap.get(discoveryMap.get(a)!.ingredient_a) ?? 0, invMap.get(discoveryMap.get(a)!.ingredient_b) ?? 0) > 0 ? 1 : 0
       const bCraft = bDisc && discoveryMap.has(b) && Math.min(invMap.get(discoveryMap.get(b)!.ingredient_a) ?? 0, invMap.get(discoveryMap.get(b)!.ingredient_b) ?? 0) > 0 ? 1 : 0
       if (aCraft !== bCraft) return bCraft - aCraft
 
-      // 2. Discovered (non-craftable) by powerup strength
       if (aDisc !== bDisc) return bDisc - aDisc
       if (aDisc && bDisc) {
         const aStr = EFFECT_MULTIPLIERS[a] ?? 0
@@ -332,7 +338,6 @@ export function GrimoireContent({
         if (aStr !== bStr) return bStr - aStr
       }
 
-      // 3. Hints last
       const aHint = !aDisc && hintIngredients.has(a) ? 1 : 0
       const bHint = !bDisc && hintIngredients.has(b) ? 1 : 0
       if (aHint !== bHint) return bHint - aHint
@@ -362,7 +367,10 @@ export function GrimoireContent({
       </div>
 
       <div className="grimoire-grid">
-        {effects.map(effectIdx => {
+        {effects.map((effectIdx, i) => {
+          const prevCat = i > 0 && filter === 'all' ? EFFECT_CATEGORIES[effects[i - 1]] : null
+          const curCat = EFFECT_CATEGORIES[effectIdx]
+          const showSeparator = filter === 'all' && prevCat != null && prevCat !== curCat
           const isDiscovered = bitmapGet(grimoire, effectIdx)
           const isHinted = !isDiscovered && hintIngredients.has(effectIdx)
           const isNew = newlyDiscovered?.has(effectIdx) ?? false
@@ -394,7 +402,7 @@ export function GrimoireContent({
             }
           }
 
-          return (
+          const cell = (
             <div
               key={effectIdx}
               className={`grimoire-cell${isDiscovered ? (canCraft ? ' discovered' : ' discovered inactive') : ''}${isHinted ? ' hinted' : ''}${isDiscovered || isHinted ? ' grimoire-cell-clickable' : ''}${isNew ? ' grimoire-cell-new' : ''}`}
@@ -417,6 +425,11 @@ export function GrimoireContent({
               </div>
             </div>
           )
+
+          if (showSeparator) {
+            return [<div key={`sep-${curCat}`} className="grimoire-separator" />, cell]
+          }
+          return cell
         })}
       </div>
 
