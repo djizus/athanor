@@ -304,6 +304,7 @@ export function useExplorationLog(
           const heroName = heroMapRef.current.get(values.hero_id) ?? `Hero ${values.hero_id}`
           const result = formatEvent(shortName, values, heroName)
           if (result) {
+            if (shortName === 'ExplorationEvent' && !result.rawEvent) continue
             console.debug('[ExplorationLog]', shortName, values, '->', result.entry.text)
             if (shortName === 'ExplorationEvent') {
               enqueue({ entry: result.entry, rawEvent: result.rawEvent })
