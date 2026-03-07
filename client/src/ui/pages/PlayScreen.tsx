@@ -383,8 +383,8 @@ export function PlayScreen({ bridge }: Props) {
                     }
                   }}
                   onSelectIngredients={(a, b) => {
-                    setSlotA(a)
-                    setSlotB(b)
+                    setSlotA(a >= 0 ? a : null)
+                    setSlotB(b >= 0 ? b : null)
                     setBrewCollapsed(false)
                     requestAnimationFrame(() => {
                       document.querySelector('.panel-brew')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })

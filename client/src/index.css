@@ -1881,20 +1881,25 @@ button:disabled, .btn:disabled {
   z-index: 2;
 }
 
-.grimoire-craft-badge {
+.grimoire-badge-star {
   position: absolute;
-  top: -4px;
-  right: -4px;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--accent-green);
-  color: var(--bg-primary);
-  font-size: 0.55rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  top: -2px;
+  right: -2px;
+  font-size: 0.75rem;
+  color: var(--accent-gold);
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
   z-index: 2;
+  pointer-events: none;
+}
+
+.grimoire-badge-hint {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  font-size: 0.65rem;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+  z-index: 2;
+  pointer-events: none;
 }
 
 .grimoire-stat-badge {

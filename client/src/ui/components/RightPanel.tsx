@@ -123,6 +123,7 @@ export function BrewContent({
         <button
           className={`craft-slot${slotA != null ? ' craft-slot-filled' : ''}`}
           onClick={() => onSetSlotA(null)}
+          title={slotA != null ? INGREDIENT_NAMES[slotA] : 'Select ingredient'}
           style={slotA != null ? { ['--zone-color' as string]: ZONE_COLORS[getZoneForIngredient(slotA)] } : undefined}
         >
           {slotA != null ? (
@@ -135,6 +136,7 @@ export function BrewContent({
         <button
           className={`craft-slot${slotB != null ? ' craft-slot-filled' : ''}`}
           onClick={() => onSetSlotB(null)}
+          title={slotB != null ? INGREDIENT_NAMES[slotB] : 'Select ingredient'}
           style={slotB != null ? { ['--zone-color' as string]: ZONE_COLORS[getZoneForIngredient(slotB)] } : undefined}
         >
           {slotB != null ? (
@@ -408,7 +410,8 @@ export function GrimoireContent({
 
   const effects = useMemo(() => {
     const all = Array.from({ length: 30 }, (_, i) => i)
-    const filtered = filter === 'all' ? all : all.filter(i => EFFECT_CATEGORIES[i] === filter)
+    const visible = all.filter(i => bitmapGet(grimoire, i + 1) || hintIngredients.has(i))
+    const filtered = filter === 'all' ? visible : visible.filter(i => EFFECT_CATEGORIES[i] === filter)
 
     return filtered.sort((a, b) => {
       const aDisc = bitmapGet(grimoire, a + 1) ? 1 : 0
@@ -471,18 +474,25 @@ export function GrimoireContent({
             ? Math.min(invMap.get(discovery.ingredient_a) ?? 0, invMap.get(discovery.ingredient_b) ?? 0)
             : 0
           const canCraft = isDiscovered && discovery && maxCraftable > 0 && !isGameOver
+          const hintIngs = hintIngredients.get(effectIdx)
 
           const handleClick = () => {
             if (isDiscovered && discovery) {
               onSelectIngredients(discovery.ingredient_a, discovery.ingredient_b)
+            } else if (isHinted && hintIngs && hintIngs.length > 0) {
+              if (hintIngs.length >= 2) {
+                onSelectIngredients(hintIngs[0], hintIngs[1])
+              } else {
+                onSelectIngredients(hintIngs[0], -1)
+              }
             }
           }
 
           return (
             <div
               key={effectIdx}
-              className={`grimoire-cell${isDiscovered ? ' discovered' : ''}${isHinted ? ' hinted' : ''}${!isDiscovered && !isHinted ? ' locked' : ''}${isDiscovered ? ' grimoire-cell-clickable' : ''}`}
-              onClick={isDiscovered ? handleClick : undefined}
+              className={`grimoire-cell${isDiscovered ? ' discovered' : ''}${isHinted ? ' hinted' : ''}${isDiscovered || isHinted ? ' grimoire-cell-clickable' : ''}`}
+              onClick={isDiscovered || isHinted ? handleClick : undefined}
             >
               <div
                 className="grimoire-icon-wrap"
@@ -494,7 +504,8 @@ export function GrimoireContent({
                   alt={isDiscovered ? EFFECT_NAMES[effectIdx] : '???'}
                 />
                 {hasStock && <span className="grimoire-qty-badge">{quantity}</span>}
-                {canCraft && <span className="grimoire-craft-badge">⚗</span>}
+                {canCraft && <span className="grimoire-badge-star">★</span>}
+                {isHinted && <span className="grimoire-badge-hint">🔍</span>}
               </div>
               <span className="grimoire-stat-badge" style={{ color: categoryColor }}>
                 {effectStatLabel(effectIdx)}
