@@ -33,18 +33,20 @@ export function buildBackgroundPrompt(asset: ImageAssetDef): string {
 
 export function buildWorldMapPrompt(): string {
   return [
-    `A top-down bird's-eye view fantasy world map for an alchemy RPG game. 16:9 widescreen composition.`,
-    `Three distinct biome zones arranged LEFT-TO-RIGHT in the CENTER of the image, occupying the central 65% of the width and 50% of the height:`,
-    `LEFT ZONE: Verdant Meadow — lush green fields, scattered wildflowers, ancient standing stones, a small glowing alchemist base camp on the far left. Soft golden-green light.`,
-    `CENTER ZONE: Crystal Cavern — exposed underground cavern, clusters of amber and amethyst crystal formations, dark stone walls, warm mineral glow from crystal veins.`,
-    `RIGHT ZONE: Aether Spire — ethereal purple floating platforms with a central arcane tower, swirling energy trails, glowing rune circles, starlit purple atmosphere.`,
-    `A clearly visible winding dirt path runs horizontally through all three zones from left to right, connecting them in sequence.`,
-    `SURROUNDING AREAS (outside the zones): Dense dark enchanted forest, misty mountains, deep ravines, dark wilderness terrain. This decorative filler extends to all edges of the image.`,
-    `The three zones are CENTERED in the image — they do NOT touch the edges. Dark wilderness filler surrounds them on all four sides.`,
+    `A top-down bird's-eye view fantasy world map for an alchemy RPG game. 16:9 widescreen composition (2560x1440).`,
+    `LAYOUT: A narrow VERTICAL corridor of biome zones runs through the HORIZONTAL CENTER of the image (occupying the central 35% of the width, full height). The LEFT and RIGHT sides (each ~32% of the width) are dark atmospheric filler only.`,
+    `BOTTOM OF CENTER CORRIDOR — THE ATHANOR: A glowing alchemist's athanor furnace platform at the very bottom center. Circular stone platform with a molten-gold furnace at its heart, arcane circles etched into the stone, warm amber (#c8a040) light radiating outward. This is the origin point.`,
+    `ZONE 1 (just above athanor): Amber Hollows — warm golden cavern openings, amber-tinted rock formations, copper veins glowing in dark stone, soft golden (#c8a040) light filtering up.`,
+    `ZONE 2 (above zone 1): Ember Cavern — volcanic fissures, smoldering dragon-fire residue, sulfur crystal formations, dark stone with orange-red (#b85030) magma glow. Heat haze rising.`,
+    `ZONE 3 (center of corridor): Aether Spire — ethereal purple (#9e4a9e) floating platforms, swirling arcane energy trails, glowing rune circles, starlit atmosphere.`,
+    `ZONE 4 (above zone 3): Sunken Abyss — deep flooded cavern, bioluminescent blue (#2a5a8a) cave pearls, dripping stalactites, dark river channels cutting through stone.`,
+    `ZONE 5 (top of corridor): Crystalveil Reach — crystalline frost formations, emerald (#2a8a6a) gemstone outcrops, frozen flower blooms, teal aurora wisps. The peak.`,
+    `A winding path connects all zones VERTICALLY from the athanor at the bottom up through each zone to the peak. The path should be clearly visible — worn stone steps transitioning through each biome.`,
+    `LEFT AND RIGHT FILLER: Dense dark enchanted forest, misty void, jagged dark cliffs, and swirling black fog. Completely dark and atmospheric — no landmarks, no structures, no points of interest. Just moody dark wilderness that frames the central corridor. Fades smoothly into near-black at the edges.`,
     GLOBAL_ART_STYLE,
-    `Color palette: dark background #080810, green #4a9e4a for meadow, amber #b8860b for cavern, purple #9e4a9e for spire, dark greens and blacks for surrounding wilderness.`,
-    `Full-bleed seamless scene extending edge-to-edge. Vignette: outermost 10% on ALL sides smoothly fades to near-black #080810.`,
-    `Top-down orthographic perspective, like a tabletop RPG battle map viewed from directly above.`,
+    `Color palette: dark filler #080810, golden amber #c8a040 at bottom graduating through burnt orange #b85030, purple #9e4a9e, deep blue #2a5a8a, to emerald teal #2a8a6a at top. The color temperature shifts from warm (bottom) to cold (top).`,
+    `Full-bleed seamless scene extending edge-to-edge. Vignette: outermost 8% on ALL sides smoothly fades to near-black #080810.`,
+    `Top-down orthographic perspective, looking straight down. The vertical zone corridor is the ONLY area with detail and color — everything else is dark background.`,
     `No people, no text, no labels, no UI elements, no watermarks, no icons.`,
   ].join(' ');
 }

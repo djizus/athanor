@@ -38,9 +38,11 @@
   --transition-fast: 0.15s ease;
   --transition-med: 0.25s ease;
 
-  --zone-meadow: #4a9e4a;
-  --zone-cavern: #b8860b;
+  --zone-hollows: #c8a040;
+  --zone-cavern: #b85030;
   --zone-spire: #9e4a9e;
+  --zone-abyss: #2a5a8a;
+  --zone-crystalveil: #2a8a6a;
 }
 
 * {
@@ -221,15 +223,7 @@ button:disabled, .btn:disabled {
   gap: 0.75rem;
 }
 
-.hero-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 0.75rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
+
 
 .hero-header {
   display: flex;
@@ -1056,25 +1050,6 @@ button:disabled, .btn:disabled {
   box-shadow: var(--glass-shadow);
 }
 
-.play-back-btn {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  z-index: 12;
-  padding: 0.35rem 0.75rem;
-  font-family: var(--font-title);
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  cursor: pointer;
-  border: 1px solid var(--glass-border);
-  transition: all var(--transition-fast);
-}
-
-.play-back-btn:hover {
-  color: var(--text-primary);
-  border-color: var(--border-glow);
-}
-
 .status-hud {
   position: absolute;
   top: 12px;
@@ -1083,43 +1058,56 @@ button:disabled, .btn:disabled {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  padding: 0.4rem 1.2rem;
+  padding: 0.35rem 0.5rem;
   font-family: var(--font-title);
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   letter-spacing: 0.04em;
   white-space: nowrap;
   z-index: 12;
 }
 
-.status-hud-gold { color: var(--accent-gold); }
-.status-hud-recipes { color: var(--text-primary); }
-.status-hud-time { color: var(--text-secondary); }
-.status-hud-sep { color: var(--text-muted); font-size: 0.7rem; }
-
-.play-settings-btn {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  z-index: 12;
-  padding: 0.35rem 0.6rem;
-  font-size: 1rem;
+.status-hud-btn {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  font-family: var(--font-title);
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
   color: var(--text-secondary);
   cursor: pointer;
-  border: 1px solid var(--glass-border);
-  transition: all var(--transition-fast);
+  padding: 0.2rem 0.4rem;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition-fast), background var(--transition-fast);
 }
 
-.play-settings-btn:hover {
+.status-hud-btn:hover {
   color: var(--text-primary);
-  border-color: var(--border-glow);
+  background: rgba(255, 255, 255, 0.06);
 }
+
+.status-hud-settings {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.status-hud-divider {
+  width: 1px;
+  height: 1.1rem;
+  background: var(--glass-border);
+  flex-shrink: 0;
+}
+
+.status-hud-gold { color: var(--accent-gold); }
+.status-hud-recipes { color: var(--text-primary); }
+.status-hud-time { color: var(--text-primary); }
+.status-hud-sep { color: var(--text-muted); font-size: 0.7rem; }
 
 .play-left-panels {
   position: absolute;
   left: 12px;
   top: 52px;
   bottom: 12px;
-  width: 280px;
+  width: 340px;
   z-index: 10;
   display: flex;
   flex-direction: column;
@@ -1134,7 +1122,7 @@ button:disabled, .btn:disabled {
   right: 12px;
   top: 52px;
   bottom: 52px;
-  width: 280px;
+  width: 340px;
   z-index: 10;
   display: flex;
   flex-direction: column;
@@ -1155,7 +1143,7 @@ button:disabled, .btn:disabled {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.5rem 0.7rem;
+  padding: 0.6rem 0.85rem;
   border: none;
   background: transparent;
   cursor: pointer;
@@ -1171,7 +1159,7 @@ button:disabled, .btn:disabled {
 
 .side-panel-title {
   font-family: var(--font-title);
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   color: var(--accent-gold);
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -1184,7 +1172,7 @@ button:disabled, .btn:disabled {
 }
 
 .side-panel-body {
-  padding: 0.6rem;
+  padding: 0.75rem;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -1195,18 +1183,22 @@ button:disabled, .btn:disabled {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  padding: 0.45rem;
+  padding: 0.55rem;
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: background var(--transition-fast);
-  border: 1px solid transparent;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
 }
 
-.hero-card:hover { background: var(--bg-hover); }
+.hero-card:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-glow);
+}
 
 .hero-card.selected {
+  background: rgba(240, 192, 64, 0.08);
   border-color: var(--accent-gold-dim);
-  background: rgba(240, 192, 64, 0.06);
 }
 
 .hero-card-top {
@@ -1216,8 +1208,8 @@ button:disabled, .btn:disabled {
 }
 
 .hero-card-portrait {
-  width: 36px;
-  height: 36px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   border: 2px solid var(--border-color);
   object-fit: cover;
@@ -1233,27 +1225,89 @@ button:disabled, .btn:disabled {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.12rem;
+  gap: 0.2rem;
+  justify-content: center;
 }
 
 .hero-card-name {
   font-family: var(--font-title);
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   color: var(--text-primary);
 }
 
 .hero-card-hp {
+  position: relative;
   width: 100%;
-  height: 4px;
+  height: 18px;
   background: var(--bg-secondary);
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
 }
 
 .hero-card-hp-fill {
+  position: absolute;
+  inset: 0;
+  width: 0;
+  border-radius: var(--radius-sm);
+  transition: width 0.4s ease;
+}
+
+.hero-card-hp-regen {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: var(--radius-sm);
+  opacity: 0.35;
+  animation: regen-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes regen-pulse {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 0.5; }
+}
+
+.hero-card-power {
+  position: relative;
+  width: 100%;
+  height: 16px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.hero-card-power-fill {
   height: 100%;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-blue);
   transition: width 0.3s ease;
+}
+
+.hero-card-bar-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.9),
+    0 0 4px rgba(0, 0, 0, 0.6),
+    0 0 8px rgba(0, 0, 0, 0.3);
+  z-index: 1;
+  pointer-events: none;
+  letter-spacing: 0.03em;
+}
+
+.hero-card-regen-tag {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent-green);
+  text-align: right;
+  letter-spacing: 0.03em;
 }
 
 .hero-card-status {
@@ -1269,7 +1323,8 @@ button:disabled, .btn:disabled {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  padding-left: 44px;
+  padding-left: 64px;
+  padding-top: 0.15rem;
 }
 
 .hero-card-timer {
@@ -1296,9 +1351,12 @@ button:disabled, .btn:disabled {
 
 .hero-card-locked {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.45rem;
+  gap: 0.45rem;
+  padding: 0.6rem 0.45rem;
+  border-style: dashed;
+  background: var(--bg-secondary);
 }
 
 .hero-card-locked-icon {
@@ -1315,30 +1373,153 @@ button:disabled, .btn:disabled {
 }
 
 .hero-card-recruit {
-  font-size: 0.7rem;
-  padding: 0.2rem 0.5rem;
+  font-size: 0.75rem;
+  padding: 0.3rem 0.8rem;
 }
 
-.craft-slot-row {
+.hero-card-recruit.pulse-afford {
+  animation: pulse-afford 2s ease-in-out infinite;
+}
+
+@keyframes pulse-afford {
+  0%, 100% {
+    box-shadow: var(--shadow-glow-gold);
+    border-color: var(--accent-gold-dim);
+  }
+  50% {
+    box-shadow: 0 0 18px rgba(240, 192, 64, 0.4);
+    border-color: var(--accent-gold);
+  }
+}
+
+/* ── Shared ingredient icon ────────────────────── */
+
+.ing-cell {
+  position: relative;
   display: flex;
-  gap: 0.5rem;
+  flex-direction: column;
   align-items: center;
+  width: 52px;
 }
 
-.craft-slot-row select {
-  flex: 1;
-  padding: 0.4rem;
+.ing-cell-zero { opacity: 0.35; }
+
+.ing-cell-clickable { cursor: pointer; }
+
+.ing-icon-wrap {
+  position: relative;
+  border-radius: 50%;
+}
+
+.ing-icon {
+  border-radius: 50%;
+  border: 2px solid var(--border-color);
+  object-fit: cover;
   background: var(--bg-card);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  font-family: var(--font-body);
-  font-size: 0.82rem;
+  display: block;
 }
 
-.craft-slot-row select:focus {
-  outline: none;
-  border-color: var(--accent-gold-dim);
+.ing-cell:not(.ing-cell-zero) .ing-icon {
+  border-color: var(--zone-color, var(--border-glow));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--zone-color, transparent) 30%, transparent);
+}
+
+.ing-cell-selected .ing-icon {
+  border-color: var(--accent-gold);
+  box-shadow: 0 0 12px rgba(240, 192, 64, 0.5);
+}
+
+.ing-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  min-width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  border-radius: 8px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.62rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.ing-cell[data-name]::after {
+  content: attr(data-name);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 6px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(8, 8, 16, 0.92);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 20;
+  transition: opacity 0.15s ease;
+}
+
+.ing-cell[data-name]:hover::after,
+.ing-cell[data-name]:active::after {
+  opacity: 1;
+}
+
+/* ── Craft panel ──────────────────────────────── */
+
+.craft-slots {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: center;
+  padding-bottom: 0.5rem;
+}
+
+.craft-slot {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 2px dashed var(--border-color);
+  background: var(--bg-card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.craft-slot:hover {
+  border-color: var(--border-glow);
+}
+
+.craft-slot-filled {
+  border-style: solid;
+  border-color: var(--zone-color, var(--border-glow));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--zone-color, transparent) 35%, transparent);
+}
+
+.craft-slot-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.craft-slot-empty {
+  color: var(--text-muted);
+  font-family: var(--font-title);
+  font-size: 1.1rem;
 }
 
 .craft-plus {
@@ -1347,12 +1528,38 @@ button:disabled, .btn:disabled {
   flex-shrink: 0;
 }
 
+.craft-brew-btn {
+  margin-left: 0.35rem;
+}
+
+.craft-ingredient-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0.35rem 0;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.craft-ingredient-grid .ing-cell {
+  width: 44px;
+}
+
+.craft-empty-msg {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 0.75rem;
+  padding: 0.5rem 0;
+}
+
 .craft-btn-row {
   display: flex;
   gap: 0.5rem;
 }
 
 .craft-btn-row button { flex: 1; }
+
+/* ── Grimoire ─────────────────────────────────── */
 
 .grimoire-progress {
   width: 100%;
@@ -1372,7 +1579,7 @@ button:disabled, .btn:disabled {
 
 .grimoire-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 0.4rem;
 }
 
@@ -1390,12 +1597,50 @@ button:disabled, .btn:disabled {
   font-family: var(--font-title);
   font-size: 0.7rem;
   color: var(--accent-gold);
-  margin-bottom: 0.12rem;
+  margin-bottom: 0.2rem;
 }
 
-.grimoire-card-info {
-  font-size: 0.75rem;
+.grimoire-card-recipe {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.15rem;
+}
+
+.grimoire-ingredient {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.7rem;
+  min-width: 0;
+}
+
+.grimoire-ingredient span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.grimoire-ing-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-color);
+  object-fit: cover;
+  background: var(--bg-card);
+  flex-shrink: 0;
+}
+
+.grimoire-plus {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  flex-shrink: 0;
+}
+
+.grimoire-card-effect {
+  font-size: 0.72rem;
   color: var(--text-secondary);
+  padding-left: 0.15rem;
 }
 
 .grimoire-card-undiscovered {
@@ -1404,32 +1649,65 @@ button:disabled, .btn:disabled {
   font-size: 0.75rem;
 }
 
+/* ── Inventory ────────────────────────────────── */
+
 .inventory-zone-header {
   font-family: var(--font-title);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   letter-spacing: 0.06em;
-  padding: 0.3rem 0 0.15rem;
-  margin-top: 0.35rem;
+  padding: 0.35rem 0 0.2rem;
+  margin-top: 0.5rem;
 }
 
 .inventory-zone-header:first-child { margin-top: 0; }
 
-.inventory-row {
+.inventory-zone-grid {
   display: flex;
-  align-items: center;
-  gap: 0.4rem;
+  flex-wrap: wrap;
+  gap: 0.55rem;
   padding: 0.2rem 0;
 }
 
-.inventory-row-icon {
-  width: 22px;
-  height: 22px;
-  border-radius: var(--radius-sm);
+.log-body {
+  max-height: 180px;
+  overflow-y: auto;
+  gap: 0.2rem !important;
 }
 
-.inventory-row-name { flex: 1; font-size: 0.8rem; }
-.inventory-row-qty { color: var(--text-secondary); font-size: 0.76rem; }
-.inventory-row-zero { opacity: 0.4; }
+.log-entry {
+  display: flex;
+  gap: 0.4rem;
+  align-items: baseline;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  padding: 0.15rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.log-ts {
+  flex-shrink: 0;
+  font-family: 'Courier New', monospace;
+  font-size: 0.62rem;
+  color: var(--text-muted);
+}
+
+.log-text {
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+}
+
+.log-exploration .log-text { color: var(--text-primary); }
+.log-loot .log-text { color: var(--accent-gold); }
+.log-recipe .log-text { color: var(--accent-purple); }
+.log-recruit .log-text { color: var(--accent-green); }
+.log-potion .log-text { color: var(--accent-blue); }
+.log-expedition .log-text { color: var(--accent-blue); }
+
+.log-empty {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
 
 .game-over-overlay {
   position: absolute;
@@ -1515,7 +1793,7 @@ button:disabled, .btn:disabled {
 @media (max-width: 1023px) {
   .play-left-panels,
   .play-right-panels {
-    width: 240px;
+    width: 300px;
   }
 }
 
@@ -1524,7 +1802,7 @@ button:disabled, .btn:disabled {
   .play-right-panels {
     position: fixed;
     width: 100%;
-    max-width: 320px;
+    max-width: 340px;
     top: auto;
     bottom: 0;
     max-height: 45vh;
@@ -1536,14 +1814,16 @@ button:disabled, .btn:disabled {
 
   .status-hud {
     top: 8px;
-    font-size: 0.75rem;
-    gap: 0.5rem;
-    padding: 0.3rem 0.8rem;
+    font-size: 0.72rem;
+    gap: 0.35rem;
+    padding: 0.25rem 0.4rem;
   }
 
-  .hero-card-info { display: none; }
-  .hero-card-portrait { width: 32px; height: 32px; }
-  .hero-card-actions { padding-left: 0; }
+  .status-hud-btn { font-size: 0.72rem; padding: 0.15rem 0.3rem; }
+  .status-hud-settings { font-size: 0.9rem; }
+
+  .hero-card-portrait { width: 44px; height: 44px; }
+  .hero-card-actions { padding-left: 48px; }
 }
 
 .toaster-container {

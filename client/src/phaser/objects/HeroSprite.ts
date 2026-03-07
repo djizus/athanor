@@ -9,7 +9,9 @@ import type { EventEffect } from './EventEffect';
 const HERO_TINTS = [0x4080d0, 0x40c060, 0xa050d0];
 const HERO_PORTRAIT_KEYS = ['role-mage', 'role-rogue', 'role-warrior'];
 const PORTRAIT_SIZE = 48;
-const HP_BAR_WIDTH = 40;
+const HP_BAR_WIDTH = 52;
+const HP_BAR_HEIGHT = 6;
+const HP_BAR_Y = 42;
 
 function deriveStatus(availableAt: number): number {
   const now = Math.floor(Date.now() / 1000);
@@ -71,11 +73,11 @@ export class HeroSprite extends Phaser.GameObjects.Container {
     this.aura = scene.add.circle(0, 6, 36, COLORS.white, 0.08);
     this.aura.setBlendMode(Phaser.BlendModes.ADD);
 
-    const hpBg = scene.add.rectangle(-HP_BAR_WIDTH / 2, -44, HP_BAR_WIDTH, 4, COLORS.black, 0.6);
+    const hpBg = scene.add.rectangle(-HP_BAR_WIDTH / 2, HP_BAR_Y, HP_BAR_WIDTH, HP_BAR_HEIGHT, COLORS.black, 0.6);
     hpBg.setOrigin(0, 0.5);
     hpBg.setStrokeStyle(1, 0xffffff, 0.2);
 
-    this.hpFill = scene.add.rectangle(-HP_BAR_WIDTH / 2, -44, HP_BAR_WIDTH, 4, COLORS.hpGreen, 1);
+    this.hpFill = scene.add.rectangle(-HP_BAR_WIDTH / 2, HP_BAR_Y, HP_BAR_WIDTH, HP_BAR_HEIGHT, COLORS.hpGreen, 1);
     this.hpFill.setOrigin(0, 0.5);
 
     this.selectionRing = scene.add.circle(0, 8, 36);
@@ -83,7 +85,8 @@ export class HeroSprite extends Phaser.GameObjects.Container {
     this.selectionRing.setFillStyle(0x000000, 0);
     this.selectionRing.setVisible(false);
 
-    const portraitKey = HERO_PORTRAIT_KEYS[heroIndex];
+    const roleIdx = hero.role > 0 ? hero.role - 1 : heroIndex;
+    const portraitKey = HERO_PORTRAIT_KEYS[roleIdx];
     const hasPortrait = portraitKey && scene.textures.exists(portraitKey);
     const bodyParts: Phaser.GameObjects.GameObject[] = [];
 
@@ -103,9 +106,8 @@ export class HeroSprite extends Phaser.GameObjects.Container {
       bodyParts.push(body, head);
     }
 
-    const roleIdx = hero.role > 0 ? hero.role - 1 : heroIndex;
     const name = ROLE_NAMES[roleIdx] ?? `Hero ${heroIndex}`;
-    const label = scene.add.text(0, 60, name, FONTS.bodySmall);
+    const label = scene.add.text(0, 54, name, FONTS.bodySmall);
     label.setOrigin(0.5, 0);
 
     this.add([this.aura, this.selectionRing, hpBg, this.hpFill, ...bodyParts, label]);

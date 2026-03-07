@@ -5,13 +5,13 @@ export const TOTAL_EFFECTS = 30
 export const MAX_HEROES = 3
 
 export const ZONE_NAMES = [
-  'Verdant Meadow', 'Crystal Cavern', 'Aether Spire', 'Shadowed Depths', 'Twilight Grove',
+  'Amber Hollows', 'Ember Cavern', 'Aether Spire', 'Sunken Abyss', 'Crystalveil Reach',
 ] as const
 
-export const ZONE_COLORS = ['#4a9e4a', '#b8860b', '#9e4a9e', '#5a3a7a', '#2a6a4a'] as const
+export const ZONE_COLORS = ['#c8a040', '#b85030', '#9e4a9e', '#2a5a8a', '#2a8a6a'] as const
 
 export const ZONE_BG_KEYS = [
-  'zone-meadow', 'zone-cavern', 'zone-spire', 'zone-depths', 'zone-grove',
+  'zone-hollows', 'zone-cavern', 'zone-spire', 'zone-abyss', 'zone-crystalveil',
 ] as const
 
 export const ZONE_DEPTHS = [0, 20, 40, 60, 90] as const

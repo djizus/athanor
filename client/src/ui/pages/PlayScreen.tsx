@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAccount } from '@starknet-react/core'
 import { useDojo } from '@/dojo/useDojo'
 import { useGame } from '@/hooks/useGame'
 import { useHeroes } from '@/hooks/useHeroes'
 import { useInventory } from '@/hooks/useInventory'
 import { useRecipes } from '@/hooks/useRecipes'
+import { useExplorationLog } from '@/hooks/useExplorationLog'
 import { useNavigationStore } from '@/stores/navigationStore'
 import { txToast } from '@/stores/toastStore'
 import type { PhaserBridge } from '@/phaser'
@@ -41,6 +42,9 @@ export function PlayScreen({ bridge }: Props) {
   const [inventoryCollapsed, setInventoryCollapsed] = useState(false)
   const [craftCollapsed, setCraftCollapsed] = useState(false)
   const [grimoireCollapsed, setGrimoireCollapsed] = useState(false)
+  const [logsCollapsed, setLogsCollapsed] = useState(false)
+  const { logs, pushInfo } = useExplorationLog(gameId ?? null)
+  const logsEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000)
@@ -108,34 +112,49 @@ export function PlayScreen({ bridge }: Props) {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [scrollPanelIntoView])
 
+  useEffect(() => {
+    if (logs.length > 0) {
+      requestAnimationFrame(() => logsEndRef.current?.scrollIntoView({ behavior: 'smooth' }))
+    }
+  }, [logs.length])
+
   const handleExplore = async (characterId: number) => {
     if (!account || gameId == null) return
+    const hero = heroes.find((h) => h.id === characterId)
+    const name = hero ? ROLE_NAMES[hero.role > 0 ? hero.role - 1 : characterId] : `Hero ${characterId}`
+    pushInfo(`${name} sent on expedition...`)
     const t = txToast('Sending expedition')
-    try { await client.explore(account, gameId, characterId); t.success() } catch (e) { t.error(); console.error('Explore failed:', e) }
+    try { await client.explore(account, gameId, characterId); t.success() } catch (e) { t.error(); pushInfo(`${name} expedition failed`); console.error('Explore failed:', e) }
   }
 
   const handleClaim = async (characterId: number) => {
     if (!account || gameId == null) return
+    const hero = heroes.find((h) => h.id === characterId)
+    const name = hero ? ROLE_NAMES[hero.role > 0 ? hero.role - 1 : characterId] : `Hero ${characterId}`
+    pushInfo(`${name} claiming loot...`)
     const t = txToast('Claiming loot')
-    try { await client.claim(account, gameId, characterId); t.success() } catch (e) { t.error(); console.error('Claim failed:', e) }
+    try { await client.claim(account, gameId, characterId); t.success() } catch (e) { t.error(); pushInfo(`${name} claim failed`); console.error('Claim failed:', e) }
   }
 
   const handleCraft = async (ingredientA: number, ingredientB: number) => {
     if (!account || gameId == null) return
+    pushInfo(`Brewing potion...`)
     const t = txToast('Brewing potion')
-    try { await client.craft(account, gameId, ingredientA, ingredientB); t.success() } catch (e) { t.error(); console.error('Craft failed:', e) }
+    try { await client.craft(account, gameId, ingredientA, ingredientB); t.success() } catch (e) { t.error(); pushInfo('Brew failed'); console.error('Craft failed:', e) }
   }
 
   const handleClue = async () => {
     if (!account || gameId == null) return
+    pushInfo('Buying hint...')
     const t = txToast('Buying hint')
-    try { await client.clue(account, gameId); t.success() } catch (e) { t.error(); console.error('Clue failed:', e) }
+    try { await client.clue(account, gameId); t.success() } catch (e) { t.error(); pushInfo('Hint purchase failed'); console.error('Clue failed:', e) }
   }
 
   const handleRecruit = async () => {
     if (!account || gameId == null) return
+    pushInfo('Recruiting hero...')
     const t = txToast('Recruiting hero')
-    try { await client.recruit(account, gameId); t.success() } catch (e) { t.error(); console.error('Recruit failed:', e) }
+    try { await client.recruit(account, gameId); t.success() } catch (e) { t.error(); pushInfo('Recruitment failed'); console.error('Recruit failed:', e) }
   }
 
   if (gameId == null) {
@@ -157,19 +176,13 @@ export function PlayScreen({ bridge }: Props) {
 
   return (
     <div className="play-screen">
-      <button className="play-back-btn floating-panel" onClick={() => navigate('home')}>
-        ← Back
-      </button>
-
       <StatusHUD
         gold={gold}
         discoveredCount={discoveredCount}
         elapsedSeconds={elapsedSeconds}
+        onBack={() => navigate('home')}
+        onSettings={() => setSettingsOpen(true)}
       />
-
-      <button className="play-settings-btn floating-panel" onClick={() => setSettingsOpen(true)}>
-        ⚙ Settings
-      </button>
 
       <div className="play-left-panels">
         <div className="side-panel floating-panel panel-heroes">
@@ -199,14 +212,36 @@ export function PlayScreen({ bridge }: Props) {
           )}
         </div>
 
-        <div className="side-panel floating-panel panel-inventory">
-          <button className="side-panel-header" onClick={() => setInventoryCollapsed((v) => !v)}>
-            <span className="side-panel-title">Inventory</span>
-            <span className="side-panel-chevron">{inventoryCollapsed ? '▸' : '▾'}</span>
+        <div className="side-panel floating-panel panel-grimoire">
+          <button className="side-panel-header" onClick={() => setGrimoireCollapsed((v) => !v)}>
+            <span className="side-panel-title">Grimoire {discoveredCount}/30</span>
+            <span className="side-panel-chevron">{grimoireCollapsed ? '▸' : '▾'}</span>
           </button>
-          {!inventoryCollapsed && (
+          {!grimoireCollapsed && (
             <div className="side-panel-body">
-              <InventoryContent inventory={inventory} />
+              <GrimoireContent recipes={recipes} discoveredCount={discoveredCount} />
+            </div>
+          )}
+        </div>
+
+        <div className="side-panel floating-panel panel-logs">
+          <button className="side-panel-header" onClick={() => setLogsCollapsed((v) => !v)}>
+            <span className="side-panel-title">Exploration Log</span>
+            <span className="side-panel-chevron">{logsCollapsed ? '▸' : '▾'}</span>
+          </button>
+          {!logsCollapsed && (
+            <div className="side-panel-body log-body">
+              {logs.length === 0 ? (
+                <span className="log-empty">No events yet...</span>
+              ) : (
+                logs.map((entry, i) => (
+                  <div key={i} className={`log-entry log-${entry.kind}`}>
+                    <span className="log-ts">{new Date(entry.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                    <span className="log-text">{entry.text}</span>
+                  </div>
+                ))
+              )}
+              <div ref={logsEndRef} />
             </div>
           )}
         </div>
@@ -232,14 +267,14 @@ export function PlayScreen({ bridge }: Props) {
           )}
         </div>
 
-        <div className="side-panel floating-panel panel-grimoire">
-          <button className="side-panel-header" onClick={() => setGrimoireCollapsed((v) => !v)}>
-            <span className="side-panel-title">Grimoire {discoveredCount}/30</span>
-            <span className="side-panel-chevron">{grimoireCollapsed ? '▸' : '▾'}</span>
+        <div className="side-panel floating-panel panel-inventory">
+          <button className="side-panel-header" onClick={() => setInventoryCollapsed((v) => !v)}>
+            <span className="side-panel-title">Inventory</span>
+            <span className="side-panel-chevron">{inventoryCollapsed ? '▸' : '▾'}</span>
           </button>
-          {!grimoireCollapsed && (
+          {!inventoryCollapsed && (
             <div className="side-panel-body">
-              <GrimoireContent recipes={recipes} discoveredCount={discoveredCount} />
+              <InventoryContent inventory={inventory} />
             </div>
           )}
         </div>
@@ -273,6 +308,8 @@ interface HeroSlotProps {
     role: number
     health: number
     max_health: number
+    power: number
+    regen: number
     available_at: number
     gold: number
   }>
@@ -302,32 +339,31 @@ function HeroSlot({
 }: HeroSlotProps) {
   const hero = heroes.find((h) => h.id === slot)
 
+  /* ── Recruit slot ─────────────────────────────── */
   if (!hero) {
     if (slot < heroCount) return null
     if (slot === heroCount && heroCount < 3) {
       const cost = HERO_RECRUIT_COSTS[Math.min(heroCount, 2)]
+      const canAfford = gold >= cost && !isGameOver
       return (
         <div className="hero-card hero-card-locked">
           <div className="hero-card-locked-icon">+</div>
-          <div className="hero-card-info">
-            <span className="hero-card-name">Recruit</span>
-            <button
-              className="hero-card-recruit btn-primary"
-              onClick={onRecruit}
-              disabled={isGameOver || gold < cost}
-            >
-              Recruit ({displayGold(cost)}g)
-            </button>
-          </div>
+          <button
+            className={`hero-card-recruit btn-primary${canAfford ? ' pulse-afford' : ''}`}
+            onClick={onRecruit}
+            disabled={!canAfford}
+          >
+            Recruit ({displayGold(cost)}g)
+          </button>
         </div>
       )
     }
     return null
   }
 
+  /* ── Active hero ──────────────────────────────── */
   const roleIdx = hero.role > 0 ? hero.role - 1 : slot
   const roleName = ROLE_NAMES[roleIdx] ?? `Hero ${slot}`
-  const hpPct = hero.max_health > 0 ? Math.min(100, (hero.health / hero.max_health) * 100) : 0
   const availableAt = Number(hero.available_at)
   const remaining = Math.max(0, availableAt - now)
   const isIdle = remaining === 0
@@ -338,13 +374,33 @@ function HeroSlot({
   let statusClass = ''
   if (isExploring) { statusText = `Exploring ${remaining}s`; statusClass = 'exploring' }
 
+  /* ── Optimistic HP regen ──────────────────────── */
+  const healthRef = useRef({ health: hero.health, ts: now })
+  if (hero.health !== healthRef.current.health) {
+    healthRef.current = { health: hero.health, ts: now }
+  }
+  const elapsedSinceUpdate = now - healthRef.current.ts
+  const optimisticHp = isIdle
+    ? Math.min(hero.health + hero.regen * elapsedSinceUpdate, hero.max_health)
+    : hero.health
+
+  const hpPct = hero.max_health > 0 ? Math.min(100, (optimisticHp / hero.max_health) * 100) : 0
+  const regenPreviewPct = (isIdle && optimisticHp < hero.max_health && hero.regen > 0)
+    ? Math.min(100 - hpPct, (hero.regen / hero.max_health) * 100)
+    : 0
   const hpColor = hpPct > 50 ? 'var(--accent-green)' : hpPct > 25 ? '#ff9800' : 'var(--accent-red)'
+
+  /* ── Power bar ────────────────────────────────── */
+  const powerPct = Math.min(100, (hero.power / 255) * 100)
+
+  const displayHpVal = Math.floor(optimisticHp)
 
   return (
     <div
       className={`hero-card${selectedHeroId === hero.id ? ' selected' : ''}`}
       onClick={() => onSelectHero(hero.id)}
     >
+      <span className="hero-card-name">{roleName}</span>
       <div className="hero-card-top">
         <img
           className="hero-card-portrait"
@@ -352,17 +408,28 @@ function HeroSlot({
           alt={roleName}
         />
         <div className="hero-card-info">
-          <span className="hero-card-name">
-            {roleName} — {displayHp(hero.health)}/{displayHp(hero.max_health)}
-          </span>
+          {hero.regen > 0 && (
+            <span className="hero-card-regen-tag">HP Regen: +{hero.regen} HP/s</span>
+          )}
           <div className="hero-card-hp">
             <div className="hero-card-hp-fill" style={{ width: `${hpPct}%`, background: hpColor }} />
+            {regenPreviewPct > 0 && (
+              <div
+                className="hero-card-hp-regen"
+                style={{ left: `${hpPct}%`, width: `${regenPreviewPct}%`, background: hpColor }}
+              />
+            )}
+            <span className="hero-card-bar-label">HP {displayHp(displayHpVal)}/{displayHp(hero.max_health)}</span>
+          </div>
+          <div className="hero-card-power">
+            <div className="hero-card-power-fill" style={{ width: `${powerPct}%` }} />
+            <span className="hero-card-bar-label">Power {hero.power}</span>
           </div>
           <span className={`hero-card-status ${statusClass}`}>{statusText}</span>
         </div>
       </div>
-      <div className="hero-card-actions">
-        {isIdle && (
+      {isIdle && (
+        <div className="hero-card-actions">
           <button
             className="btn-primary btn-sm"
             onClick={(e) => { e.stopPropagation(); onExplore(hero.id) }}
@@ -370,11 +437,10 @@ function HeroSlot({
           >
             Send Expedition
           </button>
-        )}
-        {isExploring && (
-          <span className="hero-card-timer">Exploring... {remaining}s</span>
-        )}
-        {lootReady && (
+        </div>
+      )}
+      {lootReady && (
+        <div className="hero-card-actions">
           <button
             className="btn-primary btn-sm btn-loot"
             onClick={(e) => { e.stopPropagation(); onClaim(hero.id) }}
@@ -382,8 +448,8 @@ function HeroSlot({
           >
             Claim Loot
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }
