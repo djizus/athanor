@@ -1,6 +1,7 @@
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion'
 import { ZONE_NAMES, ZONE_COLORS, ZONE_BG_KEYS, roleAssetUrl, ROLE_NAMES } from '@/game/constants'
 import type { HeroPosition } from '@/hooks/useExpeditionTracker'
+import type { HeroOverride } from '@/hooks/useExplorationLog'
 import './JourneyMap.css'
 
 interface HeroData {
@@ -21,6 +22,7 @@ export interface FloatingTextAnim {
 interface JourneyMapProps {
   heroes: HeroData[]
   heroPositions: Map<number, HeroPosition>
+  heroOverrides?: Map<number, HeroOverride>
   floatingTexts: FloatingTextAnim[]
   onFloatingTextComplete: (id: string) => void
 }
@@ -140,14 +142,17 @@ function HomeBand({
   )
 }
 
-export function JourneyMap({ heroes, heroPositions, floatingTexts, onFloatingTextComplete }: JourneyMapProps) {
+export function JourneyMap({ heroes, heroPositions, heroOverrides, floatingTexts, onFloatingTextComplete }: JourneyMapProps) {
   const heroesByZone = new Map<number, HeroData[]>()
   for (let i = -1; i < 5; i++) heroesByZone.set(i, [])
 
   for (const hero of heroes) {
+    const override = heroOverrides?.get(hero.hero_id)
+    const playbackZone = override?.zoneIndex
     const pos = heroPositions.get(hero.hero_id)
-    const zone = pos ? (pos.returning ? -1 : pos.zoneIndex) : -1
-    heroesByZone.get(zone >= 0 ? zone : -1)!.push(hero)
+    const trackerZone = pos ? (pos.returning ? -1 : pos.zoneIndex) : -1
+    const zone = playbackZone != null ? playbackZone : trackerZone
+    heroesByZone.get(zone >= 0 && zone < 5 ? zone : -1)!.push(hero)
   }
 
   const textsByZone = new Map<number, FloatingTextAnim[]>()

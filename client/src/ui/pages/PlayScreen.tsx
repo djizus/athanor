@@ -329,6 +329,7 @@ export function PlayScreen() {
       <JourneyMap
         heroes={journeyHeroes}
         heroPositions={heroPositions}
+        heroOverrides={heroOverrides}
         floatingTexts={floatingTexts}
         onFloatingTextComplete={removeFloatingText}
       />

@@ -30,6 +30,7 @@ export interface RawExplorationEvent {
 
 export interface HeroOverride {
   health: number
+  zoneIndex?: number
 }
 
 const CATEGORY_TRAP = 1
@@ -197,7 +198,7 @@ export function useExplorationLog(
       if (event.rawEvent) {
         setHeroOverrides((prev) => {
           const next = new Map(prev)
-          next.set(heroId, { health: event.rawEvent!.hpAfter })
+          next.set(heroId, { health: event.rawEvent!.hpAfter, zoneIndex: event.rawEvent!.zoneId })
           return next
         })
         onEventRef.current?.(event.rawEvent)
@@ -238,7 +239,7 @@ export function useExplorationLog(
         )
         setHeroOverrides((prev) => {
           const next = new Map(prev)
-          next.set(heroId, { health: preHp })
+          next.set(heroId, { health: preHp, zoneIndex: event.rawEvent!.zoneId })
           return next
         })
       }
