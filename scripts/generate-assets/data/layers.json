@@ -5,7 +5,7 @@
     "numLayers": 4,
     "outputDir": "menu",
     "outputPrefix": "layer",
-    "width": 1280,
-    "height": 720
+    "width": 1920,
+    "height": 1080
   }
 ]
