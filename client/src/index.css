@@ -2253,6 +2253,13 @@ button:disabled, .btn:disabled {
 .game-over-card.lost { border-color: rgba(208, 64, 80, 0.3); }
 .game-over-card.lost h2 { color: var(--accent-red); }
 
+.game-over-flavor {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 0.9rem;
+  margin-top: 0.25rem;
+}
+
 /* ── Glass Page Overlay (Menu, MyGames, Leaderboard) ─────── */
 
 .glass-page {

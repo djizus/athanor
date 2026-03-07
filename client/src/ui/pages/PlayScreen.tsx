@@ -90,6 +90,7 @@ export function PlayScreen() {
   const [logsCollapsed, setLogsCollapsed] = useState(false)
   const [potionTargetHeroId, setPotionTargetHeroId] = useState<number | null>(null)
   const [mobilePanel, setMobilePanel] = useState<string | null>(null)
+  const [surrendered, setSurrendered] = useState(false)
 
   const [floatingTexts, setFloatingTexts] = useState<FloatingTextAnim[]>([])
   const [goldFloats, setGoldFloats] = useState<{ id: string; text: string }[]>([])
@@ -188,7 +189,7 @@ export function PlayScreen() {
     if (slotB === id) { setSlotB(null); return }
     if (slotA === null) { setSlotA(id) }
     else if (slotB === null) { setSlotB(id) }
-    else { setSlotA(id); setSlotB(null) }
+    else { setSlotB(id) }
   }, [slotA, slotB])
 
   useEffect(() => {
@@ -469,10 +470,11 @@ export function PlayScreen() {
         </div>
       </div>
 
-      {isGameOver && (
+      {(isGameOver || surrendered) && (
         <div className="game-over-overlay">
           <div className={`game-over-card floating-panel ${discoveredCount >= 30 ? 'won' : 'lost'}`}>
-            <h2>{discoveredCount >= 30 ? 'Grimoire Complete!' : 'Game Over'}</h2>
+            <h2>{discoveredCount >= 30 ? 'Grimoire Complete!' : surrendered ? 'Surrendered' : 'Game Over'}</h2>
+            {surrendered && <p className="game-over-flavor">The Athanor grows cold. Your ambition fades to ash.</p>}
             <button onClick={() => navigate('home')} style={{ marginTop: '1rem' }}>
               Return to Menu
             </button>
@@ -488,8 +490,8 @@ export function PlayScreen() {
             if (!account || gameId == null) return
             try {
               await client.surrender(account, gameId)
+              setSurrendered(true)
               setSettingsOpen(false)
-              navigate('home')
             } catch (e) {
               console.error('Surrender failed:', e)
             }

@@ -4,6 +4,7 @@ interface Props {
   gold: number
   discoveredCount: number
   elapsedSeconds: number
+  goldFloats?: { id: string; text: string }[]
   onBack: () => void
   onSettings: () => void
 }
@@ -14,7 +15,7 @@ function formatTime(totalSeconds: number): string {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
-export function StatusHUD({ gold, discoveredCount, elapsedSeconds, onBack, onSettings }: Props) {
+export function StatusHUD({ gold, discoveredCount, elapsedSeconds, goldFloats, onBack, onSettings }: Props) {
   const pct = Math.min(100, (discoveredCount / 30) * 100)
 
   return (
@@ -25,7 +26,12 @@ export function StatusHUD({ gold, discoveredCount, elapsedSeconds, onBack, onSet
       <span className="status-hud-divider" />
       <span className="status-hud-time">Time {formatTime(elapsedSeconds)}</span>
       <span className="status-hud-sep">·</span>
-      <span className="status-hud-gold">Gold {displayGold(gold)}</span>
+      <span className="status-hud-gold">
+        Gold {displayGold(gold)}
+        {goldFloats?.map(f => (
+          <span key={f.id} className="gold-float-anim">{f.text}</span>
+        ))}
+      </span>
       <span className="status-hud-sep">·</span>
       <div className="status-hud-progress">
         <div className="status-hud-progress-fill" style={{ width: `${pct}%` }} />
