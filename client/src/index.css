@@ -1253,6 +1253,53 @@ button:disabled, .btn:disabled {
   overflow-y: auto;
 }
 
+.collection-header {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0;
+  cursor: default;
+}
+
+.collection-tab {
+  flex: 1;
+  padding: 0.5rem 0.6rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--font-title);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-bottom: 2px solid transparent;
+  transition: all var(--transition-fast);
+}
+
+.collection-tab:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.collection-tab.active {
+  color: var(--accent-gold);
+  border-bottom-color: var(--accent-gold);
+}
+
+.collection-chevron {
+  flex: 0;
+  padding: 0.5rem 0.6rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.collection-chevron:hover {
+  background: var(--bg-hover);
+}
+
 .hero-card {
   display: flex;
   flex-direction: column;

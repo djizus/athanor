@@ -7,9 +7,8 @@ interface Props {
 }
 
 const HOTKEYS: { key: string; label: string; mode: PanelMode }[] = [
-  { key: 'C', label: 'Craft', mode: 'craft' },
+  { key: 'I', label: 'Ingredients', mode: 'ingredients' },
   { key: 'G', label: 'Grimoire', mode: 'grimoire' },
-  { key: 'I', label: 'Inventory', mode: 'inventory' },
 ]
 
 export function HotkeyBar({ activePanel, onTogglePanel, onSettings }: Props) {

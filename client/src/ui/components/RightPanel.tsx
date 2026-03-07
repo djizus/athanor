@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   EFFECT_COLORS,
   EFFECT_NAMES,
@@ -18,7 +18,7 @@ import {
 import { bitmapGet } from '@/game/packer'
 import type { DiscoveryData } from '@/hooks/useRecipes'
 
-export type PanelMode = 'craft' | 'grimoire' | 'inventory'
+export type PanelMode = 'ingredients' | 'grimoire'
 
 export interface InventoryItem {
   ingredient_id: number
@@ -79,53 +79,33 @@ function IngredientIcon({
   )
 }
 
-/* ── Craft Panel Content ──────────────────────── */
+/* ── Brew Panel Content ───────────────────────── */
 
 const TOTAL_COMBINATIONS = 25 * 24 / 2
 
-export function CraftContent({
-  inventory,
+export function BrewContent({
+  slotA,
+  slotB,
   recipes,
   remainingTries,
   isGameOver,
   brewAllCount,
-  externalSlotA,
-  externalSlotB,
+  onSetSlotA,
+  onSetSlotB,
   onCraft,
   onBrewAll,
 }: {
-  inventory: InventoryItem[]
+  slotA: number | null
+  slotB: number | null
   recipes: DiscoveryData[]
   remainingTries: number
   isGameOver: boolean
   brewAllCount: number
-  externalSlotA?: number | null
-  externalSlotB?: number | null
+  onSetSlotA: (v: number | null) => void
+  onSetSlotB: (v: number | null) => void
   onCraft: (a: number, b: number) => void
   onBrewAll: () => void
 }) {
-  const [slotA, setSlotA] = useState<number | null>(null)
-  const [slotB, setSlotB] = useState<number | null>(null)
-
-  useEffect(() => {
-    if (externalSlotA !== undefined) setSlotA(externalSlotA)
-    if (externalSlotB !== undefined) setSlotB(externalSlotB)
-  }, [externalSlotA, externalSlotB])
-
-  const handlePickIngredient = (id: number) => {
-    if (slotA === id) { setSlotA(null); return }
-    if (slotB === id) { setSlotB(null); return }
-
-    if (slotA === null) {
-      setSlotA(id)
-    } else if (slotB === null) {
-      setSlotB(id)
-    } else {
-      setSlotA(id)
-      setSlotB(null)
-    }
-  }
-
   const handleBrew = () => {
     if (slotA != null && slotB != null) onCraft(slotA, slotB)
   }
@@ -154,7 +134,7 @@ export function CraftContent({
       <div className="craft-slots">
         <button
           className={`craft-slot${slotA != null ? ' craft-slot-filled' : ''}`}
-          onClick={() => setSlotA(null)}
+          onClick={() => onSetSlotA(null)}
           style={slotA != null ? { ['--zone-color' as string]: ZONE_COLORS[getZoneForIngredient(slotA)] } : undefined}
         >
           {slotA != null ? (
@@ -166,7 +146,7 @@ export function CraftContent({
         <span className="craft-plus">+</span>
         <button
           className={`craft-slot${slotB != null ? ' craft-slot-filled' : ''}`}
-          onClick={() => setSlotB(null)}
+          onClick={() => onSetSlotB(null)}
           style={slotB != null ? { ['--zone-color' as string]: ZONE_COLORS[getZoneForIngredient(slotB)] } : undefined}
         >
           {slotB != null ? (
@@ -197,7 +177,25 @@ export function CraftContent({
           Brew All ({brewAllCount})
         </button>
       </div>
+    </>
+  )
+}
 
+/* ── Ingredients Grid Content ─────────────────── */
+
+export function IngredientsContent({
+  inventory,
+  slotA,
+  slotB,
+  onPickIngredient,
+}: {
+  inventory: InventoryItem[]
+  slotA: number | null
+  slotB: number | null
+  onPickIngredient: (id: number) => void
+}) {
+  return (
+    <>
       {ZONE_NAMES.map((zoneName, zi) => {
         const zoneItems = inventory.slice(
           zi * INGREDIENTS_PER_ZONE,
@@ -213,7 +211,7 @@ export function CraftContent({
                   ingredientId={item.ingredient_id}
                   quantity={item.quantity}
                   selected={item.ingredient_id === slotA || item.ingredient_id === slotB}
-                  onClick={item.quantity > 0 ? () => handlePickIngredient(item.ingredient_id) : undefined}
+                  onClick={item.quantity > 0 ? () => onPickIngredient(item.ingredient_id) : undefined}
                 />
               ))}
             </div>

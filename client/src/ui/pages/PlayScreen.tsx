@@ -20,7 +20,8 @@ import {
 import { bitmapPopcount, unpackEffects } from '@/game/packer'
 import type { DiscoveryData } from '@/hooks/useRecipes'
 import { StatusHUD } from '@/ui/components/StatusHUD'
-import { CraftContent, GrimoireContent } from '@/ui/components/RightPanel'
+import { BrewContent, IngredientsContent, GrimoireContent } from '@/ui/components/RightPanel'
+import type { PanelMode } from '@/ui/components/RightPanel'
 import { SettingsOverlay } from '@/ui/components/SettingsOverlay'
 
 function computeUntriedPairs(
@@ -75,12 +76,13 @@ export function PlayScreen({ bridge }: Props) {
   const [selectedHeroId, setSelectedHeroId] = useState(0)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000))
-  const [extSlotA, setExtSlotA] = useState<number | null>(null)
-  const [extSlotB, setExtSlotB] = useState<number | null>(null)
+  const [slotA, setSlotA] = useState<number | null>(null)
+  const [slotB, setSlotB] = useState<number | null>(null)
+  const [collectionTab, setCollectionTab] = useState<PanelMode>('ingredients')
 
   const [heroesCollapsed, setHeroesCollapsed] = useState(false)
-  const [craftCollapsed, setCraftCollapsed] = useState(false)
-  const [grimoireCollapsed, setGrimoireCollapsed] = useState(false)
+  const [brewCollapsed, setBrewCollapsed] = useState(false)
+  const [collectionCollapsed, setCollectionCollapsed] = useState(false)
   const [logsCollapsed, setLogsCollapsed] = useState(false)
   const { logs, pushInfo } = useExplorationLog(gameId ?? null)
   const logsEndRef = useRef<HTMLDivElement>(null)
@@ -137,12 +139,21 @@ export function PlayScreen({ bridge }: Props) {
     })
   }, [])
 
+  const handlePickIngredient = useCallback((id: number) => {
+    if (slotA === id) { setSlotA(null); return }
+    if (slotB === id) { setSlotB(null); return }
+    if (slotA === null) { setSlotA(id) }
+    else if (slotB === null) { setSlotB(id) }
+    else { setSlotA(id); setSlotB(null) }
+  }, [slotA, slotB])
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return
       switch (e.key.toLowerCase()) {
-        case 'c': scrollPanelIntoView('panel-craft', setCraftCollapsed); break
-        case 'g': scrollPanelIntoView('panel-grimoire', setGrimoireCollapsed); break
+        case 'c': scrollPanelIntoView('panel-brew', setBrewCollapsed); break
+        case 'g': { setCollectionTab('grimoire'); scrollPanelIntoView('panel-collection', setCollectionCollapsed); break }
+        case 'i': { setCollectionTab('ingredients'); scrollPanelIntoView('panel-collection', setCollectionCollapsed); break }
         case 'escape': setSelectedHeroId(-1); break
       }
     }
@@ -292,21 +303,22 @@ export function PlayScreen({ bridge }: Props) {
       </div>
 
       <div className="play-right-panels">
-        <div className="side-panel floating-panel panel-craft">
-          <button className="side-panel-header" onClick={() => setCraftCollapsed((v) => !v)}>
+        <div className="side-panel floating-panel panel-brew">
+          <button className="side-panel-header" onClick={() => setBrewCollapsed((v) => !v)}>
             <span className="side-panel-title">Brew</span>
-            <span className="side-panel-chevron">{craftCollapsed ? '▸' : '▾'}</span>
+            <span className="side-panel-chevron">{brewCollapsed ? '▸' : '▾'}</span>
           </button>
-          {!craftCollapsed && (
+          {!brewCollapsed && (
             <div className="side-panel-body">
-              <CraftContent
-                inventory={inventory}
+              <BrewContent
+                slotA={slotA}
+                slotB={slotB}
                 recipes={recipes}
                 remainingTries={game?.remaining_tries ?? 300}
                 isGameOver={isGameOver}
                 brewAllCount={brewAllCount}
-                externalSlotA={extSlotA}
-                externalSlotB={extSlotB}
+                onSetSlotA={setSlotA}
+                onSetSlotB={setSlotB}
                 onCraft={(a, b) => void handleCraft(a, b)}
                 onBrewAll={() => void handleBrewAll()}
               />
@@ -314,35 +326,60 @@ export function PlayScreen({ bridge }: Props) {
           )}
         </div>
 
-        <div className="side-panel floating-panel panel-grimoire">
-          <button className="side-panel-header" onClick={() => setGrimoireCollapsed((v) => !v)}>
-            <span className="side-panel-title">Grimoire {discoveredCount}/30</span>
-            <span className="side-panel-chevron">{grimoireCollapsed ? '▸' : '▾'}</span>
-          </button>
-          {!grimoireCollapsed && (
+        <div className="side-panel floating-panel panel-collection">
+          <div className="side-panel-header collection-header">
+            <button
+              className={`collection-tab${collectionTab === 'ingredients' ? ' active' : ''}`}
+              onClick={() => setCollectionTab('ingredients')}
+            >
+              Ingredients
+            </button>
+            <button
+              className={`collection-tab${collectionTab === 'grimoire' ? ' active' : ''}`}
+              onClick={() => setCollectionTab('grimoire')}
+            >
+              Grimoire {discoveredCount}/30
+            </button>
+            <button
+              className="side-panel-chevron collection-chevron"
+              onClick={() => setCollectionCollapsed((v) => !v)}
+            >
+              {collectionCollapsed ? '▸' : '▾'}
+            </button>
+          </div>
+          {!collectionCollapsed && (
             <div className="side-panel-body">
-              <GrimoireContent
-                grimoire={game?.grimoire ?? 0}
-                effectQuantities={effectQuantities}
-                recipes={recipes}
-                hintIngredients={hintIngredients}
-                discoveredCount={discoveredCount}
-                gold={gold}
-                hintCost={hintCost}
-                isGameOver={isGameOver}
-                heroes={heroes.map(h => ({ id: h.id, role: h.role }))}
-                inventory={inventory}
-                onBuyHint={() => void handleClue()}
-                onUsePotion={(eff, heroId, qty) => void handleBuff(eff, heroId, qty)}
-                onSelectIngredients={(a, b) => {
-                  setExtSlotA(a)
-                  setExtSlotB(b)
-                  setCraftCollapsed(false)
-                  requestAnimationFrame(() => {
-                    document.querySelector('.panel-craft')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-                  })
-                }}
-              />
+              {collectionTab === 'ingredients' ? (
+                <IngredientsContent
+                  inventory={inventory}
+                  slotA={slotA}
+                  slotB={slotB}
+                  onPickIngredient={handlePickIngredient}
+                />
+              ) : (
+                <GrimoireContent
+                  grimoire={game?.grimoire ?? 0}
+                  effectQuantities={effectQuantities}
+                  recipes={recipes}
+                  hintIngredients={hintIngredients}
+                  discoveredCount={discoveredCount}
+                  gold={gold}
+                  hintCost={hintCost}
+                  isGameOver={isGameOver}
+                  heroes={heroes.map(h => ({ id: h.id, role: h.role }))}
+                  inventory={inventory}
+                  onBuyHint={() => void handleClue()}
+                  onUsePotion={(eff, heroId, qty) => void handleBuff(eff, heroId, qty)}
+                  onSelectIngredients={(a, b) => {
+                    setSlotA(a)
+                    setSlotB(b)
+                    setBrewCollapsed(false)
+                    requestAnimationFrame(() => {
+                      document.querySelector('.panel-brew')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+                    })
+                  }}
+                />
+              )}
             </div>
           )}
         </div>
