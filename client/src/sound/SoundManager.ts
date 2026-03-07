@@ -1,5 +1,5 @@
 import { Howl, Howler } from 'howler'
-import { getSettingsSnapshot } from '@/stores/settingsStore'
+import { getSettingsSnapshot, useSettingsStore } from '@/stores/settingsStore'
 
 const SFX_KEYS = [
   'click', 'brew-success', 'brew-fail', 'discovery',
@@ -43,6 +43,8 @@ class SoundManagerImpl {
         volume: 0.5,
       }))
     }
+
+    useSettingsStore.subscribe(() => this.updateVolumes())
   }
 
   playSfx(key: string, volume = 0.5): void {

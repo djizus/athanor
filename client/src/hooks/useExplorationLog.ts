@@ -180,6 +180,7 @@ export function useExplorationLog(
   const drainTick = useCallback(() => {
     let anyRemaining = false
     for (const [heroId, queue] of heroQueuesRef.current) {
+      queue.sort((a, b) => (a.rawEvent?.depth ?? 0) - (b.rawEvent?.depth ?? 0))
       const event = queue.shift()
       if (!event) {
         heroQueuesRef.current.delete(heroId)
@@ -246,7 +247,6 @@ export function useExplorationLog(
     queue.push(event)
 
     if (drainTimerRef.current == null) {
-      drainTick()
       drainTimerRef.current = window.setInterval(drainTick, TICK_INTERVAL_MS)
     }
   }, [drainTick])
