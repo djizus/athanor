@@ -334,7 +334,6 @@ export function PlayScreen({ bridge }: Props) {
                 inventory={inventory}
                 onBuyHint={() => void handleClue()}
                 onUsePotion={(eff, heroId, qty) => void handleBuff(eff, heroId, qty)}
-                onCraftFromGrimoire={(a, b) => void handleCraft(a, b)}
                 onSelectIngredients={(a, b) => {
                   setExtSlotA(a)
                   setExtSlotB(b)
@@ -471,7 +470,27 @@ function HeroSlot({
       className={`hero-card${selectedHeroId === hero.id ? ' selected' : ''}`}
       onClick={() => onSelectHero(hero.id)}
     >
-      <span className="hero-card-name">{roleName}</span>
+      <div className="hero-card-name-row">
+        <span className="hero-card-name">{roleName}</span>
+        {isIdle && (
+          <button
+            className="btn-primary btn-sm"
+            onClick={(e) => { e.stopPropagation(); onExplore(hero.id) }}
+            disabled={isGameOver}
+          >
+            Send Expedition
+          </button>
+        )}
+        {lootReady && (
+          <button
+            className="btn-primary btn-sm btn-loot"
+            onClick={(e) => { e.stopPropagation(); onClaim(hero.id) }}
+            disabled={isGameOver}
+          >
+            Claim Loot
+          </button>
+        )}
+      </div>
       <div className="hero-card-top">
         <img
           className="hero-card-portrait"
@@ -499,28 +518,6 @@ function HeroSlot({
           <span className={`hero-card-status ${statusClass}`}>{statusText}</span>
         </div>
       </div>
-      {isIdle && (
-        <div className="hero-card-actions">
-          <button
-            className="btn-primary btn-sm"
-            onClick={(e) => { e.stopPropagation(); onExplore(hero.id) }}
-            disabled={isGameOver}
-          >
-            Send Expedition
-          </button>
-        </div>
-      )}
-      {lootReady && (
-        <div className="hero-card-actions">
-          <button
-            className="btn-primary btn-sm btn-loot"
-            onClick={(e) => { e.stopPropagation(); onClaim(hero.id) }}
-            disabled={isGameOver}
-          >
-            Claim Loot
-          </button>
-        </div>
-      )}
     </div>
   )
 }

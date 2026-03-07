@@ -349,7 +349,6 @@ export function GrimoireContent({
   inventory,
   onBuyHint,
   onUsePotion,
-  onCraftFromGrimoire,
   onSelectIngredients,
 }: {
   grimoire: number
@@ -364,7 +363,6 @@ export function GrimoireContent({
   inventory: InventoryItem[]
   onBuyHint: () => void
   onUsePotion: (effect: number, heroId: number, quantity: number) => void
-  onCraftFromGrimoire: (a: number, b: number) => void
   onSelectIngredients: (a: number, b: number) => void
 }) {
   const [filter, setFilter] = useState<FilterCategory>('all')
@@ -442,71 +440,50 @@ export function GrimoireContent({
           const isHinted = !isDiscovered && hintIngredients.has(effectIdx)
           const quantity = effectQuantities[effectIdx]
           const hasStock = quantity > 0
-          const canUse = isDiscovered && hasStock && !isGameOver
           const discovery = discoveryMap.get(effectIdx)
-          const hintIngs = hintIngredients.get(effectIdx)
           const category = EFFECT_CATEGORIES[effectIdx]
           const categoryColor = EFFECT_COLORS[category]
-          const categoryLabel = category.charAt(0).toUpperCase() + category.slice(1)
 
           const maxCraftable = discovery
             ? Math.min(invMap.get(discovery.ingredient_a) ?? 0, invMap.get(discovery.ingredient_b) ?? 0)
             : 0
           const canCraft = isDiscovered && discovery && maxCraftable > 0 && !isGameOver
 
+          const handleClick = () => {
+            if (isDiscovered && discovery) {
+              onSelectIngredients(discovery.ingredient_a, discovery.ingredient_b)
+            }
+          }
+
           return (
             <div
               key={effectIdx}
-              className={`grimoire-potion${isDiscovered ? ' discovered' : ''}${isHinted ? ' hinted' : ''}${!isDiscovered && !isHinted ? ' locked' : ''}${canUse ? ' usable' : ''}`}
-              onClick={isDiscovered && discovery ? () => onSelectIngredients(discovery.ingredient_a, discovery.ingredient_b) : undefined}
+              className={`grimoire-cell${isDiscovered ? ' discovered' : ''}${isHinted ? ' hinted' : ''}${!isDiscovered && !isHinted ? ' locked' : ''}${isDiscovered ? ' grimoire-cell-clickable' : ''}`}
+              onClick={isDiscovered ? handleClick : undefined}
             >
-              <div className="grimoire-potion-icon-wrap" style={{ ['--effect-color' as string]: categoryColor }}>
+              <div
+                className="grimoire-icon-wrap"
+                style={{ ['--effect-color' as string]: categoryColor }}
+              >
                 <img
-                  className="grimoire-potion-icon"
+                  className="grimoire-icon"
                   src={effectAssetUrl(effectIdx)}
                   alt={isDiscovered ? EFFECT_NAMES[effectIdx] : '???'}
                 />
-                {hasStock && <span className="grimoire-potion-badge">{quantity}</span>}
+                {hasStock && <span className="grimoire-qty-badge">{quantity}</span>}
+                {canCraft && <span className="grimoire-craft-badge">⚗</span>}
               </div>
-              <div className="grimoire-potion-info">
-                <span className="grimoire-potion-name" style={isDiscovered ? { color: categoryColor } : undefined}>
-                  {isDiscovered ? EFFECT_NAMES[effectIdx] : '???'}
-                </span>
-                <span className="grimoire-potion-category">{categoryLabel}</span>
-                <span className="grimoire-potion-stat" style={{ color: categoryColor }}>
-                  {effectStatLabel(effectIdx)}
-                </span>
-                {isDiscovered && discovery && (
-                  <span className="grimoire-potion-recipe">
-                    <img className="grimoire-potion-recipe-icon" src={ingredientAssetUrl(discovery.ingredient_a)} alt={INGREDIENT_NAMES[discovery.ingredient_a]} />
-                    <span>+</span>
-                    <img className="grimoire-potion-recipe-icon" src={ingredientAssetUrl(discovery.ingredient_b)} alt={INGREDIENT_NAMES[discovery.ingredient_b]} />
-                  </span>
-                )}
-                {isHinted && hintIngs && hintIngs.length > 0 && (
-                  <span className="grimoire-potion-hint">
-                    Uses: {hintIngs.map(id => INGREDIENT_NAMES[id]).join(', ')}
-                  </span>
-                )}
-              </div>
-              <div className="grimoire-potion-actions">
-                {canUse && (
-                  <button
-                    className="btn-sm grimoire-use-btn"
-                    onClick={(e) => { e.stopPropagation(); setSelectedEffect(effectIdx) }}
-                  >
-                    Use
-                  </button>
-                )}
-                {canCraft && (
-                  <button
-                    className="btn-sm btn-primary grimoire-craft-btn"
-                    onClick={(e) => { e.stopPropagation(); onCraftFromGrimoire(discovery.ingredient_a, discovery.ingredient_b) }}
-                  >
-                    Craft {maxCraftable}
-                  </button>
-                )}
-              </div>
+              <span className="grimoire-stat-badge" style={{ color: categoryColor }}>
+                {effectStatLabel(effectIdx)}
+              </span>
+              {hasStock && !isGameOver && (
+                <button
+                  className="grimoire-use-dot"
+                  style={{ background: categoryColor }}
+                  onClick={(e) => { e.stopPropagation(); setSelectedEffect(effectIdx) }}
+                  title="Use potion"
+                />
+              )}
             </div>
           )
         })}

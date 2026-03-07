@@ -1158,7 +1158,7 @@ button:disabled, .btn:disabled {
   position: absolute;
   inset: 0;
   width: 0;
-  background: var(--accent-gold);
+  background: var(--accent-green);
   border-radius: var(--radius-sm);
   transition: width 0.5s ease;
 }
@@ -1303,6 +1303,13 @@ button:disabled, .btn:disabled {
   justify-content: center;
 }
 
+.hero-card-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
 .hero-card-name {
   font-family: var(--font-title);
   font-size: 0.8rem;
@@ -1394,11 +1401,7 @@ button:disabled, .btn:disabled {
 .hero-card-status.loot-ready { color: var(--accent-green); font-weight: 600; }
 
 .hero-card-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding-left: 64px;
-  padding-top: 0.15rem;
+  display: none;
 }
 
 .hero-card-timer {
@@ -1781,83 +1784,79 @@ button:disabled, .btn:disabled {
 .grimoire-btn-row button { flex: 1; }
 
 .grimoire-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  gap: 0.35rem;
 }
 
-.grimoire-potion {
+.grimoire-cell {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.4rem;
+  gap: 0.15rem;
+  padding: 0.25rem 0.1rem;
   border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
   background: var(--bg-card);
-  font-size: 0.75rem;
   transition: all var(--transition-fast);
+  position: relative;
 }
 
-.grimoire-potion.locked {
-  opacity: 0.4;
-}
+.grimoire-cell.locked { opacity: 0.35; }
 
-.grimoire-potion.hinted {
-  opacity: 0.7;
+.grimoire-cell.hinted {
+  opacity: 0.65;
   border-color: var(--accent-purple);
   border-style: dashed;
 }
 
-.grimoire-potion.discovered {
+.grimoire-cell.discovered {
   opacity: 1;
   border-color: var(--accent-gold-dim);
 }
 
-.grimoire-potion.usable {
-  cursor: pointer;
-}
+.grimoire-cell-clickable { cursor: pointer; }
 
-.grimoire-potion.usable:hover {
+.grimoire-cell-clickable:hover {
   background: var(--bg-hover);
   border-color: var(--accent-gold);
   box-shadow: var(--shadow-glow-gold);
 }
 
-.grimoire-potion-icon-wrap {
+.grimoire-icon-wrap {
   position: relative;
-  width: 34px;
-  height: 34px;
+  width: 38px;
+  height: 38px;
   flex-shrink: 0;
   border-radius: 50%;
   border: 2px solid var(--effect-color, var(--border-color));
-  overflow: hidden;
+  overflow: visible;
 }
 
-.grimoire-potion.locked .grimoire-potion-icon-wrap {
-  border-style: dashed;
-}
+.grimoire-cell.locked .grimoire-icon-wrap { border-style: dashed; }
 
-.grimoire-potion-icon {
+.grimoire-icon {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  border-radius: 50%;
 }
 
-.grimoire-potion.locked .grimoire-potion-icon {
+.grimoire-cell.locked .grimoire-icon {
   filter: grayscale(1) brightness(0.5);
 }
 
-.grimoire-potion-badge {
+.grimoire-qty-badge {
   position: absolute;
-  bottom: -2px;
-  right: -2px;
+  bottom: -4px;
+  right: -4px;
   min-width: 16px;
   height: 16px;
   padding: 0 3px;
   border-radius: 8px;
   background: var(--accent-gold);
   color: var(--bg-primary);
-  font-size: 0.6rem;
+  font-size: 0.58rem;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -1866,78 +1865,46 @@ button:disabled, .btn:disabled {
   z-index: 2;
 }
 
-.grimoire-potion-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.05rem;
-  min-width: 0;
-  flex: 1;
-}
-
-.grimoire-potion-name {
-  font-family: var(--font-title);
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.grimoire-potion-category {
-  font-size: 0.62rem;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.grimoire-potion-stat {
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
-.grimoire-potion-recipe {
-  display: flex;
-  align-items: center;
-  gap: 0.2rem;
-  font-size: 0.6rem;
-  color: var(--text-muted);
-}
-
-.grimoire-potion-recipe-icon {
+.grimoire-craft-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  object-fit: cover;
-}
-
-.grimoire-potion-recipe span {
+  background: var(--accent-green);
+  color: var(--bg-primary);
   font-size: 0.55rem;
-}
-
-.grimoire-potion-hint {
-  font-size: 0.6rem;
-  color: var(--accent-purple);
-  font-style: italic;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.grimoire-potion-actions {
   display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  margin-left: auto;
-  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
 }
 
-.grimoire-use-btn,
-.grimoire-craft-btn {
-  font-size: 0.6rem;
-  padding: 0.15rem 0.4rem;
+.grimoire-stat-badge {
+  font-size: 0.58rem;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
   white-space: nowrap;
 }
+
+.grimoire-use-dot {
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  z-index: 2;
+  opacity: 0.8;
+  transition: opacity var(--transition-fast);
+}
+
+.grimoire-use-dot:hover { opacity: 1; }
 
 /* ── Potion Use Popup ─────────────────────────── */
 
@@ -2277,7 +2244,6 @@ button:disabled, .btn:disabled {
   .status-hud-settings { font-size: 0.9rem; }
 
   .hero-card-portrait { width: 44px; height: 44px; }
-  .hero-card-actions { padding-left: 48px; }
 }
 
 .toaster-container {
