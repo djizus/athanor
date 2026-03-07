@@ -87,7 +87,6 @@ export function BrewContent({
   slotA,
   slotB,
   recipes,
-  remainingTries,
   isGameOver,
   brewAllCount,
   onSetSlotA,
@@ -98,7 +97,6 @@ export function BrewContent({
   slotA: number | null
   slotB: number | null
   recipes: DiscoveryData[]
-  remainingTries: number
   isGameOver: boolean
   brewAllCount: number
   onSetSlotA: (v: number | null) => void
@@ -109,9 +107,6 @@ export function BrewContent({
   const handleBrew = () => {
     if (slotA != null && slotB != null) onCraft(slotA, slotB)
   }
-
-  const tried = TOTAL_COMBINATIONS - remainingTries
-  const progressPct = TOTAL_COMBINATIONS > 0 ? Math.min(100, (tried / TOTAL_COMBINATIONS) * 100) : 0
 
   const selectedDiscovery = useMemo(() => {
     if (slotA == null || slotB == null) return null
@@ -124,13 +119,6 @@ export function BrewContent({
 
   return (
     <>
-      <div className="craft-progress-row">
-        <div className="craft-progress-bar">
-          <div className="craft-progress-fill" style={{ width: `${progressPct}%` }} />
-          <span className="craft-progress-label">{tried}/{TOTAL_COMBINATIONS}</span>
-        </div>
-      </div>
-
       <div className="craft-slots">
         <button
           className={`craft-slot${slotA != null ? ' craft-slot-filled' : ''}`}
@@ -187,15 +175,24 @@ export function IngredientsContent({
   inventory,
   slotA,
   slotB,
+  remainingTries,
   onPickIngredient,
 }: {
   inventory: InventoryItem[]
   slotA: number | null
   slotB: number | null
+  remainingTries: number
   onPickIngredient: (id: number) => void
 }) {
+  const tried = TOTAL_COMBINATIONS - remainingTries
+  const progressPct = TOTAL_COMBINATIONS > 0 ? Math.min(100, (tried / TOTAL_COMBINATIONS) * 100) : 0
+
   return (
     <>
+      <div className="hero-card-hp" style={{ marginBottom: '0.5rem' }}>
+        <div className="hero-card-hp-fill" style={{ width: `${progressPct}%`, background: 'var(--accent-gold)' }} />
+        <span className="hero-card-bar-label">{tried}/{TOTAL_COMBINATIONS}</span>
+      </div>
       {ZONE_NAMES.map((zoneName, zi) => {
         const zoneItems = inventory.slice(
           zi * INGREDIENTS_PER_ZONE,
@@ -409,8 +406,9 @@ export function GrimoireContent({
 
   return (
     <>
-      <div className="grimoire-progress">
-        <div className="grimoire-progress-fill" style={{ width: `${(discoveredCount / 30) * 100}%` }} />
+      <div className="hero-card-hp" style={{ marginBottom: '0.5rem' }}>
+        <div className="hero-card-hp-fill" style={{ width: `${(discoveredCount / 30) * 100}%`, background: 'var(--accent-green)' }} />
+        <span className="hero-card-bar-label">{discoveredCount}/30</span>
       </div>
 
       <div className="grimoire-filters">

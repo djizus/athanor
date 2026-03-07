@@ -1429,12 +1429,11 @@ button:disabled, .btn:disabled {
   letter-spacing: 0.03em;
 }
 
-.hero-card-regen-tag {
+.hero-card-regen {
   font-family: var(--font-body);
-  font-size: 0.75rem;
-  font-weight: 700;
+  font-size: 0.68rem;
+  font-weight: 600;
   color: var(--accent-green);
-  text-align: right;
   letter-spacing: 0.03em;
 }
 
@@ -1447,8 +1446,29 @@ button:disabled, .btn:disabled {
 .hero-card-status.returning { color: var(--accent-gold); }
 .hero-card-status.loot-ready { color: var(--accent-green); font-weight: 600; }
 
-.hero-card-actions {
-  display: none;
+.hero-card-btn-row {
+  display: flex;
+  gap: 0.35rem;
+  justify-content: flex-end;
+}
+
+.btn-potion {
+  background: rgba(76, 175, 80, 0.15);
+  color: var(--accent-green);
+  border: 1px solid rgba(76, 175, 80, 0.3);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.btn-potion:hover:not(:disabled) {
+  background: rgba(76, 175, 80, 0.25);
+  border-color: var(--accent-green);
+}
+
+.btn-potion:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .hero-card-timer {
@@ -1602,41 +1622,6 @@ button:disabled, .btn:disabled {
 
 /* ── Craft panel ──────────────────────────────── */
 
-.craft-progress-row {
-  margin-bottom: 0.5rem;
-}
-
-.craft-progress-bar {
-  position: relative;
-  width: 100%;
-  height: 18px;
-  background: var(--bg-secondary);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-}
-
-.craft-progress-fill {
-  position: absolute;
-  inset: 0;
-  width: 0;
-  background: var(--accent-gold);
-  border-radius: var(--radius-sm);
-  transition: width 0.5s ease;
-}
-
-.craft-progress-label {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.65rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
-  z-index: 1;
-}
-
 .craft-slots {
   display: flex;
   align-items: center;
@@ -1778,22 +1763,6 @@ button:disabled, .btn:disabled {
 .craft-btn-row button { flex: 1; }
 
 /* ── Grimoire ─────────────────────────────────── */
-
-.grimoire-progress {
-  width: 100%;
-  height: 6px;
-  background: var(--bg-secondary);
-  border-radius: 3px;
-  overflow: hidden;
-  margin-bottom: 0.5rem;
-}
-
-.grimoire-progress-fill {
-  height: 100%;
-  background: var(--accent-gold);
-  border-radius: 3px;
-  transition: width 0.5s ease;
-}
 
 .grimoire-filters {
   display: flex;
@@ -2105,6 +2074,55 @@ button:disabled, .btn:disabled {
 
 .potion-popup-actions button {
   flex: 1;
+}
+
+.hero-potion-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(5rem, 1fr));
+  gap: 0.5rem;
+}
+
+.hero-potion-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 0.35rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.hero-potion-option:hover {
+  border-color: var(--border-glow);
+  background: var(--bg-hover);
+}
+
+.hero-potion-option.selected {
+  border-color: var(--accent-gold);
+  background: rgba(240, 192, 64, 0.1);
+}
+
+.hero-potion-option img {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid;
+  object-fit: cover;
+}
+
+.hero-potion-option-name {
+  font-size: 0.62rem;
+  color: var(--text-secondary);
+  text-align: center;
+  line-height: 1.2;
+}
+
+.hero-potion-option-qty {
+  font-size: 0.7rem;
+  font-weight: 700;
 }
 
 /* ── Inventory ────────────────────────────────── */

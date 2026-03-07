@@ -11,13 +11,17 @@ import { useNavigationStore } from '@/stores/navigationStore'
 import { txToast } from '@/stores/toastStore'
 import type { PhaserBridge } from '@/phaser'
 import {
+  EFFECT_NAMES,
+  EFFECT_CATEGORIES,
+  EFFECT_COLORS,
   HERO_RECRUIT_COSTS,
   ROLE_NAMES,
   displayGold,
   displayHp,
+  effectAssetUrl,
   roleAssetUrl,
 } from '@/game/constants'
-import { bitmapPopcount, unpackEffects } from '@/game/packer'
+import { bitmapGet, bitmapPopcount, unpackEffects } from '@/game/packer'
 import type { DiscoveryData } from '@/hooks/useRecipes'
 import { StatusHUD } from '@/ui/components/StatusHUD'
 import { BrewContent, IngredientsContent, GrimoireContent } from '@/ui/components/RightPanel'
@@ -84,6 +88,7 @@ export function PlayScreen({ bridge }: Props) {
   const [brewCollapsed, setBrewCollapsed] = useState(false)
   const [collectionCollapsed, setCollectionCollapsed] = useState(false)
   const [logsCollapsed, setLogsCollapsed] = useState(false)
+  const [potionTargetHeroId, setPotionTargetHeroId] = useState<number | null>(null)
   const { logs, pushInfo } = useExplorationLog(gameId ?? null)
   const logsEndRef = useRef<HTMLDivElement>(null)
 
@@ -273,6 +278,7 @@ export function PlayScreen({ bridge }: Props) {
                   onRecruit={() => void handleRecruit()}
                   onExplore={(id) => void handleExplore(id)}
                   onClaim={(id) => void handleClaim(id)}
+                  onApplyPotion={(id) => setPotionTargetHeroId(id)}
                 />
               ))}
             </div>
@@ -314,7 +320,6 @@ export function PlayScreen({ bridge }: Props) {
                 slotA={slotA}
                 slotB={slotB}
                 recipes={recipes}
-                remainingTries={game?.remaining_tries ?? 300}
                 isGameOver={isGameOver}
                 brewAllCount={brewAllCount}
                 onSetSlotA={setSlotA}
@@ -354,6 +359,7 @@ export function PlayScreen({ bridge }: Props) {
                   inventory={inventory}
                   slotA={slotA}
                   slotB={slotB}
+                  remainingTries={game?.remaining_tries ?? 300}
                   onPickIngredient={handlePickIngredient}
                 />
               ) : (
@@ -402,6 +408,100 @@ export function PlayScreen({ bridge }: Props) {
           onClose={() => setSettingsOpen(false)}
         />
       )}
+
+      {potionTargetHeroId !== null && (
+        <HeroPotionPopup
+          heroId={potionTargetHeroId}
+          heroes={heroes}
+          grimoire={game?.grimoire ?? 0}
+          effectQuantities={effectQuantities}
+          onApply={(effect, quantity) => {
+            void handleBuff(effect, potionTargetHeroId, quantity)
+            setPotionTargetHeroId(null)
+          }}
+          onClose={() => setPotionTargetHeroId(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+function HeroPotionPopup({
+  heroId,
+  heroes,
+  grimoire,
+  effectQuantities,
+  onApply,
+  onClose,
+}: {
+  heroId: number
+  heroes: Array<{ id: number; role: number }>
+  grimoire: number
+  effectQuantities: number[]
+  onApply: (effect: number, quantity: number) => void
+  onClose: () => void
+}) {
+  const [selectedEffect, setSelectedEffect] = useState<number | null>(null)
+  const [quantity, setQuantity] = useState(1)
+
+  const hero = heroes.find((h) => h.id === heroId)
+  const roleIdx = hero ? (hero.role > 0 ? hero.role - 1 : heroId) : 0
+  const heroName = ROLE_NAMES[roleIdx] ?? `Hero ${heroId}`
+
+  const availablePotions = useMemo(() => {
+    const result: { effectIdx: number; qty: number }[] = []
+    for (let i = 0; i < 30; i++) {
+      if (bitmapGet(grimoire, i + 1) && effectQuantities[i] > 0) {
+        result.push({ effectIdx: i, qty: effectQuantities[i] })
+      }
+    }
+    return result
+  }, [grimoire, effectQuantities])
+
+  const maxQty = selectedEffect !== null ? effectQuantities[selectedEffect] : 0
+
+  return (
+    <div className="potion-popup-backdrop" onClick={onClose}>
+      <div className="potion-popup floating-panel" onClick={(e) => e.stopPropagation()}>
+        <div className="potion-popup-header">
+          <span className="potion-popup-name">Apply Potion to {heroName}</span>
+        </div>
+        {availablePotions.length === 0 ? (
+          <p className="potion-popup-category">No potions available</p>
+        ) : (
+          <>
+            <div className="hero-potion-grid">
+              {availablePotions.map(({ effectIdx, qty }) => {
+                const category = EFFECT_CATEGORIES[effectIdx]
+                const color = EFFECT_COLORS[category]
+                return (
+                  <button
+                    key={effectIdx}
+                    className={`hero-potion-option${selectedEffect === effectIdx ? ' selected' : ''}`}
+                    onClick={() => { setSelectedEffect(effectIdx); setQuantity(1) }}
+                  >
+                    <img src={effectAssetUrl(effectIdx)} alt={EFFECT_NAMES[effectIdx]} style={{ borderColor: color }} />
+                    <span className="hero-potion-option-name">{EFFECT_NAMES[effectIdx]}</span>
+                    <span className="hero-potion-option-qty" style={{ color }}>&times;{qty}</span>
+                  </button>
+                )
+              })}
+            </div>
+            {selectedEffect !== null && (
+              <div className="potion-popup-actions">
+                <div className="potion-popup-qty-control">
+                  <button onClick={() => setQuantity((q) => Math.max(1, q - 1))} disabled={quantity <= 1}>−</button>
+                  <span>{quantity}</span>
+                  <button onClick={() => setQuantity((q) => Math.min(maxQty, q + 1))} disabled={quantity >= maxQty}>+</button>
+                </div>
+                <button className="btn-primary" onClick={() => onApply(selectedEffect, quantity)}>
+                  Apply
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   )
 }
@@ -428,6 +528,7 @@ interface HeroSlotProps {
   onRecruit: () => void
   onExplore: (characterId: number) => void
   onClaim: (characterId: number) => void
+  onApplyPotion: (heroId: number) => void
 }
 
 function HeroSlot({
@@ -442,6 +543,7 @@ function HeroSlot({
   onRecruit,
   onExplore,
   onClaim,
+  onApplyPotion,
 }: HeroSlotProps) {
   const hero = heroes.find((h) => h.id === slot)
 
@@ -509,24 +611,7 @@ function HeroSlot({
     >
       <div className="hero-card-name-row">
         <span className="hero-card-name">{roleName}</span>
-        {isIdle && (
-          <button
-            className="btn-primary btn-sm"
-            onClick={(e) => { e.stopPropagation(); onExplore(hero.id) }}
-            disabled={isGameOver}
-          >
-            Send Expedition
-          </button>
-        )}
-        {lootReady && (
-          <button
-            className="btn-primary btn-sm btn-loot"
-            onClick={(e) => { e.stopPropagation(); onClaim(hero.id) }}
-            disabled={isGameOver}
-          >
-            Claim Loot
-          </button>
-        )}
+        <span className={`hero-card-status ${statusClass}`}>{statusText}</span>
       </div>
       <div className="hero-card-top">
         <img
@@ -535,9 +620,6 @@ function HeroSlot({
           alt={roleName}
         />
         <div className="hero-card-info">
-          {hero.regen > 0 && (
-            <span className="hero-card-regen-tag">HP Regen: +{hero.regen} HP/s</span>
-          )}
           <div className="hero-card-hp">
             <div className="hero-card-hp-fill" style={{ width: `${hpPct}%`, background: hpColor }} />
             {regenPreviewPct > 0 && (
@@ -552,8 +634,37 @@ function HeroSlot({
             <div className="hero-card-power-fill" style={{ width: `${powerPct}%` }} />
             <span className="hero-card-bar-label">Power {hero.power}</span>
           </div>
-          <span className={`hero-card-status ${statusClass}`}>{statusText}</span>
+          {hero.regen > 0 && (
+            <span className="hero-card-regen">Regen +{hero.regen} HP/s</span>
+          )}
         </div>
+      </div>
+      <div className="hero-card-btn-row">
+        {isIdle && !lootReady && (
+          <button
+            className="btn-primary btn-sm"
+            onClick={(e) => { e.stopPropagation(); onExplore(hero.id) }}
+            disabled={isGameOver}
+          >
+            Explore
+          </button>
+        )}
+        {lootReady && (
+          <button
+            className="btn-primary btn-sm btn-loot"
+            onClick={(e) => { e.stopPropagation(); onClaim(hero.id) }}
+            disabled={isGameOver}
+          >
+            Claim
+          </button>
+        )}
+        <button
+          className="btn-sm btn-potion"
+          onClick={(e) => { e.stopPropagation(); onApplyPotion(hero.id) }}
+          disabled={isGameOver}
+        >
+          Apply Potion
+        </button>
       </div>
     </div>
   )
