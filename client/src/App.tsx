@@ -109,7 +109,7 @@ export default function App() {
           <PageRouter bridge={bridge} />
         </div>
       ) : (
-        <LoadingScreen status="Loading game assets..." />
+        <LoadingScreen status="Loading game assets" />
       )}
       <Toaster />
     </ErrorBoundary>
