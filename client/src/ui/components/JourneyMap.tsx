@@ -120,13 +120,14 @@ function HomeBand({
   onFloatingTextComplete: (id: string) => void
 }) {
   return (
-    <div className="jm-home-band">
-      <div className="jm-home-bg" />
-      <div className="jm-cauldron">
-        <div className="jm-cauldron-glow" />
-        <div className="jm-cauldron-body">
-          <span className="jm-cauldron-label">Athanor</span>
-        </div>
+    <div
+      className="jm-zone-band"
+      style={{ backgroundImage: 'url(/assets/backgrounds/zone-hollows.webp)' }}
+    >
+      <div className="jm-zone-overlay" />
+      <div className="jm-zone-label">
+        <span className="jm-zone-name" style={{ color: '#c8a040' }}>Athanor</span>
+        <span className="jm-zone-depth">Home</span>
       </div>
       <div className="jm-zone-heroes">
         {heroes.map(hero => (
