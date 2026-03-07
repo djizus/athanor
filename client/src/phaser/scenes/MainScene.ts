@@ -1,8 +1,9 @@
 import Phaser from 'phaser';
 import { ZONE_NAMES } from '@/game/constants';
 import { getSettingsSnapshot } from '@/stores/settingsStore';
-import type { AthanorHero } from '../PhaserBridge';
+import type { AthanorHero, CraftResultPayload, ExplorationEventPayload } from '../PhaserBridge';
 import { PhaserBridge } from '../PhaserBridge';
+import { COLORS } from '../utils/colors';
 import { EventEffect } from '../objects/EventEffect';
 import { HeroSprite } from '../objects/HeroSprite';
 import { ZoneBackground } from '../objects/ZoneBackground';
@@ -19,6 +20,12 @@ const LAZY_MUSIC = [
   { key: 'game-loop-2', file: 'game_loop_2.mp3' },
 ] as const;
 
+const EFFECT_TINTS: Record<string, number> = {
+  health: COLORS.green,
+  power: COLORS.purple,
+  regen: COLORS.blue,
+};
+
 export class MainScene extends Phaser.Scene {
   private bridge: PhaserBridge | null = null;
 
@@ -32,6 +39,7 @@ export class MainScene extends Phaser.Scene {
   private lastHeroes: AthanorHero[] = [];
   private currentMusicIndex = 0;
   private currentMusicSound: Phaser.Sound.BaseSound | null = null;
+  private ambientSound: Phaser.Sound.BaseSound | null = null;
 
   private readonly onMusicComplete = (): void => {
     this.playNextMusicTrack();
@@ -46,15 +54,98 @@ export class MainScene extends Phaser.Scene {
     this.syncHeroes(heroes);
   };
 
-  private readonly onCraftResult = (payload: { discovered: boolean }): void => {
+  private readonly onCraftResult = (payload: CraftResultPayload): void => {
     if (!this.eventEffect) return;
-    if (payload.discovered) {
-      this.eventEffect.playDiscovery();
-      this.tryPlaySound('discovery', 0.6);
+    if (payload.isSoup) {
+      this.eventEffect.playCraftGold(payload.goldEarned);
+      this.tryPlaySound('brew-success', 0.4);
     } else {
-      this.eventEffect.playCraftFail();
-      this.tryPlaySound('brew-fail', 0.3);
+      this.eventEffect.playCraftSuccess();
+      this.tryPlaySound('brew-success', 0.4);
     }
+  };
+
+  private readonly onExplorationEvent = (payload: ExplorationEventPayload): void => {
+    if (!this.eventEffect) return;
+    const sprite = this.heroSprites.get(payload.heroId);
+    const x = sprite?.x ?? this.scale.width / 2;
+    const y = sprite?.y ?? this.scale.height * 0.5;
+
+    switch (payload.kind) {
+      case 'trap':
+        this.eventEffect.playTrap(x, y);
+        this.tryPlaySound('trap', 0.5);
+        break;
+      case 'gold':
+        this.eventEffect.playGold(x, y, payload.value);
+        this.tryPlaySound('gold-find', 0.5);
+        break;
+      case 'heal':
+        this.eventEffect.playHeal(x, y, sprite ?? undefined);
+        this.tryPlaySound('heal', 0.5);
+        break;
+      case 'beastWin':
+        this.eventEffect.playBeastWin(x, y, sprite ?? undefined);
+        this.tryPlaySound('beast-win', 0.5);
+        break;
+      case 'beastLose':
+        this.eventEffect.playBeastLose(x, y);
+        this.tryPlaySound('beast-lose', 0.5);
+        break;
+      case 'ingredient':
+        this.eventEffect.playIngredientDrop(x, y, sprite ?? undefined);
+        this.tryPlaySound('gold-find', 0.3);
+        break;
+    }
+  };
+
+  private readonly onExpeditionStart = (payload: { heroId: number }): void => {
+    if (!this.eventEffect) return;
+    const sprite = this.heroSprites.get(payload.heroId);
+    const x = sprite?.x ?? this.scale.width / 2;
+    const y = sprite?.y ?? this.scale.height * 0.8;
+    this.eventEffect.playExpeditionStart(x, y);
+    this.tryPlaySound('expedition-start', 0.5);
+  };
+
+  private readonly onClaimLoot = (payload: { heroId: number; gold: number }): void => {
+    if (!this.eventEffect) return;
+    const sprite = this.heroSprites.get(payload.heroId);
+    const x = sprite?.x ?? this.scale.width / 2;
+    const y = sprite?.y ?? this.scale.height * 0.8;
+    this.eventEffect.playClaimLoot(x, y, payload.gold);
+    this.tryPlaySound('claim-loot', 0.5);
+  };
+
+  private readonly onRecruit = (): void => {
+    this.eventEffect?.playRecruitEffect();
+    this.tryPlaySound('recruit', 0.6);
+  };
+
+  private readonly onBuff = (payload: { heroId: number; effectIdx: number }): void => {
+    if (!this.eventEffect) return;
+    const sprite = this.heroSprites.get(payload.heroId);
+    const x = sprite?.x ?? this.scale.width / 2;
+    const y = sprite?.y ?? this.scale.height * 0.8;
+    const category = payload.effectIdx < 10 ? 'health' : payload.effectIdx < 20 ? 'power' : 'regen';
+    const tint = EFFECT_TINTS[category] ?? COLORS.green;
+    this.eventEffect.playBuffEffect(x, y, tint);
+    this.tryPlaySound('potion-apply', 0.5);
+  };
+
+  private readonly onHintReveal = (): void => {
+    this.eventEffect?.playHintRevealEffect();
+    this.tryPlaySound('notification', 0.4);
+  };
+
+  private readonly onUiClick = (): void => {
+    this.tryPlaySound('click', 0.25);
+  };
+
+  private readonly onDiscovery = (): void => {
+    if (!this.eventEffect) return;
+    this.eventEffect.playDiscovery();
+    this.tryPlaySound('discovery', 0.6);
   };
 
   private readonly onGameOver = (): void => {
@@ -84,7 +175,15 @@ export class MainScene extends Phaser.Scene {
 
     this.bridge.on('heroesUpdated', this.onHeroesUpdated);
     this.bridge.on('craftResult', this.onCraftResult);
+    this.bridge.on('discovery', this.onDiscovery);
     this.bridge.on('gameOver', this.onGameOver);
+    this.bridge.on('explorationEvent', this.onExplorationEvent);
+    this.bridge.on('expeditionStart', this.onExpeditionStart);
+    this.bridge.on('claimLoot', this.onClaimLoot);
+    this.bridge.on('recruit', this.onRecruit);
+    this.bridge.on('buff', this.onBuff);
+    this.bridge.on('hintReveal', this.onHintReveal);
+    this.bridge.on('uiClick', this.onUiClick);
 
     this.scale.on(Phaser.Scale.Events.RESIZE, this.onResize, this);
 
@@ -101,6 +200,8 @@ export class MainScene extends Phaser.Scene {
     } else {
       this.startMusicPlaylist();
     }
+
+    this.startAmbientLoop();
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.shutdown, this);
   }
@@ -204,6 +305,13 @@ export class MainScene extends Phaser.Scene {
     this.currentMusicSound = music;
   }
 
+  private startAmbientLoop(): void {
+    if (!this.cache.audio.exists('ambient-lab')) return;
+    const { sfxVolume } = getSettingsSnapshot();
+    this.ambientSound = this.sound.add('ambient-lab', { loop: true, volume: 0.15 * sfxVolume });
+    this.ambientSound.play();
+  }
+
   private syncHeroes(heroes: AthanorHero[]): void {
     const activeIds = new Set(heroes.map((h) => h.hero_id));
 
@@ -278,7 +386,15 @@ export class MainScene extends Phaser.Scene {
     if (this.bridge) {
       this.bridge.off('heroesUpdated', this.onHeroesUpdated);
       this.bridge.off('craftResult', this.onCraftResult);
+      this.bridge.off('discovery', this.onDiscovery);
       this.bridge.off('gameOver', this.onGameOver);
+      this.bridge.off('explorationEvent', this.onExplorationEvent);
+      this.bridge.off('expeditionStart', this.onExpeditionStart);
+      this.bridge.off('claimLoot', this.onClaimLoot);
+      this.bridge.off('recruit', this.onRecruit);
+      this.bridge.off('buff', this.onBuff);
+      this.bridge.off('hintReveal', this.onHintReveal);
+      this.bridge.off('uiClick', this.onUiClick);
     }
 
     this.input.off(Phaser.Input.Events.POINTER_DOWN, this.onFirstInteractionMusic);
@@ -288,6 +404,10 @@ export class MainScene extends Phaser.Scene {
     this.currentMusicSound?.stop();
     this.currentMusicSound?.destroy();
     this.currentMusicSound = null;
+
+    this.ambientSound?.stop();
+    this.ambientSound?.destroy();
+    this.ambientSound = null;
 
     for (const sprite of this.heroSprites.values()) sprite.destroy();
     this.heroSprites.clear();

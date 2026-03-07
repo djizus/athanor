@@ -19,24 +19,7 @@ export class EventEffect {
 
   playGold(x: number, y: number, value: number): void {
     this.burst('particle-gold', x, y, 16, 40, 100, 780, 0.85, -30);
-
-    const text = this.scene.add.text(x, y - 24, `+${value}`, {
-      fontFamily: 'Cinzel, serif',
-      fontSize: '18px',
-      color: '#f0c040',
-      fontStyle: 'bold',
-      stroke: '#000000',
-      strokeThickness: 2,
-    });
-    text.setOrigin(0.5);
-    this.scene.tweens.add({
-      targets: text,
-      y: y - 56,
-      alpha: 0,
-      duration: 750,
-      ease: 'Sine.Out',
-      onComplete: () => text.destroy(),
-    });
+    this.floatingText(x, y - 24, `+${value}g`, '#f0c040');
   }
 
   playHeal(x: number, y: number, target?: Phaser.GameObjects.Container): void {
@@ -115,6 +98,12 @@ export class EventEffect {
     this.scene.time.delayedCall(900, () => emitter.destroy());
   }
 
+  playCraftGold(gold: number): void {
+    const cx = this.vw / 2;
+    this.burst('particle-gold', cx, this.vh - 100, 10, 30, 80, 600, 0.7, -20);
+    this.floatingText(cx, this.vh - 130, `+${gold}g`, '#f0c040');
+  }
+
   playDiscovery(): void {
     const cx = this.vw / 2;
     const cy = this.vh / 2;
@@ -145,6 +134,72 @@ export class EventEffect {
     });
     this.scene.time.delayedCall(3000, () => rain.stop());
     this.scene.time.delayedCall(5600, () => rain.destroy());
+  }
+
+  playExpeditionStart(x: number, y: number): void {
+    this.burst('particle-generic', x, y, 24, 60, 160, 500, 0.6);
+    this.burst('particle-spark', x, y, 12, 30, 80, 400, 0.5);
+    this.scene.cameras.main.flash(100, 60, 120, 200, false);
+  }
+
+  playClaimLoot(x: number, y: number, gold: number): void {
+    this.burst('particle-gold', x, y, 28, 50, 140, 800, 0.9, -20);
+    this.burst('particle-spark', x, y, 14, 30, 90, 600, 0.6);
+    if (gold > 0) {
+      this.floatingText(x, y - 30, `+${gold}g`, '#f0c040');
+    }
+  }
+
+  playRecruitEffect(): void {
+    const cx = this.vw / 2;
+    const cy = this.vh * 0.7;
+
+    this.burst('particle-gold', cx, cy, 36, 80, 200, 900);
+    this.scene.time.delayedCall(80, () =>
+      this.burst('particle-arcane', cx, cy, 24, 60, 160, 800, 0.8),
+    );
+    this.scene.cameras.main.flash(250, 200, 180, 60, false);
+  }
+
+  playBuffEffect(x: number, y: number, tint: number): void {
+    const emitter = this.scene.add.particles(x, y, 'particle-heal', {
+      quantity: 3,
+      frequency: 40,
+      lifespan: 700,
+      speed: { min: 20, max: 55 },
+      angle: { min: 0, max: 360 },
+      scale: { start: 0.65, end: 0 },
+      alpha: { start: 0.85, end: 0 },
+      tint: [tint],
+      gravityY: -35,
+      blendMode: Phaser.BlendModes.ADD,
+    });
+    this.scene.time.delayedCall(350, () => emitter.stop());
+    this.scene.time.delayedCall(800, () => emitter.destroy());
+  }
+
+  playHintRevealEffect(): void {
+    this.scene.cameras.main.flash(150, 100, 90, 180, false);
+  }
+
+  private floatingText(x: number, y: number, message: string, color: string): void {
+    const text = this.scene.add.text(x, y, message, {
+      fontFamily: 'Cinzel, serif',
+      fontSize: '18px',
+      color,
+      fontStyle: 'bold',
+      stroke: '#000000',
+      strokeThickness: 2,
+    });
+    text.setOrigin(0.5);
+    this.scene.tweens.add({
+      targets: text,
+      y: y - 32,
+      alpha: 0,
+      duration: 750,
+      ease: 'Sine.Out',
+      onComplete: () => text.destroy(),
+    });
   }
 
   private burst(

@@ -26,6 +26,22 @@ export interface HeroChangePayload {
   previousHero: AthanorHero | null;
 }
 
+/* ── Event payloads ────────────────────────────── */
+
+export interface CraftResultPayload {
+  discovered: boolean;
+  isSoup: boolean;
+  goldEarned: number;
+  effectIdx: number;
+}
+
+export interface ExplorationEventPayload {
+  heroId: number;
+  kind: 'trap' | 'gold' | 'heal' | 'beastWin' | 'beastLose' | 'ingredient';
+  value: number;
+  hpAfter?: number;
+}
+
 export class PhaserBridge extends Phaser.Events.EventEmitter {
   private gameInstance: Phaser.Game | null = null;
   private _focusedHeroId = 0;
@@ -107,8 +123,38 @@ export class PhaserBridge extends Phaser.Events.EventEmitter {
     this.emit('bootComplete');
   }
 
-  playCraftEffect(discovered: boolean): void {
-    this.emit('craftResult', { discovered });
+  /* ── Action effects ──────────────────────────── */
+
+  playCraftEffect(payload: CraftResultPayload): void {
+    this.emit('craftResult', payload);
+  }
+
+  playExplorationEvent(payload: ExplorationEventPayload): void {
+    this.emit('explorationEvent', payload);
+  }
+
+  playExpeditionStart(heroId: number): void {
+    this.emit('expeditionStart', { heroId });
+  }
+
+  playClaimLoot(heroId: number, gold: number): void {
+    this.emit('claimLoot', { heroId, gold });
+  }
+
+  playRecruit(): void {
+    this.emit('recruit');
+  }
+
+  playBuff(heroId: number, effectIdx: number): void {
+    this.emit('buff', { heroId, effectIdx });
+  }
+
+  playHintReveal(): void {
+    this.emit('hintReveal');
+  }
+
+  playUiClick(): void {
+    this.emit('uiClick');
   }
 
   private didHeroChange(prev: AthanorHero, next: AthanorHero): boolean {

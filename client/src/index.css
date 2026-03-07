@@ -1252,6 +1252,12 @@ button:disabled, .btn:disabled {
   gap: 0.55rem;
   overflow-y: auto;
   font-size: 0.88rem;
+  animation: panel-open 0.2s ease-out;
+}
+
+@keyframes panel-open {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .collection-header {
@@ -1551,7 +1557,12 @@ button:disabled, .btn:disabled {
 
 .ing-cell-clickable { cursor: pointer; }
 
+.ing-cell-clickable:active .ing-icon-wrap {
+  transform: scale(0.92);
+}
+
 .ing-icon-wrap {
+  transition: transform 0.12s ease;
   position: relative;
   border-radius: 50%;
 }
@@ -1569,9 +1580,19 @@ button:disabled, .btn:disabled {
   box-shadow: 0 0 8px color-mix(in srgb, var(--zone-color, transparent) 30%, transparent);
 }
 
+.ing-cell-selected .ing-icon-wrap {
+  animation: ing-select-pop 0.2s ease-out;
+}
+
 .ing-cell-selected .ing-icon {
   border-color: var(--accent-gold);
   box-shadow: 0 0 12px rgba(240, 192, 64, 0.5);
+}
+
+@keyframes ing-select-pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+  100% { transform: scale(1); }
 }
 
 .ing-badge {
@@ -1654,6 +1675,13 @@ button:disabled, .btn:disabled {
   border-style: solid;
   border-color: var(--zone-color, var(--border-glow));
   box-shadow: 0 0 10px color-mix(in srgb, var(--zone-color, transparent) 35%, transparent);
+  animation: slot-fill-pop 0.2s ease-out;
+}
+
+@keyframes slot-fill-pop {
+  0% { transform: scale(0.85); opacity: 0.6; }
+  60% { transform: scale(1.06); }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 .craft-slot-img {
@@ -1716,6 +1744,7 @@ button:disabled, .btn:disabled {
 .craft-result-known {
   border-style: solid;
   border-color: var(--border-glow);
+  animation: slot-fill-pop 0.2s ease-out;
 }
 
 .craft-result-unknown {
@@ -1757,6 +1786,15 @@ button:disabled, .btn:disabled {
 
 .craft-brew-btn {
   margin-left: 0.35rem;
+}
+
+.craft-brew-btn:not(:disabled) {
+  animation: brew-ready-pulse 2s ease-in-out infinite;
+}
+
+@keyframes brew-ready-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(136, 70, 170, 0.3); }
+  50% { box-shadow: 0 0 16px rgba(136, 70, 170, 0.6); }
 }
 
 .craft-ingredient-grid {
@@ -1859,6 +1897,11 @@ button:disabled, .btn:disabled {
   background: var(--bg-hover);
   border-color: var(--accent-gold);
   box-shadow: var(--shadow-glow-gold);
+  transform: scale(1.04);
+}
+
+.grimoire-cell-clickable:active {
+  transform: scale(0.96);
 }
 
 .grimoire-icon-wrap {
