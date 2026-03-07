@@ -79,7 +79,6 @@ export class EventEffect {
     });
     this.scene.time.delayedCall(380, () => emitter.stop());
     this.scene.time.delayedCall(1100, () => emitter.destroy());
-    this.scene.cameras.main.flash(200, 136, 70, 170, false);
   }
 
   playCraftFail(): void {
@@ -115,8 +114,6 @@ export class EventEffect {
       this.burst('particle-gold', cx, cy, 48, 140, 300, 900, 0.85),
     );
 
-    this.scene.cameras.main.flash(300, 240, 190, 70, false);
-    this.scene.cameras.main.shake(400, 0.003);
   }
 
   playGameOver(): void {
@@ -138,7 +135,6 @@ export class EventEffect {
   playExpeditionStart(x: number, y: number): void {
     this.burst('particle-generic', x, y, 24, 60, 160, 500, 0.6);
     this.burst('particle-spark', x, y, 12, 30, 80, 400, 0.5);
-    this.scene.cameras.main.flash(100, 60, 120, 200, false);
   }
 
   playClaimLoot(x: number, y: number, gold: number): void {
@@ -157,7 +153,6 @@ export class EventEffect {
     this.scene.time.delayedCall(80, () =>
       this.burst('particle-arcane', cx, cy, 24, 60, 160, 800, 0.8),
     );
-    this.scene.cameras.main.flash(250, 200, 180, 60, false);
   }
 
   playBuffEffect(x: number, y: number, tint: number): void {
@@ -177,9 +172,7 @@ export class EventEffect {
     this.scene.time.delayedCall(800, () => emitter.destroy());
   }
 
-  playHintRevealEffect(): void {
-    this.scene.cameras.main.flash(150, 100, 90, 180, false);
-  }
+  playHintRevealEffect(): void { /* intentionally empty */ }
 
   private floatingText(x: number, y: number, message: string, color: string): void {
     const text = this.scene.add.text(x, y, message, {
