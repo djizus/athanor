@@ -237,10 +237,10 @@ function CraftResultPreview({ discovery }: { discovery: DiscoveryData }) {
     return (
       <div
         className="grimoire-icon-wrap craft-result-circle"
-        style={{ ['--effect-color' as string]: '#C89B1A' }}
+        style={{ ['--effect-color' as string]: '#c8a040' }}
       >
         <img className="grimoire-icon" src="/assets/potions/craft-soup.webp" alt="Soup" />
-        <span className="grimoire-badge-tr" style={{ background: '#C89B1A' }}>+1g</span>
+        <span className="grimoire-badge-tr" style={{ background: '#c8a040' }}>+1g</span>
       </div>
     )
   }
