@@ -68,7 +68,6 @@ export const ROLE_STATS = [
 
 export const HERO_RECRUIT_COSTS = [0, 80, 200] as const
 
-// Health (indices 0-9), Power (indices 10-19), Regen (indices 20-29)
 export const EFFECT_MULTIPLIERS = [
   5, 5, 5, 10, 10, 10, 15, 15, 15, 20,
   1, 1, 1, 2, 2, 3, 3, 4, 4, 5,
