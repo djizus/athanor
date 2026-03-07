@@ -1,9 +1,5 @@
 import Phaser from 'phaser';
 import { COLORS } from '../utils/colors';
-import { MAP_HEIGHT, MAP_WIDTH } from '../utils/layout';
-
-const FALLBACK_W = 1920;
-const FALLBACK_H = 1080;
 
 const SFX_KEYS = [
   'click', 'brew-success', 'brew-fail', 'discovery',
@@ -23,8 +19,6 @@ export class BootScene extends Phaser.Scene {
 
   preload(): void {
     this.load.image('lab-bg-file', '/assets/backgrounds/lab-bg.webp');
-    this.load.image('world-map-file', '/assets/backgrounds/world-map.webp');
-    this.load.image('world-bg', '/assets/backgrounds/world-bg.webp');
     this.load.image('zone-athanor', '/assets/backgrounds/zone-athanor.webp');
     this.load.image('zone-hollows', '/assets/backgrounds/zone-hollows.webp');
     this.load.image('zone-cavern', '/assets/backgrounds/zone-cavern.webp');
@@ -59,8 +53,7 @@ export class BootScene extends Phaser.Scene {
   create(): void {
     const gfx = this.add.graphics();
 
-    this.generateGradient(gfx, 'lab-bg', FALLBACK_W, FALLBACK_H, COLORS.bgPrimary, COLORS.bgSecondary);
-    this.generateGradient(gfx, 'world-map', MAP_WIDTH, MAP_HEIGHT, COLORS.bgPrimary, COLORS.bgSecondary);
+    this.generateGradient(gfx, 'lab-bg', 1920, 1080, COLORS.bgPrimary, COLORS.bgSecondary);
     this.generateCircle(gfx, 'hero-sprite', 64, COLORS.white);
     this.generateCircle(gfx, 'particle-gold', 8, COLORS.gold);
     this.generateCircle(gfx, 'particle-heal', 8, COLORS.green);
@@ -77,11 +70,6 @@ export class BootScene extends Phaser.Scene {
     if (this.textures.exists('lab-bg-file')) {
       this.textures.remove('lab-bg');
       this.textures.addImage('lab-bg', this.textures.get('lab-bg-file').getSourceImage() as HTMLImageElement);
-    }
-
-    if (this.textures.exists('world-map-file')) {
-      this.textures.remove('world-map');
-      this.textures.addImage('world-map', this.textures.get('world-map-file').getSourceImage() as HTMLImageElement);
     }
 
     const bridge = this.registry.get('bridge') as import('../PhaserBridge').PhaserBridge | undefined;

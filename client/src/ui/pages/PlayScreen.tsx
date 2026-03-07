@@ -256,7 +256,7 @@ export function PlayScreen({ bridge }: Props) {
                   gold={gold}
                   isGameOver={isGameOver}
                   now={now}
-                  onSelectHero={setSelectedHeroId}
+                  onSelectHero={(id) => bridge.selectHero(id)}
                   onRecruit={() => void handleRecruit()}
                   onExplore={(id) => void handleExplore(id)}
                   onClaim={(id) => void handleClaim(id)}

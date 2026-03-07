@@ -1,46 +1,43 @@
 import Phaser from 'phaser';
 import { COLORS } from '../utils/colors';
-import { MAP_HEIGHT, MAP_WIDTH } from '../utils/layout';
+
+/** Dark golden gradient: deep brown-gold at top → near-black at bottom */
+const BG_TOP = 0x1a1408;
+const BG_BOTTOM = 0x080810;
 
 export class ZoneBackground {
   private readonly scene: Phaser.Scene;
-  private readonly bgImage: Phaser.GameObjects.Image;
+  private readonly bgGfx: Phaser.GameObjects.Graphics;
   private ambientEmitter: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   private dustEmitter: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
 
-    this.bgImage = scene.add.image(0, 0, 'world-bg');
-    this.bgImage.setOrigin(0.5, 0.5);
-    this.bgImage.setDepth(0);
+    this.bgGfx = scene.add.graphics();
+    this.bgGfx.setDepth(0);
 
     const w = scene.scale.width;
     const h = scene.scale.height;
-    this.applyCoverFit(w, h);
+    this.drawGradient(w, h);
     this.createAmbientParticles(w, h);
   }
 
   resize(w: number, h: number): void {
-    this.applyCoverFit(w, h);
+    this.drawGradient(w, h);
     this.destroyEmitters();
     this.createAmbientParticles(w, h);
   }
 
   destroy(): void {
     this.destroyEmitters();
-    this.bgImage.destroy();
+    this.bgGfx.destroy();
   }
 
-  private applyCoverFit(w: number, h: number): void {
-    const scaleX = w / MAP_WIDTH;
-    const scaleY = h / MAP_HEIGHT;
-    const coverScale = Math.max(scaleX, scaleY);
-    const displayW = MAP_WIDTH * coverScale;
-    const displayH = MAP_HEIGHT * coverScale;
-    this.bgImage.setDisplaySize(displayW, displayH);
-    const yAnchor = h > w ? h * 0.58 : h / 2;
-    this.bgImage.setPosition(w / 2, yAnchor);
+  private drawGradient(w: number, h: number): void {
+    this.bgGfx.clear();
+    this.bgGfx.fillGradientStyle(BG_TOP, BG_TOP, BG_BOTTOM, BG_BOTTOM, 1);
+    this.bgGfx.fillRect(0, 0, w, h);
   }
 
   private destroyEmitters(): void {
