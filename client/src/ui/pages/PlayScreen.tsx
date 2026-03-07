@@ -352,6 +352,8 @@ function HeroSlot({
   /* ── Power bar ────────────────────────────────── */
   const powerPct = Math.min(100, (hero.power / 255) * 100)
 
+  const displayHpVal = Math.floor(optimisticHp)
+
   return (
     <div
       className={`hero-card${selectedHeroId === hero.id ? ' selected' : ''}`}
@@ -364,9 +366,7 @@ function HeroSlot({
           alt={roleName}
         />
         <div className="hero-card-info">
-          <span className="hero-card-name">
-            {roleName} — {displayHp(Math.floor(optimisticHp))}/{displayHp(hero.max_health)}
-          </span>
+          <span className="hero-card-name">{roleName}</span>
           <div className="hero-card-hp">
             <div className="hero-card-hp-fill" style={{ width: `${hpPct}%`, background: hpColor }} />
             {regenPreviewPct > 0 && (
@@ -375,9 +375,16 @@ function HeroSlot({
                 style={{ left: `${hpPct}%`, width: `${regenPreviewPct}%`, background: hpColor }}
               />
             )}
+            <span className="hero-card-bar-label">
+              {displayHp(displayHpVal)}/{displayHp(hero.max_health)}
+              {hero.regen > 0 && (
+                <span className="hero-card-regen-tag">+{hero.regen}/s</span>
+              )}
+            </span>
           </div>
           <div className="hero-card-power">
             <div className="hero-card-power-fill" style={{ width: `${powerPct}%` }} />
+            <span className="hero-card-bar-label">Power: {hero.power}</span>
           </div>
           <span className={`hero-card-status ${statusClass}`}>{statusText}</span>
         </div>
