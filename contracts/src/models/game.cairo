@@ -4,7 +4,7 @@ use crate::helpers::bitmap::Bitmap;
 use crate::helpers::crafter::Crafter;
 use crate::helpers::packer::Packer;
 pub use crate::models::index::Game;
-use crate::typess::effect::{ALL_EFFECTS, EFFECT_COUNT, Effect};
+use crate::typess::effect::{ALL_EFFECTS, EFFECT_COUNT, Effect, EffectTrait};
 use crate::typess::ingredient::{INGREDIENT_COUNT, Ingredient, IngredientTrait};
 use crate::typess::role::{Role, RoleTrait};
 
@@ -74,6 +74,17 @@ pub impl GameImpl of GameTrait {
     }
 
     #[inline]
+    fn learn(ref self: Game, recipe: Effect) {
+        // [Effect] Give 1 gold if recipe is none
+        if recipe == Effect::None {
+            self.earn(1);
+            return;
+        }
+        // [Effect] Update grimoire
+        self.grimoire = Bitmap::set(self.grimoire, recipe.index());
+    }
+
+    #[inline]
     fn earn(ref self: Game, gold: u32) {
         self.gold += gold;
     }
@@ -124,10 +135,21 @@ pub impl GameImpl of GameTrait {
 
     #[inline]
     fn store(ref self: Game, effect: Effect, quantity: u16) {
+        // [Check] Skip if effect is none
+        if effect == Effect::None {
+            return;
+        }
         // [Effect] Add effect to the balance
+        let balance_index: u32 = effect.index().into();
         let effects: u256 = self.effects.into();
         let mut balances: Array<u16> = Packer::unpack(effects, EFFECT_SIZE, EFFECT_COUNT.into());
-        balances.append(quantity);
+        for index in 0_u32..EFFECT_COUNT.into() {
+            let mut balance: u32 = balances.pop_front().unwrap().into();
+            if index == balance_index {
+                balance = core::cmp::min(balance + quantity.into(), Bounded::<u16>::MAX.into());
+            }
+            balances.append(balance.try_into().unwrap());
+        }
         let effects: u256 = Packer::pack(balances, EFFECT_SIZE);
         self.effects = effects.try_into().unwrap();
     }

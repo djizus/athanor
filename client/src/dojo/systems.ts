@@ -125,6 +125,11 @@ export function createSystemCalls(manifest: Manifest) {
       account.execute([
         {
           contractAddress: playAddress,
+          entrypoint: 'claim',
+          calldata: [game_id, character_id],
+        },
+        {
+          contractAddress: playAddress,
           entrypoint: 'explore',
           calldata: [game_id, character_id],
         },

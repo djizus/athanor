@@ -95,6 +95,8 @@ pub mod PlayableComponent {
                 // [Effect] Update discovery
                 discovery.discover(effect);
                 store.set_discovery(@discovery);
+                // [Effect] Learn recipe or earn 1 gold if none
+                game.learn(effect);
             }
             // [Effect] Craft
             game.craft(ingredient_a, ingredient_b, quantity);
