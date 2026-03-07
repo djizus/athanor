@@ -8,7 +8,7 @@ export const ZONE_NAMES = [
   'Amber Hollows', 'Ember Cavern', 'Aether Spire', 'Sunken Abyss', 'Crystalveil Reach',
 ] as const
 
-export const ZONE_COLORS = ['#c8a040', '#b85030', '#9e4a9e', '#2a5a8a', '#2a8a6a'] as const
+export const ZONE_COLORS = ['#c8a040', '#b85030', '#9e4a9e', '#4a90d9', '#2a8a6a'] as const
 
 export const ZONE_BG_KEYS = [
   'zone-hollows', 'zone-cavern', 'zone-spire', 'zone-abyss', 'zone-crystalveil',

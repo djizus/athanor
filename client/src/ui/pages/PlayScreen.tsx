@@ -85,6 +85,17 @@ export function PlayScreen() {
   const [slotB, setSlotB] = useState<number | null>(null)
   const [collectionTab, setCollectionTab] = useState<PanelMode>('ingredients')
 
+  useEffect(() => {
+    if (slotA != null) {
+      const qty = inventory.find(i => i.ingredient_id === slotA)?.quantity ?? 0
+      if (qty <= 0) setSlotA(null)
+    }
+    if (slotB != null) {
+      const qty = inventory.find(i => i.ingredient_id === slotB)?.quantity ?? 0
+      if (qty <= 0) setSlotB(null)
+    }
+  }, [inventory, slotA, slotB])
+
   const [heroesCollapsed, setHeroesCollapsed] = useState(false)
   const [brewCollapsed, setBrewCollapsed] = useState(false)
   const [logsCollapsed, setLogsCollapsed] = useState(false)

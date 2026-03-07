@@ -1705,7 +1705,7 @@ button:disabled, .btn:disabled {
 .craft-slot-qty-zero {
   background: var(--bg-panel);
   border: 1px solid var(--border-color);
-  color: var(--accent-red);
+  color: var(--text-primary);
 }
 
 .craft-slot-empty {
