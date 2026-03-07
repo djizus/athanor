@@ -321,6 +321,7 @@ export function PlayScreen({ bridge }: Props) {
               <BrewContent
                 slotA={slotA}
                 slotB={slotB}
+                inventory={inventory}
                 recipes={recipes}
                 isGameOver={isGameOver}
                 brewAllCount={brewAllCount}
