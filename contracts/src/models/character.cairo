@@ -38,7 +38,11 @@ pub impl CharacterImpl of CharacterTrait {
     #[inline]
     fn health(ref self: Character) -> u16 {
         let now: u64 = starknet::get_block_timestamp();
-        let timedelta = now - self.available_at;
+        let timedelta = if now < self.available_at {
+            0
+        } else {
+            now - self.available_at
+        };
         let regen: u16 = core::cmp::min(self.regen.into() * timedelta, Bounded::<u16>::MAX.into())
             .try_into()
             .unwrap();

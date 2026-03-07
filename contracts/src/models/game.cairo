@@ -1,6 +1,7 @@
 use core::num::traits::{Bounded, Pow};
 use crate::constants::{
-    DEFAULT_HERO_COSTS, DEFAULT_HINT_COST, DEFAULT_HINT_MULTIPLIER, DEFAULT_MAX_HEROES,
+    DEFAULT_HERO_COSTS, DEFAULT_HINT_COST, DEFAULT_HINT_MULTIPLIER, DEFAULT_INGREDIENTS,
+    DEFAULT_MAX_HEROES,
 };
 use crate::helpers::bitmap::Bitmap;
 use crate::helpers::crafter::Crafter;
@@ -41,7 +42,7 @@ pub impl GameImpl of GameTrait {
             hint_price: DEFAULT_HINT_COST,
             grimoire: 0,
             hints: 0,
-            ingredients: 0,
+            ingredients: DEFAULT_INGREDIENTS,
             effects: 0,
             tries: 0,
             seed: seed,

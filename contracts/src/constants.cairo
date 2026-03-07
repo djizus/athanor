@@ -2,13 +2,16 @@ pub fn NAMESPACE() -> ByteArray {
     "ATHANOR"
 }
 
-pub const TIME_TOLERANCE: u64 = 5;
+// --- Default values ---
+pub const DEFAULT_INGREDIENTS: felt252 =
+    0x1004010040100401004010040100401004010040100401004010040100401; // 1 of each ingredient
 pub const DEFAULT_HINT_COST: u32 = 10;
 pub const DEFAULT_HINT_MULTIPLIER: u8 = 3;
 pub const DEFAULT_MAX_HEROES: u8 = 3;
 pub const DEFAULT_RECIPE_COUNT: u8 = 30;
 pub const DEFAULT_INGREDIENT_COUNT: u8 = 10;
 pub const DEFAULT_HERO_COSTS: [u32; 3] = [0, 80, 200];
+pub const TIME_TOLERANCE: u64 = 5;
 
 // --- Zone configuration ---
 
