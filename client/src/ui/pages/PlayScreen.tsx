@@ -553,11 +553,30 @@ function HeroPotionPopup({
 
   const totalSelected = Array.from(selected.values()).reduce((a, b) => a + b, 0)
 
+  const handleSelectAll = () => {
+    const next = new Map<number, number>()
+    for (const { effectIdx, qty } of availablePotions) {
+      next.set(effectIdx, qty)
+    }
+    setSelected(next)
+  }
+
+  const handleMaxPotion = (idx: number) => {
+    setSelected(prev => {
+      const next = new Map(prev)
+      next.set(idx, effectQuantities[idx])
+      return next
+    })
+  }
+
   return (
     <div className="potion-popup-backdrop" onClick={onClose}>
       <div className="potion-popup floating-panel" onClick={(e) => e.stopPropagation()}>
         <div className="potion-popup-header">
           <span className="potion-popup-name">Apply Potions to {heroName}</span>
+          {availablePotions.length > 0 && (
+            <button className="btn-sm" onClick={handleSelectAll}>Select All</button>
+          )}
         </div>
         {availablePotions.length === 0 ? (
           <p style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.8rem' }}>No potions available</p>
@@ -572,18 +591,27 @@ function HeroPotionPopup({
                 return (
                   <div
                     key={effectIdx}
-                    className={`potion-popup-cell${isActive ? ' active' : ''}`}
+                    className={`grimoire-cell${isActive ? ' discovered' : ''} grimoire-cell-clickable`}
                     style={{ ['--effect-color' as string]: color }}
+                    onClick={() => togglePotion(effectIdx, count > 0 ? -count : 1)}
                   >
-                    <div className="potion-popup-cell-icon">
-                      <img src={effectAssetUrl(effectIdx)} alt={effectStatLabel(effectIdx)} style={{ borderColor: color }} />
+                    <div
+                      className="grimoire-icon-wrap"
+                      style={{ ['--effect-color' as string]: color }}
+                    >
+                      <img
+                        className="grimoire-icon"
+                        src={effectAssetUrl(effectIdx)}
+                        alt={effectStatLabel(effectIdx)}
+                      />
+                      <span className="grimoire-badge-tr">{effectStatLabel(effectIdx)}</span>
+                      <span className={`ing-badge${qty <= 0 ? ' grimoire-badge-zero' : ''}`}>{qty}</span>
                     </div>
-                    <span className="potion-popup-cell-stat" style={{ color }}>{effectStatLabel(effectIdx)}</span>
-                    <span className="potion-popup-cell-stock">×{qty}</span>
-                    <div className="potion-popup-cell-qty">
-                      <button onClick={() => togglePotion(effectIdx, -1)} disabled={count <= 0}>−</button>
+                    <div className="potion-popup-cell-qty" onClick={(e) => e.stopPropagation()}>
+                      <button onClick={() => togglePotion(effectIdx, -1)} disabled={count <= 0}>&minus;</button>
                       <span>{count}</span>
                       <button onClick={() => togglePotion(effectIdx, 1)} disabled={count >= qty}>+</button>
+                      <button className="btn-max" onClick={() => handleMaxPotion(effectIdx)} disabled={count >= qty}>Max</button>
                     </div>
                   </div>
                 )

@@ -388,12 +388,12 @@ export function GrimoireContent({
                   src={effectAssetUrl(effectIdx)}
                   alt={isDiscovered ? EFFECT_NAMES[effectIdx] : '???'}
                 />
-                {canCraft && <span className="grimoire-badge-tl">★</span>}
-                {isHinted && <span className="grimoire-badge-tl grimoire-badge-hint">H</span>}
+                {canCraft && <span className="grimoire-badge-tl">{'\u26CF'}</span>}
+                {isHinted && <span className="grimoire-badge-tl grimoire-badge-hint">{'\u2605'}</span>}
                 {isDiscovered && (
-                  <span className="grimoire-badge-tr" style={{ color: categoryColor }}>{effectStatLabel(effectIdx)}</span>
+                  <span className="grimoire-badge-tr">{effectStatLabel(effectIdx)}</span>
                 )}
-                <span className={`grimoire-badge-br${quantity <= 0 ? ' grimoire-badge-zero' : ''}`}>{quantity}</span>
+                <span className={`ing-badge${quantity <= 0 ? ' grimoire-badge-zero' : ''}`}>{quantity}</span>
               </div>
             </div>
           )
