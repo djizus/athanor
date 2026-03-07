@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
-import { useConnect } from '@starknet-react/core'
+import { useCallback, useEffect, useState } from 'react'
+import { useAccount } from '@starknet-react/core'
+import type ControllerConnector from '@cartridge/connector/controller'
 
 function truncateAddress(hex: string): string {
   if (hex.length <= 12) return hex
@@ -10,24 +11,24 @@ export function usePlayerName(address: string | undefined): {
   displayName: string
   isUsername: boolean
 } {
-  const { connectors } = useConnect()
+  const { connector } = useAccount()
   const [username, setUsername] = useState<string | undefined>()
 
-  useEffect(() => {
-    if (!address) {
+  const getUsername = useCallback(async () => {
+    if (!connector || connector.id !== 'controller') return
+
+    try {
+      const ctrl = connector as unknown as ControllerConnector
+      const name = await ctrl.username()
+      setUsername(name || undefined)
+    } catch {
       setUsername(undefined)
-      return
     }
+  }, [connector])
 
-    const connector = connectors[0] as unknown as { username?: () => Promise<string | undefined> } | undefined
-    const usernameFn = connector?.username
-
-    if (typeof usernameFn === 'function') {
-      usernameFn()
-        .then((name) => setUsername(name ?? undefined))
-        .catch(() => setUsername(undefined))
-    }
-  }, [address, connectors])
+  useEffect(() => {
+    getUsername()
+  }, [getUsername, address])
 
   if (!address) return { displayName: '', isUsername: false }
 
