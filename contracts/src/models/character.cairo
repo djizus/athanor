@@ -49,6 +49,9 @@ pub impl CharacterImpl of CharacterTrait {
     fn buff(ref self: Character, effect: Effect, quantity: u16) {
         // [Check] Character is spawned
         self.assert_has_spawned();
+        // [Check] Character is available
+        let now = starknet::get_block_timestamp();
+        self.assert_is_available(now);
         // [Effect] Apply effect
         effect.apply(ref self, quantity);
     }
