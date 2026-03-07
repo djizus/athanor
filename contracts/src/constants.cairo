@@ -2,6 +2,7 @@ pub fn NAMESPACE() -> ByteArray {
     "ATHANOR"
 }
 
+pub const TIME_TOLERANCE: u64 = 5;
 pub const DEFAULT_HINT_COST: u32 = 10;
 pub const DEFAULT_HINT_MULTIPLIER: u8 = 3;
 pub const DEFAULT_MAX_HEROES: u8 = 3;

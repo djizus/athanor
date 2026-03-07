@@ -1,4 +1,5 @@
 use core::num::traits::Bounded;
+use crate::constants::TIME_TOLERANCE;
 use crate::helpers::exploration::{TickEvent, simulate_expedition};
 use crate::helpers::packer::Packer;
 use crate::models::game::INGREDIENT_SIZE;
@@ -107,7 +108,7 @@ pub impl CharacterAssert of AssertTrait {
 
     #[inline]
     fn assert_is_available(self: @Character, now: u64) {
-        assert(@now > self.available_at, Errors::CHARACTER_NOT_AVAILABLE);
+        assert(now + TIME_TOLERANCE > *self.available_at, Errors::CHARACTER_NOT_AVAILABLE);
     }
 
     #[inline]
