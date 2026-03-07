@@ -93,7 +93,7 @@ export function createSystemCalls(manifest: Manifest) {
         {
           contractAddress: playAddress,
           entrypoint: 'craft',
-          calldata: [game_id, ingredient_a, ingredient_b, quantity],
+          calldata: [game_id, Number(ingredient_a) + 1, Number(ingredient_b) + 1, quantity],
         },
       ]),
 
@@ -117,7 +117,7 @@ export function createSystemCalls(manifest: Manifest) {
         {
           contractAddress: playAddress,
           entrypoint: 'buff',
-          calldata: [game_id, character_id, effect, quantity],
+          calldata: [game_id, character_id, Number(effect) + 1, quantity],
         },
       ]),
 
