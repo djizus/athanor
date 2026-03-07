@@ -26,6 +26,8 @@ pub mod Errors {
     pub const GAME_NOT_STARTED: felt252 = 'Game: not started';
     pub const GAME_IS_STARTED: felt252 = 'Game: is started';
     pub const GAME_MAX_HEROES: felt252 = 'Game: max heroes';
+    pub const GAME_NO_ELIGIBLE_EFFECTS: felt252 = 'Game: no eligible effects';
+    pub const GAME_NO_ELIGIBLE_INGREDIENTS: felt252 = 'Game: no eligible ingredients';
 }
 
 #[generate_trait]
@@ -200,7 +202,7 @@ pub impl GameImpl of GameTrait {
         // [Effect] Spend gold and update hint price
         self.spend(self.hint_price);
         self.hint_price *= DEFAULT_HINT_MULTIPLIER.into();
-        // [Compute] Randomly select a recipe withtout hint
+        // [Compute] Randomly select an unknown recipe withtout hint
         let mut bitmap: u32 = self.hints | self.grimoire;
         let mut eligibles: Array<Effect> = array![];
         let mut index: u8 = 0;
@@ -212,7 +214,9 @@ pub impl GameImpl of GameTrait {
             }
             bitmap /= 2;
         }
-        let index: u32 = (rng.low % eligibles.len().into()).try_into().unwrap();
+        let len = eligibles.len();
+        assert(len != 0, Errors::GAME_NO_ELIGIBLE_EFFECTS);
+        let index: u32 = (rng.low % len.into()).try_into().unwrap();
         let effect: Effect = *eligibles.at(index);
 
         // [Compute] Randomly select an ingredient with remaining tries
@@ -228,10 +232,13 @@ pub impl GameImpl of GameTrait {
             let ingredient: Ingredient = (index + 1).into();
             eligibles.append(ingredient);
         }
-        let index: u32 = (rng.high % eligibles.len().into()).try_into().unwrap();
+        let len = eligibles.len();
+        assert(len != 0, Errors::GAME_NO_ELIGIBLE_INGREDIENTS);
+        let index: u32 = (rng.high % len.into()).try_into().unwrap();
         let ingredient: Ingredient = *eligibles.at(index);
 
-        // [Effect] Remove a try from the ingredient
+        // [Effect] Remove a try from that ingredient to avoid infinite hints on the same ingredient
+        // [Info] It will be added back when the ingredient is discovered
         let target: u32 = ingredient.index().into();
         let len: u32 = counts.len();
         for index in 0..len {
@@ -293,7 +300,7 @@ pub impl GameImpl of GameTrait {
         let recipes: u32 = self.grimoire & recipes_a ^ recipes_a;
         let counts = Packer::unpack(self.tries, TRY_SIZE, INGREDIENT_COUNT);
         let tries = *counts.at(ingredient_a.index().into());
-        let remaining = INGREDIENT_COUNT - tries - 1;
+        let remaining = INGREDIENT_COUNT - tries; // Add 1 try previously removed from clue
         let recipe = Crafter::craft(remaining.into(), recipes, rng.low);
         if (recipe != Effect::None) {
             return recipe;
@@ -302,7 +309,7 @@ pub impl GameImpl of GameTrait {
         let recipes: u32 = self.grimoire & recipes_b ^ recipes_b;
         let counts = Packer::unpack(self.tries, TRY_SIZE, INGREDIENT_COUNT);
         let tries = *counts.at(ingredient_b.index().into());
-        let remaining = INGREDIENT_COUNT - tries - 1;
+        let remaining = INGREDIENT_COUNT - tries; // Add 1 try previously removed from clue
         let recipe = Crafter::craft(remaining.into(), recipes, rng.low);
         if (recipe != Effect::None) {
             return recipe;

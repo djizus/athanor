@@ -87,7 +87,8 @@ pub mod PlayableComponent {
             game.assert_not_over();
             // [Check] Discovery
             let mut discovery = store.discovery(game_id, ingredient_a.into(), ingredient_b.into());
-            if !discovery.discovered {
+            let variation = store.discovery(game_id, ingredient_b.into(), ingredient_a.into());
+            if !discovery.discovered && !variation.discovered {
                 // [Compute] Random number unique with the remaining tries
                 let rng = poseidon_hash_span([seed, game.remaining_tries.into()].span());
                 // [Effect] Discover
