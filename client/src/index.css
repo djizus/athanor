@@ -1189,7 +1189,7 @@ button:disabled, .btn:disabled {
   overflow-y: auto;
   pointer-events: auto;
   scrollbar-width: thin;
-  zoom: 1.1;
+  zoom: 1.15;
 }
 
 .play-right-panels {
@@ -1205,7 +1205,7 @@ button:disabled, .btn:disabled {
   overflow-y: auto;
   pointer-events: auto;
   scrollbar-width: thin;
-  zoom: 1.1;
+  zoom: 1.15;
 }
 
 .side-panel {
