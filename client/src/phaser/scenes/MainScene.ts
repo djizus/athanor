@@ -9,6 +9,12 @@ import { baseCampWorldX, HERO_ROW_SPACING, HERO_Y_RATIO } from '../utils/layout'
 
 const MUSIC_PLAYLIST = ['menu-theme', 'game-loop-1', 'game-loop-2'] as const;
 
+/** Tracks loaded lazily after boot (not blocking initial load) */
+const LAZY_MUSIC = [
+  { key: 'game-loop-1', file: 'game_loop_1.mp3' },
+  { key: 'game-loop-2', file: 'game_loop_2.mp3' },
+] as const;
+
 export class MainScene extends Phaser.Scene {
   private bridge: PhaserBridge | null = null;
 
@@ -75,6 +81,13 @@ export class MainScene extends Phaser.Scene {
 
     this.scale.on(Phaser.Scale.Events.RESIZE, this.onResize, this);
 
+    for (const track of LAZY_MUSIC) {
+      if (!this.cache.audio.exists(track.key)) {
+        this.load.audio(track.key, `/assets/sounds/music/${track.file}`);
+      }
+    }
+    this.load.start();
+
     console.info('[MainScene:music] audio setup', {
       locked: this.sound.locked,
       playlist: [...MUSIC_PLAYLIST],
@@ -129,7 +142,8 @@ export class MainScene extends Phaser.Scene {
   private playMusicTrack(index: number): void {
     const key = MUSIC_PLAYLIST[index];
     if (!this.cache.audio.exists(key)) {
-      console.error('[MainScene:music] track missing in cache', { key, index });
+      console.info('[MainScene:music] track not yet loaded, skipping', { key, index });
+      this.playNextMusicTrack();
       return;
     }
 

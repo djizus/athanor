@@ -14,8 +14,6 @@ const SFX_KEYS = [
 
 const MUSIC_TRACKS = [
   { key: 'menu-theme', file: 'main_theme.mp3' },
-  { key: 'game-loop-1', file: 'game_loop_1.mp3' },
-  { key: 'game-loop-2', file: 'game_loop_2.mp3' },
 ] as const;
 
 export class BootScene extends Phaser.Scene {
