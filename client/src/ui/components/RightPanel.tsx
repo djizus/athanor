@@ -358,7 +358,6 @@ export function GrimoireContent({
           const isDiscovered = bitmapGet(grimoire, effectIdx + 1)
           const isHinted = !isDiscovered && hintIngredients.has(effectIdx)
           const quantity = effectQuantities[effectIdx]
-          const hasStock = quantity > 0
           const discovery = discoveryMap.get(effectIdx)
           const category = EFFECT_CATEGORIES[effectIdx]
           const categoryColor = EFFECT_COLORS[category]

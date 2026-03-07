@@ -64,28 +64,13 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-#game-container {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-}
-
-#game-container canvas {
-  display: block;
-}
-
 .app {
   position: fixed;
   inset: 0;
   z-index: 1;
-  pointer-events: none;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-}
-
-.app > * {
-  pointer-events: auto;
 }
 
 .panel {
