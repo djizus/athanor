@@ -1,3 +1,4 @@
+use core::num::traits::Bounded;
 use crate::helpers::exploration::{TickEvent, simulate_expedition};
 use crate::helpers::packer::Packer;
 use crate::models::game::INGREDIENT_SIZE;
@@ -9,6 +10,7 @@ use crate::typess::role::{Role, RoleTrait};
 pub mod Errors {
     pub const CHARACTER_NOT_SPAWNED: felt252 = 'Character: not spawned';
     pub const CHARACTER_NOT_AVAILABLE: felt252 = 'Character: not available';
+    pub const CHARACTER_NOT_READY: felt252 = 'Character: not ready';
 }
 
 #[generate_trait]
@@ -28,12 +30,18 @@ pub impl CharacterImpl of CharacterTrait {
             ingredients: 0,
         };
         role.spawn(ref character);
+        character.health = character.max_health;
         character
     }
 
     #[inline]
-    fn heal(ref self: Character, health: u16) {
-        self.health = core::cmp::min(self.health + health, self.max_health);
+    fn health(ref self: Character) -> u16 {
+        let now: u64 = starknet::get_block_timestamp();
+        let timedelta = now - self.available_at;
+        let regen: u16 = core::cmp::min(self.regen.into() * timedelta, Bounded::<u16>::MAX.into())
+            .try_into()
+            .unwrap();
+        core::cmp::min(self.health + regen, self.max_health)
     }
 
     #[inline]
@@ -49,12 +57,11 @@ pub impl CharacterImpl of CharacterTrait {
         // [Check] Character is spawned
         self.assert_has_spawned();
         // [Check] Character is available
-        let now: u64 = starknet::get_block_timestamp();
+        let now = starknet::get_block_timestamp();
         self.assert_is_available(now);
+        self.assert_is_ready();
         // [Effect] Heal
-        let timedelta = now - self.available_at;
-        let regen: u16 = self.regen * timedelta.try_into().expect('Character: timedelta too big');
-        self.heal(regen);
+        self.health = self.health();
         // [Effect] Apply expedition results
         let mut result = simulate_expedition(
             hp: self.health, max_hp: self.max_health, power: self.power, seed: rng,
@@ -102,6 +109,11 @@ pub impl CharacterAssert of AssertTrait {
     fn assert_is_available(self: @Character, now: u64) {
         assert(@now > self.available_at, Errors::CHARACTER_NOT_AVAILABLE);
     }
+
+    #[inline]
+    fn assert_is_ready(self: @Character) {
+        assert(self.ingredients == @0 && self.gold == @0, Errors::CHARACTER_NOT_READY);
+    }
 }
 
 #[cfg(test)]
@@ -120,14 +132,6 @@ mod tests {
     }
 
     #[test]
-    fn test_character_heal() {
-        let mut character = CharacterTrait::new(GAME_ID, CHARACTER_ID, Role::Mage);
-        character.health = 0;
-        character.heal(character.max_health + 1);
-        assert_eq!(character.health, character.max_health);
-    }
-
-    #[test]
     fn test_character_buff() {
         let mut character = CharacterTrait::new(GAME_ID, CHARACTER_ID, Role::Mage);
         let max_health = character.max_health;
@@ -139,6 +143,16 @@ mod tests {
     fn test_character_explore() {
         let mut character = CharacterTrait::new(GAME_ID, CHARACTER_ID, Role::Mage);
         starknet::testing::set_block_timestamp(1);
-        character.explore(core::poseidon::poseidon_hash_span([0, 0].span()));
+        let first_logs = character.explore(0);
+        assert_eq!(character.health, 0);
+        let resterored_at = character.available_at
+            + (character.max_health / character.regen).into();
+        starknet::testing::set_block_timestamp(resterored_at);
+        assert_eq!(character.health(), character.max_health);
+        let (ingredients, gold) = character.claim();
+        assert_eq!(ingredients, 1208928125459838486447105);
+        assert_eq!(gold, 6);
+        let second_logs = character.explore(0);
+        assert_eq!(first_logs.len(), second_logs.len());
     }
 }

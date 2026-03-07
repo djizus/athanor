@@ -34,7 +34,7 @@
   "contracts": [
     {
       "address": "0x505d14c8c68fba8bee37651e39ded642d3cbaee2727b6a2f7463da369428b2",
-      "class_hash": "0x51c8ad8a54f97b92550d6ee8e8ba4a2f51ed0433f9a711b78fc23068fa2470d",
+      "class_hash": "0x5058118065c9317a9cccec63bf4ed52954a2b9308d279124ab93c63d4fcfa01",
       "init_calldata": [
         "0x059b1a0c489b635d7c7f43594d187362ddd2dcea6c82db4eef2579fd185b3753",
         "0x00ce6622be39efa11b4a50b7d2e0c342a218bc099bbd313365efe169ef0eb3e2",
@@ -57,7 +57,7 @@
     },
     {
       "address": "0x94e89d7ce6030cb5fded3e378d20e399ef26d3213c711792a8edf92471793d",
-      "class_hash": "0x1a4fe272379fb1b57fad613ce81bc0eb985e87f5d6dea5dca885f91a33328db",
+      "class_hash": "0xebf4e2a4af08587fae28cdcfbb357a95ff6cb48f401d74a11c293b6c8919",
       "init_calldata": [
         "0x059b1a0c489b635d7c7f43594d187362ddd2dcea6c82db4eef2579fd185b3753"
       ],

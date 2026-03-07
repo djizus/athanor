@@ -4,7 +4,9 @@ use crate::constants::INGREDIENTS_PER_ZONE;
 use crate::helpers::random::{Random, RandomTrait};
 use crate::typess::category::Category;
 
-#[derive(Copy, Drop)]
+const MULTIPLIER: u32 = 100;
+
+#[derive(Copy, Drop, Debug)]
 pub struct TickEvent {
     pub depth: u16,
     pub zone_id: u8,
@@ -185,9 +187,9 @@ fn clamp_u16(val: u32) -> u16 {
 
 pub fn simulate_expedition(hp: u16, max_hp: u16, power: u16, seed: felt252) -> ExpeditionResult {
     let mut rng = Random { seed, nonce: 0 };
-    let mut current_hp: u32 = hp.into();
-    let hero_max_hp: u32 = max_hp.into();
-    let hero_power: u32 = power.into();
+    let mut current_hp: u32 = MULTIPLIER * hp.into();
+    let hero_max_hp: u32 = MULTIPLIER * max_hp.into();
+    let hero_power: u32 = MULTIPLIER * power.into();
     let mut depth: u16 = 0;
     let mut gold: u32 = 0;
     let mut events: Array<TickEvent> = array![];
@@ -201,6 +203,7 @@ pub fn simulate_expedition(hp: u16, max_hp: u16, power: u16, seed: felt252) -> E
         let drain = get_drain(zone_id);
 
         if current_hp <= drain {
+            current_hp = 0;
             events
                 .append(
                     TickEvent {
@@ -229,13 +232,13 @@ pub fn simulate_expedition(hp: u16, max_hp: u16, power: u16, seed: felt252) -> E
                 current_hp -= dmg;
             }
             event_kind = Category::Trap.into();
-            event_value = clamp_u16(dmg);
+            event_value = clamp_u16(dmg / MULTIPLIER);
         } else if event_roll < gold_t {
             let (gmin, gmax) = gold_reward_range(zone_id);
             let amount = roll_range(ref rng, gmin, gmax);
             gold += amount;
             event_kind = Category::Gold.into();
-            event_value = clamp_u16(amount);
+            event_value = clamp_u16(amount / MULTIPLIER);
         } else if event_roll < heal_t {
             let (hmin, hmax) = heal_amount_range(zone_id);
             let amount = roll_range(ref rng, hmin, hmax);
@@ -244,7 +247,7 @@ pub fn simulate_expedition(hp: u16, max_hp: u16, power: u16, seed: felt252) -> E
                 current_hp = hero_max_hp;
             }
             event_kind = Category::Heal.into();
-            event_value = clamp_u16(amount);
+            event_value = clamp_u16(amount / MULTIPLIER);
         } else if event_roll < beast_t {
             let (bmin, bmax) = beast_power_range(zone_id);
             let beast_pow = roll_range(ref rng, bmin, bmax);
@@ -260,7 +263,7 @@ pub fn simulate_expedition(hp: u16, max_hp: u16, power: u16, seed: felt252) -> E
                     current_hp -= combat_dmg;
                 }
                 event_kind = Category::BeastWin.into();
-                event_value = clamp_u16(loot);
+                event_value = clamp_u16(loot / MULTIPLIER);
             } else {
                 let dmg = beast_pow - hero_power;
                 if current_hp <= dmg {
@@ -269,11 +272,11 @@ pub fn simulate_expedition(hp: u16, max_hp: u16, power: u16, seed: felt252) -> E
                     current_hp -= dmg;
                 }
                 event_kind = Category::BeastLose.into();
-                event_value = clamp_u16(dmg);
+                event_value = clamp_u16(dmg / MULTIPLIER);
             }
         }
 
-        let hp_after = clamp_u16(current_hp);
+        let hp_after = clamp_u16(current_hp / MULTIPLIER);
 
         if event_kind != Category::None.into() {
             events.append(TickEvent { depth, zone_id, event_kind, value: event_value, hp_after });
@@ -298,7 +301,7 @@ pub fn simulate_expedition(hp: u16, max_hp: u16, power: u16, seed: felt252) -> E
                         zone_id,
                         event_kind: Category::Ingredient.into(),
                         value: ingredient_id.into(),
-                        hp_after,
+                        hp_after: hp_after,
                     },
                 );
         }
@@ -306,9 +309,14 @@ pub fn simulate_expedition(hp: u16, max_hp: u16, power: u16, seed: felt252) -> E
         if current_hp == 0 {
             break;
         }
-
         depth += 1;
     }
 
-    ExpeditionResult { death_depth: depth, gold, events, bag, remaining_hp: clamp_u16(current_hp) }
+    ExpeditionResult {
+        death_depth: depth,
+        gold: gold / MULTIPLIER,
+        events: events,
+        bag: bag,
+        remaining_hp: clamp_u16(current_hp / MULTIPLIER),
+    }
 }
