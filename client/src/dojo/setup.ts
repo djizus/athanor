@@ -78,7 +78,7 @@ export async function setupDojo(onStatus?: (status: string) => void) {
   try {
     onStatus?.('Validating configuration...')
     const config = dojoConfig()
-    const namespace = import.meta.env.VITE_PUBLIC_NAMESPACE ?? 'athanor'
+    const namespace = import.meta.env.VITE_PUBLIC_NAMESPACE ?? 'ATHANOR'
     const entityModels = modelNames.map((name) => `${namespace}-${name}`)
 
     logPhase('config', {
