@@ -15,6 +15,8 @@ function formatTime(totalSeconds: number): string {
 }
 
 export function StatusHUD({ gold, discoveredCount, elapsedSeconds, onBack, onSettings }: Props) {
+  const pct = Math.min(100, (discoveredCount / 30) * 100)
+
   return (
     <div className="status-hud floating-panel">
       <button className="status-hud-btn status-hud-back" onClick={onBack}>
@@ -25,7 +27,10 @@ export function StatusHUD({ gold, discoveredCount, elapsedSeconds, onBack, onSet
       <span className="status-hud-sep">·</span>
       <span className="status-hud-gold">Gold {displayGold(gold)}</span>
       <span className="status-hud-sep">·</span>
-      <span className="status-hud-recipes">Potions {discoveredCount}/30</span>
+      <div className="status-hud-progress">
+        <div className="status-hud-progress-fill" style={{ width: `${pct}%` }} />
+        <span className="status-hud-progress-label">{discoveredCount}/30</span>
+      </div>
       <span className="status-hud-divider" />
       <button className="status-hud-btn status-hud-settings" onClick={onSettings}>
         ⚙
