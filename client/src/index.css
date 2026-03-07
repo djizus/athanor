@@ -942,6 +942,19 @@ button:disabled, .btn:disabled {
   font-family: 'Courier New', monospace;
 }
 
+.settings-confirm-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.settings-confirm-text {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-right: auto;
+}
+
 .settings-close-btn {
   margin-top: 0.25rem;
 }
@@ -2399,6 +2412,65 @@ button:disabled, .btn:disabled {
   overflow-y: auto;
   padding: clamp(0.75rem, 2vw, 1.75rem);
 }
+
+/* ── How to Play ──────────────────────────────────────────── */
+
+.htp-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.htp-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.htp-heading {
+  font-family: var(--font-title);
+  font-size: 1rem;
+  color: var(--accent-gold);
+  letter-spacing: 0.06em;
+  margin: 0;
+}
+
+.htp-text {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.55;
+  margin: 0;
+}
+
+.htp-text strong {
+  color: var(--text-primary);
+}
+
+.htp-text em {
+  color: var(--accent-gold-dim);
+  font-style: normal;
+}
+
+.htp-list {
+  margin: 0.2rem 0 0;
+  padding-left: 1.25rem;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.htp-list strong {
+  color: var(--text-primary);
+}
+
+.htp-cat {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.htp-cat-health { color: #d04050; }
+.htp-cat-power  { color: #4080d0; }
+.htp-cat-regen  { color: #40c060; }
 
 /* ── Responsive — Play Screen ─────────────────────────────── */
 

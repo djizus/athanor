@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type PageId = 'home' | 'play' | 'mygames' | 'leaderboard'
+export type PageId = 'home' | 'play' | 'mygames' | 'leaderboard' | 'howtoplay'
 
 type NavigationState = {
   currentPage: PageId
@@ -21,7 +21,7 @@ export const useNavigationStore = create<NavigationState>((set, get) => ({
   goBack: () => {
     const { currentPage } = get()
 
-    if (currentPage === 'play' || currentPage === 'mygames' || currentPage === 'leaderboard') {
+    if (currentPage === 'play' || currentPage === 'mygames' || currentPage === 'leaderboard' || currentPage === 'howtoplay') {
       set({ currentPage: 'home', gameId: null })
     }
   },
