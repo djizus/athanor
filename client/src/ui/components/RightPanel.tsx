@@ -5,12 +5,14 @@ import {
   EFFECT_CATEGORIES,
   INGREDIENT_NAMES,
   INGREDIENTS_PER_ZONE,
+  ROLE_NAMES,
   ZONE_COLORS,
   ZONE_NAMES,
   displayGold,
   getZoneForIngredient,
   ingredientAssetUrl,
   effectAssetUrl,
+  roleAssetUrl,
 } from '@/game/constants'
 import { bitmapGet } from '@/game/packer'
 import type { DiscoveryData } from '@/hooks/useRecipes'
@@ -21,6 +23,13 @@ export interface InventoryItem {
   ingredient_id: number
   quantity: number
 }
+
+export interface GrimoireHero {
+  id: number
+  role: number
+}
+
+type FilterCategory = 'all' | 'health' | 'power' | 'regen'
 
 /* ── Shared ingredient icon ───────────────────── */
 
@@ -73,21 +82,15 @@ function IngredientIcon({
 
 export function CraftContent({
   inventory,
-  gold,
   isGameOver,
-  hintCost,
   brewAllCount,
   onCraft,
-  onBuyHint,
   onBrewAll,
 }: {
   inventory: InventoryItem[]
-  gold: number
   isGameOver: boolean
-  hintCost: number
   brewAllCount: number
   onCraft: (a: number, b: number) => void
-  onBuyHint: () => void
   onBrewAll: () => void
 }) {
   const [slotA, setSlotA] = useState<number | null>(null)
@@ -147,9 +150,6 @@ export function CraftContent({
       </div>
 
       <div className="craft-btn-row">
-        <button onClick={onBuyHint} disabled={isGameOver || gold < hintCost}>
-          Hint ({displayGold(hintCost)}g)
-        </button>
         <button onClick={onBrewAll} disabled={isGameOver || brewAllCount === 0}>
           Brew All ({brewAllCount})
         </button>
@@ -181,94 +181,224 @@ export function CraftContent({
   )
 }
 
+/* ── Potion Use Popup ─────────────────────────── */
+
+function PotionUsePopup({
+  effectIndex,
+  maxQuantity,
+  heroes,
+  onUse,
+  onClose,
+}: {
+  effectIndex: number
+  maxQuantity: number
+  heroes: GrimoireHero[]
+  onUse: (heroId: number, quantity: number) => void
+  onClose: () => void
+}) {
+  const [quantity, setQuantity] = useState(1)
+  const [heroId, setHeroId] = useState<number | null>(heroes.length > 0 ? heroes[0].id : null)
+
+  const category = EFFECT_CATEGORIES[effectIndex]
+  const categoryColor = EFFECT_COLORS[category]
+  const categoryLabel = category.charAt(0).toUpperCase() + category.slice(1)
+
+  return (
+    <div className="potion-popup-backdrop" onClick={onClose}>
+      <div className="potion-popup floating-panel" onClick={e => e.stopPropagation()}>
+        <div className="potion-popup-header">
+          <img
+            className="potion-popup-icon"
+            src={effectAssetUrl(effectIndex)}
+            alt={EFFECT_NAMES[effectIndex]}
+            style={{ borderColor: categoryColor }}
+          />
+          <div>
+            <div className="potion-popup-name" style={{ color: categoryColor }}>
+              {EFFECT_NAMES[effectIndex]}
+            </div>
+            <div className="potion-popup-category">{categoryLabel} Potion</div>
+          </div>
+        </div>
+
+        <div className="potion-popup-section">
+          <span className="potion-popup-label">Quantity</span>
+          <div className="potion-popup-qty-control">
+            <button onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={quantity <= 1}>−</button>
+            <span>{quantity}</span>
+            <button onClick={() => setQuantity(q => Math.min(maxQuantity, q + 1))} disabled={quantity >= maxQuantity}>+</button>
+          </div>
+        </div>
+
+        <div className="potion-popup-section">
+          <span className="potion-popup-label">Apply to</span>
+          <div className="potion-popup-heroes">
+            {heroes.map(hero => {
+              const roleIdx = hero.role > 0 ? hero.role - 1 : hero.id
+              return (
+                <button
+                  key={hero.id}
+                  className={`potion-popup-hero${heroId === hero.id ? ' selected' : ''}`}
+                  onClick={() => setHeroId(hero.id)}
+                >
+                  <img src={roleAssetUrl(roleIdx)} alt={ROLE_NAMES[roleIdx]} />
+                  <span>{ROLE_NAMES[roleIdx]}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="potion-popup-actions">
+          <button
+            className="btn-primary"
+            onClick={() => heroId !== null && onUse(heroId, quantity)}
+            disabled={heroId === null}
+          >
+            Apply
+          </button>
+          <button onClick={onClose}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ── Grimoire Panel Content ───────────────────── */
 
 export function GrimoireContent({
-  recipes,
-  discoveredCount,
   grimoire,
+  hints,
+  effectQuantities,
+  recipes,
+  hintIngredients,
+  discoveredCount,
+  gold,
+  hintCost,
+  isGameOver,
+  heroes,
+  onBuyHint,
+  onUsePotion,
 }: {
-  recipes: DiscoveryData[]
-  discoveredCount: number
   grimoire: number
+  hints: number
+  effectQuantities: number[]
+  recipes: DiscoveryData[]
+  hintIngredients: Map<number, number[]>
+  discoveredCount: number
+  gold: number
+  hintCost: number
+  isGameOver: boolean
+  heroes: GrimoireHero[]
+  onBuyHint: () => void
+  onUsePotion: (effect: number, heroId: number, quantity: number) => void
 }) {
-  /* Show only recipes whose effect is actually marked in the grimoire bitmap,
-     deduplicated by effect (first recipe per effect wins). */
-  const discovered = useMemo(() => {
-    const seenEffects = new Set<number>()
-    const result: DiscoveryData[] = []
+  const [filter, setFilter] = useState<FilterCategory>('all')
+  const [selectedEffect, setSelectedEffect] = useState<number | null>(null)
+
+  const discoveryMap = useMemo(() => {
+    const map = new Map<number, DiscoveryData>()
     for (const r of recipes) {
-      if (bitmapGet(grimoire, r.effect) && !seenEffects.has(r.effect)) {
-        seenEffects.add(r.effect)
-        result.push(r)
+      if (bitmapGet(grimoire, r.effect) && !map.has(r.effect)) {
+        map.set(r.effect, r)
       }
     }
-    return result
+    return map
   }, [recipes, grimoire])
+
+  const effects = useMemo(() => {
+    const all = Array.from({ length: 30 }, (_, i) => i)
+    if (filter === 'all') return all
+    return all.filter(i => EFFECT_CATEGORIES[i] === filter)
+  }, [filter])
+
+  const selectedQuantity = selectedEffect !== null ? effectQuantities[selectedEffect] : 0
 
   return (
     <>
       <div className="grimoire-progress">
         <div className="grimoire-progress-fill" style={{ width: `${(discoveredCount / 30) * 100}%` }} />
       </div>
-      <div className="grimoire-grid">
-        {discovered.length === 0 ? (
-          <div className="grimoire-card-undiscovered">No discoveries yet</div>
-        ) : (
-          discovered.map((recipe, idx) => {
-            const effectCategory = EFFECT_CATEGORIES[recipe.effect]
-            const effectColor = effectCategory ? EFFECT_COLORS[effectCategory] : undefined
-            const categoryLabel = effectCategory
-              ? effectCategory.charAt(0).toUpperCase() + effectCategory.slice(1)
-              : ''
-            const zoneA = getZoneForIngredient(recipe.ingredient_a)
-            const zoneB = getZoneForIngredient(recipe.ingredient_b)
-            return (
-              <div key={`${recipe.ingredient_a}-${recipe.ingredient_b}`} className="grimoire-card discovered">
-                <div className="grimoire-card-header">
-                  <div className="grimoire-card-title">#{idx + 1}</div>
-                  <div className="grimoire-card-effect" style={{ color: effectColor }}>
-                    <img
-                      className="grimoire-effect-icon"
-                      src={effectAssetUrl(recipe.effect)}
-                      alt={EFFECT_NAMES[recipe.effect]}
-                    />
-                    {EFFECT_NAMES[recipe.effect]}
-                    <span className="grimoire-effect-category">({categoryLabel})</span>
-                  </div>
-                </div>
-                <div className="grimoire-card-recipe">
-                  <div className="grimoire-ingredient">
-                    <img
-                      className="grimoire-ing-icon"
-                      src={ingredientAssetUrl(recipe.ingredient_a)}
-                      alt={INGREDIENT_NAMES[recipe.ingredient_a]}
-                      style={{ borderColor: ZONE_COLORS[zoneA] }}
-                    />
-                    <span style={{ color: ZONE_COLORS[zoneA] }}>
-                      {INGREDIENT_NAMES[recipe.ingredient_a]}
-                    </span>
-                  </div>
-                  <span className="grimoire-plus">+</span>
-                  <div className="grimoire-ingredient">
-                    <img
-                      className="grimoire-ing-icon"
-                      src={ingredientAssetUrl(recipe.ingredient_b)}
-                      alt={INGREDIENT_NAMES[recipe.ingredient_b]}
-                      style={{ borderColor: ZONE_COLORS[zoneB] }}
-                    />
-                    <span style={{ color: ZONE_COLORS[zoneB] }}>
-                      {INGREDIENT_NAMES[recipe.ingredient_b]}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )
-          })
-        )}
+
+      <div className="grimoire-filters">
+        {(['all', 'health', 'power', 'regen'] as const).map(cat => (
+          <button
+            key={cat}
+            className={`grimoire-filter-btn${filter === cat ? ' active' : ''}`}
+            style={cat !== 'all' ? { ['--filter-color' as string]: EFFECT_COLORS[cat] } : undefined}
+            onClick={() => setFilter(cat)}
+          >
+            {cat === 'all' ? 'All' : cat.charAt(0).toUpperCase() + cat.slice(1)}
+          </button>
+        ))}
       </div>
+
+      <div className="grimoire-btn-row">
+        <button onClick={onBuyHint} disabled={isGameOver || gold < hintCost}>
+          Hint ({displayGold(hintCost)}g)
+        </button>
+      </div>
+
+      <div className="grimoire-grid">
+        {effects.map(effectIdx => {
+          const isDiscovered = bitmapGet(grimoire, effectIdx)
+          const isHinted = !isDiscovered && bitmapGet(hints, effectIdx)
+          const quantity = effectQuantities[effectIdx]
+          const hasStock = quantity > 0
+          const canUse = isDiscovered && hasStock && !isGameOver
+          const discovery = discoveryMap.get(effectIdx)
+          const hintIngs = hintIngredients.get(effectIdx)
+          const category = EFFECT_CATEGORIES[effectIdx]
+          const categoryColor = EFFECT_COLORS[category]
+          const categoryLabel = category.charAt(0).toUpperCase() + category.slice(1)
+
+          return (
+            <div
+              key={effectIdx}
+              className={`grimoire-potion${isDiscovered ? ' discovered' : ''}${isHinted ? ' hinted' : ''}${!isDiscovered && !isHinted ? ' locked' : ''}${canUse ? ' usable' : ''}`}
+              onClick={canUse ? () => setSelectedEffect(effectIdx) : undefined}
+            >
+              <div className="grimoire-potion-icon-wrap" style={{ ['--effect-color' as string]: categoryColor }}>
+                <img
+                  className="grimoire-potion-icon"
+                  src={effectAssetUrl(effectIdx)}
+                  alt={isDiscovered ? EFFECT_NAMES[effectIdx] : '???'}
+                />
+                {hasStock && <span className="grimoire-potion-badge">{quantity}</span>}
+              </div>
+              <div className="grimoire-potion-info">
+                <span className="grimoire-potion-name" style={isDiscovered ? { color: categoryColor } : undefined}>
+                  {isDiscovered ? EFFECT_NAMES[effectIdx] : '???'}
+                </span>
+                <span className="grimoire-potion-category">{categoryLabel}</span>
+                {isDiscovered && discovery && (
+                  <span className="grimoire-potion-recipe">
+                    <img className="grimoire-potion-recipe-icon" src={ingredientAssetUrl(discovery.ingredient_a)} alt={INGREDIENT_NAMES[discovery.ingredient_a]} />
+                    <span>+</span>
+                    <img className="grimoire-potion-recipe-icon" src={ingredientAssetUrl(discovery.ingredient_b)} alt={INGREDIENT_NAMES[discovery.ingredient_b]} />
+                  </span>
+                )}
+                {isHinted && hintIngs && hintIngs.length > 0 && (
+                  <span className="grimoire-potion-hint">
+                    Uses: {hintIngs.map(id => INGREDIENT_NAMES[id]).join(', ')}
+                  </span>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {selectedEffect !== null && bitmapGet(grimoire, selectedEffect) && selectedQuantity > 0 && (
+        <PotionUsePopup
+          effectIndex={selectedEffect}
+          maxQuantity={selectedQuantity}
+          heroes={heroes}
+          onUse={(heroId, qty) => { onUsePotion(selectedEffect, heroId, qty); setSelectedEffect(null) }}
+          onClose={() => setSelectedEffect(null)}
+        />
+      )}
     </>
   )
 }
-
 

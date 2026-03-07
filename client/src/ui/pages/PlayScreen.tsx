@@ -5,6 +5,7 @@ import { useGame } from '@/hooks/useGame'
 import { useHeroes } from '@/hooks/useHeroes'
 import { useInventory } from '@/hooks/useInventory'
 import { useRecipes } from '@/hooks/useRecipes'
+import { useHints } from '@/hooks/useHints'
 import { useExplorationLog } from '@/hooks/useExplorationLog'
 import { useNavigationStore } from '@/stores/navigationStore'
 import { txToast } from '@/stores/toastStore'
@@ -16,7 +17,7 @@ import {
   displayHp,
   roleAssetUrl,
 } from '@/game/constants'
-import { bitmapPopcount } from '@/game/packer'
+import { bitmapPopcount, unpackEffects } from '@/game/packer'
 import type { DiscoveryData } from '@/hooks/useRecipes'
 import { StatusHUD } from '@/ui/components/StatusHUD'
 import { CraftContent, GrimoireContent } from '@/ui/components/RightPanel'
@@ -69,6 +70,7 @@ export function PlayScreen({ bridge }: Props) {
   const heroes = useHeroes(gameId)
   const inventory = useInventory(gameId)
   const recipes = useRecipes(gameId)
+  const hintIngredients = useHints(gameId)
 
   const [selectedHeroId, setSelectedHeroId] = useState(0)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -200,6 +202,13 @@ export function PlayScreen({ bridge }: Props) {
     try { await client.recruit(account, gameId); t.success() } catch (e) { t.error(); pushInfo('Recruitment failed'); console.error('Recruit failed:', e) }
   }
 
+  const handleBuff = async (effect: number, heroId: number, quantity: number) => {
+    if (!account || gameId == null) return
+    pushInfo(`Applying potion to hero...`)
+    const t = txToast('Applying potion')
+    try { await client.buff(account, gameId, heroId, effect, quantity); t.success() } catch (e) { t.error(); pushInfo('Potion application failed'); console.error('Buff failed:', e) }
+  }
+
   if (gameId == null) {
     return (
       <div className="page-center">
@@ -212,6 +221,7 @@ export function PlayScreen({ bridge }: Props) {
   const gold = game?.gold ?? 0
   const discoveredCount = game ? bitmapPopcount(game.grimoire) : 0
   const brewAllCount = useMemo(() => computeUntriedPairs(inventory, recipes).length, [inventory, recipes])
+  const effectQuantities = useMemo(() => game ? unpackEffects(BigInt(game.effects)) : Array(30).fill(0) as number[], [game])
   const heroCount = game ? bitmapPopcount(game.heroes) : heroes.length
   const isGameOver = game ? Number(game.ended_at) > 0 : false
   const hintCost = game?.hint_price ?? 4
@@ -256,18 +266,6 @@ export function PlayScreen({ bridge }: Props) {
           )}
         </div>
 
-        <div className="side-panel floating-panel panel-grimoire">
-          <button className="side-panel-header" onClick={() => setGrimoireCollapsed((v) => !v)}>
-            <span className="side-panel-title">Grimoire {discoveredCount}/30</span>
-            <span className="side-panel-chevron">{grimoireCollapsed ? '▸' : '▾'}</span>
-          </button>
-          {!grimoireCollapsed && (
-            <div className="side-panel-body">
-              <GrimoireContent recipes={recipes} discoveredCount={discoveredCount} grimoire={game?.grimoire ?? 0} />
-            </div>
-          )}
-        </div>
-
         <div className="side-panel floating-panel panel-logs">
           <button className="side-panel-header" onClick={() => setLogsCollapsed((v) => !v)}>
             <span className="side-panel-title">Exploration Log</span>
@@ -301,19 +299,39 @@ export function PlayScreen({ bridge }: Props) {
             <div className="side-panel-body">
               <CraftContent
                 inventory={inventory}
-                gold={gold}
                 isGameOver={isGameOver}
-                hintCost={hintCost}
                 brewAllCount={brewAllCount}
                 onCraft={(a, b) => void handleCraft(a, b)}
-                onBuyHint={() => void handleClue()}
                 onBrewAll={() => void handleBrewAll()}
               />
             </div>
           )}
         </div>
 
-
+        <div className="side-panel floating-panel panel-grimoire">
+          <button className="side-panel-header" onClick={() => setGrimoireCollapsed((v) => !v)}>
+            <span className="side-panel-title">Grimoire {discoveredCount}/30</span>
+            <span className="side-panel-chevron">{grimoireCollapsed ? '▸' : '▾'}</span>
+          </button>
+          {!grimoireCollapsed && (
+            <div className="side-panel-body">
+              <GrimoireContent
+                grimoire={game?.grimoire ?? 0}
+                hints={game?.hints ?? 0}
+                effectQuantities={effectQuantities}
+                recipes={recipes}
+                hintIngredients={hintIngredients}
+                discoveredCount={discoveredCount}
+                gold={gold}
+                hintCost={hintCost}
+                isGameOver={isGameOver}
+                heroes={heroes.map(h => ({ id: h.id, role: h.role }))}
+                onBuyHint={() => void handleClue()}
+                onUsePotion={(eff, heroId, qty) => void handleBuff(eff, heroId, qty)}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {isGameOver && (
