@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { COLORS, ZONE_TINTS } from '../utils/colors';
+import { COLORS } from '../utils/colors';
 import { MAP_HEIGHT, MAP_WIDTH } from '../utils/layout';
 
 const FALLBACK_W = 1920;
@@ -24,6 +24,13 @@ export class BootScene extends Phaser.Scene {
   preload(): void {
     this.load.image('lab-bg-file', '/assets/backgrounds/lab-bg.webp');
     this.load.image('world-map-file', '/assets/backgrounds/world-map.webp');
+    this.load.image('world-bg', '/assets/backgrounds/world-bg.webp');
+    this.load.image('zone-athanor', '/assets/backgrounds/zone-athanor.webp');
+    this.load.image('zone-hollows', '/assets/backgrounds/zone-hollows.webp');
+    this.load.image('zone-cavern', '/assets/backgrounds/zone-cavern.webp');
+    this.load.image('zone-spire', '/assets/backgrounds/zone-spire.webp');
+    this.load.image('zone-abyss', '/assets/backgrounds/zone-abyss.webp');
+    this.load.image('zone-crystalveil', '/assets/backgrounds/zone-crystalveil.webp');
 
     const roles = [
       { key: 'role-mage', file: 'role-mage.webp' },
@@ -54,13 +61,6 @@ export class BootScene extends Phaser.Scene {
 
     this.generateGradient(gfx, 'lab-bg', FALLBACK_W, FALLBACK_H, COLORS.bgPrimary, COLORS.bgSecondary);
     this.generateGradient(gfx, 'world-map', MAP_WIDTH, MAP_HEIGHT, COLORS.bgPrimary, COLORS.bgSecondary);
-
-    for (let i = 0; i < ZONE_TINTS.length; i++) {
-      const top = this.blend(ZONE_TINTS[i], COLORS.black, 0.45);
-      const bottom = this.blend(ZONE_TINTS[i], COLORS.black, 0.2);
-      this.generateGradient(gfx, `zone-${i}`, FALLBACK_W, FALLBACK_H, top, bottom);
-    }
-
     this.generateCircle(gfx, 'hero-sprite', 64, COLORS.white);
     this.generateCircle(gfx, 'particle-gold', 8, COLORS.gold);
     this.generateCircle(gfx, 'particle-heal', 8, COLORS.green);
@@ -116,10 +116,5 @@ export class BootScene extends Phaser.Scene {
     gfx.generateTexture(key, size, size);
   }
 
-  private blend(colorA: number, colorB: number, ratio: number): number {
-    const a = Phaser.Display.Color.IntegerToRGB(colorA);
-    const b = Phaser.Display.Color.IntegerToRGB(colorB);
-    const mix = (from: number, to: number) => Math.round(from + (to - from) * ratio);
-    return Phaser.Display.Color.GetColor(mix(a.r, b.r), mix(a.g, b.g), mix(a.b, b.b));
-  }
+
 }

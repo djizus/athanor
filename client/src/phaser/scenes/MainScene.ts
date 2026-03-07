@@ -1,15 +1,23 @@
 import Phaser from 'phaser';
+import { ZONE_NAMES } from '@/game/constants';
 import { getSettingsSnapshot } from '@/stores/settingsStore';
 import type { AthanorHero } from '../PhaserBridge';
 import { PhaserBridge } from '../PhaserBridge';
 import { EventEffect } from '../objects/EventEffect';
 import { HeroSprite } from '../objects/HeroSprite';
 import { ZoneBackground } from '../objects/ZoneBackground';
-import { baseCampWorldX, HERO_ROW_SPACING, HERO_Y_RATIO } from '../utils/layout';
+import { ZoneConnection } from '../objects/ZoneConnection';
+import { ZoneNode } from '../objects/ZoneNode';
+import { computeNodeLayout, NODE_COUNT } from '../utils/layout';
+
+const ZONE_TEXTURE_KEYS = [
+  'zone-athanor', 'zone-hollows', 'zone-cavern', 'zone-spire', 'zone-abyss', 'zone-crystalveil',
+];
+
+const ZONE_LABELS = ['The Athanor', ...ZONE_NAMES];
 
 const MUSIC_PLAYLIST = ['menu-theme', 'game-loop-1', 'game-loop-2'] as const;
 
-/** Tracks loaded lazily after boot (not blocking initial load) */
 const LAZY_MUSIC = [
   { key: 'game-loop-1', file: 'game_loop_1.mp3' },
   { key: 'game-loop-2', file: 'game_loop_2.mp3' },
@@ -20,6 +28,8 @@ export class MainScene extends Phaser.Scene {
 
   private zoneBackground: ZoneBackground | null = null;
   private eventEffect: EventEffect | null = null;
+  private zoneNodes: ZoneNode[] = [];
+  private zoneConnections: ZoneConnection[] = [];
 
   private heroContainer!: Phaser.GameObjects.Container;
   private heroSprites = new Map<number, HeroSprite>();
@@ -28,12 +38,10 @@ export class MainScene extends Phaser.Scene {
   private currentMusicSound: Phaser.Sound.BaseSound | null = null;
 
   private readonly onMusicComplete = (): void => {
-    console.info('[MainScene:music] track completed, advancing playlist');
     this.playNextMusicTrack();
   };
 
   private readonly onFirstInteractionMusic = (): void => {
-    console.info('[MainScene:music] first pointer interaction received, attempting playlist start');
     this.startMusicPlaylist();
   };
 
@@ -69,6 +77,9 @@ export class MainScene extends Phaser.Scene {
 
     this.zoneBackground = new ZoneBackground(this);
     this.eventEffect = new EventEffect(this);
+
+    this.createNodeGraph();
+
     this.heroContainer = this.add.container(0, 0);
     this.heroContainer.setDepth(12);
 
@@ -88,13 +99,7 @@ export class MainScene extends Phaser.Scene {
     }
     this.load.start();
 
-    console.info('[MainScene:music] audio setup', {
-      locked: this.sound.locked,
-      playlist: [...MUSIC_PLAYLIST],
-    });
-
     if (this.sound.locked) {
-      console.warn('[MainScene:music] sound is locked, waiting for unlock');
       this.sound.once(Phaser.Sound.Events.UNLOCKED, this.startMusicPlaylist, this);
       this.input.once(Phaser.Input.Events.POINTER_DOWN, this.onFirstInteractionMusic);
     } else {
@@ -104,33 +109,80 @@ export class MainScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.shutdown, this);
   }
 
+  update(time: number, delta: number): void {
+    for (const conn of this.zoneConnections) {
+      conn.update(time, delta);
+    }
+  }
+
+  private createNodeGraph(): void {
+    const w = this.scale.width;
+    const h = this.scale.height;
+    const layout = computeNodeLayout(w, h);
+
+    for (let i = 0; i < NODE_COUNT; i++) {
+      const node = new ZoneNode(
+        this,
+        i,
+        ZONE_LABELS[i],
+        ZONE_TEXTURE_KEYS[i],
+        layout.centerX,
+        layout.nodeY(i),
+        layout.nodeWidth,
+        layout.nodeHeight,
+      );
+      node.setDepth(5);
+      this.zoneNodes.push(node);
+    }
+
+    for (let i = 0; i < NODE_COUNT - 1; i++) {
+      const conn = new ZoneConnection(this, i);
+      conn.setDepth(4);
+
+      const bottom = this.zoneNodes[i].getTopAnchor();
+      const top = this.zoneNodes[i + 1].getBottomAnchor();
+      conn.setEndpoints(bottom.x, bottom.y, top.x, top.y);
+
+      this.zoneConnections.push(conn);
+    }
+  }
+
   private onResize(gameSize: Phaser.Structs.Size): void {
     const w = gameSize.width;
     const h = gameSize.height;
 
     this.zoneBackground?.resize(w, h);
-    this.repositionHeroes(w, h);
+    this.repositionNodeGraph(w, h);
+    this.repositionHeroes();
   }
 
-  private repositionHeroes(w: number, h: number): void {
-    const bx = baseCampWorldX(w);
+  private repositionNodeGraph(w: number, h: number): void {
+    const layout = computeNodeLayout(w, h);
 
+    for (let i = 0; i < this.zoneNodes.length; i++) {
+      this.zoneNodes[i].resize(layout.centerX, layout.nodeY(i), layout.nodeWidth, layout.nodeHeight);
+    }
+
+    for (let i = 0; i < this.zoneConnections.length; i++) {
+      const bottom = this.zoneNodes[i].getTopAnchor();
+      const top = this.zoneNodes[i + 1].getBottomAnchor();
+      this.zoneConnections[i].setEndpoints(bottom.x, bottom.y, top.x, top.y);
+    }
+  }
+
+  private repositionHeroes(): void {
     this.lastHeroes.forEach((hero, index) => {
-      const by = h * HERO_Y_RATIO + index * HERO_ROW_SPACING;
       const sprite = this.heroSprites.get(hero.hero_id);
       if (!sprite) return;
-      sprite.setBasePosition(bx, by);
+      const pos = this.getHeroTargetPosition(hero, index, this.lastHeroes.length);
+      sprite.setBasePosition(pos.x, pos.y);
       sprite.syncToHero(hero);
     });
   }
 
   private startMusicPlaylist(): void {
-    if (this.currentMusicSound) {
-      console.info('[MainScene:music] playlist already started');
-      return;
-    }
+    if (this.currentMusicSound) return;
     this.currentMusicIndex = 0;
-    console.info('[MainScene:music] starting playlist from first track');
     this.playMusicTrack(this.currentMusicIndex);
   }
 
@@ -142,7 +194,6 @@ export class MainScene extends Phaser.Scene {
   private playMusicTrack(index: number): void {
     const key = MUSIC_PLAYLIST[index];
     if (!this.cache.audio.exists(key)) {
-      console.info('[MainScene:music] track not yet loaded, skipping', { key, index });
       this.playNextMusicTrack();
       return;
     }
@@ -151,23 +202,15 @@ export class MainScene extends Phaser.Scene {
     this.currentMusicSound?.destroy();
 
     const { musicVolume } = getSettingsSnapshot();
-    console.info('[MainScene:music] playing track', { key, index, musicVolume });
     const music = this.sound.add(key, { loop: false, volume: musicVolume });
     music.once(Phaser.Sound.Events.COMPLETE, this.onMusicComplete, this);
-    const started = music.play();
-
-    if (!started) {
-      console.warn('[MainScene:music] play() returned false', { key, index, musicVolume });
-    }
+    music.play();
 
     this.currentMusicSound = music;
   }
 
   private syncHeroes(heroes: AthanorHero[]): void {
     const activeIds = new Set(heroes.map((h) => h.hero_id));
-    const w = this.scale.width;
-    const h = this.scale.height;
-    const bx = baseCampWorldX(w);
 
     for (const [heroId, sprite] of this.heroSprites.entries()) {
       if (!activeIds.has(heroId)) {
@@ -177,11 +220,43 @@ export class MainScene extends Phaser.Scene {
     }
 
     heroes.forEach((hero, index) => {
-      const by = h * HERO_Y_RATIO + index * HERO_ROW_SPACING;
-      const sprite = this.getOrCreateHeroSprite(hero, index, bx, by);
-      sprite.setBasePosition(bx, by);
+      const pos = this.getHeroTargetPosition(hero, index, heroes.length);
+      const sprite = this.getOrCreateHeroSprite(hero, index, pos.x, pos.y);
+      sprite.setBasePosition(pos.x, pos.y);
       sprite.syncToHero(hero);
     });
+  }
+
+  private getHeroTargetPosition(hero: AthanorHero, heroIndex: number, heroCount: number): { x: number; y: number } {
+    const now = Math.floor(Date.now() / 1000);
+    const isExploring = hero.available_at > now;
+
+    if (isExploring) {
+      const zoneIndex = this.getExploringZoneIndex(hero);
+      const node = this.zoneNodes[zoneIndex];
+      if (node) {
+        return node.getHeroSlotWorldPosition(heroIndex, heroCount);
+      }
+    }
+
+    const athanorNode = this.zoneNodes[0];
+    if (athanorNode) {
+      return athanorNode.getHeroSlotWorldPosition(heroIndex, heroCount);
+    }
+
+    return { x: this.scale.width / 2, y: this.scale.height * 0.82 };
+  }
+
+  private getExploringZoneIndex(hero: AthanorHero): number {
+    const now = Math.floor(Date.now() / 1000);
+    const remaining = Math.max(0, hero.available_at - now);
+
+    if (remaining > 50) return 1;
+    if (remaining > 40) return 2;
+    if (remaining > 30) return 3;
+    if (remaining > 20) return 4;
+    if (remaining > 10) return 5;
+    return 1;
   }
 
   private getOrCreateHeroSprite(hero: AthanorHero, idx: number, bx: number, by: number): HeroSprite {
@@ -221,6 +296,12 @@ export class MainScene extends Phaser.Scene {
 
     for (const sprite of this.heroSprites.values()) sprite.destroy();
     this.heroSprites.clear();
+
+    for (const conn of this.zoneConnections) conn.destroy();
+    this.zoneConnections = [];
+
+    for (const node of this.zoneNodes) node.destroy();
+    this.zoneNodes = [];
 
     this.zoneBackground?.destroy();
     this.zoneBackground = null;

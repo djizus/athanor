@@ -3,7 +3,7 @@ import { ROLE_NAMES } from '@/game/constants';
 import type { AthanorHero } from '../PhaserBridge';
 import { PhaserBridge } from '../PhaserBridge';
 import { COLORS } from '../utils/colors';
-import { baseCampWorldX, FONTS, heroWorldX } from '../utils/layout';
+import { FONTS } from '../utils/layout';
 import type { EventEffect } from './EventEffect';
 
 const HERO_TINTS = [0x4080d0, 0x40c060, 0xa050d0];
@@ -19,7 +19,6 @@ function deriveStatus(availableAt: number): number {
 }
 
 const STATUS_IDLE = 0;
-const STATUS_EXPLORING = 1;
 
 export class HeroSprite extends Phaser.GameObjects.Container {
   private readonly sceneRef: Phaser.Scene;
@@ -44,6 +43,7 @@ export class HeroSprite extends Phaser.GameObjects.Container {
   private lastStatus = -1;
   private lastHpRatio = -1;
   private lastTargetX = -1;
+  private lastTargetY = -1;
   private lastDefeated = false;
   private maskGfx: Phaser.GameObjects.Graphics | null = null;
   private isSelected = false;
@@ -155,7 +155,6 @@ export class HeroSprite extends Phaser.GameObjects.Container {
     const hpRatio = hero.max_health > 0 ? Phaser.Math.Clamp(hero.health / hero.max_health, 0, 1) : 0;
     const defeated = hero.health <= 0;
     const status = deriveStatus(hero.available_at);
-    const targetX = this.getTargetX(hero);
 
     if (Math.abs(hpRatio - this.lastHpRatio) > 0.001) {
       this.updateHpBar(hpRatio);
@@ -173,6 +172,7 @@ export class HeroSprite extends Phaser.GameObjects.Container {
       this.lastDefeated = true;
       this.lastStatus = status;
       this.lastTargetX = this.baseX;
+      this.lastTargetY = this.baseY;
       return;
     }
 
@@ -198,15 +198,24 @@ export class HeroSprite extends Phaser.GameObjects.Container {
       this.lastStatus = status;
     }
 
-    if (Math.abs(targetX - this.lastTargetX) > 1) {
+    const targetX = this.baseX;
+    const targetY = this.baseY;
+    const dx = Math.abs(targetX - this.lastTargetX);
+    const dy = Math.abs(targetY - this.lastTargetY);
+
+    if (dx > 1 || dy > 1) {
       this.moveTween?.stop();
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      const duration = Math.min(800, Math.max(250, distance * 1.5));
       this.moveTween = this.sceneRef.tweens.add({
         targets: this,
         x: targetX,
-        duration: 250,
+        y: targetY,
+        duration,
         ease: 'Sine.Out',
       });
       this.lastTargetX = targetX;
+      this.lastTargetY = targetY;
     }
   }
 
@@ -226,15 +235,6 @@ export class HeroSprite extends Phaser.GameObjects.Container {
     this.ringTween?.stop();
     this.trailEmitter.destroy();
     super.destroy(fromScene);
-  }
-
-  private getTargetX(hero: AthanorHero): number {
-    const sw = this.sceneRef.scale.width;
-    const status = deriveStatus(hero.available_at);
-    if (status === STATUS_EXPLORING) {
-      return heroWorldX(50, sw);
-    }
-    return baseCampWorldX(sw);
   }
 
   private updateHpBar(hpRatio: number): void {

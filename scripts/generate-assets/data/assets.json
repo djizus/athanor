@@ -15,6 +15,68 @@
       "width": 2560,
       "height": 1440,
       "description": "Top-down fantasy world map with three biome zones centered and connected by winding paths, surrounded by decorative wilderness filler"
+    },
+    {
+      "id": "world-bg",
+      "filename": "world-bg.webp",
+      "category": "backgrounds",
+      "width": 2560,
+      "height": 1440,
+      "description": "Dark atmospheric void background — dense enchanted forest, misty void, jagged cliffs, swirling fog. No corridor, no structures, no paths."
+    },
+    {
+      "id": "zone-athanor",
+      "filename": "zone-athanor.webp",
+      "category": "backgrounds",
+      "width": 2048,
+      "height": 512,
+      "description": "Floating athanor furnace stone platform — circular arcane circles, molten-gold glow, warm amber home base",
+      "zoneColor": "#c8a040"
+    },
+    {
+      "id": "zone-hollows",
+      "filename": "zone-hollows.webp",
+      "category": "backgrounds",
+      "width": 2048,
+      "height": 512,
+      "description": "Floating amber cavern platform — golden cavern openings, copper veins, amber crystals, bioluminescent lichen",
+      "zoneColor": "#c8a040"
+    },
+    {
+      "id": "zone-cavern",
+      "filename": "zone-cavern.webp",
+      "category": "backgrounds",
+      "width": 2048,
+      "height": 512,
+      "description": "Floating volcanic platform — lava fissures, sulfur crystals, obsidian rock, magma glow",
+      "zoneColor": "#b85030"
+    },
+    {
+      "id": "zone-spire",
+      "filename": "zone-spire.webp",
+      "category": "backgrounds",
+      "width": 2048,
+      "height": 512,
+      "description": "Floating ethereal platform — purple crystals, arcane energy trails, glowing runes, floating stone",
+      "zoneColor": "#9e4a9e"
+    },
+    {
+      "id": "zone-abyss",
+      "filename": "zone-abyss.webp",
+      "category": "backgrounds",
+      "width": 2048,
+      "height": 512,
+      "description": "Floating deep-water platform — submerged ruins, bioluminescent cave pearls, dark river channels",
+      "zoneColor": "#2a5a8a"
+    },
+    {
+      "id": "zone-crystalveil",
+      "filename": "zone-crystalveil.webp",
+      "category": "backgrounds",
+      "width": 2048,
+      "height": 512,
+      "description": "Floating crystalline frost platform — emerald gemstones, frost formations, frozen blooms, aurora wisps",
+      "zoneColor": "#2a8a6a"
     }
   ],
   "heroes": [
