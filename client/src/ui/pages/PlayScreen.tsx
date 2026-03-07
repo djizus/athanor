@@ -170,7 +170,7 @@ export function PlayScreen({ bridge }: Props) {
   const discoveredCount = game ? bitmapPopcount(game.grimoire) : 0
   const heroCount = game ? bitmapPopcount(game.heroes) : heroes.length
   const isGameOver = game ? Number(game.ended_at) > 0 : false
-  const hintCost = game?.hint_price ?? 1000
+  const hintCost = game?.hint_price ?? 4
   const startedAt = game ? Number(game.started_at) : now
   const elapsedSeconds = Math.max(0, now - startedAt)
 
@@ -312,6 +312,7 @@ interface HeroSlotProps {
     regen: number
     available_at: number
     gold: number
+    ingredients: bigint
   }>
   heroCount: number
   selectedHeroId: number
@@ -368,7 +369,7 @@ function HeroSlot({
   const remaining = Math.max(0, availableAt - now)
   const isIdle = remaining === 0
   const isExploring = remaining > 0
-  const lootReady = false
+  const lootReady = isIdle && (hero.gold > 0 || (hero.ingredients != null && hero.ingredients !== 0n))
 
   let statusText = 'Ready'
   let statusClass = ''
@@ -391,7 +392,8 @@ function HeroSlot({
   const hpColor = hpPct > 50 ? 'var(--accent-green)' : hpPct > 25 ? '#ff9800' : 'var(--accent-red)'
 
   /* ── Power bar ────────────────────────────────── */
-  const powerPct = Math.min(100, (hero.power / 255) * 100)
+  const powerCap = Math.max(hero.power, 50)
+  const powerPct = powerCap > 0 ? Math.min(100, (hero.power / powerCap) * 100) : 0
 
   const displayHpVal = Math.floor(optimisticHp)
 
