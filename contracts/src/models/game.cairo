@@ -80,29 +80,6 @@ pub impl GameImpl of GameTrait {
     }
 
     #[inline]
-    fn learn(ref self: Game, ingredient_a: Ingredient, ingredient_b: Ingredient, recipe: Effect) {
-        // [Effect] Reduce remaining tries
-        let index_a = ingredient_a.index().into();
-        let index_b = ingredient_b.index().into();
-        let mut counts = Packer::unpack(self.tries, TRY_SIZE, INGREDIENT_COUNT);
-        for index in 0_u32..INGREDIENT_COUNT.into() {
-            let mut count = counts.pop_front().unwrap();
-            if index == index_a || index == index_b {
-                count += 1;
-            }
-            counts.append(count);
-        }
-        self.tries = Packer::pack(counts, TRY_SIZE);
-        self.remaining_tries -= 1;
-        // [Effect] Give 1 gold if recipe is none
-        if recipe == Effect::None {
-            return;
-        }
-        // [Effect] Update grimoire
-        self.grimoire = Bitmap::set(self.grimoire, recipe.index());
-    }
-
-    #[inline]
     fn earn(ref self: Game, gold: u32) {
         self.gold += gold;
     }
@@ -205,11 +182,9 @@ pub impl GameImpl of GameTrait {
         // [Compute] Randomly select an unknown recipe withtout hint
         let mut bitmap: u32 = self.hints | self.grimoire;
         let mut eligibles: Array<Effect> = array![];
-        let mut index: u8 = 0;
-        while index != EFFECT_COUNT {
-            index += 1;
+        for index in 0_u8..EFFECT_COUNT {
             if bitmap % 2 == 0 {
-                let effect: Effect = index.into();
+                let effect: Effect = EffectTrait::from(index);
                 eligibles.append(effect);
             }
             bitmap /= 2;
@@ -306,6 +281,8 @@ pub impl GameImpl of GameTrait {
         let remaining = INGREDIENT_COUNT - tries; // Add 1 try previously removed from clue
         let recipe = Crafter::craft(remaining.into(), recipes, rng.low);
         if (recipe != Effect::None) {
+            // [Effect] Learn the recipe, do not reduce ingredient A tries
+            self.learn(ingredient_b, ingredient_b, recipe);
             return recipe;
         }
         // [Effect] Perform the discovery with hinted recipes for ingredient_b
@@ -315,11 +292,39 @@ pub impl GameImpl of GameTrait {
         let remaining = INGREDIENT_COUNT - tries; // Add 1 try previously removed from clue
         let recipe = Crafter::craft(remaining.into(), recipes, rng.low);
         if (recipe != Effect::None) {
+            // [Effect] Learn the recipe, do not reduce ingredient B tries
+            self.learn(ingredient_a, ingredient_a, recipe);
             return recipe;
         }
         // [Effect] Otherwise perform the discovery without hinted recipes
         let recipes = ALL_EFFECTS & ~(self.grimoire | self.hints);
-        return Crafter::craft(self.remaining_tries, recipes, rng.low);
+        let recipe = Crafter::craft(self.remaining_tries, recipes, rng.low);
+        self.learn(ingredient_a, ingredient_b, recipe);
+        return recipe;
+    }
+
+    #[inline]
+    fn learn(ref self: Game, ingredient_a: Ingredient, ingredient_b: Ingredient, recipe: Effect) {
+        // [Effect] Reduce remaining tries
+        let index_a = ingredient_a.index().into();
+        let index_b = ingredient_b.index().into();
+        let mut counts = Packer::unpack(self.tries, TRY_SIZE, INGREDIENT_COUNT);
+        for index in 0_u32..INGREDIENT_COUNT.into() {
+            let mut count = counts.pop_front().unwrap();
+            if index == index_a || index == index_b {
+                // [Info] Do not if it comes from a clue, since it has been already reduced
+                count += 1;
+            }
+            counts.append(count);
+        }
+        self.tries = Packer::pack(counts, TRY_SIZE);
+        self.remaining_tries -= 1;
+        // [Effect] Give 1 gold if recipe is none
+        if recipe == Effect::None {
+            return;
+        }
+        // [Effect] Update grimoire
+        self.grimoire = Bitmap::set(self.grimoire, recipe.index());
     }
 }
 
@@ -348,7 +353,7 @@ pub impl GameAssert of AssertTrait {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{*, ALL_EFFECTS};
 
     const SEED: felt252 = 'SEED';
 
@@ -458,8 +463,7 @@ mod tests {
                 let seed = core::poseidon::poseidon_hash_span(
                     [index_a.into(), index_b.into()].span(),
                 );
-                let recipe = game.discover(a, b, 0, 0, seed.into());
-                game.learn(a, b, recipe);
+                game.discover(a, b, 0, 0, seed.into());
             }
         }
         assert_eq!(game.grimoire, target);
@@ -487,10 +491,30 @@ mod tests {
                 if b == Ingredient::Starfall {
                     hints_b = Bitmap::set(hints_b, Effect::Aquamarine.index());
                 }
-                let recipe = game.discover(a, b, hints_a, hints_b, seed.into());
-                game.learn(a, b, recipe);
+                game.discover(a, b, hints_a, hints_b, seed.into());
             }
         }
         assert_eq!(game.grimoire, target);
+    }
+
+    #[test]
+    fn test_game_clue_learn() {
+        let mut game = GameTrait::new(1, SEED);
+        game.grimoire = ALL_EFFECTS ^ 0b11;
+        game.gold = 3100;
+        let mut counts: Array<u8> = array![
+            INGREDIENT_COUNT - 2, INGREDIENT_COUNT - 2, INGREDIENT_COUNT - 2, INGREDIENT_COUNT - 2,
+        ];
+        for _index in 4_u8..INGREDIENT_COUNT {
+            counts.append(INGREDIENT_COUNT - 1);
+        }
+        game.tries = Packer::pack(counts, TRY_SIZE);
+        game.remaining_tries = 2;
+        game.clue(0);
+        game.discover(IngredientTrait::from(0), IngredientTrait::from(1), 1, 0, 0);
+        game.clue(0);
+        game.discover(IngredientTrait::from(2), IngredientTrait::from(3), 2, 0, 0);
+        assert_eq!(game.grimoire, ALL_EFFECTS);
+        assert_eq!(game.remaining_tries, 0);
     }
 }

@@ -49,6 +49,11 @@ pub impl EffectImpl of EffectTrait {
     }
 
     #[inline]
+    fn from(index: u8) -> Effect {
+        (index + 1).into()
+    }
+
+    #[inline]
     fn apply(self: Effect, ref character: Character, quantity: u16) {
         match self {
             // Max Health
