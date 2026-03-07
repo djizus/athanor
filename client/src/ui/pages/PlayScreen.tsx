@@ -239,7 +239,7 @@ export function PlayScreen() {
     const isSoup = existingRecipe != null && EFFECT_CATEGORIES[existingRecipe.effect] === undefined
     const t = txToast('Brewing potion')
     try {
-      await client.craft(account, gameId, ingredientA, ingredientB)
+      await client.craft(account, gameId, lo, hi)
       t.success()
       soundManager.playSfx('brew-success', 0.4)
       if (isSoup) {
