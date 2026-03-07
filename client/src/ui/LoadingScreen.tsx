@@ -24,6 +24,7 @@ export function LoadingScreen({ status, error }: LoadingScreenProps) {
           draggable={false}
           className="loading-logo"
         />
+        <div className="loading-spinner" />
         <p className="loading-status">{status ?? 'Initializing client...'}</p>
         {error ? <p className="loading-error">{error}</p> : null}
       </div>

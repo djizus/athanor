@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAccount, useConnect } from '@starknet-react/core'
+import type ControllerConnector from '@cartridge/connector/controller'
 import { RpcProvider } from 'starknet'
 import { usePlayerName } from '@/hooks/usePlayerName'
 import { usePlayerRank } from '@/hooks/usePlayerRank'
@@ -127,7 +128,14 @@ export function HomePage() {
           ))}
         </div>
         <div className="home-menu-topbar">
-          <button className="home-menu-player-chip" type="button" onClick={() => {}}>
+          <button
+            className="home-menu-player-chip"
+            type="button"
+            onClick={() => {
+              const ctrl = connectors[0] as ControllerConnector | undefined
+              if (ctrl?.controller) void ctrl.controller.openProfile()
+            }}
+          >
             {isUsername ? (
               <>
                 <span className="home-menu-player-name">{displayName}</span>
