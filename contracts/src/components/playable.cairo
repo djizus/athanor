@@ -107,7 +107,12 @@ pub mod PlayableComponent {
             }
             // [Effect] Craft
             game.craft(ingredient_a, ingredient_b, quantity);
-            game.store(discovery.effect.into(), quantity);
+            let effect = if discovery.discovered {
+                discovery.effect
+            } else {
+                variation.effect
+            };
+            game.store(effect.into(), quantity);
             // [Effect] Update game
             game.assess();
             store.set_game(@game);
