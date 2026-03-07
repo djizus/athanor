@@ -99,10 +99,6 @@ export function HomePage() {
               draggable={false}
               className="home-menu-logo"
             />
-            <div className="home-menu-rank-panel">
-              <span className="home-menu-rank-icon">🔮</span>
-              <span className="home-menu-rank-text">Rank #— · Best: NA · Runs: 0</span>
-            </div>
             <div className="home-menu-actions">
               <button
                 className="home-menu-button home-menu-button-primary"
