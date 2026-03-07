@@ -85,8 +85,6 @@ function buildPolicies(): SessionPolicies {
   }
 }
 
-// ── Connector ──────────────────────────────────────────────────────
-
 function createConnector(): Connector | null {
   if (typeof window === 'undefined') return null
 
