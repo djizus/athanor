@@ -39,6 +39,9 @@ export type GameToken = {
   discovered_count: number
   game_over: boolean
   started_at: number
+  ended_at: number
+  gold: number
+  hero_count: number
 }
 
 export function useGameTokens(playerAddress: string | undefined) {
@@ -115,6 +118,9 @@ export function useGameTokens(playerAddress: string | undefined) {
             discovered_count: bitmapPopcount(game.grimoire),
             game_over: game.ended_at > 0,
             started_at: game.started_at,
+            ended_at: game.ended_at,
+            gold: game.gold,
+            hero_count: bitmapPopcount(game.heroes),
           })
         }
 

@@ -445,34 +445,78 @@ button:disabled, .btn:disabled {
   gap: 0.2rem;
 }
 
+.games-table,
 .leaderboard-table {
   width: 100%;
   border-collapse: collapse;
 }
 
+.games-table th,
 .leaderboard-table th {
   font-family: var(--font-title);
-  font-size: 0.75rem;
+  font-size: clamp(0.7rem, 1vw, 0.85rem);
   color: var(--accent-gold);
   letter-spacing: 0.06em;
   text-align: left;
-  padding: 0.5rem;
+  padding: clamp(0.35rem, 0.8vw, 0.65rem) clamp(0.4rem, 1vw, 0.75rem);
   border-bottom: 1px solid var(--border-color);
+  white-space: nowrap;
 }
 
+.games-table td,
 .leaderboard-table td {
-  padding: 0.5rem;
+  padding: clamp(0.35rem, 0.8vw, 0.65rem) clamp(0.4rem, 1vw, 0.75rem);
   border-bottom: 1px solid rgba(37, 40, 72, 0.5);
-  font-size: 0.9rem;
+  font-size: clamp(0.8rem, 1.1vw, 1rem);
+}
+
+.games-table tr:hover,
+.leaderboard-table tr:hover {
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .leaderboard-table tr:nth-child(-n+3) td:first-child {
   color: var(--accent-gold);
+  font-weight: 600;
+}
+
+.games-table .row-active {
+  cursor: pointer;
+}
+
+.games-table .row-finished {
+  opacity: 0.65;
+  cursor: pointer;
+}
+
+.games-table .row-finished:hover,
+.games-table .row-active:hover {
+  opacity: 1;
+}
+
+.games-section-label {
+  font-family: var(--font-title);
+  font-size: clamp(0.8rem, 1.1vw, 0.95rem);
+  color: var(--text-secondary);
+  letter-spacing: 0.05em;
+  margin: 1rem 0 0.35rem;
+}
+
+.games-section-label:first-child {
+  margin-top: 0;
 }
 
 .table-scroll {
   overflow-x: auto;
 }
+
+.td-right {
+  text-align: right;
+}
+
+.text-gold { color: var(--accent-gold); }
+.text-green { color: var(--accent-green); }
+.text-muted { color: var(--text-muted); }
 
 .text-secondary {
   color: var(--text-secondary);
@@ -1749,6 +1793,16 @@ button:disabled, .btn:disabled {
   align-items: center;
   justify-content: center;
   pointer-events: none;
+  background-image: linear-gradient(
+      180deg,
+      rgba(8, 8, 16, 0.3) 0%,
+      rgba(8, 8, 16, 0.6) 50%,
+      rgba(8, 8, 16, 0.85) 100%
+    ),
+    url('/assets/backgrounds/lab-bg.webp');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 .glass-page > * { pointer-events: auto; }
@@ -1760,7 +1814,7 @@ button:disabled, .btn:disabled {
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--glass-shadow);
-  width: min(56rem, 94vw);
+  width: min(48rem, 94vw);
   max-height: 90vh;
   display: flex;
   flex-direction: column;
@@ -1777,7 +1831,7 @@ button:disabled, .btn:disabled {
 
 .glass-page-title {
   font-family: var(--font-title);
-  font-size: 1rem;
+  font-size: clamp(1rem, 1.5vw, 1.5rem);
   color: var(--accent-gold);
   letter-spacing: 0.08em;
 }
@@ -1785,7 +1839,7 @@ button:disabled, .btn:disabled {
 .glass-page-body {
   flex: 1;
   overflow-y: auto;
-  padding: 1rem;
+  padding: clamp(0.75rem, 2vw, 1.75rem);
 }
 
 /* ── Responsive — Play Screen ─────────────────────────────── */

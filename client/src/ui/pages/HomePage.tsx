@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useAccount, useConnect } from '@starknet-react/core'
 import type ControllerConnector from '@cartridge/connector/controller'
 import { RpcProvider } from 'starknet'
