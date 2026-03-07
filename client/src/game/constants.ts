@@ -108,7 +108,7 @@ export function ingredientAssetUrl(ingredientId: number): string {
 }
 
 export function roleAssetUrl(roleIndex: number): string {
-  return `/assets/heroes/${ROLE_KEYS[roleIndex]}.png`
+  return `/assets/heroes/${ROLE_KEYS[roleIndex]}.webp`
 }
 
 export function effectAssetUrl(effectIndex: number): string {

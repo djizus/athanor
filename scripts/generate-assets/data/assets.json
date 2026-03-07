@@ -19,28 +19,28 @@
   ],
   "heroes": [
     {
-      "id": "hero-alaric",
-      "filename": "hero-alaric.png",
+      "id": "role-mage",
+      "filename": "role-mage.webp",
       "category": "heroes",
-      "width": 128,
-      "height": 128,
-      "description": "Young male adventurer with short dark hair, determined expression, leather armor with a short sword at his belt, blue magical aura"
+      "width": 512,
+      "height": 512,
+      "description": "A mage face — gaunt features, glowing violet eyes, silver-white hair swept back, arcane rune markings on temples, faint purple energy aura"
     },
     {
-      "id": "hero-brynn",
-      "filename": "hero-brynn.png",
+      "id": "role-rogue",
+      "filename": "role-rogue.webp",
       "category": "heroes",
-      "width": 128,
-      "height": 128,
-      "description": "Female ranger with auburn hair in a braid, sharp green eyes, forest-green hooded cloak, bow slung over shoulder, nature motif"
+      "width": 512,
+      "height": 512,
+      "description": "A rogue face — sharp angular features, cunning amber eyes, dark hood casting shadow across brow, a thin scar across one cheek"
     },
     {
-      "id": "hero-cassiel",
-      "filename": "hero-cassiel.png",
+      "id": "role-warrior",
+      "filename": "role-warrior.webp",
       "category": "heroes",
-      "width": 128,
-      "height": 128,
-      "description": "Androgynous mage with silver-white hair, pale skin, ornate purple robes with golden trim, glowing arcane staff, ethereal presence"
+      "width": 512,
+      "height": 512,
+      "description": "A warrior face — broad jaw, fierce determined expression, short cropped dark hair, battle-worn skin, faint war paint streaks"
     }
   ],
   "ingredients": [

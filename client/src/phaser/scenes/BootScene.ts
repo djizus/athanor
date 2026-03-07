@@ -26,9 +26,9 @@ export class BootScene extends Phaser.Scene {
     this.load.image('world-map-file', '/assets/backgrounds/world-map.webp');
 
     const roles = [
-      { key: 'role-mage', file: 'hero-alaric.png' },
-      { key: 'role-rogue', file: 'hero-brynn.png' },
-      { key: 'role-warrior', file: 'hero-cassiel.png' },
+      { key: 'role-mage', file: 'role-mage.webp' },
+      { key: 'role-rogue', file: 'role-rogue.webp' },
+      { key: 'role-warrior', file: 'role-warrior.webp' },
     ];
     for (const role of roles) {
       this.load.image(role.key, `/assets/heroes/${role.file}`);

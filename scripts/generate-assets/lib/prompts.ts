@@ -51,11 +51,12 @@ export function buildWorldMapPrompt(): string {
 
 export function buildHeroPortraitPrompt(asset: ImageAssetDef): string {
   return [
-    `Portrait bust of ${asset.description}.`,
-    `Dramatic lighting from below. Dark background #080810 with subtle organic glow.`,
-    `Determined expression. Square composition, centered face filling 80% of frame.`,
+    `Close-up face portrait: ${asset.description}.`,
+    `Face fills 85% of the frame, tightly cropped at forehead and chin for circular avatar use.`,
+    `Dark obsidian background #080810 with warm amber #f0c040 rim lighting on one side and faint bioluminescent accents.`,
     GLOBAL_ART_STYLE,
-    `No text, no watermarks.`,
+    `Square composition. No shoulders, no body, no armor, no weapons, no hands.`,
+    `No text, no watermarks, no UI.`,
   ].join(' ');
 }
 
