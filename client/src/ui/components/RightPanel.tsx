@@ -410,7 +410,7 @@ export function GrimoireContent({
                 {isDiscovered && (
                   <span className="grimoire-badge-tr">{effectStatLabel(effectIdx)}</span>
                 )}
-                <span className={`craft-slot-qty${quantity <= 0 ? ' craft-slot-qty-zero' : ''}`}>{quantity}</span>
+                <span className={`craft-slot-qty${quantity <= 0 ? ' craft-slot-qty-zero' : ''}`} style={quantity > 0 ? { ['--qty-color' as string]: categoryColor } : undefined}>{quantity}</span>
               </div>
             </div>
           )

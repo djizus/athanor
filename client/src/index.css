@@ -1140,7 +1140,28 @@ button:disabled, .btn:disabled {
   flex-shrink: 0;
 }
 
-.status-hud-gold { color: var(--accent-gold); }
+.status-hud-gold {
+  color: var(--accent-gold);
+  position: relative;
+}
+
+.gold-float-anim {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  transform: translateX(-50%);
+  color: #f0c040;
+  font-weight: 700;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: gold-float-up 1.2s ease-out forwards;
+}
+
+@keyframes gold-float-up {
+  0% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-1.5rem); }
+}
 .status-hud-time { color: var(--text-primary); }
 .status-hud-sep { color: var(--text-muted); font-size: 0.7rem; }
 
@@ -1668,7 +1689,7 @@ button:disabled, .btn:disabled {
   height: 16px;
   padding: 0 3px;
   border-radius: 8px;
-  background: var(--accent-gold);
+  background: var(--qty-color, var(--zone-color, var(--accent-gold)));
   color: var(--bg-primary);
   font-family: var(--font-title);
   font-size: 0.58rem;

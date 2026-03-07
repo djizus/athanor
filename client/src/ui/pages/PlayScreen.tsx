@@ -92,6 +92,7 @@ export function PlayScreen() {
   const [mobilePanel, setMobilePanel] = useState<string | null>(null)
 
   const [floatingTexts, setFloatingTexts] = useState<FloatingTextAnim[]>([])
+  const [goldFloats, setGoldFloats] = useState<{ id: string; text: string }[]>([])
   const floatingIdRef = useRef(0)
 
   const { heroPositions, onExpeditionStart, onExplorationZoneUpdate } = useExpeditionTracker(heroes, now)
@@ -103,6 +104,12 @@ export function PlayScreen() {
 
   const removeFloatingText = useCallback((id: string) => {
     setFloatingTexts(prev => prev.filter(ft => ft.id !== id))
+  }, [])
+
+  const addGoldFloat = useCallback((text: string) => {
+    const id = String(floatingIdRef.current++)
+    setGoldFloats(prev => [...prev, { id, text }])
+    setTimeout(() => setGoldFloats(prev => prev.filter(f => f.id !== id)), 1200)
   }, [])
 
   const onExplorationEvent = useCallback((event: RawExplorationEvent) => {
@@ -222,7 +229,7 @@ export function PlayScreen() {
     pushInfo(`${name} claiming loot...`)
     soundManager.playSfx('claim-loot', 0.5)
     if (hero && hero.gold > 0) {
-      addFloatingText(characterId, `+${hero.gold}g`, '#f0c040')
+      addGoldFloat(`+${hero.gold}g`)
     }
     const t = txToast('Claiming loot')
     try { await client.claim(account, gameId, characterId); t.success() } catch (e) { t.error(); pushInfo(`${name} claim failed`); console.error('Claim failed:', e) }
@@ -243,7 +250,7 @@ export function PlayScreen() {
       t.success()
       soundManager.playSfx('brew-success', 0.4)
       if (isSoup) {
-        addFloatingText(0, '+1g', '#f0c040')
+        addGoldFloat('+1g')
       }
     } catch (e) { t.error(); pushInfo('Brew failed'); console.error('Craft failed:', e) }
   }
@@ -326,6 +333,7 @@ export function PlayScreen() {
         gold={gold}
         discoveredCount={discoveredCount}
         elapsedSeconds={elapsedSeconds}
+        goldFloats={goldFloats}
         onBack={() => navigate('home')}
         onSettings={() => setSettingsOpen(true)}
       />
@@ -615,7 +623,7 @@ function HeroPotionPopup({
                         alt={effectStatLabel(effectIdx)}
                       />
                       <span className="grimoire-badge-tr">{effectStatLabel(effectIdx)}</span>
-                      <span className={`craft-slot-qty${qty <= 0 ? ' craft-slot-qty-zero' : ''}`}>{qty}</span>
+                      <span className={`craft-slot-qty${qty <= 0 ? ' craft-slot-qty-zero' : ''}`} style={qty > 0 ? { ['--qty-color' as string]: color } : undefined}>{qty}</span>
                     </div>
                     <div className="potion-popup-cell-qty" onClick={(e) => e.stopPropagation()}>
                       <button onClick={() => togglePotion(effectIdx, -1)} disabled={count <= 0}>&minus;</button>
