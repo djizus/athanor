@@ -4,6 +4,8 @@ interface Props {
   gold: number
   discoveredCount: number
   elapsedSeconds: number
+  onBack: () => void
+  onSettings: () => void
 }
 
 function formatTime(totalSeconds: number): string {
@@ -12,14 +14,22 @@ function formatTime(totalSeconds: number): string {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
-export function StatusHUD({ gold, discoveredCount, elapsedSeconds }: Props) {
+export function StatusHUD({ gold, discoveredCount, elapsedSeconds, onBack, onSettings }: Props) {
   return (
     <div className="status-hud floating-panel">
-      <span className="status-hud-gold">Gold {displayGold(gold)}</span>
-      <span className="status-hud-sep">-</span>
-      <span className="status-hud-recipes">Potions {discoveredCount}/30</span>
-      <span className="status-hud-sep">-</span>
+      <button className="status-hud-btn status-hud-back" onClick={onBack}>
+        ← Back
+      </button>
+      <span className="status-hud-divider" />
       <span className="status-hud-time">Time {formatTime(elapsedSeconds)}</span>
+      <span className="status-hud-sep">·</span>
+      <span className="status-hud-gold">Gold {displayGold(gold)}</span>
+      <span className="status-hud-sep">·</span>
+      <span className="status-hud-recipes">Potions {discoveredCount}/30</span>
+      <span className="status-hud-divider" />
+      <button className="status-hud-btn status-hud-settings" onClick={onSettings}>
+        ⚙
+      </button>
     </div>
   )
 }

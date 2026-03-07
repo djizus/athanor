@@ -8,6 +8,7 @@ import {
   ZONE_COLORS,
   ZONE_NAMES,
   displayGold,
+  getZoneForIngredient,
   ingredientAssetUrl,
 } from '@/game/constants'
 import type { DiscoveryData } from '@/hooks/useRecipes'
@@ -112,7 +113,13 @@ export function GrimoireContent({
               <div key={`${recipe.ingredient_a}-${recipe.ingredient_b}`} className="grimoire-card discovered">
                 <div className="grimoire-card-title">#{idx + 1}</div>
                 <div className="grimoire-card-info">
-                  {INGREDIENT_NAMES[recipe.ingredient_a]} + {INGREDIENT_NAMES[recipe.ingredient_b]}
+                  <span style={{ color: ZONE_COLORS[getZoneForIngredient(recipe.ingredient_a)] }}>
+                    {INGREDIENT_NAMES[recipe.ingredient_a]}
+                  </span>
+                  {' + '}
+                  <span style={{ color: ZONE_COLORS[getZoneForIngredient(recipe.ingredient_b)] }}>
+                    {INGREDIENT_NAMES[recipe.ingredient_b]}
+                  </span>
                 </div>
                 <div className="grimoire-card-info" style={{ color: effectColor }}>
                   {EFFECT_NAMES[recipe.effect]}
@@ -134,22 +141,28 @@ export function InventoryContent({ inventory }: { inventory: InventoryItem[] }) 
       {ZONE_NAMES.map((zoneName, zi) => (
         <div key={zoneName}>
           <div className="inventory-zone-header" style={{ color: ZONE_COLORS[zi] }}>{zoneName}</div>
-          {inventory
-            .slice(zi * INGREDIENTS_PER_ZONE, zi * INGREDIENTS_PER_ZONE + INGREDIENTS_PER_ZONE)
-            .map((item) => (
-              <div
-                key={item.ingredient_id}
-                className={`inventory-row${item.quantity === 0 ? ' inventory-row-zero' : ''}`}
-              >
-                <img
-                  className="inventory-row-icon"
-                  src={ingredientAssetUrl(item.ingredient_id)}
-                  alt={INGREDIENT_NAMES[item.ingredient_id]}
-                />
-                <span className="inventory-row-name">{INGREDIENT_NAMES[item.ingredient_id]}</span>
-                <span className="inventory-row-qty">x{item.quantity}</span>
-              </div>
-            ))}
+          <div className="inventory-zone-grid">
+            {inventory
+              .slice(zi * INGREDIENTS_PER_ZONE, zi * INGREDIENTS_PER_ZONE + INGREDIENTS_PER_ZONE)
+              .map((item) => (
+                <div
+                  key={item.ingredient_id}
+                  className={`inventory-cell${item.quantity === 0 ? ' inventory-cell-zero' : ''}`}
+                >
+                  <div className="inventory-icon-wrap">
+                    <img
+                      className="inventory-icon"
+                      src={ingredientAssetUrl(item.ingredient_id)}
+                      alt={INGREDIENT_NAMES[item.ingredient_id]}
+                    />
+                    <span className="inventory-badge">{item.quantity}</span>
+                  </div>
+                  <span className="inventory-cell-name" style={{ color: ZONE_COLORS[zi] }}>
+                    {INGREDIENT_NAMES[item.ingredient_id]}
+                  </span>
+                </div>
+              ))}
+          </div>
         </div>
       ))}
     </>

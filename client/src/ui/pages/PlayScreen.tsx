@@ -157,19 +157,13 @@ export function PlayScreen({ bridge }: Props) {
 
   return (
     <div className="play-screen">
-      <button className="play-back-btn floating-panel" onClick={() => navigate('home')}>
-        ← Back
-      </button>
-
       <StatusHUD
         gold={gold}
         discoveredCount={discoveredCount}
         elapsedSeconds={elapsedSeconds}
+        onBack={() => navigate('home')}
+        onSettings={() => setSettingsOpen(true)}
       />
-
-      <button className="play-settings-btn floating-panel" onClick={() => setSettingsOpen(true)}>
-        ⚙ Settings
-      </button>
 
       <div className="play-left-panels">
         <div className="side-panel floating-panel panel-heroes">
