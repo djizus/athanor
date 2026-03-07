@@ -86,7 +86,6 @@ export function PlayScreen() {
 
   const [heroesCollapsed, setHeroesCollapsed] = useState(false)
   const [brewCollapsed, setBrewCollapsed] = useState(false)
-  const [collectionCollapsed, setCollectionCollapsed] = useState(false)
   const [logsCollapsed, setLogsCollapsed] = useState(false)
   const [potionTargetHeroId, setPotionTargetHeroId] = useState<number | null>(null)
   const [mobilePanel, setMobilePanel] = useState<string | null>(null)
@@ -187,8 +186,8 @@ export function PlayScreen() {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return
       switch (e.key.toLowerCase()) {
         case 'c': scrollPanelIntoView('panel-brew', setBrewCollapsed); break
-        case 'g': { setCollectionTab('grimoire'); scrollPanelIntoView('panel-collection', setCollectionCollapsed); break }
-        case 'i': { setCollectionTab('ingredients'); scrollPanelIntoView('panel-collection', setCollectionCollapsed); break }
+        case 'g': { setCollectionTab('grimoire'); scrollPanelIntoView('panel-brew', setBrewCollapsed); break }
+        case 'i': { setCollectionTab('ingredients'); scrollPanelIntoView('panel-brew', setBrewCollapsed); break }
         case 'escape': setSelectedHeroId(-1); break
       }
     }
@@ -330,6 +329,7 @@ export function PlayScreen() {
 
       <div className={`play-left-panels${mobilePanel && mobilePanel !== 'heroes' && mobilePanel !== 'logs' ? ' mobile-hidden' : ''}${mobilePanel === 'heroes' || mobilePanel === 'logs' ? ' mobile-open' : ''}`}>
         <div className={`side-panel floating-panel panel-heroes${mobilePanel === 'logs' ? ' mobile-panel-hidden' : ''}`}>
+
           <button className="side-panel-header" onClick={() => setHeroesCollapsed((v) => !v)}>
             <span className="side-panel-title">Heroes</span>
             <span className="side-panel-chevron">{heroesCollapsed ? '▸' : '▾'}</span>
@@ -382,8 +382,8 @@ export function PlayScreen() {
         </div>
       </div>
 
-      <div className={`play-right-panels${mobilePanel && mobilePanel !== 'brew' && mobilePanel !== 'collection' ? ' mobile-hidden' : ''}${mobilePanel === 'brew' || mobilePanel === 'collection' ? ' mobile-open' : ''}`}>
-        <div className={`side-panel floating-panel panel-brew${mobilePanel === 'collection' ? ' mobile-panel-hidden' : ''}`}>
+      <div className={`play-right-panels${mobilePanel && mobilePanel !== 'brew' ? ' mobile-hidden' : ''}${mobilePanel === 'brew' ? ' mobile-open' : ''}`}>
+        <div className="side-panel floating-panel panel-brew">
           <button className="side-panel-header" onClick={() => setBrewCollapsed((v) => !v)}>
             <span className="side-panel-title">Brew</span>
             <span className="side-panel-chevron">{brewCollapsed ? '▸' : '▾'}</span>
@@ -396,39 +396,32 @@ export function PlayScreen() {
                 inventory={inventory}
                 recipes={recipes}
                 isGameOver={isGameOver}
-                brewAllCount={brewAllCount}
                 onSetSlotA={setSlotA}
                 onSetSlotB={setSlotB}
                 onCraft={(a, b) => void handleCraft(a, b)}
-                onBrewAll={() => void handleBrewAll()}
               />
-            </div>
-          )}
-        </div>
 
-        <div className={`side-panel floating-panel panel-collection${mobilePanel === 'brew' ? ' mobile-panel-hidden' : ''}`}>
-          <div className="side-panel-header collection-header">
-            <button
-              className={`collection-tab${collectionTab === 'ingredients' ? ' active' : ''}`}
-              onClick={() => setCollectionTab('ingredients')}
-            >
-              Ingredients
-            </button>
-            <button
-              className={`collection-tab${collectionTab === 'grimoire' ? ' active' : ''}`}
-              onClick={() => setCollectionTab('grimoire')}
-            >
-              Grimoire {discoveredCount}/30
-            </button>
-            <button
-              className="side-panel-chevron collection-chevron"
-              onClick={() => setCollectionCollapsed((v) => !v)}
-            >
-              {collectionCollapsed ? '▸' : '▾'}
-            </button>
-          </div>
-          {!collectionCollapsed && (
-            <div className="side-panel-body">
+              <div className="craft-btn-row">
+                <button onClick={() => void handleBrewAll()} disabled={isGameOver || brewAllCount === 0}>
+                  Brew All ({brewAllCount})
+                </button>
+              </div>
+
+              <div className="collection-tabs">
+                <button
+                  className={`collection-tab${collectionTab === 'ingredients' ? ' active' : ''}`}
+                  onClick={() => setCollectionTab('ingredients')}
+                >
+                  Ingredients
+                </button>
+                <button
+                  className={`collection-tab${collectionTab === 'grimoire' ? ' active' : ''}`}
+                  onClick={() => setCollectionTab('grimoire')}
+                >
+                  Grimoire {discoveredCount}/30
+                </button>
+              </div>
+
               {collectionTab === 'ingredients' ? (
                 <IngredientsContent
                   inventory={inventory}
@@ -452,10 +445,6 @@ export function PlayScreen() {
                   onSelectIngredients={(a, b) => {
                     setSlotA(a >= 0 ? a : null)
                     setSlotB(b >= 0 ? b : null)
-                    setBrewCollapsed(false)
-                    requestAnimationFrame(() => {
-                      document.querySelector('.panel-brew')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-                    })
                   }}
                 />
               )}
@@ -483,14 +472,14 @@ export function PlayScreen() {
       )}
 
       <div className="mobile-tab-bar">
-        {(['heroes', 'brew', 'collection', 'logs'] as const).map(tab => (
+        {(['heroes', 'brew', 'logs'] as const).map(tab => (
           <button
             key={tab}
             className={`mobile-tab${mobilePanel === tab ? ' active' : ''}`}
             onClick={() => setMobilePanel(prev => prev === tab ? null : tab)}
           >
-            {tab === 'heroes' ? '⚔' : tab === 'brew' ? '⚗' : tab === 'collection' ? '📖' : '📜'}
-            <span>{tab === 'collection' ? 'Grimoire' : tab.charAt(0).toUpperCase() + tab.slice(1)}</span>
+            {tab === 'heroes' ? '⚔' : tab === 'brew' ? '⚗' : '📜'}
+            <span>{tab.charAt(0).toUpperCase() + tab.slice(1)}</span>
           </button>
         ))}
       </div>

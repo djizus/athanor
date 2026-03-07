@@ -1806,8 +1806,13 @@ button:disabled, .btn:disabled {
   z-index: 2;
 }
 
-.craft-brew-btn {
+.craft-brew-btns {
+  display: flex;
+  gap: 0.25rem;
   margin-left: 0.35rem;
+}
+
+.craft-brew-btn {
 }
 
 .craft-brew-btn:not(:disabled) {
@@ -1840,9 +1845,17 @@ button:disabled, .btn:disabled {
 .craft-btn-row {
   display: flex;
   gap: 0.5rem;
+  margin-bottom: 0.5rem;
 }
 
 .craft-btn-row button { flex: 1; }
+
+.collection-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border-color);
+  margin: 0.25rem -0.6rem 0.5rem;
+}
 
 /* ── Grimoire ─────────────────────────────────── */
 
