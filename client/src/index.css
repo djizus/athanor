@@ -2580,6 +2580,78 @@ button:disabled, .btn:disabled {
   }
 }
 
+/* ── Potion Discovery Animation ──────────────── */
+
+.grimoire-cell-new .grimoire-icon-wrap {
+  animation: grimoire-unlock 0.8s ease-out, grimoire-unlock-glow 1.8s ease-out;
+}
+
+@keyframes grimoire-unlock {
+  0% { transform: scale(1); }
+  20% { transform: scale(1.35); }
+  45% { transform: scale(0.92); }
+  65% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+
+@keyframes grimoire-unlock-glow {
+  0% { box-shadow: 0 0 0 0 rgba(240, 192, 64, 0); }
+  25% { box-shadow: 0 0 24px 10px rgba(240, 192, 64, 0.6); }
+  100% { box-shadow: 0 0 0 0 rgba(240, 192, 64, 0); }
+}
+
+.discovery-flash {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 15;
+  background: radial-gradient(ellipse at center, rgba(240, 192, 64, 0.2) 0%, transparent 70%);
+  animation: discovery-flash-anim 0.8s ease-out forwards;
+}
+
+@keyframes discovery-flash-anim {
+  0% { opacity: 0; }
+  15% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ── Stat Delta Floats (Potion Application) ──── */
+
+.hero-card-deltas {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.hero-stat-delta {
+  font-family: var(--font-title);
+  font-size: 0.78rem;
+  font-weight: 700;
+  animation: stat-delta-float 1.4s ease-out forwards;
+  pointer-events: none;
+  white-space: nowrap;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+@keyframes stat-delta-float {
+  0% { opacity: 0; transform: translateY(4px) scale(0.8); }
+  15% { opacity: 1; transform: translateY(0) scale(1.1); }
+  30% { transform: translateY(-2px) scale(1); }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-12px); }
+}
+
+/* ── Gold Counter Pulse ──────────────────────── */
+
+.status-hud-gold.counting {
+  animation: gold-count-pulse 0.6s ease-in-out;
+}
+
+@keyframes gold-count-pulse {
+  0%, 100% { text-shadow: none; }
+  50% { text-shadow: 0 0 12px rgba(240, 192, 64, 0.6), 0 0 4px rgba(240, 192, 64, 0.3); }
+}
+
 select::-ms-expand { display: none; }
 
 ::-webkit-scrollbar {

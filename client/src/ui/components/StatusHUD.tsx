@@ -1,4 +1,5 @@
 import { displayGold } from '@/game/constants'
+import { useAnimatedNumber } from '@/hooks/useAnimatedNumber'
 
 interface Props {
   gold: number
@@ -16,6 +17,7 @@ function formatTime(totalSeconds: number): string {
 }
 
 export function StatusHUD({ gold, discoveredCount, elapsedSeconds, goldFloats, onBack, onSettings }: Props) {
+  const [animatedGold, isCounting] = useAnimatedNumber(gold, 600)
   const pct = Math.min(100, (discoveredCount / 30) * 100)
 
   return (
@@ -26,8 +28,8 @@ export function StatusHUD({ gold, discoveredCount, elapsedSeconds, goldFloats, o
       <span className="status-hud-divider" />
       <span className="status-hud-time">Time {formatTime(elapsedSeconds)}</span>
       <span className="status-hud-sep">·</span>
-      <span className="status-hud-gold">
-        Gold {displayGold(gold)}
+      <span className={`status-hud-gold${isCounting ? ' counting' : ''}`}>
+        Gold {displayGold(animatedGold)}
         {goldFloats?.map(f => (
           <span key={f.id} className="gold-float-anim">{f.text}</span>
         ))}

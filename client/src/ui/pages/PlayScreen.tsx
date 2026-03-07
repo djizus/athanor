@@ -158,6 +158,8 @@ export function PlayScreen() {
 
   const prevDiscoveredRef = useRef(0)
   const prevGameOverRef = useRef(false)
+  const prevGrimoireRef = useRef(0)
+  const [newlyDiscoveredEffects, setNewlyDiscoveredEffects] = useState<Set<number>>(new Set())
   const discoveredCount = game ? bitmapPopcount(game.grimoire) : 0
   const isGameOver = game ? Number(game.ended_at) > 0 : false
 
@@ -167,6 +169,22 @@ export function PlayScreen() {
     }
     prevDiscoveredRef.current = discoveredCount
   }, [discoveredCount])
+
+  useEffect(() => {
+    const current = game?.grimoire ?? 0
+    const prev = prevGrimoireRef.current
+    if (prev > 0 && current !== prev) {
+      const found = new Set<number>()
+      for (let i = 0; i < 30; i++) {
+        if (bitmapGet(current, i) && !bitmapGet(prev, i)) found.add(i)
+      }
+      if (found.size > 0) {
+        setNewlyDiscoveredEffects(found)
+        setTimeout(() => setNewlyDiscoveredEffects(new Set()), 2000)
+      }
+    }
+    prevGrimoireRef.current = current
+  }, [game?.grimoire])
 
   useEffect(() => {
     if (isGameOver && !prevGameOverRef.current) {
@@ -458,6 +476,7 @@ export function PlayScreen() {
                   hintCost={hintCost}
                   isGameOver={isGameOver}
                   inventory={inventory}
+                  newlyDiscovered={newlyDiscoveredEffects}
                   onBuyHint={() => void handleClue()}
                   onSelectIngredients={(a, b) => {
                     console.log('[PlayScreen] onSelectIngredients called', { a, b })
@@ -499,6 +518,8 @@ export function PlayScreen() {
           }}
         />
       )}
+
+      {newlyDiscoveredEffects.size > 0 && <div className="discovery-flash" />}
 
       <div className="mobile-tab-bar">
         {(['heroes', 'brew', 'logs'] as const).map(tab => (
@@ -708,6 +729,31 @@ function HeroSlot({
 }: HeroSlotProps) {
   const hero = heroes.find((h) => h.id === slot)
 
+  const prevStatsRef = useRef<{ maxHp: number; power: number; regen: number } | null>(null)
+  const [statDeltas, setStatDeltas] = useState<Array<{ id: string; label: string; value: number; color: string }>>([])
+  const deltaIdRef = useRef(0)
+  const deltasTimeoutRef = useRef<ReturnType<typeof setTimeout>>(0)
+
+  useEffect(() => {
+    if (!hero) { prevStatsRef.current = null; return }
+    const prev = prevStatsRef.current
+    if (prev !== null) {
+      const deltas: Array<{ id: string; label: string; value: number; color: string }> = []
+      if (hero.max_health > prev.maxHp)
+        deltas.push({ id: `d${deltaIdRef.current++}`, label: 'Max HP', value: hero.max_health - prev.maxHp, color: '#d04050' })
+      if (hero.power > prev.power)
+        deltas.push({ id: `d${deltaIdRef.current++}`, label: 'Power', value: hero.power - prev.power, color: '#4080d0' })
+      if (hero.regen > prev.regen)
+        deltas.push({ id: `d${deltaIdRef.current++}`, label: 'Regen', value: hero.regen - prev.regen, color: '#40c060' })
+      if (deltas.length > 0) {
+        setStatDeltas(deltas)
+        clearTimeout(deltasTimeoutRef.current)
+        deltasTimeoutRef.current = setTimeout(() => setStatDeltas([]), 1500)
+      }
+    }
+    prevStatsRef.current = { maxHp: hero.max_health, power: hero.power, regen: hero.regen }
+  }, [hero?.max_health, hero?.power, hero?.regen])
+
   if (!hero) {
     if (slot < heroCount) return null
     if (slot === heroCount && heroCount < 3) {
@@ -799,6 +845,15 @@ function HeroSlot({
           )}
         </div>
       </div>
+      {statDeltas.length > 0 && (
+        <div className="hero-card-deltas">
+          {statDeltas.map(d => (
+            <span key={d.id} className="hero-stat-delta" style={{ color: d.color }}>
+              +{d.value} {d.label}
+            </span>
+          ))}
+        </div>
+      )}
       <div className="hero-card-btn-row">
         <button
           className="btn-primary btn-sm"

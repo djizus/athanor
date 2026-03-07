@@ -275,6 +275,7 @@ export function GrimoireContent({
   hintCost,
   isGameOver,
   inventory,
+  newlyDiscovered,
   onBuyHint,
   onSelectIngredients,
 }: {
@@ -287,6 +288,7 @@ export function GrimoireContent({
   hintCost: number
   isGameOver: boolean
   inventory: InventoryItem[]
+  newlyDiscovered?: Set<number>
   onBuyHint: () => void
   onSelectIngredients: (a: number, b: number) => void
 }) {
@@ -363,6 +365,7 @@ export function GrimoireContent({
         {effects.map(effectIdx => {
           const isDiscovered = bitmapGet(grimoire, effectIdx)
           const isHinted = !isDiscovered && hintIngredients.has(effectIdx)
+          const isNew = newlyDiscovered?.has(effectIdx) ?? false
           const quantity = effectQuantities[effectIdx]
           const discovery = discoveryMap.get(effectIdx)
           const category = EFFECT_CATEGORIES[effectIdx]
@@ -394,7 +397,7 @@ export function GrimoireContent({
           return (
             <div
               key={effectIdx}
-              className={`grimoire-cell${isDiscovered ? (canCraft ? ' discovered' : ' discovered inactive') : ''}${isHinted ? ' hinted' : ''}${isDiscovered || isHinted ? ' grimoire-cell-clickable' : ''}`}
+              className={`grimoire-cell${isDiscovered ? (canCraft ? ' discovered' : ' discovered inactive') : ''}${isHinted ? ' hinted' : ''}${isDiscovered || isHinted ? ' grimoire-cell-clickable' : ''}${isNew ? ' grimoire-cell-new' : ''}`}
               onClick={() => { console.log('[Grimoire cell]', { effectIdx, isDiscovered, isHinted }); if (isDiscovered || isHinted) handleClick() }}
             >
               <div
