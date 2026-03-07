@@ -447,6 +447,7 @@ export function PlayScreen() {
                   inventory={inventory}
                   onBuyHint={() => void handleClue()}
                   onSelectIngredients={(a, b) => {
+                    console.log('[PlayScreen] onSelectIngredients called', { a, b })
                     setSlotA(a >= 0 ? a : null)
                     setSlotB(b >= 0 ? b : null)
                   }}

@@ -364,14 +364,19 @@ export function GrimoireContent({
           const hintIngs = hintIngredients.get(effectIdx)
 
           const handleClick = () => {
+            console.log('[Grimoire click]', { effectIdx, isDiscovered, isHinted, discovery, hintIngs, quantity, canCraft })
             if (isDiscovered && discovery) {
+              console.log('[Grimoire] selecting discovered recipe', discovery.ingredient_a, discovery.ingredient_b)
               onSelectIngredients(discovery.ingredient_a, discovery.ingredient_b)
             } else if (isHinted && hintIngs && hintIngs.length > 0) {
+              console.log('[Grimoire] selecting hinted ingredients', hintIngs)
               if (hintIngs.length >= 2) {
                 onSelectIngredients(hintIngs[0], hintIngs[1])
               } else {
                 onSelectIngredients(hintIngs[0], -1)
               }
+            } else {
+              console.log('[Grimoire] click ignored — not discovered or hinted')
             }
           }
 
@@ -379,7 +384,7 @@ export function GrimoireContent({
             <div
               key={effectIdx}
               className={`grimoire-cell${isDiscovered ? ' discovered' : ''}${isHinted ? ' hinted' : ''}${isDiscovered || isHinted ? ' grimoire-cell-clickable' : ''}`}
-              onClick={isDiscovered || isHinted ? handleClick : undefined}
+              onClick={() => { console.log('[Grimoire cell]', { effectIdx, isDiscovered, isHinted }); if (isDiscovered || isHinted) handleClick() }}
             >
               <div
                 className="grimoire-icon-wrap"
