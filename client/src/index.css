@@ -1382,26 +1382,134 @@ button:disabled, .btn:disabled {
   }
 }
 
-.craft-slot-row {
+/* ── Shared ingredient icon ────────────────────── */
+
+.ing-cell {
+  position: relative;
   display: flex;
-  gap: 0.5rem;
+  flex-direction: column;
   align-items: center;
+  width: 52px;
 }
 
-.craft-slot-row select {
-  flex: 1;
-  padding: 0.4rem;
+.ing-cell-zero { opacity: 0.35; }
+
+.ing-cell-clickable { cursor: pointer; }
+
+.ing-icon-wrap {
+  position: relative;
+  border-radius: 50%;
+}
+
+.ing-icon {
+  border-radius: 50%;
+  border: 2px solid var(--border-color);
+  object-fit: cover;
   background: var(--bg-card);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  font-family: var(--font-body);
-  font-size: 0.82rem;
+  display: block;
 }
 
-.craft-slot-row select:focus {
-  outline: none;
-  border-color: var(--accent-gold-dim);
+.ing-cell:not(.ing-cell-zero) .ing-icon {
+  border-color: var(--zone-color, var(--border-glow));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--zone-color, transparent) 30%, transparent);
+}
+
+.ing-cell-selected .ing-icon {
+  border-color: var(--accent-gold);
+  box-shadow: 0 0 12px rgba(240, 192, 64, 0.5);
+}
+
+.ing-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  min-width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  border-radius: 8px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.62rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.ing-cell[data-name]::after {
+  content: attr(data-name);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 6px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(8, 8, 16, 0.92);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 20;
+  transition: opacity 0.15s ease;
+}
+
+.ing-cell[data-name]:hover::after,
+.ing-cell[data-name]:active::after {
+  opacity: 1;
+}
+
+/* ── Craft panel ──────────────────────────────── */
+
+.craft-slots {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: center;
+  padding-bottom: 0.5rem;
+}
+
+.craft-slot {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 2px dashed var(--border-color);
+  background: var(--bg-card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.craft-slot:hover {
+  border-color: var(--border-glow);
+}
+
+.craft-slot-filled {
+  border-style: solid;
+  border-color: var(--zone-color, var(--border-glow));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--zone-color, transparent) 35%, transparent);
+}
+
+.craft-slot-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.craft-slot-empty {
+  color: var(--text-muted);
+  font-family: var(--font-title);
+  font-size: 1.1rem;
 }
 
 .craft-plus {
@@ -1410,12 +1518,38 @@ button:disabled, .btn:disabled {
   flex-shrink: 0;
 }
 
+.craft-brew-btn {
+  margin-left: 0.35rem;
+}
+
+.craft-ingredient-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0.35rem 0;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.craft-ingredient-grid .ing-cell {
+  width: 44px;
+}
+
+.craft-empty-msg {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 0.75rem;
+  padding: 0.5rem 0;
+}
+
 .craft-btn-row {
   display: flex;
   gap: 0.5rem;
 }
 
 .craft-btn-row button { flex: 1; }
+
+/* ── Grimoire ─────────────────────────────────── */
 
 .grimoire-progress {
   width: 100%;
@@ -1435,7 +1569,7 @@ button:disabled, .btn:disabled {
 
 .grimoire-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 0.4rem;
 }
 
@@ -1453,12 +1587,50 @@ button:disabled, .btn:disabled {
   font-family: var(--font-title);
   font-size: 0.7rem;
   color: var(--accent-gold);
-  margin-bottom: 0.12rem;
+  margin-bottom: 0.2rem;
 }
 
-.grimoire-card-info {
-  font-size: 0.75rem;
+.grimoire-card-recipe {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.15rem;
+}
+
+.grimoire-ingredient {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.7rem;
+  min-width: 0;
+}
+
+.grimoire-ingredient span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.grimoire-ing-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-color);
+  object-fit: cover;
+  background: var(--bg-card);
+  flex-shrink: 0;
+}
+
+.grimoire-plus {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  flex-shrink: 0;
+}
+
+.grimoire-card-effect {
+  font-size: 0.72rem;
   color: var(--text-secondary);
+  padding-left: 0.15rem;
 }
 
 .grimoire-card-undiscovered {
@@ -1466,6 +1638,8 @@ button:disabled, .btn:disabled {
   font-style: italic;
   font-size: 0.75rem;
 }
+
+/* ── Inventory ────────────────────────────────── */
 
 .inventory-zone-header {
   font-family: var(--font-title);
@@ -1482,66 +1656,6 @@ button:disabled, .btn:disabled {
   flex-wrap: wrap;
   gap: 0.55rem;
   padding: 0.2rem 0;
-}
-
-.inventory-cell {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.2rem;
-  width: 52px;
-}
-
-.inventory-cell-zero { opacity: 0.35; }
-
-.inventory-icon-wrap {
-  position: relative;
-  width: 42px;
-  height: 42px;
-}
-
-.inventory-icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  border: 2px solid var(--border-color);
-  object-fit: cover;
-  background: var(--bg-card);
-}
-
-.inventory-cell:not(.inventory-cell-zero) .inventory-icon {
-  border-color: var(--border-glow);
-}
-
-.inventory-badge {
-  position: absolute;
-  bottom: -2px;
-  right: -2px;
-  min-width: 18px;
-  height: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 4px;
-  border-radius: 9px;
-  background: var(--bg-panel);
-  border: 1px solid var(--border-color);
-  color: var(--text-primary);
-  font-family: var(--font-body);
-  font-size: 0.68rem;
-  font-weight: 600;
-  line-height: 1;
-}
-
-.inventory-cell-name {
-  font-family: var(--font-body);
-  font-size: 0.62rem;
-  text-align: center;
-  line-height: 1.15;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .game-over-overlay {
