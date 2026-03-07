@@ -1934,10 +1934,11 @@ button:disabled, .btn:disabled {
   position: absolute;
   top: -5px;
   right: -6px;
+  font-family: var(--font-title);
   font-size: 0.55rem;
   font-weight: 800;
   background: var(--effect-color, var(--accent-gold));
-  color: #fff;
+  color: var(--bg-primary);
   border-radius: 4px;
   padding: 1px 4px;
   line-height: 1.4;
