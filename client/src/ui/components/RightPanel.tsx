@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import {
   EFFECT_COLORS,
+  EFFECT_MULTIPLIERS,
   EFFECT_NAMES,
   EFFECT_CATEGORIES,
   INGREDIENT_NAMES,
@@ -315,21 +316,28 @@ export function GrimoireContent({
     return filtered.sort((a, b) => {
       const aDisc = bitmapGet(grimoire, a + 1) ? 1 : 0
       const bDisc = bitmapGet(grimoire, b + 1) ? 1 : 0
-      if (aDisc !== bDisc) return bDisc - aDisc
 
+      // 1. Craftable discovered potions first
+      const aCraft = aDisc && discoveryMap.has(a) && Math.min(invMap.get(discoveryMap.get(a)!.ingredient_a) ?? 0, invMap.get(discoveryMap.get(a)!.ingredient_b) ?? 0) > 0 ? 1 : 0
+      const bCraft = bDisc && discoveryMap.has(b) && Math.min(invMap.get(discoveryMap.get(b)!.ingredient_a) ?? 0, invMap.get(discoveryMap.get(b)!.ingredient_b) ?? 0) > 0 ? 1 : 0
+      if (aCraft !== bCraft) return bCraft - aCraft
+
+      // 2. Discovered (non-craftable) by powerup strength
+      if (aDisc !== bDisc) return bDisc - aDisc
       if (aDisc && bDisc) {
-        const aQty = effectQuantities[a]
-        const bQty = effectQuantities[b]
-        if (aQty !== bQty) return bQty - aQty
+        const aStr = EFFECT_MULTIPLIERS[a] ?? 0
+        const bStr = EFFECT_MULTIPLIERS[b] ?? 0
+        if (aStr !== bStr) return bStr - aStr
       }
 
+      // 3. Hints last
       const aHint = !aDisc && hintIngredients.has(a) ? 1 : 0
       const bHint = !bDisc && hintIngredients.has(b) ? 1 : 0
       if (aHint !== bHint) return bHint - aHint
 
       return a - b
     })
-  }, [filter, grimoire, effectQuantities, hintIngredients])
+  }, [filter, grimoire, effectQuantities, hintIngredients, discoveryMap, invMap])
 
   return (
     <>
