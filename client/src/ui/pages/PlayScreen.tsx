@@ -359,6 +359,7 @@ function HeroSlot({
       className={`hero-card${selectedHeroId === hero.id ? ' selected' : ''}`}
       onClick={() => onSelectHero(hero.id)}
     >
+      <span className="hero-card-name">{roleName}</span>
       <div className="hero-card-top">
         <img
           className="hero-card-portrait"
@@ -366,7 +367,9 @@ function HeroSlot({
           alt={roleName}
         />
         <div className="hero-card-info">
-          <span className="hero-card-name">{roleName}</span>
+          {hero.regen > 0 && (
+            <span className="hero-card-regen-tag">+{hero.regen} HP/s</span>
+          )}
           <div className="hero-card-hp">
             <div className="hero-card-hp-fill" style={{ width: `${hpPct}%`, background: hpColor }} />
             {regenPreviewPct > 0 && (
@@ -375,16 +378,11 @@ function HeroSlot({
                 style={{ left: `${hpPct}%`, width: `${regenPreviewPct}%`, background: hpColor }}
               />
             )}
-            <span className="hero-card-bar-label">
-              {displayHp(displayHpVal)}/{displayHp(hero.max_health)}
-              {hero.regen > 0 && (
-                <span className="hero-card-regen-tag">+{hero.regen}/s</span>
-              )}
-            </span>
+            <span className="hero-card-bar-label">HP {displayHp(displayHpVal)}/{displayHp(hero.max_health)}</span>
           </div>
           <div className="hero-card-power">
             <div className="hero-card-power-fill" style={{ width: `${powerPct}%` }} />
-            <span className="hero-card-bar-label">Power: {hero.power}</span>
+            <span className="hero-card-bar-label">Power {hero.power}</span>
           </div>
           <span className={`hero-card-status ${statusClass}`}>{statusText}</span>
         </div>
