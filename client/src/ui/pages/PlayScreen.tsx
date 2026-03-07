@@ -299,6 +299,8 @@ export function PlayScreen({ bridge }: Props) {
             <div className="side-panel-body">
               <CraftContent
                 inventory={inventory}
+                recipes={recipes}
+                remainingTries={game?.remaining_tries ?? 300}
                 isGameOver={isGameOver}
                 brewAllCount={brewAllCount}
                 onCraft={(a, b) => void handleCraft(a, b)}
@@ -317,7 +319,6 @@ export function PlayScreen({ bridge }: Props) {
             <div className="side-panel-body">
               <GrimoireContent
                 grimoire={game?.grimoire ?? 0}
-                hints={game?.hints ?? 0}
                 effectQuantities={effectQuantities}
                 recipes={recipes}
                 hintIngredients={hintIngredients}

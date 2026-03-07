@@ -18,7 +18,7 @@ export function useHints(gameId: number | null): Map<number, number[]> {
 
       const ingredient = data.ingredient - 1
       for (let i = 0; i < EFFECT_COUNT; i++) {
-        if (bitmapGet(data.recipes, i)) {
+        if (bitmapGet(data.recipes, i + 1)) {
           const list = result.get(i) ?? []
           list.push(ingredient)
           result.set(i, list)

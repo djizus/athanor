@@ -80,14 +80,20 @@ function IngredientIcon({
 
 /* ── Craft Panel Content ──────────────────────── */
 
+const TOTAL_COMBINATIONS = 25 * 24 / 2
+
 export function CraftContent({
   inventory,
+  recipes,
+  remainingTries,
   isGameOver,
   brewAllCount,
   onCraft,
   onBrewAll,
 }: {
   inventory: InventoryItem[]
+  recipes: DiscoveryData[]
+  remainingTries: number
   isGameOver: boolean
   brewAllCount: number
   onCraft: (a: number, b: number) => void
@@ -114,8 +120,27 @@ export function CraftContent({
     if (slotA != null && slotB != null) onCraft(slotA, slotB)
   }
 
+  const tried = TOTAL_COMBINATIONS - remainingTries
+  const progressPct = TOTAL_COMBINATIONS > 0 ? Math.min(100, (tried / TOTAL_COMBINATIONS) * 100) : 0
+
+  const selectedDiscovery = useMemo(() => {
+    if (slotA == null || slotB == null) return null
+    const lo = Math.min(slotA, slotB)
+    const hi = Math.max(slotA, slotB)
+    return recipes.find(
+      (r) => r.discovered && Math.min(r.ingredient_a, r.ingredient_b) === lo && Math.max(r.ingredient_a, r.ingredient_b) === hi,
+    ) ?? null
+  }, [slotA, slotB, recipes])
+
   return (
     <>
+      <div className="craft-progress-row">
+        <div className="craft-progress-bar">
+          <div className="craft-progress-fill" style={{ width: `${progressPct}%` }} />
+        </div>
+        <span className="craft-progress-label">{tried}/{TOTAL_COMBINATIONS}</span>
+      </div>
+
       <div className="craft-slots">
         <button
           className={`craft-slot${slotA != null ? ' craft-slot-filled' : ''}`}
@@ -140,6 +165,14 @@ export function CraftContent({
             <span className="craft-slot-empty">?</span>
           )}
         </button>
+        <span className="craft-arrow">=</span>
+        <div className={`craft-result${selectedDiscovery ? ' craft-result-known' : ''}`}>
+          {selectedDiscovery ? (
+            <CraftResultPreview discovery={selectedDiscovery} />
+          ) : (
+            <span className="craft-result-unknown">?</span>
+          )}
+        </div>
         <button
           className="btn-primary btn-sm craft-brew-btn"
           onClick={handleBrew}
@@ -178,6 +211,33 @@ export function CraftContent({
         )
       })}
     </>
+  )
+}
+
+function CraftResultPreview({ discovery }: { discovery: DiscoveryData }) {
+  const effectIdx = discovery.effect
+  const category = EFFECT_CATEGORIES[effectIdx]
+  const isSoup = category === undefined
+
+  if (isSoup || effectIdx < 0 || effectIdx >= EFFECT_NAMES.length) {
+    return (
+      <div className="craft-result-soup">
+        <img className="craft-result-icon" src="/assets/potions/craft-soup.webp" alt="Soup" />
+        <span className="craft-result-tag">+1g</span>
+      </div>
+    )
+  }
+
+  const color = EFFECT_COLORS[category]
+  return (
+    <div className="craft-result-potion">
+      <img
+        className="craft-result-icon"
+        src={effectAssetUrl(effectIdx)}
+        alt={EFFECT_NAMES[effectIdx]}
+        style={{ borderColor: color }}
+      />
+    </div>
   )
 }
 
@@ -268,7 +328,6 @@ function PotionUsePopup({
 
 export function GrimoireContent({
   grimoire,
-  hints,
   effectQuantities,
   recipes,
   hintIngredients,
@@ -281,7 +340,6 @@ export function GrimoireContent({
   onUsePotion,
 }: {
   grimoire: number
-  hints: number
   effectQuantities: number[]
   recipes: DiscoveryData[]
   hintIngredients: Map<number, number[]>
@@ -299,7 +357,7 @@ export function GrimoireContent({
   const discoveryMap = useMemo(() => {
     const map = new Map<number, DiscoveryData>()
     for (const r of recipes) {
-      if (bitmapGet(grimoire, r.effect) && !map.has(r.effect)) {
+      if (bitmapGet(grimoire, r.effect + 1) && !map.has(r.effect)) {
         map.set(r.effect, r)
       }
     }
@@ -341,8 +399,8 @@ export function GrimoireContent({
 
       <div className="grimoire-grid">
         {effects.map(effectIdx => {
-          const isDiscovered = bitmapGet(grimoire, effectIdx)
-          const isHinted = !isDiscovered && bitmapGet(hints, effectIdx)
+          const isDiscovered = bitmapGet(grimoire, effectIdx + 1)
+          const isHinted = !isDiscovered && hintIngredients.has(effectIdx)
           const quantity = effectQuantities[effectIdx]
           const hasStock = quantity > 0
           const canUse = isDiscovered && hasStock && !isGameOver
@@ -389,7 +447,7 @@ export function GrimoireContent({
         })}
       </div>
 
-      {selectedEffect !== null && bitmapGet(grimoire, selectedEffect) && selectedQuantity > 0 && (
+      {selectedEffect !== null && bitmapGet(grimoire, selectedEffect + 1) && selectedQuantity > 0 && (
         <PotionUsePopup
           effectIndex={selectedEffect}
           maxQuantity={selectedQuantity}

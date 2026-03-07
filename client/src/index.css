@@ -1521,6 +1521,36 @@ button:disabled, .btn:disabled {
 
 /* ── Craft panel ──────────────────────────────── */
 
+.craft-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.craft-progress-bar {
+  flex: 1;
+  height: 6px;
+  background: var(--bg-secondary);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.craft-progress-fill {
+  height: 100%;
+  background: var(--accent-gold);
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+.craft-progress-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  min-width: 3.5em;
+  text-align: right;
+}
+
 .craft-slots {
   display: flex;
   align-items: center;
@@ -1570,6 +1600,66 @@ button:disabled, .btn:disabled {
   color: var(--text-muted);
   font-size: 1rem;
   flex-shrink: 0;
+}
+
+.craft-arrow {
+  color: var(--text-muted);
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.craft-result {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 2px dashed var(--border-color);
+  background: var(--bg-card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.craft-result-known {
+  border-style: solid;
+  border-color: var(--border-glow);
+}
+
+.craft-result-unknown {
+  color: var(--text-muted);
+  font-family: var(--font-title);
+  font-size: 1.1rem;
+}
+
+.craft-result-soup,
+.craft-result-potion {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.craft-result-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.craft-result-tag {
+  position: absolute;
+  bottom: -4px;
+  right: -6px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--accent-gold);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 0 3px;
+  line-height: 1.3;
 }
 
 .craft-brew-btn {
