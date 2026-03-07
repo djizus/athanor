@@ -10,7 +10,7 @@ export function LoadingScreen({ status, error }: LoadingScreenProps) {
     <div className="loading-screen">
       <div
         className="loading-bg"
-        style={{ backgroundImage: `url('/assets/branding/loading-bg.png')` }}
+        style={{ backgroundImage: `url('/assets/branding/loading-bg.webp')` }}
       />
       <div className="ambient-particles" aria-hidden>
         {particles.map((idx) => (

@@ -545,7 +545,7 @@ button:disabled, .btn:disabled {
       rgba(8, 8, 16, 0.45) 45%,
       rgba(8, 8, 16, 0.72) 100%
     ),
-    url('/assets/backgrounds/lab-bg.png');
+    url('/assets/backgrounds/lab-bg.webp');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;

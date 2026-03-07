@@ -24,8 +24,8 @@ export class BootScene extends Phaser.Scene {
   }
 
   preload(): void {
-    this.load.image('lab-bg-file', '/assets/backgrounds/lab-bg.png');
-    this.load.image('world-map-file', '/assets/backgrounds/world-map.png');
+    this.load.image('lab-bg-file', '/assets/backgrounds/lab-bg.webp');
+    this.load.image('world-map-file', '/assets/backgrounds/world-map.webp');
 
     const roles = [
       { key: 'role-mage', file: 'hero-alaric.png' },
