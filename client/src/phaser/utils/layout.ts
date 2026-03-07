@@ -13,8 +13,8 @@ export const ZONE_FRAC_0 = 0;
 export const ZONE_FRAC_1 = 1 / 3;
 export const ZONE_FRAC_2 = 2 / 3;
 
-/** Hero vertical position as fraction of screen height */
-export const HERO_Y_RATIO = 0.6;
+/** Hero vertical position as fraction of screen height (bottom of visible map) */
+export const HERO_Y_RATIO = 0.82;
 export const HERO_ROW_SPACING = 48;
 
 /** Compute actual gameplay strip width for current screen */
@@ -42,9 +42,9 @@ export function heroWorldX(depth: number, screenWidth: number): number {
   return offsetX + BASE_CAMP_X + progress * (gpWidth - BASE_CAMP_X - 60);
 }
 
-/** Compute base camp screen X */
+/** Compute base camp screen X (horizontal center) */
 export function baseCampWorldX(screenWidth: number): number {
-  return getGameplayOffsetX(screenWidth) + BASE_CAMP_X;
+  return screenWidth / 2;
 }
 
 export const FONTS = {

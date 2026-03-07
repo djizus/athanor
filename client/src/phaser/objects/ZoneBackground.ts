@@ -46,8 +46,11 @@ export class ZoneBackground {
     const scaleX = w / MAP_WIDTH;
     const scaleY = h / MAP_HEIGHT;
     const coverScale = Math.max(scaleX, scaleY);
-    this.mapImage.setDisplaySize(MAP_WIDTH * coverScale, MAP_HEIGHT * coverScale);
-    this.mapImage.setPosition(w / 2, h / 2);
+    const displayW = MAP_WIDTH * coverScale;
+    const displayH = MAP_HEIGHT * coverScale;
+    this.mapImage.setDisplaySize(displayW, displayH);
+    const yAnchor = h > w ? h * 0.58 : h / 2;
+    this.mapImage.setPosition(w / 2, yAnchor);
   }
 
   private destroyEmitters(): void {
