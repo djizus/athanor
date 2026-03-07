@@ -123,6 +123,7 @@ export function BrewContent({
         <button
           className={`craft-slot${slotA != null ? ' craft-slot-filled' : ''}`}
           onClick={() => onSetSlotA(null)}
+          title={slotA != null ? INGREDIENT_NAMES[slotA] : 'Select ingredient'}
           style={slotA != null ? { ['--zone-color' as string]: ZONE_COLORS[getZoneForIngredient(slotA)] } : undefined}
         >
           {slotA != null ? (
@@ -135,6 +136,7 @@ export function BrewContent({
         <button
           className={`craft-slot${slotB != null ? ' craft-slot-filled' : ''}`}
           onClick={() => onSetSlotB(null)}
+          title={slotB != null ? INGREDIENT_NAMES[slotB] : 'Select ingredient'}
           style={slotB != null ? { ['--zone-color' as string]: ZONE_COLORS[getZoneForIngredient(slotB)] } : undefined}
         >
           {slotB != null ? (
@@ -249,54 +251,47 @@ function CraftResultPreview({ discovery }: { discovery: DiscoveryData }) {
 /* ── Potion Use Popup ─────────────────────────── */
 
 function PotionUsePopup({
-  effectIndex,
-  maxQuantity,
+  effectQuantities,
   heroes,
-  onUse,
+  onApply,
   onClose,
 }: {
-  effectIndex: number
-  maxQuantity: number
+  effectQuantities: number[]
   heroes: GrimoireHero[]
-  onUse: (heroId: number, quantity: number) => void
+  onApply: (heroId: number, selections: { effect: number; quantity: number }[]) => void
   onClose: () => void
 }) {
-  const [quantity, setQuantity] = useState(1)
   const [heroId, setHeroId] = useState<number | null>(heroes.length > 0 ? heroes[0].id : null)
+  const [selected, setSelected] = useState<Map<number, number>>(() => new Map())
 
-  const category = EFFECT_CATEGORIES[effectIndex]
-  const categoryColor = EFFECT_COLORS[category]
-  const categoryLabel = category.charAt(0).toUpperCase() + category.slice(1)
+  const available = useMemo(() =>
+    effectQuantities.map((qty, idx) => ({ idx, qty })).filter(e => e.qty > 0),
+    [effectQuantities],
+  )
+
+  const togglePotion = (idx: number, delta: number) => {
+    setSelected(prev => {
+      const next = new Map(prev)
+      const cur = next.get(idx) ?? 0
+      const max = effectQuantities[idx]
+      const val = Math.max(0, Math.min(max, cur + delta))
+      if (val === 0) next.delete(idx)
+      else next.set(idx, val)
+      return next
+    })
+  }
+
+  const totalSelected = Array.from(selected.values()).reduce((a, b) => a + b, 0)
+
+  const heroRoleIdx = heroId !== null
+    ? (() => { const h = heroes.find(h => h.id === heroId); return h ? (h.role > 0 ? h.role - 1 : h.id) : 0 })()
+    : 0
+  const heroName = ROLE_NAMES[heroRoleIdx] ?? 'Hero'
 
   return (
     <div className="potion-popup-backdrop" onClick={onClose}>
       <div className="potion-popup floating-panel" onClick={e => e.stopPropagation()}>
-        <div className="potion-popup-header">
-          <img
-            className="potion-popup-icon"
-            src={effectAssetUrl(effectIndex)}
-            alt={EFFECT_NAMES[effectIndex]}
-            style={{ borderColor: categoryColor }}
-          />
-          <div>
-            <div className="potion-popup-name" style={{ color: categoryColor }}>
-              {EFFECT_NAMES[effectIndex]}
-            </div>
-            <div className="potion-popup-category">{categoryLabel} Potion</div>
-          </div>
-        </div>
-
         <div className="potion-popup-section">
-          <span className="potion-popup-label">Quantity</span>
-          <div className="potion-popup-qty-control">
-            <button onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={quantity <= 1}>−</button>
-            <span>{quantity}</span>
-            <button onClick={() => setQuantity(q => Math.min(maxQuantity, q + 1))} disabled={quantity >= maxQuantity}>+</button>
-          </div>
-        </div>
-
-        <div className="potion-popup-section">
-          <span className="potion-popup-label">Apply to</span>
           <div className="potion-popup-heroes">
             {heroes.map(hero => {
               const roleIdx = hero.role > 0 ? hero.role - 1 : hero.id
@@ -314,13 +309,47 @@ function PotionUsePopup({
           </div>
         </div>
 
+        <div className="potion-popup-grid">
+          {available.map(({ idx, qty }) => {
+            const category = EFFECT_CATEGORIES[idx]
+            const color = EFFECT_COLORS[category]
+            const count = selected.get(idx) ?? 0
+            const isSelected = count > 0
+
+            return (
+              <div
+                key={idx}
+                className={`potion-popup-cell${isSelected ? ' active' : ''}`}
+                style={{ ['--effect-color' as string]: color }}
+              >
+                <div className="potion-popup-cell-icon">
+                  <img src={effectAssetUrl(idx)} alt={effectStatLabel(idx)} />
+                </div>
+                <span className="potion-popup-cell-stat" style={{ color }}>
+                  {effectStatLabel(idx)}
+                </span>
+                <span className="potion-popup-cell-stock">×{qty}</span>
+                <div className="potion-popup-cell-qty">
+                  <button onClick={() => togglePotion(idx, -1)} disabled={count <= 0}>−</button>
+                  <span>{count}</span>
+                  <button onClick={() => togglePotion(idx, 1)} disabled={count >= qty}>+</button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
         <div className="potion-popup-actions">
           <button
             className="btn-primary"
-            onClick={() => heroId !== null && onUse(heroId, quantity)}
-            disabled={heroId === null}
+            onClick={() => {
+              if (heroId === null || selected.size === 0) return
+              const selections = Array.from(selected.entries()).map(([effect, quantity]) => ({ effect, quantity }))
+              onApply(heroId, selections)
+            }}
+            disabled={heroId === null || totalSelected === 0}
           >
-            Apply
+            Apply {totalSelected > 0 ? `${totalSelected} to ${heroName}` : ''}
           </button>
           <button onClick={onClose}>Cancel</button>
         </div>
@@ -343,7 +372,7 @@ export function GrimoireContent({
   heroes,
   inventory,
   onBuyHint,
-  onUsePotion,
+  onApplyPotions,
   onSelectIngredients,
 }: {
   grimoire: number
@@ -357,11 +386,11 @@ export function GrimoireContent({
   heroes: GrimoireHero[]
   inventory: InventoryItem[]
   onBuyHint: () => void
-  onUsePotion: (effect: number, heroId: number, quantity: number) => void
+  onApplyPotions: (heroId: number, selections: { effect: number; quantity: number }[]) => void
   onSelectIngredients: (a: number, b: number) => void
 }) {
   const [filter, setFilter] = useState<FilterCategory>('all')
-  const [selectedEffect, setSelectedEffect] = useState<number | null>(null)
+  const [potionPopupOpen, setPotionPopupOpen] = useState(false)
 
   const invMap = useMemo(() => {
     const m = new Map<number, number>()
@@ -381,7 +410,8 @@ export function GrimoireContent({
 
   const effects = useMemo(() => {
     const all = Array.from({ length: 30 }, (_, i) => i)
-    const filtered = filter === 'all' ? all : all.filter(i => EFFECT_CATEGORIES[i] === filter)
+    const visible = all.filter(i => bitmapGet(grimoire, i + 1) || hintIngredients.has(i))
+    const filtered = filter === 'all' ? visible : visible.filter(i => EFFECT_CATEGORIES[i] === filter)
 
     return filtered.sort((a, b) => {
       const aDisc = bitmapGet(grimoire, a + 1) ? 1 : 0
@@ -402,7 +432,7 @@ export function GrimoireContent({
     })
   }, [filter, grimoire, effectQuantities, hintIngredients])
 
-  const selectedQuantity = selectedEffect !== null ? effectQuantities[selectedEffect] : 0
+  const hasAnyStock = effectQuantities.some(q => q > 0)
 
   return (
     <>
@@ -444,18 +474,25 @@ export function GrimoireContent({
             ? Math.min(invMap.get(discovery.ingredient_a) ?? 0, invMap.get(discovery.ingredient_b) ?? 0)
             : 0
           const canCraft = isDiscovered && discovery && maxCraftable > 0 && !isGameOver
+          const hintIngs = hintIngredients.get(effectIdx)
 
           const handleClick = () => {
             if (isDiscovered && discovery) {
               onSelectIngredients(discovery.ingredient_a, discovery.ingredient_b)
+            } else if (isHinted && hintIngs && hintIngs.length > 0) {
+              if (hintIngs.length >= 2) {
+                onSelectIngredients(hintIngs[0], hintIngs[1])
+              } else {
+                onSelectIngredients(hintIngs[0], -1)
+              }
             }
           }
 
           return (
             <div
               key={effectIdx}
-              className={`grimoire-cell${isDiscovered ? ' discovered' : ''}${isHinted ? ' hinted' : ''}${!isDiscovered && !isHinted ? ' locked' : ''}${isDiscovered ? ' grimoire-cell-clickable' : ''}`}
-              onClick={isDiscovered ? handleClick : undefined}
+              className={`grimoire-cell${isDiscovered ? ' discovered' : ''}${isHinted ? ' hinted' : ''}${isDiscovered || isHinted ? ' grimoire-cell-clickable' : ''}`}
+              onClick={isDiscovered || isHinted ? handleClick : undefined}
             >
               <div
                 className="grimoire-icon-wrap"
@@ -467,31 +504,31 @@ export function GrimoireContent({
                   alt={isDiscovered ? EFFECT_NAMES[effectIdx] : '???'}
                 />
                 {hasStock && <span className="grimoire-qty-badge">{quantity}</span>}
-                {canCraft && <span className="grimoire-craft-badge">⚗</span>}
+                {canCraft && <span className="grimoire-badge-star">★</span>}
+                {isHinted && <span className="grimoire-badge-hint">🔍</span>}
               </div>
               <span className="grimoire-stat-badge" style={{ color: categoryColor }}>
                 {effectStatLabel(effectIdx)}
               </span>
-              {hasStock && !isGameOver && (
-                <button
-                  className="grimoire-use-dot"
-                  style={{ background: categoryColor }}
-                  onClick={(e) => { e.stopPropagation(); setSelectedEffect(effectIdx) }}
-                  title="Use potion"
-                />
-              )}
             </div>
           )
         })}
       </div>
 
-      {selectedEffect !== null && bitmapGet(grimoire, selectedEffect + 1) && selectedQuantity > 0 && (
+      {hasAnyStock && !isGameOver && heroes.length > 0 && (
+        <div className="grimoire-btn-row">
+          <button className="btn-primary" onClick={() => setPotionPopupOpen(true)}>
+            Apply Potions
+          </button>
+        </div>
+      )}
+
+      {potionPopupOpen && (
         <PotionUsePopup
-          effectIndex={selectedEffect}
-          maxQuantity={selectedQuantity}
+          effectQuantities={effectQuantities}
           heroes={heroes}
-          onUse={(heroId, qty) => { onUsePotion(selectedEffect, heroId, qty); setSelectedEffect(null) }}
-          onClose={() => setSelectedEffect(null)}
+          onApply={(heroId, selections) => { onApplyPotions(heroId, selections); setPotionPopupOpen(false) }}
+          onClose={() => setPotionPopupOpen(false)}
         />
       )}
     </>

@@ -1881,20 +1881,25 @@ button:disabled, .btn:disabled {
   z-index: 2;
 }
 
-.grimoire-craft-badge {
+.grimoire-badge-star {
   position: absolute;
-  top: -4px;
-  right: -4px;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--accent-green);
-  color: var(--bg-primary);
-  font-size: 0.55rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  top: -2px;
+  right: -2px;
+  font-size: 0.75rem;
+  color: var(--accent-gold);
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
   z-index: 2;
+  pointer-events: none;
+}
+
+.grimoire-badge-hint {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  font-size: 0.65rem;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+  z-index: 2;
+  pointer-events: none;
 }
 
 .grimoire-stat-badge {
@@ -1904,23 +1909,6 @@ button:disabled, .btn:disabled {
   text-align: center;
   white-space: nowrap;
 }
-
-.grimoire-use-dot {
-  position: absolute;
-  top: -3px;
-  left: -3px;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  z-index: 2;
-  opacity: 0.8;
-  transition: opacity var(--transition-fast);
-}
-
-.grimoire-use-dot:hover { opacity: 1; }
 
 /* ── Potion Use Popup ─────────────────────────── */
 
@@ -2076,53 +2064,84 @@ button:disabled, .btn:disabled {
   flex: 1;
 }
 
-.hero-potion-grid {
+.potion-popup-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(5rem, 1fr));
-  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+  gap: 0.4rem;
 }
 
-.hero-potion-option {
+.potion-popup-cell {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.25rem;
-  padding: 0.5rem 0.35rem;
+  gap: 0.15rem;
+  padding: 0.4rem 0.25rem;
   border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
   background: var(--bg-card);
-  cursor: pointer;
   transition: all var(--transition-fast);
 }
 
-.hero-potion-option:hover {
-  border-color: var(--border-glow);
-  background: var(--bg-hover);
+.potion-popup-cell.active {
+  border-color: var(--effect-color, var(--accent-gold));
+  background: rgba(240, 192, 64, 0.08);
 }
 
-.hero-potion-option.selected {
-  border-color: var(--accent-gold);
-  background: rgba(240, 192, 64, 0.1);
-}
-
-.hero-potion-option img {
-  width: 36px;
-  height: 36px;
+.potion-popup-cell-icon img {
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
-  border: 2px solid;
+  border: 2px solid var(--effect-color, var(--border-color));
   object-fit: cover;
 }
 
-.hero-potion-option-name {
-  font-size: 0.62rem;
-  color: var(--text-secondary);
-  text-align: center;
-  line-height: 1.2;
+.potion-popup-cell-stat {
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1;
 }
 
-.hero-potion-option-qty {
+.potion-popup-cell-stock {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+}
+
+.potion-popup-cell-qty {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.potion-popup-cell-qty button {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
   font-size: 0.7rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.potion-popup-cell-qty button:hover:not(:disabled) {
+  border-color: var(--accent-gold);
+  background: var(--bg-hover);
+}
+
+.potion-popup-cell-qty button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.potion-popup-cell-qty span {
+  font-size: 0.75rem;
   font-weight: 700;
+  min-width: 1.2em;
+  text-align: center;
 }
 
 /* ── Inventory ────────────────────────────────── */
