@@ -100,7 +100,7 @@ pub mod Setup {
             .dispatcher
             .register_external_contract(
                 namespace: NAMESPACE(),
-                contract_name: "ERC20",
+                contract_name: "ERC721",
                 instance_name: format!("{}", instance_name),
                 contract_address: minigame_token_address,
                 block_number: 1,

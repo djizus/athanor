@@ -20,6 +20,7 @@ pub mod Play {
     use dojo::world::{WorldStorage, WorldStorageTrait};
     use game_components_minigame::interface::IMinigameTokenData;
     use game_components_minigame::libs::{assert_token_ownership, post_action, pre_action};
+    use game_components_minigame::minigame::MinigameComponent;
     use game_components_token::core::interface::{
         IMinigameTokenDispatcher, IMinigameTokenDispatcherTrait,
     };
@@ -45,7 +46,6 @@ pub mod Play {
     impl MinigameInternalImpl = MinigameComponent::InternalImpl<ContractState>;
     #[abi(embed_v0)]
     impl SRC5Impl = SRC5Component::SRC5Impl<ContractState>;
-    use game_components_minigame::minigame::MinigameComponent;
     impl PlayableInternalImpl = PlayableComponent::InternalImpl<ContractState>;
 
     #[storage]
