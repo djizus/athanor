@@ -7,48 +7,36 @@ import { bitmapPopcount } from '@/game/packer'
 
 type LeaderboardRow = {
   gameId: number
-  player: bigint
   discoveredCount: number
   startedAt: number
+  duration: number
 }
 
-function truncateAddress(value: bigint): string {
-  const hex = `0x${value.toString(16)}`
-  if (hex.length <= 12) return hex
-  return `${hex.slice(0, 6)}...${hex.slice(-4)}`
-}
-
-function formatStartedAt(unixSeconds: number): string {
-  if (unixSeconds <= 0) return '-'
-  return new Date(unixSeconds * 1000).toLocaleString()
+function formatDuration(seconds: number): string {
+  if (seconds <= 0) return '-'
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return `${m}m ${s}s`
 }
 
 export function LeaderboardPage() {
   const { contractComponents } = useDojo()
-  const sessionEntities = useEntityQuery([Has(contractComponents.GameSession)])
   const gameEntities = useEntityQuery([Has(contractComponents.Game)])
   const { navigate } = useNavigationStore()
 
   const rows = useMemo(() => {
     const leaderboardRows: LeaderboardRow[] = []
 
-    for (const entity of sessionEntities) {
-      const session = getComponentValue(contractComponents.GameSession, entity)
-      if (!session) continue
-
-      const gameId = Number(session.game_id)
-      const game = gameEntities
-        .map((e) => getComponentValue(contractComponents.Game, e))
-        .find((g) => g && Number(g.id) === gameId)
-
-      const isOver = game ? Number(game.ended_at) > 0 : session.game_over
-      if (!isOver) continue
+    for (const entity of gameEntities) {
+      const game = getComponentValue(contractComponents.Game, entity)
+      if (!game) continue
+      if (game.ended_at <= 0) continue
 
       leaderboardRows.push({
-        gameId,
-        player: BigInt(session.player),
-        discoveredCount: game ? bitmapPopcount(game.grimoire) : session.discovered_count,
-        startedAt: game ? Number(game.started_at) : Number(session.started_at),
+        gameId: game.id,
+        discoveredCount: bitmapPopcount(game.grimoire),
+        startedAt: game.started_at,
+        duration: game.ended_at - game.started_at,
       })
     }
 
@@ -56,9 +44,9 @@ export function LeaderboardPage() {
       if (b.discoveredCount !== a.discoveredCount) {
         return b.discoveredCount - a.discoveredCount
       }
-      return a.startedAt - b.startedAt
+      return a.duration - b.duration
     })
-  }, [contractComponents.GameSession, contractComponents.Game, sessionEntities, gameEntities])
+  }, [contractComponents.Game, gameEntities])
 
   return (
     <div className="glass-page">
@@ -77,20 +65,18 @@ export function LeaderboardPage() {
                 <thead>
                   <tr>
                     <th>Rank</th>
-                    <th>Player</th>
                     <th>Game</th>
-                    <th>Recipes Discovered</th>
-                    <th>Started At</th>
+                    <th>Recipes</th>
+                    <th>Time</th>
                   </tr>
                 </thead>
                 <tbody>
                   {rows.map((row, index) => (
                     <tr key={row.gameId}>
                       <td>{index + 1}</td>
-                      <td>{truncateAddress(row.player)}</td>
                       <td>#{row.gameId}</td>
                       <td>{row.discoveredCount}/30</td>
-                      <td>{formatStartedAt(row.startedAt)}</td>
+                      <td>{formatDuration(row.duration)}</td>
                     </tr>
                   ))}
                 </tbody>
