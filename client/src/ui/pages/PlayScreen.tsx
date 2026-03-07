@@ -85,17 +85,6 @@ export function PlayScreen() {
   const [slotB, setSlotB] = useState<number | null>(null)
   const [collectionTab, setCollectionTab] = useState<PanelMode>('ingredients')
 
-  useEffect(() => {
-    if (slotA != null) {
-      const qty = inventory.find(i => i.ingredient_id === slotA)?.quantity ?? 0
-      if (qty <= 0) setSlotA(null)
-    }
-    if (slotB != null) {
-      const qty = inventory.find(i => i.ingredient_id === slotB)?.quantity ?? 0
-      if (qty <= 0) setSlotB(null)
-    }
-  }, [inventory, slotA, slotB])
-
   const [heroesCollapsed, setHeroesCollapsed] = useState(false)
   const [brewCollapsed, setBrewCollapsed] = useState(false)
   const [logsCollapsed, setLogsCollapsed] = useState(false)
@@ -263,6 +252,9 @@ export function PlayScreen() {
       if (isSoup) {
         addGoldFloat('+1g')
       }
+      const remaining = (id: number) => (inventory.find(i => i.ingredient_id === id)?.quantity ?? 0) - 1
+      if (slotA != null && remaining(slotA) <= 0) setSlotA(null)
+      if (slotB != null && remaining(slotB) <= 0) setSlotB(null)
     } catch (e) { t.error(); pushInfo('Brew failed'); console.error('Craft failed:', e) }
   }
 
