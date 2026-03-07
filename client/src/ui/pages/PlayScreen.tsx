@@ -9,6 +9,7 @@ import { useHints } from '@/hooks/useHints'
 import { useExplorationLog } from '@/hooks/useExplorationLog'
 import type { RawExplorationEvent, HeroOverride } from '@/hooks/useExplorationLog'
 import { useExpeditionTracker } from '@/hooks/useExpeditionTracker'
+import type { HeroPosition } from '@/hooks/useExpeditionTracker'
 import { useNavigationStore } from '@/stores/navigationStore'
 import { txToast } from '@/stores/toastStore'
 import { soundManager } from '@/sound/SoundManager'
@@ -95,9 +96,9 @@ export function PlayScreen() {
 
   const { heroPositions, onExpeditionStart, onExplorationZoneUpdate } = useExpeditionTracker(heroes, now)
 
-  const addFloatingText = useCallback((heroId: number, text: string, color: string) => {
+  const addFloatingText = useCallback((heroId: number, text: string, color: string, zoneId?: number) => {
     const id = String(floatingIdRef.current++)
-    setFloatingTexts(prev => [...prev, { id, heroId, text, color }])
+    setFloatingTexts(prev => [...prev, { id, heroId, text, color, zoneId }])
   }, [])
 
   const removeFloatingText = useCallback((id: string) => {
@@ -109,30 +110,32 @@ export function PlayScreen() {
       onExplorationZoneUpdate(event.heroId, event.zoneId)
     }
 
+    const zone = event.zoneId
+
     switch (event.kind) {
       case 'trap':
         soundManager.playSfx('trap', 0.5)
-        addFloatingText(event.heroId, `-${event.value} HP`, '#d04050')
+        addFloatingText(event.heroId, `-${event.value} HP`, '#d04050', zone)
         break
       case 'gold':
         soundManager.playSfx('gold-find', 0.5)
-        addFloatingText(event.heroId, `+${event.value}g`, '#f0c040')
+        addFloatingText(event.heroId, `+${event.value}g`, '#f0c040', zone)
         break
       case 'heal':
         soundManager.playSfx('heal', 0.5)
-        addFloatingText(event.heroId, `+${event.value} HP`, '#40c060')
+        addFloatingText(event.heroId, `+${event.value} HP`, '#40c060', zone)
         break
       case 'beastWin':
         soundManager.playSfx('beast-win', 0.5)
-        addFloatingText(event.heroId, `+${event.value}g`, '#f0c040')
+        addFloatingText(event.heroId, `+${event.value}g`, '#f0c040', zone)
         break
       case 'beastLose':
         soundManager.playSfx('beast-lose', 0.5)
-        addFloatingText(event.heroId, `-${event.value} HP`, '#d04050')
+        addFloatingText(event.heroId, `-${event.value} HP`, '#d04050', zone)
         break
       case 'ingredient':
         soundManager.playSfx('gold-find', 0.3)
-        addFloatingText(event.heroId, '+1 Ingredient', '#a050d0')
+        addFloatingText(event.heroId, '+1 Ingredient', '#a050d0', zone)
         break
     }
   }, [addFloatingText, onExplorationZoneUpdate])
@@ -347,6 +350,7 @@ export function PlayScreen() {
                   isGameOver={isGameOver}
                   now={now}
                   heroOverrides={heroOverrides}
+                  heroPositions={heroPositions}
                   onSelectHero={(id) => setSelectedHeroId(id)}
                   onRecruit={() => void handleRecruit()}
                   onExplore={(id) => void handleExplore(id)}
@@ -468,6 +472,7 @@ export function PlayScreen() {
         <SettingsOverlay
           open={settingsOpen}
           onClose={() => setSettingsOpen(false)}
+          onSurrender={() => { setSettingsOpen(false); navigate('home') }}
         />
       )}
 
@@ -623,6 +628,7 @@ interface HeroSlotProps {
   isGameOver: boolean
   now: number
   heroOverrides: Map<number, HeroOverride>
+  heroPositions: Map<number, HeroPosition>
   onSelectHero: (heroId: number) => void
   onRecruit: () => void
   onExplore: (characterId: number) => void
@@ -640,6 +646,7 @@ function HeroSlot({
   isGameOver,
   now,
   heroOverrides,
+  heroPositions,
   onSelectHero,
   onRecruit,
   onExplore,
@@ -678,9 +685,14 @@ function HeroSlot({
   const isExploring = remaining > 0
   const lootReady = isIdle && (hero.gold > 0 || (hero.ingredients != null && hero.ingredients !== 0n))
 
+  const heroPos = heroPositions.get(hero.id)
+  const isReturning = isExploring && heroPos?.returning === true
+
   let statusText = 'Ready'
   let statusClass = ''
-  if (isExploring) { statusText = `Exploring ${remaining}s`; statusClass = 'exploring' }
+  if (isReturning) { statusText = `Returning ${remaining}s`; statusClass = 'returning' }
+  else if (isExploring) { statusText = `Exploring ${remaining}s`; statusClass = 'exploring' }
+  else if (lootReady) { statusText = 'Loot Ready'; statusClass = 'loot-ready' }
 
   const override = heroOverrides.get(hero.id)
   const regenElapsed = isIdle ? Math.max(0, now - availableAt) : 0

@@ -15,6 +15,7 @@ export interface FloatingTextAnim {
   heroId: number
   text: string
   color: string
+  zoneId?: number
 }
 
 interface JourneyMapProps {
@@ -152,9 +153,11 @@ export function JourneyMap({ heroes, heroPositions, floatingTexts, onFloatingTex
   const textsByZone = new Map<number, FloatingTextAnim[]>()
   for (let i = -1; i < 5; i++) textsByZone.set(i, [])
   for (const ft of floatingTexts) {
-    const pos = heroPositions.get(ft.heroId)
-    const zone = pos ? (pos.returning ? -1 : pos.zoneIndex) : -1
-    textsByZone.get(zone >= 0 ? zone : -1)!.push(ft)
+    const zone = ft.zoneId != null ? ft.zoneId : (() => {
+      const pos = heroPositions.get(ft.heroId)
+      return pos ? pos.zoneIndex : -1
+    })()
+    textsByZone.get(zone >= 0 && zone < 5 ? zone : -1)!.push(ft)
   }
 
   const activeZones = new Set<number>()
