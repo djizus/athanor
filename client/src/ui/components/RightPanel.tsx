@@ -80,6 +80,7 @@ const TOTAL_COMBINATIONS = 25 * 24 / 2
 export function BrewContent({
   slotA,
   slotB,
+  inventory,
   recipes,
   isGameOver,
   brewAllCount,
@@ -90,6 +91,7 @@ export function BrewContent({
 }: {
   slotA: number | null
   slotB: number | null
+  inventory: InventoryItem[]
   recipes: DiscoveryData[]
   isGameOver: boolean
   brewAllCount: number
@@ -98,6 +100,9 @@ export function BrewContent({
   onCraft: (a: number, b: number) => void
   onBrewAll: () => void
 }) {
+  const qtyA = slotA != null ? (inventory.find(i => i.ingredient_id === slotA)?.quantity ?? 0) : 0
+  const qtyB = slotB != null ? (inventory.find(i => i.ingredient_id === slotB)?.quantity ?? 0) : 0
+
   const handleBrew = () => {
     if (slotA != null && slotB != null) onCraft(slotA, slotB)
   }
@@ -121,7 +126,10 @@ export function BrewContent({
           style={slotA != null ? { ['--zone-color' as string]: ZONE_COLORS[getZoneForIngredient(slotA)] } : undefined}
         >
           {slotA != null ? (
-            <img className="craft-slot-img" src={ingredientAssetUrl(slotA)} alt={INGREDIENT_NAMES[slotA]} />
+            <>
+              <img className="craft-slot-img" src={ingredientAssetUrl(slotA)} alt={INGREDIENT_NAMES[slotA]} />
+              {qtyA > 0 && <span className="craft-slot-qty">{qtyA}</span>}
+            </>
           ) : (
             <span className="craft-slot-empty">?</span>
           )}
@@ -134,7 +142,10 @@ export function BrewContent({
           style={slotB != null ? { ['--zone-color' as string]: ZONE_COLORS[getZoneForIngredient(slotB)] } : undefined}
         >
           {slotB != null ? (
-            <img className="craft-slot-img" src={ingredientAssetUrl(slotB)} alt={INGREDIENT_NAMES[slotB]} />
+            <>
+              <img className="craft-slot-img" src={ingredientAssetUrl(slotB)} alt={INGREDIENT_NAMES[slotB]} />
+              {qtyB > 0 && <span className="craft-slot-qty">{qtyB}</span>}
+            </>
           ) : (
             <span className="craft-slot-empty">?</span>
           )}
@@ -333,12 +344,6 @@ export function GrimoireContent({
         ))}
       </div>
 
-      <div className="grimoire-btn-row">
-        <button onClick={onBuyHint} disabled={isGameOver || gold < hintCost}>
-          Hint ({displayGold(hintCost)}g)
-        </button>
-      </div>
-
       <div className="grimoire-grid">
         {effects.map(effectIdx => {
           const isDiscovered = bitmapGet(grimoire, effectIdx + 1)
@@ -394,6 +399,11 @@ export function GrimoireContent({
         })}
       </div>
 
+      <div className="grimoire-btn-row">
+        <button onClick={onBuyHint} disabled={isGameOver || gold < hintCost}>
+          Hint ({displayGold(hintCost)}g)
+        </button>
+      </div>
     </>
   )
 }
