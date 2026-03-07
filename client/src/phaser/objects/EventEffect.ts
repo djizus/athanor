@@ -174,7 +174,7 @@ export class EventEffect {
 
   playHintRevealEffect(): void { /* intentionally empty */ }
 
-  private floatingText(x: number, y: number, message: string, color: string): void {
+  floatingText(x: number, y: number, message: string, color: string): void {
     const text = this.scene.add.text(x, y, message, {
       fontFamily: 'Cinzel, serif',
       fontSize: '18px',

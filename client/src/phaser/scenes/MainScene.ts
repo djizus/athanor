@@ -29,8 +29,8 @@ const EFFECT_TINTS: Record<string, number> = {
   regen: COLORS.blue,
 };
 
-const ENERGY_LINE_ALPHA = 0.08;
-const ENERGY_LINE_WIDTH = 1.5;
+const ENERGY_LINE_ALPHA = 0.2;
+const ENERGY_LINE_WIDTH = 2;
 
 export class MainScene extends Phaser.Scene {
   private bridge: PhaserBridge | null = null;
@@ -84,6 +84,8 @@ export class MainScene extends Phaser.Scene {
       if (expedition) {
         expedition.lastKnownZone = payload.zoneId;
       }
+      this.syncHeroes(this.lastHeroes);
+      this.updatePortalExploringStates(this.lastHeroes);
     }
 
     const sprite = this.heroSprites.get(payload.heroId);
@@ -99,6 +101,7 @@ export class MainScene extends Phaser.Scene {
     switch (payload.kind) {
       case 'trap':
         this.eventEffect.playTrap(x, y, sprite ?? undefined);
+        this.eventEffect.floatingText(x, y - 20, `-${payload.value} HP`, '#d04050');
         this.tryPlaySound('trap', 0.5);
         break;
       case 'gold':
@@ -107,6 +110,7 @@ export class MainScene extends Phaser.Scene {
         break;
       case 'heal':
         this.eventEffect.playHeal(x, y, sprite ?? undefined);
+        this.eventEffect.floatingText(x, y - 20, `+${payload.value} HP`, '#40c060');
         this.tryPlaySound('heal', 0.5);
         break;
       case 'beastWin':
@@ -115,10 +119,12 @@ export class MainScene extends Phaser.Scene {
         break;
       case 'beastLose':
         this.eventEffect.playBeastLose(x, y, sprite ?? undefined);
+        this.eventEffect.floatingText(x, y - 20, `-${payload.value} HP`, '#d04050');
         this.tryPlaySound('beast-lose', 0.5);
         break;
       case 'ingredient':
         this.eventEffect.playIngredientDrop(x, y, sprite ?? undefined);
+        this.eventEffect.floatingText(x, y - 20, '+1 Ingredient', '#a050d0');
         this.tryPlaySound('gold-find', 0.3);
         break;
     }
@@ -263,12 +269,16 @@ export class MainScene extends Phaser.Scene {
     if (!g) return;
     g.clear();
 
-    for (let i = 0; i < this.portals.length; i++) {
-      const portal = this.portals[i];
-      const tint = ZONE_TINTS[i] ?? COLORS.white;
+    const positions = layout.portalPositions;
+    let prevX = layout.cauldronX;
+    let prevY = layout.cauldronY - 35;
 
+    for (let i = 0; i < positions.length; i++) {
+      const tint = ZONE_TINTS[i] ?? COLORS.white;
       g.lineStyle(ENERGY_LINE_WIDTH, tint, ENERGY_LINE_ALPHA);
-      g.lineBetween(layout.cauldronX, layout.cauldronY - 35, portal.x, portal.y);
+      g.lineBetween(prevX, prevY, positions[i].x, positions[i].y);
+      prevX = positions[i].x;
+      prevY = positions[i].y;
     }
   }
 

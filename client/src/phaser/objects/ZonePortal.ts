@@ -48,10 +48,10 @@ export class ZonePortal extends Phaser.GameObjects.Container {
     this.zoneIndex = zoneIndex;
     this.tint = ZONE_TINTS[zoneIndex] ?? 0xc8a040;
 
-    this.glowCircle = scene.add.circle(0, 0, GLOW_RADIUS, this.tint, 0.06);
+    this.glowCircle = scene.add.circle(0, 0, GLOW_RADIUS, this.tint, 0.15);
     this.glowCircle.setBlendMode(Phaser.BlendModes.ADD);
 
-    this.innerDark = scene.add.circle(0, 0, PORTAL_RADIUS, 0x0a0a14, 0.92);
+    this.innerDark = scene.add.circle(0, 0, PORTAL_RADIUS, 0x0a0a14, 0.35);
 
     const bgKey = ZONE_BG_KEYS[zoneIndex];
     if (bgKey && scene.textures.exists(bgKey)) {
@@ -61,7 +61,7 @@ export class ZonePortal extends Phaser.GameObjects.Container {
       const targetSize = PORTAL_RADIUS * 2;
       const scale = Math.max(targetSize / srcW, targetSize / srcH) * 1.3;
       this.bgImage.setScale(scale);
-      this.bgImage.setAlpha(0.4);
+      this.bgImage.setAlpha(0.85);
     }
 
     this.maskGfx = scene.make.graphics({ x: 0, y: 0 });
@@ -83,7 +83,7 @@ export class ZonePortal extends Phaser.GameObjects.Container {
 
     this.ambientEmitter = scene.add.particles(0, 0, 'particle-ember', {
       quantity: 1,
-      frequency: 600,
+      frequency: 400,
       lifespan: 1400,
       speed: { min: 6, max: 18 },
       angle: { min: 0, max: 360 },
@@ -106,7 +106,7 @@ export class ZonePortal extends Phaser.GameObjects.Container {
 
     this.glowTween = scene.tweens.add({
       targets: this.glowCircle,
-      alpha: 0.12,
+      alpha: 0.22,
       scale: 1.08,
       yoyo: true,
       repeat: -1,
@@ -135,7 +135,7 @@ export class ZonePortal extends Phaser.GameObjects.Container {
       this.glowTween.stop();
       this.glowTween = this.scene.tweens.add({
         targets: this.glowCircle,
-        alpha: 0.28,
+        alpha: 0.45,
         scale: 1.18,
         yoyo: true,
         repeat: -1,
@@ -143,7 +143,7 @@ export class ZonePortal extends Phaser.GameObjects.Container {
         ease: 'Sine.InOut',
       });
       if (this.bgImage) {
-        this.bgImage.setAlpha(0.6);
+        this.bgImage.setAlpha(1.0);
         this.bgScrollTween?.stop();
         this.bgScrollTween = this.scene.tweens.add({
           targets: this.bgImage,
@@ -159,7 +159,7 @@ export class ZonePortal extends Phaser.GameObjects.Container {
       this.glowTween.stop();
       this.glowTween = this.scene.tweens.add({
         targets: this.glowCircle,
-        alpha: 0.06,
+        alpha: 0.15,
         scale: 1.08,
         yoyo: true,
         repeat: -1,
@@ -167,12 +167,12 @@ export class ZonePortal extends Phaser.GameObjects.Container {
         ease: 'Sine.InOut',
       });
       if (this.bgImage) {
-        this.bgImage.setAlpha(0.4);
+        this.bgImage.setAlpha(0.85);
         this.bgScrollTween?.stop();
         this.bgScrollTween = null;
         this.bgImage.setPosition(0, 0);
       }
-      this.ambientEmitter.setFrequency(600);
+      this.ambientEmitter.setFrequency(400);
     }
   }
 
@@ -228,7 +228,7 @@ export class ZonePortal extends Phaser.GameObjects.Container {
     const g = this.ringGfx;
     g.clear();
 
-    g.lineStyle(RING_WIDTH, this.tint, active ? 0.9 : 0.45);
+    g.lineStyle(RING_WIDTH, this.tint, active ? 0.9 : 0.7);
     g.strokeCircle(0, 0, PORTAL_RADIUS);
 
     if (active) {

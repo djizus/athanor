@@ -1,41 +1,40 @@
 export const PORTAL_COUNT = 5;
 
+const TOP_PADDING = 70;
+
 export interface PortalLayout {
   cauldronX: number;
   cauldronY: number;
   portalPositions: { x: number; y: number }[];
-  /** Idle hero positions near the cauldron */
   heroIdleX: number;
   heroIdleY: number;
 }
 
 export function computePortalLayout(screenWidth: number, screenHeight: number): PortalLayout {
   const centerX = screenWidth / 2;
-
   const cauldronX = centerX;
-  const cauldronY = screenHeight * 0.78;
+  const cauldronY = screenHeight * 0.88;
+  const zigzagOffset = screenWidth * 0.12;
 
-  const arcCenterY = screenHeight * 0.38;
-  const arcRadius = Math.min(
-    Math.max(screenHeight * 0.28, 100),
-    Math.min(screenWidth * 0.38, 300),
-  );
+  const topY = TOP_PADDING + 60;
+  const bottomY = cauldronY - 100;
+  const spacing = (bottomY - topY) / (PORTAL_COUNT - 1);
 
-  const arcDegrees = [-70, -35, 0, 35, 70];
-  const portalPositions = arcDegrees.map((deg) => {
-    const rad = ((deg - 90) * Math.PI) / 180; // offset -90° so 0° points upward
-    return {
-      x: centerX + Math.cos(rad) * arcRadius,
-      y: arcCenterY + Math.sin(rad) * arcRadius,
-    };
-  });
+  const portalPositions: { x: number; y: number }[] = [];
+  for (let i = 0; i < PORTAL_COUNT; i++) {
+    const xOffset = i % 2 === 0 ? -zigzagOffset : zigzagOffset;
+    portalPositions.push({
+      x: centerX + xOffset,
+      y: bottomY - i * spacing,
+    });
+  }
 
   return {
     cauldronX,
     cauldronY,
     portalPositions,
     heroIdleX: cauldronX,
-    heroIdleY: cauldronY - 50,
+    heroIdleY: cauldronY - 40,
   };
 }
 
