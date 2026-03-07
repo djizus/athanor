@@ -7,10 +7,12 @@ const MULTIPLIER: u32 = 10_000;
 #[generate_trait]
 pub impl Crafter of CrafterTrait {
     /// Returns a random effect from the remaining recipes.
-    fn craft(count: u16, mut recipes: u32, seed: u128) -> Effect {
+    fn craft(total: u16, mut recipes: u32, seed: u128) -> Effect {
+        // [Check] Total cannot be null
+        assert(total > 0, 'Crafter: total cannot be null');
         // [Check] No recipes left
-        let total = Bitmap::popcount(recipes);
-        if total == 0 {
+        let count = Bitmap::popcount(recipes);
+        if count == 0 {
             return Effect::None;
         }
         // [Compute] Calculate probability
@@ -30,7 +32,7 @@ pub impl Crafter of CrafterTrait {
             }
             recipes /= 2;
         }
-        return *eligibles.at((seed % total.into()).try_into().unwrap());
+        return *eligibles.at((seed % eligibles.len().into()).try_into().unwrap());
     }
 }
 

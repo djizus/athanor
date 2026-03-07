@@ -75,7 +75,20 @@ pub impl GameImpl of GameTrait {
     }
 
     #[inline]
-    fn learn(ref self: Game, recipe: Effect) {
+    fn learn(ref self: Game, ingredient_a: Ingredient, ingredient_b: Ingredient, recipe: Effect) {
+        // [Effect] Reduce remaining tries
+        let index_a = ingredient_a.index().into();
+        let index_b = ingredient_b.index().into();
+        let mut counts = Packer::unpack(self.tries, TRY_SIZE, INGREDIENT_COUNT);
+        for index in 0_u32..INGREDIENT_COUNT.into() {
+            let mut count = counts.pop_front().unwrap();
+            if index == index_a || index == index_b {
+                count += 1;
+            }
+            counts.append(count);
+        }
+        self.tries = Packer::pack(counts, TRY_SIZE);
+        self.remaining_tries -= 1;
         // [Effect] Give 1 gold if recipe is none
         if recipe == Effect::None {
             self.earn(1);
@@ -268,6 +281,10 @@ pub impl GameImpl of GameTrait {
         recipes_b: u32,
         rng: u256,
     ) -> Effect {
+        // [Check] Ingredients are valid
+        assert(ingredient_a != ingredient_b, Errors::GAME_INVALID_INGREDIENTS);
+        assert(ingredient_a != Ingredient::None, Errors::GAME_INVALID_INGREDIENTS);
+        assert(ingredient_b != Ingredient::None, Errors::GAME_INVALID_INGREDIENTS);
         // [Effect] Perform the discovery with hinted recipes for ingredient_a
         let recipes: u32 = self.grimoire & recipes_a ^ recipes_a;
         let counts = Packer::unpack(self.tries, TRY_SIZE, INGREDIENT_COUNT);
@@ -401,5 +418,65 @@ mod tests {
         game.tries = (INGREDIENT_COUNT - 2).into(); // AmberSap: 1 try left
         let recipe = game.discover(Ingredient::CopperDust, Ingredient::AmberSap, 0, hint, 0);
         assert_eq!(recipe, Effect::Green);
+    }
+
+    #[test]
+    fn test_game_discover_case_001() {
+        let seed: u256 = 0x1120543d570e59d8f4e5cd53f7a8adb7b89b5beee84d9c5539475ecab09387d;
+        let mut game = GameTrait::new(0x15, SEED);
+        let a: Ingredient = 2_u8.into();
+        let b: Ingredient = 3_u8.into();
+        let recipe = game.discover(a, b, 0, 0, seed);
+        assert_eq!(recipe, Effect::None);
+    }
+
+    #[test]
+    fn test_game_full_grimoire_no_hint() {
+        let mut game = GameTrait::new(1, SEED);
+        let target = 2_u32.pow(EFFECT_COUNT.into()) - 1;
+        for index_a in 0_u8..INGREDIENT_COUNT {
+            let a: Ingredient = IngredientTrait::from(index_a);
+            for index_b in index_a..INGREDIENT_COUNT {
+                let b: Ingredient = IngredientTrait::from(index_b);
+                if a == b {
+                    continue;
+                }
+                let seed = core::poseidon::poseidon_hash_span(
+                    [index_a.into(), index_b.into()].span(),
+                );
+                let recipe = game.discover(a, b, 0, 0, seed.into());
+                game.learn(a, b, recipe);
+            }
+        }
+        assert_eq!(game.grimoire, target);
+    }
+
+    #[test]
+    fn test_game_full_grimoire_with_hint() {
+        let mut game = GameTrait::new(1, SEED);
+        let target = 2_u32.pow(EFFECT_COUNT.into()) - 1;
+        for index_a in 0_u8..INGREDIENT_COUNT {
+            let a: Ingredient = IngredientTrait::from(index_a);
+            for index_b in index_a..INGREDIENT_COUNT {
+                let b: Ingredient = IngredientTrait::from(index_b);
+                if a == b {
+                    continue;
+                }
+                let seed = core::poseidon::poseidon_hash_span(
+                    [index_a.into(), index_b.into()].span(),
+                );
+                let mut hints_a = 0;
+                let mut hints_b = 0;
+                if a == Ingredient::AmberSap {
+                    hints_a = Bitmap::set(hints_a, Effect::White.index());
+                }
+                if b == Ingredient::Starfall {
+                    hints_b = Bitmap::set(hints_b, Effect::Aquamarine.index());
+                }
+                let recipe = game.discover(a, b, hints_a, hints_b, seed.into());
+                game.learn(a, b, recipe);
+            }
+        }
+        assert_eq!(game.grimoire, target);
     }
 }
