@@ -44,17 +44,17 @@
     }
   ],
   "ingredients": [
-    { "id": "amber-sap", "filename": "amber-sap.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A drop of golden-amber tree sap, translucent and warm-glowing, suspended in mid-drip", "zoneColor": "#4a9e4a" },
-    { "id": "copper-dust", "filename": "copper-dust.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A small pile of shimmering copper-orange metallic dust with green patina flecks", "zoneColor": "#4a9e4a" },
-    { "id": "fog-essence", "filename": "fog-essence.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A small glass vial containing swirling pale blue-white fog that moves on its own", "zoneColor": "#4a9e4a" },
-    { "id": "iron-filing", "filename": "iron-filing.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A small heap of dark grey metallic iron filings with a magnetic sheen", "zoneColor": "#4a9e4a" },
-    { "id": "moonpetal", "filename": "moonpetal.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A luminous white-silver flower petal that glows faintly with moonlight, delicate curved shape", "zoneColor": "#4a9e4a" },
+    { "id": "amber-sap", "filename": "amber-sap.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A drop of golden-amber tree sap, translucent and warm-glowing, suspended in mid-drip", "zoneColor": "#c8a040" },
+    { "id": "copper-dust", "filename": "copper-dust.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A small pile of shimmering copper-orange metallic dust with green patina flecks", "zoneColor": "#c8a040" },
+    { "id": "fog-essence", "filename": "fog-essence.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A small glass vial containing swirling pale blue-white fog that moves on its own", "zoneColor": "#c8a040" },
+    { "id": "iron-filing", "filename": "iron-filing.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A small heap of dark grey metallic iron filings with a magnetic sheen", "zoneColor": "#c8a040" },
+    { "id": "moonpetal", "filename": "moonpetal.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A luminous white-silver flower petal that glows faintly with moonlight, delicate curved shape", "zoneColor": "#c8a040" },
 
-    { "id": "nightberry", "filename": "nightberry.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A cluster of small dark purple-black berries with a faint inner glow, attached to a dark stem", "zoneColor": "#b8860b" },
-    { "id": "crystal-shard", "filename": "crystal-shard.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A sharp faceted crystal shard glowing amber-gold, translucent with internal light", "zoneColor": "#b8860b" },
-    { "id": "drake-moss", "filename": "drake-moss.webp", "category": "ingredients", "width": 512, "height": 512, "description": "Dark emerald moss with tiny scale-like leaves, faintly warm to the touch, dragon-fire residue", "zoneColor": "#b8860b" },
-    { "id": "sulfur-bloom", "filename": "sulfur-bloom.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A bright yellow crystalline flower-like sulfur formation with sharp geometric petals", "zoneColor": "#b8860b" },
-    { "id": "dragon-scale", "filename": "dragon-scale.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A large iridescent dragon scale, deep purple with rainbow shimmer, thick and armored", "zoneColor": "#b8860b" },
+    { "id": "nightberry", "filename": "nightberry.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A cluster of small dark purple-black berries with a faint inner glow, attached to a dark stem", "zoneColor": "#b85030" },
+    { "id": "crystal-shard", "filename": "crystal-shard.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A sharp faceted crystal shard glowing amber-gold, translucent with internal light", "zoneColor": "#b85030" },
+    { "id": "drake-moss", "filename": "drake-moss.webp", "category": "ingredients", "width": 512, "height": 512, "description": "Dark emerald moss with tiny scale-like leaves, faintly warm to the touch, dragon-fire residue", "zoneColor": "#b85030" },
+    { "id": "sulfur-bloom", "filename": "sulfur-bloom.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A bright yellow crystalline flower-like sulfur formation with sharp geometric petals", "zoneColor": "#b85030" },
+    { "id": "dragon-scale", "filename": "dragon-scale.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A large iridescent dragon scale, deep purple with rainbow shimmer, thick and armored", "zoneColor": "#b85030" },
 
     { "id": "aether-core", "filename": "aether-core.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A small orb of concentrated purple-white aether energy, crackling with arcane lightning", "zoneColor": "#9e4a9e" },
     { "id": "titan-blood", "filename": "titan-blood.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A vial of thick luminous magenta-red blood that pulses with inner power", "zoneColor": "#9e4a9e" },
@@ -62,17 +62,17 @@
     { "id": "aether-bloom", "filename": "aether-bloom.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A translucent flower of pure aether energy, petals rippling with violet-white plasma", "zoneColor": "#9e4a9e" },
     { "id": "star-dust", "filename": "star-dust.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A pinch of sparkling cosmic dust with tiny stars and nebula colors within", "zoneColor": "#9e4a9e" },
 
-    { "id": "cave-pearl", "filename": "cave-pearl.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A smooth lustrous pearl formed in deep caverns, pale violet surface with a soft inner glow", "zoneColor": "#5a3a7a" },
-    { "id": "river-clay", "filename": "river-clay.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A smooth round ball of reddish-brown river clay, slightly wet with a matte finish", "zoneColor": "#5a3a7a" },
-    { "id": "echo-moss", "filename": "echo-moss.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A clump of dark moss that pulses with faint sound waves, releasing ghostly whispers", "zoneColor": "#5a3a7a" },
-    { "id": "dripstone", "filename": "dripstone.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A stalactite fragment with mineral-rich drip formations, grey stone veined with glowing minerals", "zoneColor": "#5a3a7a" },
-    { "id": "starfall", "filename": "starfall.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A meteorite fragment trailing faint cosmic light, dark iron with embedded glowing star shards", "zoneColor": "#5a3a7a" },
+    { "id": "cave-pearl", "filename": "cave-pearl.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A smooth lustrous pearl formed in deep caverns, pale violet surface with a soft inner glow", "zoneColor": "#2a5a8a" },
+    { "id": "river-clay", "filename": "river-clay.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A smooth round ball of reddish-brown river clay, slightly wet with a matte finish", "zoneColor": "#2a5a8a" },
+    { "id": "echo-moss", "filename": "echo-moss.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A clump of dark moss that pulses with faint sound waves, releasing ghostly whispers", "zoneColor": "#2a5a8a" },
+    { "id": "dripstone", "filename": "dripstone.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A stalactite fragment with mineral-rich drip formations, grey stone veined with glowing minerals", "zoneColor": "#2a5a8a" },
+    { "id": "starfall", "filename": "starfall.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A meteorite fragment trailing faint cosmic light, dark iron with embedded glowing star shards", "zoneColor": "#2a5a8a" },
 
-    { "id": "echoleaf", "filename": "echoleaf.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A semi-transparent leaf that vibrates with captured sound, veins pulsing with pale green light", "zoneColor": "#2a6a4a" },
-    { "id": "crystalbloom", "filename": "crystalbloom.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A flower with petals made of living crystal, refracting light into prismatic sparks", "zoneColor": "#2a6a4a" },
-    { "id": "feather", "filename": "feather.webp", "category": "ingredients", "width": 512, "height": 512, "description": "An iridescent feather from a twilight bird, shifting between deep green and midnight blue", "zoneColor": "#2a6a4a" },
-    { "id": "frostbloom", "filename": "frostbloom.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A frozen flower with ice crystal petals, emitting a faint cold mist and pale blue glow", "zoneColor": "#2a6a4a" },
-    { "id": "gemstone", "filename": "gemstone.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A rough uncut gemstone with deep emerald facets that catch and hold light within", "zoneColor": "#2a6a4a" }
+    { "id": "echoleaf", "filename": "echoleaf.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A semi-transparent leaf that vibrates with captured sound, veins pulsing with pale green light", "zoneColor": "#2a8a6a" },
+    { "id": "crystalbloom", "filename": "crystalbloom.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A flower with petals made of living crystal, refracting light into prismatic sparks", "zoneColor": "#2a8a6a" },
+    { "id": "feather", "filename": "feather.webp", "category": "ingredients", "width": 512, "height": 512, "description": "An iridescent feather from a twilight bird, shifting between deep green and midnight blue", "zoneColor": "#2a8a6a" },
+    { "id": "frostbloom", "filename": "frostbloom.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A frozen flower with ice crystal petals, emitting a faint cold mist and pale blue glow", "zoneColor": "#2a8a6a" },
+    { "id": "gemstone", "filename": "gemstone.webp", "category": "ingredients", "width": 512, "height": 512, "description": "A rough uncut gemstone with deep emerald facets that catch and hold light within", "zoneColor": "#2a8a6a" }
   ],
   "potions": [
     { "id": "potion-health", "filename": "potion-health.webp", "category": "potions", "width": 512, "height": 512, "description": "A round glass potion bottle filled with glowing red liquid, heart-shaped stopper, warm crimson glow" },

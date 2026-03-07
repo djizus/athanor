@@ -56,12 +56,12 @@ export class ZoneBackground {
   }
 
   private createAmbientEmitters(w: number, h: number): void {
-    this.ambientLayers.push(this.createMeadowSparkles(w, h));
-    this.ambientLayers.push(this.createCavernSparks(w, h));
+    this.ambientLayers.push(this.createHollowsSparkles(w, h));
+    this.ambientLayers.push(this.createEmberSparks(w, h));
     this.ambientLayers.push(this.createSpireArcane(w, h));
   }
 
-  private createMeadowSparkles(w: number, h: number): AmbientLayer {
+  private createHollowsSparkles(w: number, h: number): AmbientLayer {
     const x0 = zoneWorldX(ZONE_FRAC_0, w);
     const x1 = zoneWorldX(ZONE_FRAC_1, w);
     const emitter = this.scene.add.particles(0, 0, 'particle-gold', {
@@ -81,7 +81,7 @@ export class ZoneBackground {
     return { emitter };
   }
 
-  private createCavernSparks(w: number, h: number): AmbientLayer {
+  private createEmberSparks(w: number, h: number): AmbientLayer {
     const x1 = zoneWorldX(ZONE_FRAC_1, w);
     const x2 = zoneWorldX(ZONE_FRAC_2, w);
     const emitter = this.scene.add.particles(0, 0, 'particle-spark', {

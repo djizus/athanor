@@ -26,9 +26,11 @@ export const COLORS = {
 } as const;
 
 export const ZONE_TINTS: readonly number[] = [
-  0x4a9e4a, // Zone 0 — Verdant Meadow
-  0xb8860b, // Zone 1 — Crystal Cavern
+  0xc8a040, // Zone 0 — Amber Hollows
+  0xb85030, // Zone 1 — Ember Cavern
   0x9e4a9e, // Zone 2 — Aether Spire
+  0x2a5a8a, // Zone 3 — Sunken Abyss
+  0x2a8a6a, // Zone 4 — Crystalveil Reach
 ];
 
 export function hexToCSS(hex: number): string {

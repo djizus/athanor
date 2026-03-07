@@ -17,11 +17,11 @@ pub const RECIPES_TO_DISCOVER: u8 = 30;
 // C(9, 2) = 9 * 8 / 2 = 36 unique sorted pairs
 pub const TOTAL_COMBOS: u16 = 36;
 
-// Zone 0: Verdant Meadow
+// Zone 0: Amber Hollows
 pub const ZONE_0_DEPTH: u16 = 0;
 pub const ZONE_0_DRAIN: u16 = 100; // 1.00 HP/s (x100)
 
-// Zone 1: Crystal Cavern
+// Zone 1: Ember Cavern
 pub const ZONE_1_DEPTH: u16 = 20;
 pub const ZONE_1_DRAIN: u16 = 200; // 2.00 HP/s (x100)
 
@@ -29,11 +29,11 @@ pub const ZONE_1_DRAIN: u16 = 200; // 2.00 HP/s (x100)
 pub const ZONE_2_DEPTH: u16 = 40;
 pub const ZONE_2_DRAIN: u16 = 300; // 3.00 HP/s (x100)
 
-// Zone 3: Shadowed Depths
+// Zone 3: Sunken Abyss
 pub const ZONE_3_DEPTH: u16 = 60;
 pub const ZONE_3_DRAIN: u16 = 400; // 4.00 HP/s (x100)
 
-// Zone 4: Twilight Grove
+// Zone 4: Crystalveil Reach
 pub const ZONE_4_DEPTH: u16 = 90;
 pub const ZONE_4_DRAIN: u16 = 500; // 5.00 HP/s (x100)
 
@@ -57,11 +57,11 @@ pub const PROGRESSIVE_CAP: u16 = 8000; // 0.80 (x10000)
 
 // --- Event probabilities (x10000) ---
 //                          Trap   Gold   Heal   Beast  Drop
-// Zone 0 (Meadow):         500   1000    800    300   2500
-// Zone 1 (Cavern):         750    850    650    500   2150
+// Zone 0 (Hollows):        500   1000    800    300   2500
+// Zone 1 (Ember):          750    850    650    500   2150
 // Zone 2 (Spire):         1000    700    500    700   1800
-// Zone 3 (Depths):        1200    600    400    950   1500
-// Zone 4 (Grove):         1400    500    300    1200  1200
+// Zone 3 (Abyss):         1200    600    400    950   1500
+// Zone 4 (Crystalveil):   1400    500    300    1200  1200
 
 pub const ZONE_0_TRAP: u16 = 500;
 pub const ZONE_0_GOLD: u16 = 1000;
