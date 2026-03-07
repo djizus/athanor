@@ -136,17 +136,17 @@ export function useExplorationLog(gameId: number | null) {
     toriiClient.onEventMessageUpdated(
       clause,
       null,
-      (_entityId: string, entityData: unknown) => {
+      (rawEntity: unknown) => {
         if (cancelled) return
 
         let models: Record<string, Record<string, unknown>>
-        const data = entityData as Record<string, unknown>
-        if (data && typeof data === 'object' && 'models' in data && typeof data.models === 'object') {
-          models = data.models as Record<string, Record<string, unknown>>
-        } else if (data && typeof data === 'object') {
-          models = data as Record<string, Record<string, unknown>>
+        const entity = rawEntity as Record<string, unknown>
+        if (entity && typeof entity === 'object' && 'models' in entity && typeof entity.models === 'object') {
+          models = entity.models as Record<string, Record<string, unknown>>
+        } else if (entity && typeof entity === 'object') {
+          models = entity as Record<string, Record<string, unknown>>
         } else {
-          console.warn('[ExplorationLog] Unexpected entityData shape:', entityData)
+          console.warn('[ExplorationLog] Unexpected entity shape:', rawEntity)
           return
         }
 
