@@ -61,7 +61,10 @@ pub impl GameImpl of GameTrait {
         if self.ended_at < self.started_at {
             return 0;
         }
-        return (*self.ended_at - *self.started_at).try_into().unwrap();
+        let delta: u64 = *self.ended_at - *self.started_at;
+        let max: u64 = core::cmp::min(Bounded::<u16>::MAX.into(), delta);
+        let score: u16 = Bounded::<u16>::MAX - max.try_into().unwrap();
+        score.into()
     }
 
     #[inline]
@@ -72,7 +75,7 @@ pub impl GameImpl of GameTrait {
 
     #[inline]
     fn surrender(ref self: Game) {
-        self.ended_at = Bounded::MAX;
+        self.ended_at = 1;
     }
 
     #[inline]
