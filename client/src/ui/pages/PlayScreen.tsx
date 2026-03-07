@@ -11,7 +11,6 @@ import { useNavigationStore } from '@/stores/navigationStore'
 import { txToast } from '@/stores/toastStore'
 import type { PhaserBridge } from '@/phaser'
 import {
-  EFFECT_NAMES,
   EFFECT_CATEGORIES,
   EFFECT_COLORS,
   HERO_RECRUIT_COSTS,
@@ -241,6 +240,7 @@ export function PlayScreen({ bridge }: Props) {
   const discoveredCount = game ? bitmapPopcount(game.grimoire) : 0
   const brewAllCount = useMemo(() => computeUntriedPairs(inventory, recipes).length, [inventory, recipes])
   const effectQuantities = useMemo(() => game ? unpackEffects(BigInt(game.effects)) : Array(30).fill(0) as number[], [game])
+  const hasPotions = effectQuantities.some((q) => q > 0)
   const heroCount = game ? bitmapPopcount(game.heroes) : heroes.length
   const isGameOver = game ? Number(game.ended_at) > 0 : false
   const hintCost = game?.hint_price ?? 4
@@ -279,6 +279,7 @@ export function PlayScreen({ bridge }: Props) {
                   onRecruit={() => void handleRecruit()}
                   onExplore={(id) => void handleExplore(id)}
                   onClaim={(id) => void handleClaim(id)}
+                  hasPotions={hasPotions}
                   onApplyPotion={(id) => setPotionTargetHeroId(id)}
                 />
               ))}
@@ -556,6 +557,7 @@ interface HeroSlotProps {
   onRecruit: () => void
   onExplore: (characterId: number) => void
   onClaim: (characterId: number) => void
+  hasPotions: boolean
   onApplyPotion: (heroId: number) => void
 }
 
@@ -571,6 +573,7 @@ function HeroSlot({
   onRecruit,
   onExplore,
   onClaim,
+  hasPotions,
   onApplyPotion,
 }: HeroSlotProps) {
   const hero = heroes.find((h) => h.id === slot)
@@ -685,7 +688,7 @@ function HeroSlot({
         <button
           className="btn-sm btn-potion"
           onClick={(e) => { e.stopPropagation(); onApplyPotion(hero.id) }}
-          disabled={isGameOver}
+          disabled={isGameOver || !hasPotions}
         >
           Apply Potion
         </button>
