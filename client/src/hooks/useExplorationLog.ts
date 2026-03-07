@@ -28,12 +28,29 @@ function heroName(heroId: number): string {
   return ROLE_NAMES[heroId] ?? `Hero ${heroId}`
 }
 
+// Torii wraps field values as nested { value: { value: N } } — recursively unwrap to number
+function extractNumber(val: unknown): number {
+  if (val == null) return 0
+  if (typeof val === 'number') return val
+  if (typeof val === 'bigint') return Number(val)
+  if (typeof val === 'string') return Number(val)
+  if (typeof val === 'object') {
+    const obj = val as Record<string, unknown>
+    if ('value' in obj) {
+      const inner = obj.value
+      if (typeof inner === 'object' && inner != null && 'value' in (inner as Record<string, unknown>)) {
+        return extractNumber((inner as Record<string, unknown>).value)
+      }
+      return extractNumber(inner)
+    }
+  }
+  return 0
+}
+
 function parseModelValues(model: Record<string, unknown>): Record<string, number> {
   const out: Record<string, number> = {}
   for (const [key, val] of Object.entries(model)) {
-    if (typeof val === 'number') out[key] = val
-    else if (typeof val === 'string') out[key] = Number(val)
-    else if (typeof val === 'bigint') out[key] = Number(val)
+    out[key] = extractNumber(val)
   }
   return out
 }
@@ -88,13 +105,13 @@ export function useExplorationLog(gameId: number | null) {
   const [logs, setLogs] = useState<LogEntry[]>([])
   const subRef = useRef<{ cancel: () => void } | null>(null)
 
-  const pushLog = useCallback((entry: LogEntry) => {
+  const append = useCallback((entry: LogEntry) => {
     setLogs((prev) => [...prev.slice(-(MAX_LOG - 1)), entry])
   }, [])
 
   const pushInfo = useCallback((text: string) => {
-    pushLog({ ts: Date.now(), text, kind: 'info' })
-  }, [pushLog])
+    append({ ts: Date.now(), text, kind: 'info' })
+  }, [append])
 
   useEffect(() => {
     if (gameId == null || !toriiClient) return
@@ -108,32 +125,64 @@ export function useExplorationLog(gameId: number | null) {
       `${namespace}-PotionApplied`,
     ]
 
+    const hexGameId = '0x' + gameId.toString(16)
+
     const clause = {
       Keys: {
-        keys: [String(gameId)],
+        keys: [hexGameId],
         pattern_matching: 'VariableLen' as const,
         models: eventModels,
       },
     }
 
-    toriiClient.onEventMessageUpdated(clause, null, (_entityId: string, entityData: Record<string, Record<string, unknown>>) => {
-      for (const [fullModelName, modelValues] of Object.entries(entityData)) {
-        const shortName = fullModelName.includes('-') ? fullModelName.split('-').pop()! : fullModelName
-        const values = parseModelValues(modelValues as Record<string, unknown>)
-        const entry = formatEvent(shortName, values)
-        if (entry) pushLog(entry)
-      }
-    }).then((sub) => {
+    let cancelled = false
+
+    toriiClient.onEventMessageUpdated(
+      clause,
+      null,
+      (_entityId: string, entityData: unknown) => {
+        if (cancelled) return
+
+        let models: Record<string, Record<string, unknown>>
+        const data = entityData as Record<string, unknown>
+        if (data && typeof data === 'object' && 'models' in data && typeof data.models === 'object') {
+          models = data.models as Record<string, Record<string, unknown>>
+        } else if (data && typeof data === 'object') {
+          models = data as Record<string, Record<string, unknown>>
+        } else {
+          console.warn('[ExplorationLog] Unexpected entityData shape:', entityData)
+          return
+        }
+
+        for (const [fullModelName, modelValues] of Object.entries(models)) {
+          if (typeof modelValues !== 'object' || modelValues == null) continue
+          const shortName = fullModelName.includes('-') ? fullModelName.split('-').pop()! : fullModelName
+          const values = parseModelValues(modelValues as Record<string, unknown>)
+          const entry = formatEvent(shortName, values)
+          if (entry) {
+            console.debug('[ExplorationLog]', shortName, values, '->', entry.text)
+            append(entry)
+          }
+        }
+      },
+    ).then((sub) => {
+      if (cancelled) { sub.cancel(); return }
       subRef.current = sub
+      console.log('[ExplorationLog] Subscription active for game', gameId, 'key:', hexGameId)
+      append({ ts: Date.now(), text: 'Event log connected', kind: 'info' })
     }).catch((err) => {
-      console.error('Event subscription failed:', err)
+      if (!cancelled) {
+        console.error('[ExplorationLog] Subscription failed:', err)
+        append({ ts: Date.now(), text: `Event subscription failed: ${String(err)}`, kind: 'info' })
+      }
     })
 
     return () => {
+      cancelled = true
       subRef.current?.cancel()
       subRef.current = null
     }
-  }, [gameId, toriiClient, pushLog])
+  }, [gameId, toriiClient, append])
 
   return { logs, pushInfo }
 }
