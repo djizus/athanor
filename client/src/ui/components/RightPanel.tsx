@@ -137,8 +137,8 @@ export function CraftContent({
       <div className="craft-progress-row">
         <div className="craft-progress-bar">
           <div className="craft-progress-fill" style={{ width: `${progressPct}%` }} />
+          <span className="craft-progress-label">{tried}/{TOTAL_COMBINATIONS}</span>
         </div>
-        <span className="craft-progress-label">{tried}/{TOTAL_COMBINATIONS}</span>
       </div>
 
       <div className="craft-slots">
