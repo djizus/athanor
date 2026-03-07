@@ -1181,7 +1181,7 @@ button:disabled, .btn:disabled {
   left: 12px;
   top: 52px;
   bottom: 12px;
-  width: 380px;
+  width: 420px;
   z-index: 10;
   display: flex;
   flex-direction: column;
@@ -1189,7 +1189,7 @@ button:disabled, .btn:disabled {
   overflow-y: auto;
   pointer-events: auto;
   scrollbar-width: thin;
-  zoom: 1.2;
+  zoom: 1.1;
 }
 
 .play-right-panels {
@@ -1197,7 +1197,7 @@ button:disabled, .btn:disabled {
   right: 12px;
   top: 52px;
   bottom: 52px;
-  width: 380px;
+  width: 420px;
   z-index: 10;
   display: flex;
   flex-direction: column;
@@ -1205,7 +1205,7 @@ button:disabled, .btn:disabled {
   overflow-y: auto;
   pointer-events: auto;
   scrollbar-width: thin;
-  zoom: 1.2;
+  zoom: 1.1;
 }
 
 .side-panel {
