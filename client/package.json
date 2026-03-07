@@ -22,13 +22,15 @@
     "@latticexyz/utils": "2.0.12",
     "@starknet-react/chains": "5.0.1",
     "@starknet-react/core": "^5.0.1",
-    "phaser": "^3.90.0",
+    "framer-motion": "^12.35.1",
+    "howler": "^2.2.4",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "starknet": "8.5.2",
     "zustand": "^5.0.5"
   },
   "devDependencies": {
+    "@types/howler": "^2.2.12",
     "@types/node": "^25.3.5",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",

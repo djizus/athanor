@@ -17,6 +17,21 @@ export interface LogEntry {
   kind: 'exploration' | 'loot' | 'recipe' | 'recruit' | 'potion' | 'expedition' | 'info'
 }
 
+export type ExplorationEventKind = 'trap' | 'gold' | 'heal' | 'beastWin' | 'beastLose' | 'ingredient'
+
+export interface RawExplorationEvent {
+  kind: ExplorationEventKind
+  heroId: number
+  value: number
+  hpAfter: number
+  zoneId: number
+  depth: number
+}
+
+export interface HeroOverride {
+  health: number
+}
+
 const CATEGORY_TRAP = 1
 const CATEGORY_GOLD = 2
 const CATEGORY_HEAL = 3
@@ -24,7 +39,21 @@ const CATEGORY_BEAST_WIN = 4
 const CATEGORY_BEAST_LOSE = 5
 const CATEGORY_INGREDIENT = 6
 
-const TICK_INTERVAL_MS = 1000
+const CATEGORY_TO_KIND: Record<number, ExplorationEventKind> = {
+  [CATEGORY_TRAP]: 'trap',
+  [CATEGORY_GOLD]: 'gold',
+  [CATEGORY_HEAL]: 'heal',
+  [CATEGORY_BEAST_WIN]: 'beastWin',
+  [CATEGORY_BEAST_LOSE]: 'beastLose',
+  [CATEGORY_INGREDIENT]: 'ingredient',
+}
+
+const TICK_INTERVAL_MS = 1500
+
+interface QueuedEvent {
+  entry: LogEntry
+  rawEvent?: RawExplorationEvent
+}
 
 function extractNumber(val: unknown): number {
   if (val == null) return 0
@@ -52,6 +81,12 @@ function parseModelValues(model: Record<string, unknown>): Record<string, number
   return out
 }
 
+function computePreEventHp(eventKind: number, value: number, hpAfter: number): number {
+  if (eventKind === CATEGORY_TRAP || eventKind === CATEGORY_BEAST_LOSE) return hpAfter + value
+  if (eventKind === CATEGORY_HEAL) return Math.max(0, hpAfter - value)
+  return hpAfter
+}
+
 function formatExplorationDetail(eventKind: number, value: number, hpAfter: number): string {
   switch (eventKind) {
     case CATEGORY_TRAP: return `took ${value} trap damage (HP: ${hpAfter})`
@@ -64,31 +99,48 @@ function formatExplorationDetail(eventKind: number, value: number, hpAfter: numb
   }
 }
 
-function formatEvent(modelName: string, values: Record<string, number>, heroName: string): LogEntry | null {
+interface FormatResult {
+  entry: LogEntry
+  rawEvent?: RawExplorationEvent
+  eventKind?: number
+  value?: number
+  hpAfter?: number
+  heroId?: number
+}
+
+function formatEvent(modelName: string, values: Record<string, number>, heroName: string): FormatResult | null {
   switch (modelName) {
     case 'ExplorationEvent': {
       const zone = ZONE_NAMES[values.zone_id] ?? `Zone ${values.zone_id}`
       const detail = formatExplorationDetail(values.event_kind, values.value, values.hp_after)
-      return { ts: Date.now(), text: `${heroName} in ${zone} (depth ${values.depth}): ${detail}`, kind: 'exploration' }
+      const eventKind = CATEGORY_TO_KIND[values.event_kind]
+      return {
+        entry: { ts: Date.now(), text: `${heroName} in ${zone} (depth ${values.depth}): ${detail}`, kind: 'exploration' },
+        rawEvent: eventKind ? { kind: eventKind, heroId: values.hero_id, value: values.value, hpAfter: values.hp_after, zoneId: values.zone_id, depth: values.depth } : undefined,
+        eventKind: values.event_kind,
+        value: values.value,
+        hpAfter: values.hp_after,
+        heroId: values.hero_id,
+      }
     }
     case 'ExpeditionStarted': {
-      return { ts: Date.now(), text: `${heroName} departed on expedition`, kind: 'expedition' }
+      return { entry: { ts: Date.now(), text: `${heroName} departed on expedition`, kind: 'expedition' } }
     }
     case 'LootClaimed': {
-      return { ts: Date.now(), text: `${heroName} claimed ${displayGold(values.gold)}g loot`, kind: 'loot' }
+      return { entry: { ts: Date.now(), text: `${heroName} claimed ${displayGold(values.gold)}g loot`, kind: 'loot' } }
     }
     case 'RecipeDiscovered': {
       const a = INGREDIENT_NAMES[values.ingredient_a - 1] ?? '?'
       const b = INGREDIENT_NAMES[values.ingredient_b - 1] ?? '?'
       const effect = EFFECT_NAMES[values.effect_type - 1] ?? '?'
-      return { ts: Date.now(), text: `Discovered: ${a} + ${b} → ${effect} (${values.discovered_count}/30)`, kind: 'recipe' }
+      return { entry: { ts: Date.now(), text: `Discovered: ${a} + ${b} → ${effect} (${values.discovered_count}/30)`, kind: 'recipe' } }
     }
     case 'HeroRecruited': {
-      return { ts: Date.now(), text: `${heroName} recruited for ${displayGold(values.cost)}g`, kind: 'recruit' }
+      return { entry: { ts: Date.now(), text: `${heroName} recruited for ${displayGold(values.cost)}g`, kind: 'recruit' } }
     }
     case 'PotionApplied': {
       const effect = EFFECT_NAMES[values.effect_type - 1] ?? '?'
-      return { ts: Date.now(), text: `${heroName} consumed potion: ${effect} +${values.effect_value}`, kind: 'potion' }
+      return { entry: { ts: Date.now(), text: `${heroName} consumed potion: ${effect} +${values.effect_value}`, kind: 'potion' } }
     }
     default:
       return null
@@ -100,13 +152,17 @@ const MAX_LOG = 200
 export function useExplorationLog(
   gameId: number | null,
   heroes: Array<{ id: number; role: number }> = [],
+  onExplorationEvent?: (event: RawExplorationEvent) => void,
 ) {
   const { toriiClient } = useDojo()
   const [logs, setLogs] = useState<LogEntry[]>([])
+  const [heroOverrides, setHeroOverrides] = useState<Map<number, HeroOverride>>(() => new Map())
   const subRef = useRef<{ cancel: () => void } | null>(null)
-  const queueRef = useRef<LogEntry[]>([])
+  const heroQueuesRef = useRef<Map<number, QueuedEvent[]>>(new Map())
   const drainTimerRef = useRef<number | null>(null)
   const heroMapRef = useRef<Map<number, string>>(new Map())
+  const onEventRef = useRef(onExplorationEvent)
+  onEventRef.current = onExplorationEvent
 
   useEffect(() => {
     const map = new Map<number, string>()
@@ -121,21 +177,79 @@ export function useExplorationLog(
     setLogs((prev) => [...prev.slice(-(MAX_LOG - 1)), entry])
   }, [])
 
-  const enqueue = useCallback((entry: LogEntry) => {
-    queueRef.current.push(entry)
-    if (drainTimerRef.current != null) return
-    const first = queueRef.current.shift()
-    if (first) append(first)
-    drainTimerRef.current = window.setInterval(() => {
-      const next = queueRef.current.shift()
-      if (next) {
-        append(next)
-      } else {
-        window.clearInterval(drainTimerRef.current!)
-        drainTimerRef.current = null
+  const drainTick = useCallback(() => {
+    let anyRemaining = false
+    for (const [heroId, queue] of heroQueuesRef.current) {
+      const event = queue.shift()
+      if (!event) {
+        heroQueuesRef.current.delete(heroId)
+        setHeroOverrides((prev) => {
+          const next = new Map(prev)
+          next.delete(heroId)
+          return next
+        })
+        continue
       }
-    }, TICK_INTERVAL_MS)
+
+      append(event.entry)
+
+      if (event.rawEvent) {
+        setHeroOverrides((prev) => {
+          const next = new Map(prev)
+          next.set(heroId, { health: event.rawEvent!.hpAfter })
+          return next
+        })
+        onEventRef.current?.(event.rawEvent)
+      }
+
+      if (queue.length > 0) anyRemaining = true
+      else {
+        heroQueuesRef.current.delete(heroId)
+        setHeroOverrides((prev) => {
+          const next = new Map(prev)
+          next.delete(heroId)
+          return next
+        })
+      }
+    }
+
+    if (!anyRemaining) {
+      window.clearInterval(drainTimerRef.current!)
+      drainTimerRef.current = null
+    }
   }, [append])
+
+  const enqueue = useCallback((event: QueuedEvent) => {
+    const heroId = event.rawEvent?.heroId ?? 0
+    let queue = heroQueuesRef.current.get(heroId)
+    if (!queue) {
+      queue = []
+      heroQueuesRef.current.set(heroId, queue)
+
+      if (event.rawEvent) {
+        const preHp = computePreEventHp(
+          event.rawEvent.kind === 'trap' ? CATEGORY_TRAP
+            : event.rawEvent.kind === 'beastLose' ? CATEGORY_BEAST_LOSE
+              : event.rawEvent.kind === 'heal' ? CATEGORY_HEAL
+                : 0,
+          event.rawEvent.value,
+          event.rawEvent.hpAfter,
+        )
+        setHeroOverrides((prev) => {
+          const next = new Map(prev)
+          next.set(heroId, { health: preHp })
+          return next
+        })
+      }
+    }
+
+    queue.push(event)
+
+    if (drainTimerRef.current == null) {
+      drainTick()
+      drainTimerRef.current = window.setInterval(drainTick, TICK_INTERVAL_MS)
+    }
+  }, [drainTick])
 
   const pushInfo = useCallback((text: string) => {
     append({ ts: Date.now(), text, kind: 'info' })
@@ -187,13 +301,13 @@ export function useExplorationLog(
           const shortName = fullModelName.includes('-') ? fullModelName.split('-').pop()! : fullModelName
           const values = parseModelValues(modelValues as Record<string, unknown>)
           const heroName = heroMapRef.current.get(values.hero_id) ?? `Hero ${values.hero_id}`
-          const entry = formatEvent(shortName, values, heroName)
-          if (entry) {
-            console.debug('[ExplorationLog]', shortName, values, '->', entry.text)
+          const result = formatEvent(shortName, values, heroName)
+          if (result) {
+            console.debug('[ExplorationLog]', shortName, values, '->', result.entry.text)
             if (shortName === 'ExplorationEvent') {
-              enqueue(entry)
+              enqueue({ entry: result.entry, rawEvent: result.rawEvent })
             } else {
-              append(entry)
+              append(result.entry)
             }
           }
         }
@@ -218,9 +332,9 @@ export function useExplorationLog(
         window.clearInterval(drainTimerRef.current)
         drainTimerRef.current = null
       }
-      queueRef.current = []
+      heroQueuesRef.current.clear()
     }
   }, [gameId, toriiClient, append, enqueue])
 
-  return { logs, pushInfo }
+  return { logs, pushInfo, heroOverrides }
 }

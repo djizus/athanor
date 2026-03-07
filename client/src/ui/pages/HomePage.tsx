@@ -154,7 +154,7 @@ export function HomePage() {
           />
           <div className="home-menu-rank-panel">
             <span className="home-menu-rank-icon">{rankIcon}</span>
-            <span className="home-menu-rank-text">Rank #{rank ?? '—'} · Best: {bestTime} · Runs: {totalGames}</span>
+            <span className="home-menu-rank-text">Rank {rank != null ? `#${rank}` : '—'} · Best: {bestTime === 'NA' ? '—' : bestTime} · Runs: {totalGames}</span>
           </div>
           <div className="home-menu-actions">
             {activeGame ? (
@@ -178,6 +178,9 @@ export function HomePage() {
             </button>
             <button className="home-menu-button" onClick={() => navigate('leaderboard')}>
               Leaderboard
+            </button>
+            <button className="home-menu-button" onClick={() => navigate('howtoplay')}>
+              How to Play
             </button>
           </div>
 

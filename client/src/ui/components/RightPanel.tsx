@@ -128,7 +128,7 @@ export function BrewContent({
           {slotA != null ? (
             <>
               <img className="craft-slot-img" src={ingredientAssetUrl(slotA)} alt={INGREDIENT_NAMES[slotA]} />
-              {qtyA > 0 && <span className="craft-slot-qty">{qtyA}</span>}
+              <span className={`craft-slot-qty${qtyA <= 0 ? ' craft-slot-qty-zero' : ''}`}>{qtyA}</span>
             </>
           ) : (
             <span className="craft-slot-empty">?</span>
@@ -144,7 +144,7 @@ export function BrewContent({
           {slotB != null ? (
             <>
               <img className="craft-slot-img" src={ingredientAssetUrl(slotB)} alt={INGREDIENT_NAMES[slotB]} />
-              {qtyB > 0 && <span className="craft-slot-qty">{qtyB}</span>}
+              <span className={`craft-slot-qty${qtyB <= 0 ? ' craft-slot-qty-zero' : ''}`}>{qtyB}</span>
             </>
           ) : (
             <span className="craft-slot-empty">?</span>
@@ -161,7 +161,7 @@ export function BrewContent({
         <button
           className="btn-primary btn-sm craft-brew-btn"
           onClick={handleBrew}
-          disabled={isGameOver || slotA == null || slotB == null}
+          disabled={isGameOver || slotA == null || slotB == null || qtyA <= 0 || qtyB <= 0}
         >
           Brew
         </button>
@@ -171,6 +171,14 @@ export function BrewContent({
         <button onClick={onBrewAll} disabled={isGameOver || brewAllCount === 0}>
           Brew All ({brewAllCount})
         </button>
+        {slotA != null && slotB != null && (
+          <button
+            onClick={() => { for (let i = 0; i < Math.min(qtyA, qtyB); i++) onCraft(slotA, slotB) }}
+            disabled={isGameOver || Math.min(qtyA, qtyB) <= 0}
+          >
+            Brew Max ({Math.min(qtyA, qtyB)})
+          </button>
+        )}
       </div>
     </>
   )
@@ -249,6 +257,7 @@ function CraftResultPreview({ discovery }: { discovery: DiscoveryData }) {
         alt={EFFECT_NAMES[effectIdx]}
         style={{ borderColor: color }}
       />
+      <span className="craft-result-bonus" style={{ color }}>{effectStatLabel(effectIdx)}</span>
     </div>
   )
 }
@@ -349,7 +358,6 @@ export function GrimoireContent({
           const isDiscovered = bitmapGet(grimoire, effectIdx + 1)
           const isHinted = !isDiscovered && hintIngredients.has(effectIdx)
           const quantity = effectQuantities[effectIdx]
-          const hasStock = quantity > 0
           const discovery = discoveryMap.get(effectIdx)
           const category = EFFECT_CATEGORIES[effectIdx]
           const categoryColor = EFFECT_COLORS[category]
@@ -387,13 +395,13 @@ export function GrimoireContent({
                   src={effectAssetUrl(effectIdx)}
                   alt={isDiscovered ? EFFECT_NAMES[effectIdx] : '???'}
                 />
-                {hasStock && <span className="grimoire-qty-badge">{quantity}</span>}
-                {canCraft && <span className="grimoire-badge-star">★</span>}
-                {isHinted && <span className="grimoire-badge-hint">🔍</span>}
+                {canCraft && <span className="grimoire-badge-tl">★</span>}
+                {isHinted && <span className="grimoire-badge-tl grimoire-badge-hint">H</span>}
+                {isDiscovered && (
+                  <span className="grimoire-badge-tr" style={{ color: categoryColor }}>{effectStatLabel(effectIdx)}</span>
+                )}
+                <span className={`grimoire-badge-br${quantity <= 0 ? ' grimoire-badge-zero' : ''}`}>{quantity}</span>
               </div>
-              <span className="grimoire-stat-badge" style={{ color: categoryColor }}>
-                {effectStatLabel(effectIdx)}
-              </span>
             </div>
           )
         })}

@@ -7,9 +7,13 @@ import { useInventory } from '@/hooks/useInventory'
 import { useRecipes } from '@/hooks/useRecipes'
 import { useHints } from '@/hooks/useHints'
 import { useExplorationLog } from '@/hooks/useExplorationLog'
+import type { RawExplorationEvent, HeroOverride } from '@/hooks/useExplorationLog'
+import { useExpeditionTracker } from '@/hooks/useExpeditionTracker'
 import { useNavigationStore } from '@/stores/navigationStore'
 import { txToast } from '@/stores/toastStore'
-import type { PhaserBridge } from '@/phaser'
+import { soundManager } from '@/sound/SoundManager'
+import { JourneyMap } from '@/ui/components/JourneyMap'
+import type { FloatingTextAnim } from '@/ui/components/JourneyMap'
 import {
   EFFECT_CATEGORIES,
   EFFECT_COLORS,
@@ -63,11 +67,7 @@ function computeUntriedPairs(
   return pairs
 }
 
-interface Props {
-  bridge: PhaserBridge
-}
-
-export function PlayScreen({ bridge }: Props) {
+export function PlayScreen() {
   const { client } = useDojo()
   const { gameId, navigate } = useNavigationStore()
   const { account } = useAccount()
@@ -90,7 +90,55 @@ export function PlayScreen({ bridge }: Props) {
   const [logsCollapsed, setLogsCollapsed] = useState(false)
   const [potionTargetHeroId, setPotionTargetHeroId] = useState<number | null>(null)
   const [mobilePanel, setMobilePanel] = useState<string | null>(null)
-  const { logs, pushInfo } = useExplorationLog(gameId ?? null, heroes)
+
+  const [floatingTexts, setFloatingTexts] = useState<FloatingTextAnim[]>([])
+  const floatingIdRef = useRef(0)
+
+  const { heroPositions, onExpeditionStart, onExplorationZoneUpdate } = useExpeditionTracker(heroes, now)
+
+  const addFloatingText = useCallback((heroId: number, text: string, color: string) => {
+    const id = String(floatingIdRef.current++)
+    setFloatingTexts(prev => [...prev, { id, heroId, text, color }])
+  }, [])
+
+  const removeFloatingText = useCallback((id: string) => {
+    setFloatingTexts(prev => prev.filter(ft => ft.id !== id))
+  }, [])
+
+  const onExplorationEvent = useCallback((event: RawExplorationEvent) => {
+    if (event.zoneId != null) {
+      onExplorationZoneUpdate(event.heroId, event.zoneId)
+    }
+
+    switch (event.kind) {
+      case 'trap':
+        soundManager.playSfx('trap', 0.5)
+        addFloatingText(event.heroId, `-${event.value} HP`, '#d04050')
+        break
+      case 'gold':
+        soundManager.playSfx('gold-find', 0.5)
+        addFloatingText(event.heroId, `+${event.value}g`, '#f0c040')
+        break
+      case 'heal':
+        soundManager.playSfx('heal', 0.5)
+        addFloatingText(event.heroId, `+${event.value} HP`, '#40c060')
+        break
+      case 'beastWin':
+        soundManager.playSfx('beast-win', 0.5)
+        addFloatingText(event.heroId, `+${event.value}g`, '#f0c040')
+        break
+      case 'beastLose':
+        soundManager.playSfx('beast-lose', 0.5)
+        addFloatingText(event.heroId, `-${event.value} HP`, '#d04050')
+        break
+      case 'ingredient':
+        soundManager.playSfx('gold-find', 0.3)
+        addFloatingText(event.heroId, '+1 Ingredient', '#a050d0')
+        break
+    }
+  }, [addFloatingText, onExplorationZoneUpdate])
+
+  const { logs, pushInfo, heroOverrides } = useExplorationLog(gameId ?? null, heroes, onExplorationEvent)
   const logsEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -98,44 +146,24 @@ export function PlayScreen({ bridge }: Props) {
     return () => window.clearInterval(timer)
   }, [])
 
-  useEffect(() => {
-    bridge.updateHeroes(
-      heroes.map((h) => ({
-        hero_id: h.id,
-        role: h.role,
-        health: h.health,
-        max_health: h.max_health,
-        power: h.power,
-        regen: h.regen,
-        gold: h.gold,
-        available_at: Number(h.available_at),
-      })),
-    )
-  }, [heroes, bridge])
+  const prevDiscoveredRef = useRef(0)
+  const prevGameOverRef = useRef(false)
+  const discoveredCount = game ? bitmapPopcount(game.grimoire) : 0
+  const isGameOver = game ? Number(game.ended_at) > 0 : false
 
   useEffect(() => {
-    if (game) {
-      const heroCount = bitmapPopcount(game.heroes)
-      const discoveredCount = bitmapPopcount(game.grimoire)
-      bridge.updateSession({
-        game_id: gameId ?? 0,
-        gold: game.gold,
-        discovered_count: discoveredCount,
-        hero_count: heroCount,
-        game_over: Number(game.ended_at) > 0,
-        started_at: Number(game.started_at),
-        remaining_tries: game.remaining_tries,
-      })
+    if (discoveredCount > prevDiscoveredRef.current && prevDiscoveredRef.current > 0) {
+      soundManager.playSfx('discovery', 0.6)
     }
-  }, [game, bridge, gameId])
+    prevDiscoveredRef.current = discoveredCount
+  }, [discoveredCount])
 
   useEffect(() => {
-    const onHeroSelected = (heroId: number) => {
-      if (heroId >= 0) setSelectedHeroId(heroId)
+    if (isGameOver && !prevGameOverRef.current) {
+      soundManager.playSfx('victory', 0.7)
     }
-    bridge.on('heroSelected', onHeroSelected)
-    return () => { bridge.off('heroSelected', onHeroSelected) }
-  }, [bridge])
+    prevGameOverRef.current = isGameOver
+  }, [isGameOver])
 
   const scrollPanelIntoView = useCallback((panelClass: string, collapseSetter: React.Dispatch<React.SetStateAction<boolean>>) => {
     collapseSetter(false)
@@ -146,6 +174,7 @@ export function PlayScreen({ bridge }: Props) {
   }, [])
 
   const handlePickIngredient = useCallback((id: number) => {
+    soundManager.playSfx('click', 0.25)
     if (slotA === id) { setSlotA(null); return }
     if (slotB === id) { setSlotB(null); return }
     if (slotA === null) { setSlotA(id) }
@@ -178,6 +207,8 @@ export function PlayScreen({ bridge }: Props) {
     const hero = heroes.find((h) => h.id === characterId)
     const name = hero ? ROLE_NAMES[hero.role > 0 ? hero.role - 1 : characterId] : `Hero ${characterId}`
     pushInfo(`${name} sent on expedition...`)
+    onExpeditionStart(characterId)
+    soundManager.playSfx('expedition-start', 0.5)
     const t = txToast('Sending expedition')
     try { await client.explore(account, gameId, characterId); t.success() } catch (e) { t.error(); pushInfo(`${name} expedition failed`); console.error('Explore failed:', e) }
   }
@@ -187,6 +218,10 @@ export function PlayScreen({ bridge }: Props) {
     const hero = heroes.find((h) => h.id === characterId)
     const name = hero ? ROLE_NAMES[hero.role > 0 ? hero.role - 1 : characterId] : `Hero ${characterId}`
     pushInfo(`${name} claiming loot...`)
+    soundManager.playSfx('claim-loot', 0.5)
+    if (hero && hero.gold > 0) {
+      addFloatingText(characterId, `+${hero.gold}g`, '#f0c040')
+    }
     const t = txToast('Claiming loot')
     try { await client.claim(account, gameId, characterId); t.success() } catch (e) { t.error(); pushInfo(`${name} claim failed`); console.error('Claim failed:', e) }
   }
@@ -194,8 +229,21 @@ export function PlayScreen({ bridge }: Props) {
   const handleCraft = async (ingredientA: number, ingredientB: number) => {
     if (!account || gameId == null) return
     pushInfo(`Brewing potion...`)
+    const lo = Math.min(ingredientA, ingredientB)
+    const hi = Math.max(ingredientA, ingredientB)
+    const existingRecipe = recipes.find(
+      (r) => r.discovered && Math.min(r.ingredient_a, r.ingredient_b) === lo && Math.max(r.ingredient_a, r.ingredient_b) === hi,
+    )
+    const isSoup = existingRecipe != null && EFFECT_CATEGORIES[existingRecipe.effect] === undefined
     const t = txToast('Brewing potion')
-    try { await client.craft(account, gameId, ingredientA, ingredientB); t.success() } catch (e) { t.error(); pushInfo('Brew failed'); console.error('Craft failed:', e) }
+    try {
+      await client.craft(account, gameId, ingredientA, ingredientB)
+      t.success()
+      soundManager.playSfx('brew-success', 0.4)
+      if (isSoup) {
+        addFloatingText(0, '+1g', '#f0c040')
+      }
+    } catch (e) { t.error(); pushInfo('Brew failed'); console.error('Craft failed:', e) }
   }
 
   const handleBrewAll = async () => {
@@ -204,28 +252,32 @@ export function PlayScreen({ bridge }: Props) {
     if (pairs.length === 0) return
     pushInfo(`Brewing ${pairs.length} new combinations...`)
     const t = txToast(`Brewing ${pairs.length} potions`)
-    try { await client.craftBatch(account, gameId, pairs); t.success() } catch (e) { t.error(); pushInfo('Batch brew failed'); console.error('Batch craft failed:', e) }
+    try {
+      await client.craftBatch(account, gameId, pairs)
+      t.success()
+      soundManager.playSfx('brew-success', 0.4)
+    } catch (e) { t.error(); pushInfo('Batch brew failed'); console.error('Batch craft failed:', e) }
   }
 
   const handleClue = async () => {
     if (!account || gameId == null) return
     pushInfo('Buying hint...')
     const t = txToast('Buying hint')
-    try { await client.clue(account, gameId); t.success() } catch (e) { t.error(); pushInfo('Hint purchase failed'); console.error('Clue failed:', e) }
+    try { await client.clue(account, gameId); t.success(); soundManager.playSfx('notification', 0.4) } catch (e) { t.error(); pushInfo('Hint purchase failed'); console.error('Clue failed:', e) }
   }
 
   const handleRecruit = async () => {
     if (!account || gameId == null) return
     pushInfo('Recruiting hero...')
     const t = txToast('Recruiting hero')
-    try { await client.recruit(account, gameId); t.success() } catch (e) { t.error(); pushInfo('Recruitment failed'); console.error('Recruit failed:', e) }
+    try { await client.recruit(account, gameId); t.success(); soundManager.playSfx('recruit', 0.6) } catch (e) { t.error(); pushInfo('Recruitment failed'); console.error('Recruit failed:', e) }
   }
 
   const handleBuff = async (effect: number, heroId: number, quantity: number) => {
     if (!account || gameId == null) return
     pushInfo(`Applying potion to hero...`)
     const t = txToast('Applying potion')
-    try { await client.buff(account, gameId, heroId, effect, quantity); t.success() } catch (e) { t.error(); pushInfo('Potion application failed'); console.error('Buff failed:', e) }
+    try { await client.buff(account, gameId, heroId, effect, quantity); t.success(); soundManager.playSfx('potion-apply', 0.5) } catch (e) { t.error(); pushInfo('Potion application failed'); console.error('Buff failed:', e) }
   }
 
   if (gameId == null) {
@@ -238,18 +290,36 @@ export function PlayScreen({ bridge }: Props) {
   }
 
   const gold = game?.gold ?? 0
-  const discoveredCount = game ? bitmapPopcount(game.grimoire) : 0
   const brewAllCount = useMemo(() => computeUntriedPairs(inventory, recipes).length, [inventory, recipes])
   const effectQuantities = useMemo(() => game ? unpackEffects(BigInt(game.effects)) : Array(30).fill(0) as number[], [game])
   const hasPotions = effectQuantities.some((q) => q > 0)
   const heroCount = game ? bitmapPopcount(game.heroes) : heroes.length
-  const isGameOver = game ? Number(game.ended_at) > 0 : false
   const hintCost = game?.hint_price ?? 4
   const startedAt = game ? Number(game.started_at) : now
   const elapsedSeconds = Math.max(0, now - startedAt)
 
+  const journeyHeroes = useMemo(() =>
+    heroes.map(h => {
+      const override = heroOverrides.get(h.id)
+      return {
+        hero_id: h.id,
+        role: h.role,
+        health: override ? override.health : h.health,
+        max_health: h.max_health,
+      }
+    }),
+    [heroes, heroOverrides],
+  )
+
   return (
     <div className="play-screen">
+      <JourneyMap
+        heroes={journeyHeroes}
+        heroPositions={heroPositions}
+        floatingTexts={floatingTexts}
+        onFloatingTextComplete={removeFloatingText}
+      />
+
       <StatusHUD
         gold={gold}
         discoveredCount={discoveredCount}
@@ -276,7 +346,8 @@ export function PlayScreen({ bridge }: Props) {
                   gold={gold}
                   isGameOver={isGameOver}
                   now={now}
-                  onSelectHero={(id) => bridge.selectHero(id)}
+                  heroOverrides={heroOverrides}
+                  onSelectHero={(id) => setSelectedHeroId(id)}
                   onRecruit={() => void handleRecruit()}
                   onExplore={(id) => void handleExplore(id)}
                   onClaim={(id) => void handleClaim(id)}
@@ -562,6 +633,7 @@ interface HeroSlotProps {
   gold: number
   isGameOver: boolean
   now: number
+  heroOverrides: Map<number, HeroOverride>
   onSelectHero: (heroId: number) => void
   onRecruit: () => void
   onExplore: (characterId: number) => void
@@ -578,6 +650,7 @@ function HeroSlot({
   gold,
   isGameOver,
   now,
+  heroOverrides,
   onSelectHero,
   onRecruit,
   onExplore,
@@ -587,7 +660,6 @@ function HeroSlot({
 }: HeroSlotProps) {
   const hero = heroes.find((h) => h.id === slot)
 
-  /* ── Recruit slot ─────────────────────────────── */
   if (!hero) {
     if (slot < heroCount) return null
     if (slot === heroCount && heroCount < 3) {
@@ -609,7 +681,6 @@ function HeroSlot({
     return null
   }
 
-  /* ── Active hero ──────────────────────────────── */
   const roleIdx = hero.role > 0 ? hero.role - 1 : slot
   const roleName = ROLE_NAMES[roleIdx] ?? `Hero ${slot}`
   const availableAt = Number(hero.available_at)
@@ -622,15 +693,12 @@ function HeroSlot({
   let statusClass = ''
   if (isExploring) { statusText = `Exploring ${remaining}s`; statusClass = 'exploring' }
 
-  /* ── Optimistic HP regen ──────────────────────── */
-  const healthRef = useRef({ health: hero.health, ts: now })
-  if (hero.health !== healthRef.current.health) {
-    healthRef.current = { health: hero.health, ts: now }
-  }
-  const elapsedSinceUpdate = now - healthRef.current.ts
-  const optimisticHp = isIdle
-    ? Math.min(hero.health + hero.regen * elapsedSinceUpdate, hero.max_health)
-    : hero.health
+  const override = heroOverrides.get(hero.id)
+  const regenElapsed = isIdle ? Math.max(0, now - availableAt) : 0
+  const baseHp = override ? override.health : hero.health
+  const optimisticHp = override
+    ? baseHp
+    : Math.min(baseHp + hero.regen * regenElapsed, hero.max_health)
 
   const hpPct = hero.max_health > 0 ? Math.min(100, (optimisticHp / hero.max_health) * 100) : 0
   const regenPreviewPct = (isIdle && optimisticHp < hero.max_health && hero.regen > 0)
@@ -638,7 +706,6 @@ function HeroSlot({
     : 0
   const hpColor = hpPct > 50 ? 'var(--accent-green)' : hpPct > 25 ? '#ff9800' : 'var(--accent-red)'
 
-  /* ── Power bar ────────────────────────────────── */
   const powerCap = Math.max(hero.power, 50)
   const powerPct = powerCap > 0 ? Math.min(100, (hero.power / powerCap) * 100) : 0
 
