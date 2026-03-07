@@ -4,6 +4,7 @@ import {
   INGREDIENT_NAMES,
   ZONE_NAMES,
   EFFECT_NAMES,
+  ROLE_NAMES,
   displayGold,
 } from '@/game/constants'
 
@@ -16,7 +17,6 @@ export interface LogEntry {
   kind: 'exploration' | 'loot' | 'recipe' | 'recruit' | 'potion' | 'expedition' | 'info'
 }
 
-// Contract Category enum: None=0, Trap=1, Gold=2, Heal=3, BeastWin=4, BeastLose=5, Ingredient=6
 const CATEGORY_TRAP = 1
 const CATEGORY_GOLD = 2
 const CATEGORY_HEAL = 3
@@ -24,7 +24,8 @@ const CATEGORY_BEAST_WIN = 4
 const CATEGORY_BEAST_LOSE = 5
 const CATEGORY_INGREDIENT = 6
 
-// Torii wraps field values as nested { value: { value: N } } — recursively unwrap to number
+const TICK_INTERVAL_MS = 1000
+
 function extractNumber(val: unknown): number {
   if (val == null) return 0
   if (typeof val === 'number') return val
@@ -63,18 +64,18 @@ function formatExplorationDetail(eventKind: number, value: number, hpAfter: numb
   }
 }
 
-function formatEvent(modelName: string, values: Record<string, number>): LogEntry | null {
+function formatEvent(modelName: string, values: Record<string, number>, heroName: string): LogEntry | null {
   switch (modelName) {
     case 'ExplorationEvent': {
       const zone = ZONE_NAMES[values.zone_id] ?? `Zone ${values.zone_id}`
       const detail = formatExplorationDetail(values.event_kind, values.value, values.hp_after)
-      return { ts: Date.now(), text: `Hero ${values.hero_id} in ${zone} (depth ${values.depth}): ${detail}`, kind: 'exploration' }
+      return { ts: Date.now(), text: `${heroName} in ${zone} (depth ${values.depth}): ${detail}`, kind: 'exploration' }
     }
     case 'ExpeditionStarted': {
-      return { ts: Date.now(), text: `Hero ${values.hero_id} departed on expedition`, kind: 'expedition' }
+      return { ts: Date.now(), text: `${heroName} departed on expedition`, kind: 'expedition' }
     }
     case 'LootClaimed': {
-      return { ts: Date.now(), text: `Hero ${values.hero_id} claimed ${displayGold(values.gold)}g loot`, kind: 'loot' }
+      return { ts: Date.now(), text: `${heroName} claimed ${displayGold(values.gold)}g loot`, kind: 'loot' }
     }
     case 'RecipeDiscovered': {
       const a = INGREDIENT_NAMES[values.ingredient_a - 1] ?? '?'
@@ -83,11 +84,11 @@ function formatEvent(modelName: string, values: Record<string, number>): LogEntr
       return { ts: Date.now(), text: `Discovered: ${a} + ${b} → ${effect} (${values.discovered_count}/30)`, kind: 'recipe' }
     }
     case 'HeroRecruited': {
-      return { ts: Date.now(), text: `Hero ${values.hero_id} recruited for ${displayGold(values.cost)}g`, kind: 'recruit' }
+      return { ts: Date.now(), text: `${heroName} recruited for ${displayGold(values.cost)}g`, kind: 'recruit' }
     }
     case 'PotionApplied': {
       const effect = EFFECT_NAMES[values.effect_type - 1] ?? '?'
-      return { ts: Date.now(), text: `Hero ${values.hero_id} consumed potion: ${effect} +${values.effect_value}`, kind: 'potion' }
+      return { ts: Date.now(), text: `${heroName} consumed potion: ${effect} +${values.effect_value}`, kind: 'potion' }
     }
     default:
       return null
@@ -96,14 +97,45 @@ function formatEvent(modelName: string, values: Record<string, number>): LogEntr
 
 const MAX_LOG = 200
 
-export function useExplorationLog(gameId: number | null) {
+export function useExplorationLog(
+  gameId: number | null,
+  heroes: Array<{ id: number; role: number }> = [],
+) {
   const { toriiClient } = useDojo()
   const [logs, setLogs] = useState<LogEntry[]>([])
   const subRef = useRef<{ cancel: () => void } | null>(null)
+  const queueRef = useRef<LogEntry[]>([])
+  const drainTimerRef = useRef<number | null>(null)
+  const heroMapRef = useRef<Map<number, string>>(new Map())
+
+  useEffect(() => {
+    const map = new Map<number, string>()
+    for (const hero of heroes) {
+      const roleIdx = hero.role > 0 ? hero.role - 1 : hero.id
+      map.set(hero.id, ROLE_NAMES[roleIdx] ?? `Hero ${hero.id}`)
+    }
+    heroMapRef.current = map
+  }, [heroes])
 
   const append = useCallback((entry: LogEntry) => {
     setLogs((prev) => [...prev.slice(-(MAX_LOG - 1)), entry])
   }, [])
+
+  const enqueue = useCallback((entry: LogEntry) => {
+    queueRef.current.push(entry)
+    if (drainTimerRef.current != null) return
+    const first = queueRef.current.shift()
+    if (first) append(first)
+    drainTimerRef.current = window.setInterval(() => {
+      const next = queueRef.current.shift()
+      if (next) {
+        append(next)
+      } else {
+        window.clearInterval(drainTimerRef.current!)
+        drainTimerRef.current = null
+      }
+    }, TICK_INTERVAL_MS)
+  }, [append])
 
   const pushInfo = useCallback((text: string) => {
     append({ ts: Date.now(), text, kind: 'info' })
@@ -154,10 +186,15 @@ export function useExplorationLog(gameId: number | null) {
           if (typeof modelValues !== 'object' || modelValues == null) continue
           const shortName = fullModelName.includes('-') ? fullModelName.split('-').pop()! : fullModelName
           const values = parseModelValues(modelValues as Record<string, unknown>)
-          const entry = formatEvent(shortName, values)
+          const heroName = heroMapRef.current.get(values.hero_id) ?? `Hero ${values.hero_id}`
+          const entry = formatEvent(shortName, values, heroName)
           if (entry) {
             console.debug('[ExplorationLog]', shortName, values, '->', entry.text)
-            append(entry)
+            if (shortName === 'ExplorationEvent') {
+              enqueue(entry)
+            } else {
+              append(entry)
+            }
           }
         }
       },
@@ -177,8 +214,13 @@ export function useExplorationLog(gameId: number | null) {
       cancelled = true
       subRef.current?.cancel()
       subRef.current = null
+      if (drainTimerRef.current != null) {
+        window.clearInterval(drainTimerRef.current)
+        drainTimerRef.current = null
+      }
+      queueRef.current = []
     }
-  }, [gameId, toriiClient, append])
+  }, [gameId, toriiClient, append, enqueue])
 
   return { logs, pushInfo }
 }

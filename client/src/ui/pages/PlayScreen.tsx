@@ -90,7 +90,7 @@ export function PlayScreen({ bridge }: Props) {
   const [logsCollapsed, setLogsCollapsed] = useState(false)
   const [potionTargetHeroId, setPotionTargetHeroId] = useState<number | null>(null)
   const [mobilePanel, setMobilePanel] = useState<string | null>(null)
-  const { logs, pushInfo } = useExplorationLog(gameId ?? null)
+  const { logs, pushInfo } = useExplorationLog(gameId ?? null, heroes)
   const logsEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
