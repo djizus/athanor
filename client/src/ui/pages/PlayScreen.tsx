@@ -9,6 +9,7 @@ import { useHints } from '@/hooks/useHints'
 import { useExplorationLog } from '@/hooks/useExplorationLog'
 import type { RawExplorationEvent, HeroOverride } from '@/hooks/useExplorationLog'
 import { useExpeditionTracker } from '@/hooks/useExpeditionTracker'
+import type { HeroPosition } from '@/hooks/useExpeditionTracker'
 import { useNavigationStore } from '@/stores/navigationStore'
 import { txToast } from '@/stores/toastStore'
 import { soundManager } from '@/sound/SoundManager'
@@ -86,7 +87,6 @@ export function PlayScreen() {
 
   const [heroesCollapsed, setHeroesCollapsed] = useState(false)
   const [brewCollapsed, setBrewCollapsed] = useState(false)
-  const [collectionCollapsed, setCollectionCollapsed] = useState(false)
   const [logsCollapsed, setLogsCollapsed] = useState(false)
   const [potionTargetHeroId, setPotionTargetHeroId] = useState<number | null>(null)
   const [mobilePanel, setMobilePanel] = useState<string | null>(null)
@@ -96,9 +96,9 @@ export function PlayScreen() {
 
   const { heroPositions, onExpeditionStart, onExplorationZoneUpdate } = useExpeditionTracker(heroes, now)
 
-  const addFloatingText = useCallback((heroId: number, text: string, color: string) => {
+  const addFloatingText = useCallback((heroId: number, text: string, color: string, zoneId?: number) => {
     const id = String(floatingIdRef.current++)
-    setFloatingTexts(prev => [...prev, { id, heroId, text, color }])
+    setFloatingTexts(prev => [...prev, { id, heroId, text, color, zoneId }])
   }, [])
 
   const removeFloatingText = useCallback((id: string) => {
@@ -110,30 +110,32 @@ export function PlayScreen() {
       onExplorationZoneUpdate(event.heroId, event.zoneId)
     }
 
+    const zone = event.zoneId
+
     switch (event.kind) {
       case 'trap':
         soundManager.playSfx('trap', 0.5)
-        addFloatingText(event.heroId, `-${event.value} HP`, '#d04050')
+        addFloatingText(event.heroId, `-${event.value} HP`, '#d04050', zone)
         break
       case 'gold':
         soundManager.playSfx('gold-find', 0.5)
-        addFloatingText(event.heroId, `+${event.value}g`, '#f0c040')
+        addFloatingText(event.heroId, `+${event.value}g`, '#f0c040', zone)
         break
       case 'heal':
         soundManager.playSfx('heal', 0.5)
-        addFloatingText(event.heroId, `+${event.value} HP`, '#40c060')
+        addFloatingText(event.heroId, `+${event.value} HP`, '#40c060', zone)
         break
       case 'beastWin':
         soundManager.playSfx('beast-win', 0.5)
-        addFloatingText(event.heroId, `+${event.value}g`, '#f0c040')
+        addFloatingText(event.heroId, `+${event.value}g`, '#f0c040', zone)
         break
       case 'beastLose':
         soundManager.playSfx('beast-lose', 0.5)
-        addFloatingText(event.heroId, `-${event.value} HP`, '#d04050')
+        addFloatingText(event.heroId, `-${event.value} HP`, '#d04050', zone)
         break
       case 'ingredient':
         soundManager.playSfx('gold-find', 0.3)
-        addFloatingText(event.heroId, '+1 Ingredient', '#a050d0')
+        addFloatingText(event.heroId, '+1 Ingredient', '#a050d0', zone)
         break
     }
   }, [addFloatingText, onExplorationZoneUpdate])
@@ -187,8 +189,8 @@ export function PlayScreen() {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return
       switch (e.key.toLowerCase()) {
         case 'c': scrollPanelIntoView('panel-brew', setBrewCollapsed); break
-        case 'g': { setCollectionTab('grimoire'); scrollPanelIntoView('panel-collection', setCollectionCollapsed); break }
-        case 'i': { setCollectionTab('ingredients'); scrollPanelIntoView('panel-collection', setCollectionCollapsed); break }
+        case 'g': { setCollectionTab('grimoire'); scrollPanelIntoView('panel-brew', setBrewCollapsed); break }
+        case 'i': { setCollectionTab('ingredients'); scrollPanelIntoView('panel-brew', setBrewCollapsed); break }
         case 'escape': setSelectedHeroId(-1); break
       }
     }
@@ -330,6 +332,7 @@ export function PlayScreen() {
 
       <div className={`play-left-panels${mobilePanel && mobilePanel !== 'heroes' && mobilePanel !== 'logs' ? ' mobile-hidden' : ''}${mobilePanel === 'heroes' || mobilePanel === 'logs' ? ' mobile-open' : ''}`}>
         <div className={`side-panel floating-panel panel-heroes${mobilePanel === 'logs' ? ' mobile-panel-hidden' : ''}`}>
+
           <button className="side-panel-header" onClick={() => setHeroesCollapsed((v) => !v)}>
             <span className="side-panel-title">Heroes</span>
             <span className="side-panel-chevron">{heroesCollapsed ? '▸' : '▾'}</span>
@@ -347,6 +350,7 @@ export function PlayScreen() {
                   isGameOver={isGameOver}
                   now={now}
                   heroOverrides={heroOverrides}
+                  heroPositions={heroPositions}
                   onSelectHero={(id) => setSelectedHeroId(id)}
                   onRecruit={() => void handleRecruit()}
                   onExplore={(id) => void handleExplore(id)}
@@ -382,8 +386,8 @@ export function PlayScreen() {
         </div>
       </div>
 
-      <div className={`play-right-panels${mobilePanel && mobilePanel !== 'brew' && mobilePanel !== 'collection' ? ' mobile-hidden' : ''}${mobilePanel === 'brew' || mobilePanel === 'collection' ? ' mobile-open' : ''}`}>
-        <div className={`side-panel floating-panel panel-brew${mobilePanel === 'collection' ? ' mobile-panel-hidden' : ''}`}>
+      <div className={`play-right-panels${mobilePanel && mobilePanel !== 'brew' ? ' mobile-hidden' : ''}${mobilePanel === 'brew' ? ' mobile-open' : ''}`}>
+        <div className="side-panel floating-panel panel-brew">
           <button className="side-panel-header" onClick={() => setBrewCollapsed((v) => !v)}>
             <span className="side-panel-title">Brew</span>
             <span className="side-panel-chevron">{brewCollapsed ? '▸' : '▾'}</span>
@@ -396,39 +400,32 @@ export function PlayScreen() {
                 inventory={inventory}
                 recipes={recipes}
                 isGameOver={isGameOver}
-                brewAllCount={brewAllCount}
                 onSetSlotA={setSlotA}
                 onSetSlotB={setSlotB}
                 onCraft={(a, b) => void handleCraft(a, b)}
-                onBrewAll={() => void handleBrewAll()}
               />
-            </div>
-          )}
-        </div>
 
-        <div className={`side-panel floating-panel panel-collection${mobilePanel === 'brew' ? ' mobile-panel-hidden' : ''}`}>
-          <div className="side-panel-header collection-header">
-            <button
-              className={`collection-tab${collectionTab === 'ingredients' ? ' active' : ''}`}
-              onClick={() => setCollectionTab('ingredients')}
-            >
-              Ingredients
-            </button>
-            <button
-              className={`collection-tab${collectionTab === 'grimoire' ? ' active' : ''}`}
-              onClick={() => setCollectionTab('grimoire')}
-            >
-              Grimoire {discoveredCount}/30
-            </button>
-            <button
-              className="side-panel-chevron collection-chevron"
-              onClick={() => setCollectionCollapsed((v) => !v)}
-            >
-              {collectionCollapsed ? '▸' : '▾'}
-            </button>
-          </div>
-          {!collectionCollapsed && (
-            <div className="side-panel-body">
+              <div className="craft-btn-row">
+                <button onClick={() => void handleBrewAll()} disabled={isGameOver || brewAllCount === 0}>
+                  Brew All ({brewAllCount})
+                </button>
+              </div>
+
+              <div className="collection-tabs">
+                <button
+                  className={`collection-tab${collectionTab === 'ingredients' ? ' active' : ''}`}
+                  onClick={() => setCollectionTab('ingredients')}
+                >
+                  Ingredients
+                </button>
+                <button
+                  className={`collection-tab${collectionTab === 'grimoire' ? ' active' : ''}`}
+                  onClick={() => setCollectionTab('grimoire')}
+                >
+                  Grimoire {discoveredCount}/30
+                </button>
+              </div>
+
               {collectionTab === 'ingredients' ? (
                 <IngredientsContent
                   inventory={inventory}
@@ -452,10 +449,6 @@ export function PlayScreen() {
                   onSelectIngredients={(a, b) => {
                     setSlotA(a >= 0 ? a : null)
                     setSlotB(b >= 0 ? b : null)
-                    setBrewCollapsed(false)
-                    requestAnimationFrame(() => {
-                      document.querySelector('.panel-brew')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-                    })
                   }}
                 />
               )}
@@ -479,18 +472,19 @@ export function PlayScreen() {
         <SettingsOverlay
           open={settingsOpen}
           onClose={() => setSettingsOpen(false)}
+          onSurrender={() => { setSettingsOpen(false); navigate('home') }}
         />
       )}
 
       <div className="mobile-tab-bar">
-        {(['heroes', 'brew', 'collection', 'logs'] as const).map(tab => (
+        {(['heroes', 'brew', 'logs'] as const).map(tab => (
           <button
             key={tab}
             className={`mobile-tab${mobilePanel === tab ? ' active' : ''}`}
             onClick={() => setMobilePanel(prev => prev === tab ? null : tab)}
           >
-            {tab === 'heroes' ? '⚔' : tab === 'brew' ? '⚗' : tab === 'collection' ? '📖' : '📜'}
-            <span>{tab === 'collection' ? 'Grimoire' : tab.charAt(0).toUpperCase() + tab.slice(1)}</span>
+            {tab === 'heroes' ? '⚔' : tab === 'brew' ? '⚗' : '📜'}
+            <span>{tab.charAt(0).toUpperCase() + tab.slice(1)}</span>
           </button>
         ))}
       </div>
@@ -559,11 +553,30 @@ function HeroPotionPopup({
 
   const totalSelected = Array.from(selected.values()).reduce((a, b) => a + b, 0)
 
+  const handleSelectAll = () => {
+    const next = new Map<number, number>()
+    for (const { effectIdx, qty } of availablePotions) {
+      next.set(effectIdx, qty)
+    }
+    setSelected(next)
+  }
+
+  const handleMaxPotion = (idx: number) => {
+    setSelected(prev => {
+      const next = new Map(prev)
+      next.set(idx, effectQuantities[idx])
+      return next
+    })
+  }
+
   return (
     <div className="potion-popup-backdrop" onClick={onClose}>
       <div className="potion-popup floating-panel" onClick={(e) => e.stopPropagation()}>
         <div className="potion-popup-header">
           <span className="potion-popup-name">Apply Potions to {heroName}</span>
+          {availablePotions.length > 0 && (
+            <button className="btn-sm" onClick={handleSelectAll}>Select All</button>
+          )}
         </div>
         {availablePotions.length === 0 ? (
           <p style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.8rem' }}>No potions available</p>
@@ -578,18 +591,27 @@ function HeroPotionPopup({
                 return (
                   <div
                     key={effectIdx}
-                    className={`potion-popup-cell${isActive ? ' active' : ''}`}
+                    className={`grimoire-cell${isActive ? ' discovered' : ''} grimoire-cell-clickable`}
                     style={{ ['--effect-color' as string]: color }}
+                    onClick={() => togglePotion(effectIdx, count > 0 ? -count : 1)}
                   >
-                    <div className="potion-popup-cell-icon">
-                      <img src={effectAssetUrl(effectIdx)} alt={effectStatLabel(effectIdx)} style={{ borderColor: color }} />
+                    <div
+                      className="grimoire-icon-wrap"
+                      style={{ ['--effect-color' as string]: color }}
+                    >
+                      <img
+                        className="grimoire-icon"
+                        src={effectAssetUrl(effectIdx)}
+                        alt={effectStatLabel(effectIdx)}
+                      />
+                      <span className="grimoire-badge-tr">{effectStatLabel(effectIdx)}</span>
+                      <span className={`ing-badge${qty <= 0 ? ' grimoire-badge-zero' : ''}`}>{qty}</span>
                     </div>
-                    <span className="potion-popup-cell-stat" style={{ color }}>{effectStatLabel(effectIdx)}</span>
-                    <span className="potion-popup-cell-stock">×{qty}</span>
-                    <div className="potion-popup-cell-qty">
-                      <button onClick={() => togglePotion(effectIdx, -1)} disabled={count <= 0}>−</button>
+                    <div className="potion-popup-cell-qty" onClick={(e) => e.stopPropagation()}>
+                      <button onClick={() => togglePotion(effectIdx, -1)} disabled={count <= 0}>&minus;</button>
                       <span>{count}</span>
                       <button onClick={() => togglePotion(effectIdx, 1)} disabled={count >= qty}>+</button>
+                      <button className="btn-max" onClick={() => handleMaxPotion(effectIdx)} disabled={count >= qty}>Max</button>
                     </div>
                   </div>
                 )
@@ -634,6 +656,7 @@ interface HeroSlotProps {
   isGameOver: boolean
   now: number
   heroOverrides: Map<number, HeroOverride>
+  heroPositions: Map<number, HeroPosition>
   onSelectHero: (heroId: number) => void
   onRecruit: () => void
   onExplore: (characterId: number) => void
@@ -651,6 +674,7 @@ function HeroSlot({
   isGameOver,
   now,
   heroOverrides,
+  heroPositions,
   onSelectHero,
   onRecruit,
   onExplore,
@@ -689,9 +713,14 @@ function HeroSlot({
   const isExploring = remaining > 0
   const lootReady = isIdle && (hero.gold > 0 || (hero.ingredients != null && hero.ingredients !== 0n))
 
+  const heroPos = heroPositions.get(hero.id)
+  const isReturning = isExploring && heroPos?.returning === true
+
   let statusText = 'Ready'
   let statusClass = ''
-  if (isExploring) { statusText = `Exploring ${remaining}s`; statusClass = 'exploring' }
+  if (isReturning) { statusText = `Returning ${remaining}s`; statusClass = 'returning' }
+  else if (isExploring) { statusText = `Exploring ${remaining}s`; statusClass = 'exploring' }
+  else if (lootReady) { statusText = 'Loot Ready'; statusClass = 'loot-ready' }
 
   const override = heroOverrides.get(hero.id)
   const regenElapsed = isIdle ? Math.max(0, now - availableAt) : 0

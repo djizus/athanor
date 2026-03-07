@@ -1272,7 +1272,8 @@ button:disabled, .btn:disabled {
 .collection-tab {
   flex: 1;
   padding: 0.5rem 0.6rem;
-  border: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
   background: transparent;
   cursor: pointer;
   font-family: var(--font-title);
@@ -1280,7 +1281,6 @@ button:disabled, .btn:disabled {
   color: var(--text-muted);
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  border-bottom: 2px solid transparent;
   transition: all var(--transition-fast);
 }
 
@@ -1291,22 +1291,9 @@ button:disabled, .btn:disabled {
 
 .collection-tab.active {
   color: var(--accent-gold);
-  border-bottom-color: var(--accent-gold);
+  border-color: var(--accent-gold);
 }
 
-.collection-chevron {
-  flex: 0;
-  padding: 0.5rem 0.6rem;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  color: var(--text-muted);
-  font-size: 0.75rem;
-}
-
-.collection-chevron:hover {
-  background: var(--bg-hover);
-}
 
 .hero-card {
   display: flex;
@@ -1806,8 +1793,13 @@ button:disabled, .btn:disabled {
   z-index: 2;
 }
 
-.craft-brew-btn {
+.craft-brew-btns {
+  display: flex;
+  gap: 0.25rem;
   margin-left: 0.35rem;
+}
+
+.craft-brew-btn {
 }
 
 .craft-brew-btn:not(:disabled) {
@@ -1840,9 +1832,16 @@ button:disabled, .btn:disabled {
 .craft-btn-row {
   display: flex;
   gap: 0.5rem;
+  margin-bottom: 0.5rem;
 }
 
 .craft-btn-row button { flex: 1; }
+
+.collection-tabs {
+  display: flex;
+  gap: 0.35rem;
+  margin: 0.25rem 0 0.5rem;
+}
 
 /* ── Grimoire ─────────────────────────────────── */
 
@@ -1882,71 +1881,59 @@ button:disabled, .btn:disabled {
 .grimoire-btn-row button { flex: 1; }
 
 .grimoire-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
-  gap: 0.35rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .grimoire-cell {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.15rem;
-  padding: 0.25rem 0.1rem;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
-  background: var(--bg-card);
+  gap: 0.3rem;
   transition: all var(--transition-fast);
   position: relative;
 }
 
-.grimoire-cell.locked { opacity: 0.35; }
-
 .grimoire-cell.hinted {
   opacity: 0.65;
-  border-color: var(--accent-purple);
-  border-style: dashed;
 }
 
 .grimoire-cell.discovered {
   opacity: 1;
-  border-color: var(--accent-gold-dim);
 }
 
 .grimoire-cell-clickable { cursor: pointer; }
 
 .grimoire-cell-clickable:hover {
-  background: var(--bg-hover);
-  border-color: var(--accent-gold);
-  box-shadow: var(--shadow-glow-gold);
-  transform: scale(1.04);
+  transform: scale(1.08);
 }
 
 .grimoire-cell-clickable:active {
-  transform: scale(0.96);
+  transform: scale(0.94);
 }
 
 .grimoire-icon-wrap {
   position: relative;
-  width: 38px;
-  height: 38px;
+  width: 52px;
+  height: 52px;
   flex-shrink: 0;
   border-radius: 50%;
   border: 2px solid var(--effect-color, var(--border-color));
   overflow: visible;
+  background: var(--bg-card);
 }
 
-.grimoire-cell.locked .grimoire-icon-wrap { border-style: dashed; }
+.grimoire-cell.hinted .grimoire-icon-wrap {
+  border-style: dashed;
+  border-color: var(--accent-purple);
+}
 
 .grimoire-icon {
   width: 100%;
   height: 100%;
   object-fit: cover;
   border-radius: 50%;
-}
-
-.grimoire-cell.locked .grimoire-icon {
-  filter: grayscale(1) brightness(0.5);
 }
 
 .grimoire-badge-tl {
@@ -1977,34 +1964,14 @@ button:disabled, .btn:disabled {
   position: absolute;
   top: -5px;
   right: -6px;
-  font-size: 0.5rem;
-  font-weight: 700;
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
+  font-size: 0.55rem;
+  font-weight: 800;
+  background: var(--effect-color, var(--accent-gold));
+  color: #fff;
   border-radius: 4px;
-  padding: 0 2px;
+  padding: 1px 4px;
   line-height: 1.4;
   white-space: nowrap;
-  z-index: 2;
-  pointer-events: none;
-}
-
-.grimoire-badge-br {
-  position: absolute;
-  bottom: -4px;
-  right: -4px;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 3px;
-  border-radius: 8px;
-  background: var(--accent-gold);
-  color: var(--bg-primary);
-  font-size: 0.58rem;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
   z-index: 2;
   pointer-events: none;
 }
@@ -2039,6 +2006,7 @@ button:disabled, .btn:disabled {
 .potion-popup-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 0.75rem;
 }
 
@@ -2170,45 +2138,14 @@ button:disabled, .btn:disabled {
 }
 
 .potion-popup-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
-  gap: 0.4rem;
-}
-
-.potion-popup-cell {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.15rem;
-  padding: 0.4rem 0.25rem;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
-  background: var(--bg-card);
-  transition: all var(--transition-fast);
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
 }
 
-.potion-popup-cell.active {
-  border-color: var(--effect-color, var(--accent-gold));
-  background: rgba(240, 192, 64, 0.08);
-}
-
-.potion-popup-cell-icon img {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  border: 2px solid var(--effect-color, var(--border-color));
-  object-fit: cover;
-}
-
-.potion-popup-cell-stat {
-  font-size: 0.65rem;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.potion-popup-cell-stock {
-  font-size: 0.6rem;
-  color: var(--text-muted);
+.potion-popup-grid .grimoire-cell {
+  gap: 0.2rem;
 }
 
 .potion-popup-cell-qty {
@@ -2230,6 +2167,15 @@ button:disabled, .btn:disabled {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.potion-popup-cell-qty button.btn-max {
+  width: auto;
+  border-radius: 8px;
+  padding: 0 5px;
+  font-size: 0.55rem;
+  font-weight: 600;
+  text-transform: uppercase;
 }
 
 .potion-popup-cell-qty button:hover:not(:disabled) {

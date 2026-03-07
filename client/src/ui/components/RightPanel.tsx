@@ -83,22 +83,18 @@ export function BrewContent({
   inventory,
   recipes,
   isGameOver,
-  brewAllCount,
   onSetSlotA,
   onSetSlotB,
   onCraft,
-  onBrewAll,
 }: {
   slotA: number | null
   slotB: number | null
   inventory: InventoryItem[]
   recipes: DiscoveryData[]
   isGameOver: boolean
-  brewAllCount: number
   onSetSlotA: (v: number | null) => void
   onSetSlotB: (v: number | null) => void
   onCraft: (a: number, b: number) => void
-  onBrewAll: () => void
 }) {
   const qtyA = slotA != null ? (inventory.find(i => i.ingredient_id === slotA)?.quantity ?? 0) : 0
   const qtyB = slotB != null ? (inventory.find(i => i.ingredient_id === slotB)?.quantity ?? 0) : 0
@@ -158,27 +154,24 @@ export function BrewContent({
             <span className="craft-result-unknown">?</span>
           )}
         </div>
-        <button
-          className="btn-primary btn-sm craft-brew-btn"
-          onClick={handleBrew}
-          disabled={isGameOver || slotA == null || slotB == null || qtyA <= 0 || qtyB <= 0}
-        >
-          Brew
-        </button>
-      </div>
-
-      <div className="craft-btn-row">
-        <button onClick={onBrewAll} disabled={isGameOver || brewAllCount === 0}>
-          Brew All ({brewAllCount})
-        </button>
-        {slotA != null && slotB != null && (
+        <div className="craft-brew-btns">
           <button
-            onClick={() => { for (let i = 0; i < Math.min(qtyA, qtyB); i++) onCraft(slotA, slotB) }}
-            disabled={isGameOver || Math.min(qtyA, qtyB) <= 0}
+            className="btn-primary btn-sm craft-brew-btn"
+            onClick={handleBrew}
+            disabled={isGameOver || slotA == null || slotB == null || qtyA <= 0 || qtyB <= 0}
           >
-            Brew Max ({Math.min(qtyA, qtyB)})
+            Brew
           </button>
-        )}
+          {slotA != null && slotB != null && (
+            <button
+              className="btn-sm craft-brew-btn"
+              onClick={() => { for (let i = 0; i < Math.min(qtyA, qtyB); i++) onCraft(slotA, slotB) }}
+              disabled={isGameOver || Math.min(qtyA, qtyB) <= 0}
+            >
+              ×{Math.min(qtyA, qtyB)}
+            </button>
+          )}
+        </div>
       </div>
     </>
   )
@@ -395,12 +388,12 @@ export function GrimoireContent({
                   src={effectAssetUrl(effectIdx)}
                   alt={isDiscovered ? EFFECT_NAMES[effectIdx] : '???'}
                 />
-                {canCraft && <span className="grimoire-badge-tl">★</span>}
-                {isHinted && <span className="grimoire-badge-tl grimoire-badge-hint">H</span>}
+                {canCraft && <span className="grimoire-badge-tl">{'\u26CF'}</span>}
+                {isHinted && <span className="grimoire-badge-tl grimoire-badge-hint">{'\u2605'}</span>}
                 {isDiscovered && (
-                  <span className="grimoire-badge-tr" style={{ color: categoryColor }}>{effectStatLabel(effectIdx)}</span>
+                  <span className="grimoire-badge-tr">{effectStatLabel(effectIdx)}</span>
                 )}
-                <span className={`grimoire-badge-br${quantity <= 0 ? ' grimoire-badge-zero' : ''}`}>{quantity}</span>
+                <span className={`ing-badge${quantity <= 0 ? ' grimoire-badge-zero' : ''}`}>{quantity}</span>
               </div>
             </div>
           )
