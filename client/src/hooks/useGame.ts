@@ -12,7 +12,6 @@ export function useGame(gameId: number | null) {
   )
 
   const game = useComponentValue(contractComponents.Game, entityId)
-  const session = useComponentValue(contractComponents.GameSession, entityId)
 
-  return { game, session }
+  return { game }
 }
