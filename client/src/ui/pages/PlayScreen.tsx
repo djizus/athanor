@@ -605,7 +605,7 @@ function HeroPotionPopup({
                         alt={effectStatLabel(effectIdx)}
                       />
                       <span className="grimoire-badge-tr">{effectStatLabel(effectIdx)}</span>
-                      <span className={`ing-badge${qty <= 0 ? ' grimoire-badge-zero' : ''}`}>{qty}</span>
+                      <span className={`craft-slot-qty${qty <= 0 ? ' craft-slot-qty-zero' : ''}`}>{qty}</span>
                     </div>
                     <div className="potion-popup-cell-qty" onClick={(e) => e.stopPropagation()}>
                       <button onClick={() => togglePotion(effectIdx, -1)} disabled={count <= 0}>&minus;</button>

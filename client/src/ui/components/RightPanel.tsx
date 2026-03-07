@@ -66,7 +66,7 @@ function IngredientIcon({
           style={{ width: size, height: size }}
         />
         {quantity !== undefined && (
-          <span className="ing-badge">{quantity}</span>
+          <span className="craft-slot-qty">{quantity}</span>
         )}
       </div>
     </div>
@@ -395,7 +395,7 @@ export function GrimoireContent({
                 {isDiscovered && (
                   <span className="grimoire-badge-tr">{effectStatLabel(effectIdx)}</span>
                 )}
-                <span className={`ing-badge${quantity <= 0 ? ' grimoire-badge-zero' : ''}`}>{quantity}</span>
+                <span className={`craft-slot-qty${quantity <= 0 ? ' craft-slot-qty-zero' : ''}`}>{quantity}</span>
               </div>
             </div>
           )
