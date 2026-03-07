@@ -89,6 +89,7 @@ export function PlayScreen({ bridge }: Props) {
   const [collectionCollapsed, setCollectionCollapsed] = useState(false)
   const [logsCollapsed, setLogsCollapsed] = useState(false)
   const [potionTargetHeroId, setPotionTargetHeroId] = useState<number | null>(null)
+  const [mobilePanel, setMobilePanel] = useState<string | null>(null)
   const { logs, pushInfo } = useExplorationLog(gameId ?? null)
   const logsEndRef = useRef<HTMLDivElement>(null)
 
@@ -257,8 +258,8 @@ export function PlayScreen({ bridge }: Props) {
         onSettings={() => setSettingsOpen(true)}
       />
 
-      <div className="play-left-panels">
-        <div className="side-panel floating-panel panel-heroes">
+      <div className={`play-left-panels${mobilePanel && mobilePanel !== 'heroes' && mobilePanel !== 'logs' ? ' mobile-hidden' : ''}${mobilePanel === 'heroes' || mobilePanel === 'logs' ? ' mobile-open' : ''}`}>
+        <div className={`side-panel floating-panel panel-heroes${mobilePanel === 'logs' ? ' mobile-panel-hidden' : ''}`}>
           <button className="side-panel-header" onClick={() => setHeroesCollapsed((v) => !v)}>
             <span className="side-panel-title">Heroes</span>
             <span className="side-panel-chevron">{heroesCollapsed ? '▸' : '▾'}</span>
@@ -287,7 +288,7 @@ export function PlayScreen({ bridge }: Props) {
           )}
         </div>
 
-        <div className="side-panel floating-panel panel-logs">
+        <div className={`side-panel floating-panel panel-logs${mobilePanel === 'heroes' ? ' mobile-panel-hidden' : ''}`}>
           <button className="side-panel-header" onClick={() => setLogsCollapsed((v) => !v)}>
             <span className="side-panel-title">Exploration Log</span>
             <span className="side-panel-chevron">{logsCollapsed ? '▸' : '▾'}</span>
@@ -310,8 +311,8 @@ export function PlayScreen({ bridge }: Props) {
         </div>
       </div>
 
-      <div className="play-right-panels">
-        <div className="side-panel floating-panel panel-brew">
+      <div className={`play-right-panels${mobilePanel && mobilePanel !== 'brew' && mobilePanel !== 'collection' ? ' mobile-hidden' : ''}${mobilePanel === 'brew' || mobilePanel === 'collection' ? ' mobile-open' : ''}`}>
+        <div className={`side-panel floating-panel panel-brew${mobilePanel === 'collection' ? ' mobile-panel-hidden' : ''}`}>
           <button className="side-panel-header" onClick={() => setBrewCollapsed((v) => !v)}>
             <span className="side-panel-title">Brew</span>
             <span className="side-panel-chevron">{brewCollapsed ? '▸' : '▾'}</span>
@@ -334,7 +335,7 @@ export function PlayScreen({ bridge }: Props) {
           )}
         </div>
 
-        <div className="side-panel floating-panel panel-collection">
+        <div className={`side-panel floating-panel panel-collection${mobilePanel === 'brew' ? ' mobile-panel-hidden' : ''}`}>
           <div className="side-panel-header collection-header">
             <button
               className={`collection-tab${collectionTab === 'ingredients' ? ' active' : ''}`}
@@ -409,6 +410,19 @@ export function PlayScreen({ bridge }: Props) {
           onClose={() => setSettingsOpen(false)}
         />
       )}
+
+      <div className="mobile-tab-bar">
+        {(['heroes', 'brew', 'collection', 'logs'] as const).map(tab => (
+          <button
+            key={tab}
+            className={`mobile-tab${mobilePanel === tab ? ' active' : ''}`}
+            onClick={() => setMobilePanel(prev => prev === tab ? null : tab)}
+          >
+            {tab === 'heroes' ? '⚔' : tab === 'brew' ? '⚗' : tab === 'collection' ? '📖' : '📜'}
+            <span>{tab === 'collection' ? 'Grimoire' : tab.charAt(0).toUpperCase() + tab.slice(1)}</span>
+          </button>
+        ))}
+      </div>
 
       {potionTargetHeroId !== null && (
         <HeroPotionPopup
