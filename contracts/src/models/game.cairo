@@ -250,6 +250,9 @@ pub impl GameImpl of GameTrait {
         }
         self.tries = Packer::pack(counts, TRY_SIZE);
 
+        // [Effect] Add hint to the hints
+        self.hints = Bitmap::set(self.hints, effect.index());
+
         // [Return] Effect and ingredient
         (effect, ingredient)
     }
