@@ -243,14 +243,16 @@ function CraftResultPreview({ discovery }: { discovery: DiscoveryData }) {
 
   const color = EFFECT_COLORS[category]
   return (
-    <div className="craft-result-potion">
+    <div
+      className="grimoire-icon-wrap craft-result-circle"
+      style={{ ['--effect-color' as string]: color }}
+    >
       <img
-        className="craft-result-icon"
+        className="grimoire-icon"
         src={effectAssetUrl(effectIdx)}
         alt={EFFECT_NAMES[effectIdx]}
-        style={{ borderColor: color }}
       />
-      <span className="craft-result-bonus" style={{ color }}>{effectStatLabel(effectIdx)}</span>
+      <span className="grimoire-badge-tr">{effectStatLabel(effectIdx)}</span>
     </div>
   )
 }
