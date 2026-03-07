@@ -14,7 +14,6 @@ interface Props {
   isGameOver: boolean
   now: number
   onExplore: (characterId: number) => void
-  onClaim: (characterId: number) => void
 }
 
 export function ActionBar({
@@ -23,7 +22,6 @@ export function ActionBar({
   isGameOver,
   now,
   onExplore,
-  onClaim,
 }: Props) {
   if (selectedHeroId < 0) return null
 
