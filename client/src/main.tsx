@@ -1,57 +1,15 @@
 import { StrictMode } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { sepolia, type Chain } from '@starknet-react/chains'
+import { sepolia } from '@starknet-react/chains'
 import { StarknetConfig, jsonRpcProvider, paymasterRpcProvider } from '@starknet-react/core'
 import './index.css'
 import App from './App.tsx'
 import { LoadingScreen } from './ui/LoadingScreen'
 import { dojoConfig } from '../dojo.config'
 import { cartridgeConnector } from './cartridgeConnector'
-import { devConnector } from './devConnector'
 import { DojoProvider, type DojoSetup } from './dojo/context'
 import { setupDojo } from './dojo/setup'
-
-const deployType = import.meta.env.VITE_PUBLIC_DEPLOY_TYPE ?? 'dev'
-const isDevMode = deployType === 'dev'
-const connector = isDevMode ? devConnector : cartridgeConnector
-console.info('[athanor:init] connector mode:', isDevMode ? 'dev (PredeployedConnector)' : 'production (CartridgeController)')
-
-function createKatanaChain(nodeUrl: string): Chain {
-  return {
-    id: 0x4b4154414e41n,
-    network: 'slot-local',
-    name: 'Slot Local Katana',
-    nativeCurrency: {
-      address: '0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7',
-      name: 'Ether',
-      symbol: 'ETH',
-      decimals: 18,
-    },
-    testnet: true,
-    rpcUrls: {
-      default: { http: [nodeUrl] },
-      public: { http: [nodeUrl] },
-    },
-    paymasterRpcUrls: {
-      avnu: { http: [] },
-    },
-  }
-}
-
-function getChain(nodeUrl: string): Chain {
-  if (deployType === 'sepolia') {
-    return {
-      ...sepolia,
-      rpcUrls: {
-        ...sepolia.rpcUrls,
-        default: { http: [nodeUrl] },
-        public: { http: [nodeUrl] },
-      },
-    }
-  }
-  return createKatanaChain(nodeUrl)
-}
 
 function Root() {
   const [dojo, setDojo] = useState<DojoSetup | null>(null)
@@ -59,20 +17,31 @@ function Root() {
   const [initStatus, setInitStatus] = useState('Bootstrapping client...')
   const [initError, setInitError] = useState<string | null>(null)
 
-  const chain = useMemo(() => getChain(dojoConfig().rpcUrl), [])
+  const rpcUrl = dojoConfig().rpcUrl
+  const chain = useMemo(
+    () => ({
+      ...sepolia,
+      rpcUrls: {
+        ...sepolia.rpcUrls,
+        default: { http: [rpcUrl] },
+        public: { http: [rpcUrl] },
+      },
+    }),
+    [rpcUrl],
+  )
   const provider = useMemo(
     () =>
       jsonRpcProvider({
-        rpc: () => ({ nodeUrl: dojoConfig().rpcUrl }),
+        rpc: () => ({ nodeUrl: rpcUrl }),
       }),
-    [],
+    [rpcUrl],
   )
   const paymaster = useMemo(
     () =>
       paymasterRpcProvider({
-        rpc: () => ({ nodeUrl: dojoConfig().rpcUrl }),
+        rpc: () => ({ nodeUrl: rpcUrl }),
       }),
-    [],
+    [rpcUrl],
   )
 
   useEffect(() => {
@@ -83,7 +52,6 @@ function Root() {
       rpcUrl: dojoConfig().rpcUrl,
       toriiUrl: dojoConfig().toriiUrl,
       worldAddress: dojoConfig().manifest.world.address,
-      deployType: import.meta.env.VITE_PUBLIC_DEPLOY_TYPE ?? 'dev',
     })
 
     setupDojo(setInitStatus)
@@ -120,7 +88,7 @@ function Root() {
   }
 
   return (
-    <StarknetConfig autoConnect chains={[chain]} provider={provider} paymasterProvider={paymaster} connectors={[connector]}>
+    <StarknetConfig autoConnect chains={[chain]} provider={provider} paymasterProvider={paymaster} connectors={[cartridgeConnector]}>
       <DojoProvider value={dojo}>
         <App />
       </DojoProvider>
