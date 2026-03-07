@@ -156,10 +156,9 @@ export function useExplorationLog(
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [heroOverrides, setHeroOverrides] = useState<Map<number, HeroOverride>>(() => new Map())
   const subRef = useRef<{ cancel: () => void } | null>(null)
-  const queueRef = useRef<QueuedEvent[]>([])
+  const heroQueuesRef = useRef<Map<number, QueuedEvent[]>>(new Map())
   const drainTimerRef = useRef<number | null>(null)
   const heroMapRef = useRef<Map<number, string>>(new Map())
-  const activeHeroIdsRef = useRef<Set<number>>(new Set())
   const onEventRef = useRef(onExplorationEvent)
   onEventRef.current = onExplorationEvent
 
@@ -176,42 +175,56 @@ export function useExplorationLog(
     setLogs((prev) => [...prev.slice(-(MAX_LOG - 1)), entry])
   }, [])
 
-  const drainOne = useCallback(() => {
-    const event = queueRef.current.shift()
-    if (!event) {
-      window.clearInterval(drainTimerRef.current!)
-      drainTimerRef.current = null
-      return
-    }
-
-    append(event.entry)
-
-    if (event.rawEvent) {
-      const { heroId, hpAfter } = event.rawEvent
-      setHeroOverrides((prev) => {
-        const next = new Map(prev)
-        next.set(heroId, { health: hpAfter })
-        return next
-      })
-      onEventRef.current?.(event.rawEvent)
-
-      const hasMore = queueRef.current.some((e) => e.rawEvent?.heroId === heroId)
-      if (!hasMore) {
+  const drainTick = useCallback(() => {
+    let anyRemaining = false
+    for (const [heroId, queue] of heroQueuesRef.current) {
+      const event = queue.shift()
+      if (!event) {
+        heroQueuesRef.current.delete(heroId)
         setHeroOverrides((prev) => {
           const next = new Map(prev)
           next.delete(heroId)
           return next
         })
-        activeHeroIdsRef.current.delete(heroId)
+        continue
       }
+
+      append(event.entry)
+
+      if (event.rawEvent) {
+        setHeroOverrides((prev) => {
+          const next = new Map(prev)
+          next.set(heroId, { health: event.rawEvent!.hpAfter })
+          return next
+        })
+        onEventRef.current?.(event.rawEvent)
+      }
+
+      if (queue.length > 0) anyRemaining = true
+      else {
+        heroQueuesRef.current.delete(heroId)
+        setHeroOverrides((prev) => {
+          const next = new Map(prev)
+          next.delete(heroId)
+          return next
+        })
+      }
+    }
+
+    if (!anyRemaining) {
+      window.clearInterval(drainTimerRef.current!)
+      drainTimerRef.current = null
     }
   }, [append])
 
   const enqueue = useCallback((event: QueuedEvent) => {
-    if (event.rawEvent) {
-      const heroId = event.rawEvent.heroId
-      if (!activeHeroIdsRef.current.has(heroId)) {
-        activeHeroIdsRef.current.add(heroId)
+    const heroId = event.rawEvent?.heroId ?? 0
+    let queue = heroQueuesRef.current.get(heroId)
+    if (!queue) {
+      queue = []
+      heroQueuesRef.current.set(heroId, queue)
+
+      if (event.rawEvent) {
         const preHp = computePreEventHp(
           event.rawEvent.kind === 'trap' ? CATEGORY_TRAP
             : event.rawEvent.kind === 'beastLose' ? CATEGORY_BEAST_LOSE
@@ -228,11 +241,13 @@ export function useExplorationLog(
       }
     }
 
-    queueRef.current.push(event)
-    if (drainTimerRef.current != null) return
-    drainOne()
-    drainTimerRef.current = window.setInterval(drainOne, TICK_INTERVAL_MS)
-  }, [drainOne])
+    queue.push(event)
+
+    if (drainTimerRef.current == null) {
+      drainTick()
+      drainTimerRef.current = window.setInterval(drainTick, TICK_INTERVAL_MS)
+    }
+  }, [drainTick])
 
   const pushInfo = useCallback((text: string) => {
     append({ ts: Date.now(), text, kind: 'info' })
@@ -315,8 +330,7 @@ export function useExplorationLog(
         window.clearInterval(drainTimerRef.current)
         drainTimerRef.current = null
       }
-      queueRef.current = []
-      activeHeroIdsRef.current.clear()
+      heroQueuesRef.current.clear()
     }
   }, [gameId, toriiClient, append, enqueue])
 

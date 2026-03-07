@@ -11,10 +11,9 @@ export class EventEffect {
   private get vw(): number { return this.scene.scale.width; }
   private get vh(): number { return this.scene.scale.height; }
 
-  playTrap(x: number, y: number): void {
-    this.scene.cameras.main.shake(120, 0.005);
-    this.scene.cameras.main.flash(120, 180, 50, 70, false);
+  playTrap(x: number, y: number, target?: Phaser.GameObjects.Container): void {
     this.burst('particle-damage', x, y, 18, 60, 170, 420);
+    if (target) this.flashTarget(target, COLORS.red);
   }
 
   playGold(x: number, y: number, value: number): void {
@@ -46,9 +45,9 @@ export class EventEffect {
     if (target) this.flashTarget(target, COLORS.white);
   }
 
-  playBeastLose(x: number, y: number): void {
-    this.scene.cameras.main.shake(200, 0.008);
+  playBeastLose(x: number, y: number, target?: Phaser.GameObjects.Container): void {
     this.burst('particle-damage', x, y, 28, 80, 220, 540, 1.1);
+    if (target) this.flashTarget(target, COLORS.red);
   }
 
   playIngredientDrop(x: number, y: number, target?: Phaser.GameObjects.Container): void {

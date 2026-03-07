@@ -73,7 +73,7 @@ export class MainScene extends Phaser.Scene {
 
     switch (payload.kind) {
       case 'trap':
-        this.eventEffect.playTrap(x, y);
+        this.eventEffect.playTrap(x, y, sprite ?? undefined);
         this.tryPlaySound('trap', 0.5);
         break;
       case 'gold':
@@ -89,7 +89,7 @@ export class MainScene extends Phaser.Scene {
         this.tryPlaySound('beast-win', 0.5);
         break;
       case 'beastLose':
-        this.eventEffect.playBeastLose(x, y);
+        this.eventEffect.playBeastLose(x, y, sprite ?? undefined);
         this.tryPlaySound('beast-lose', 0.5);
         break;
       case 'ingredient':
