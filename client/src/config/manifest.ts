@@ -1,4 +1,4 @@
-import manifest from "../../../contracts/manifest_sepolia.json";
+import manifest from "../../../manifest_sepolia.json";
 
 export { manifest };
 

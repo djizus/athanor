@@ -11,19 +11,10 @@ pub struct Random {
 
 #[generate_trait]
 pub impl RandomImpl of RandomTrait {
-    fn new_vrf(salt: felt252) -> Random {
-        let vrf_address: ContractAddress =
-            0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f
-            .try_into()
-            .unwrap();
-        let vrf_provider = IVrfProviderDispatcher { contract_address: vrf_address };
-        let seed = vrf_provider.consume_random(Source::Salt(salt));
-        Random { seed, nonce: 0 }
-    }
-
-    fn from_vrf_address(vrf_address: ContractAddress, salt: felt252) -> Random {
+    #[inline]
+    fn new(vrf_address: ContractAddress, salt: felt252) -> Random {
         if vrf_address.is_zero() {
-            Self::new_pseudo_random()
+            Self::gen()
         } else {
             let vrf_provider = IVrfProviderDispatcher { contract_address: vrf_address };
             let seed = vrf_provider.consume_random(Source::Salt(salt));
@@ -31,7 +22,8 @@ pub impl RandomImpl of RandomTrait {
         }
     }
 
-    fn new_pseudo_random() -> Random {
+    #[inline]
+    fn gen() -> Random {
         Random { seed: get_tx_info().transaction_hash, nonce: 0 }
     }
 

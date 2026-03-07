@@ -30,6 +30,3 @@ build-external-contracts = [
 
 [features]
 default = []
-
-[profile.slot]
-[profile.sepolia]

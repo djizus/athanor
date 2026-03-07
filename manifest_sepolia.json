@@ -1,8 +1,8 @@
 {
   "world": {
-    "class_hash": "0x381899226c066a0262f45d6ab815f89818e0874ec3e66cdf72b5e92d8db4680",
-    "address": "0x4268fb29ecded77c1e3954a4d772c42101fd6f7fb4a2e9cedae04b65f17b165",
-    "seed": "athanor_dev",
+    "class_hash": "0x613551abceb2b37073b1149bb862ea70cf029981ce1ca47e9dd7c7ab97cb65d",
+    "address": "0x562043d4e591762eec71ab33a67c1319ba8c61a53841c9cc4e9bbab8e7c7001",
+    "seed": "athanor-v0.0.2",
     "name": "Athanor",
     "entrypoints": [
       "uuid",
@@ -33,76 +33,101 @@
   },
   "contracts": [
     {
-      "address": "0x7ca2e8cc84c98fa76262be1e4eb6a35e49e398ad6f1cfadad0f545ea8ef49ec",
-      "class_hash": "0x52bac44ef3689b51f1aef6376e06f6fba6c6e772d2b247f88069207bec5f088",
+      "address": "0x505d14c8c68fba8bee37651e39ded642d3cbaee2727b6a2f7463da369428b2",
+      "class_hash": "0x505539eed8fe5423ed28b8d5cdf74ede232b0ad17dd248bee98a0c7cfc2b9ea",
       "init_calldata": [
-        "0x127fd5f1fe78a71f8bcd1fec63e3fe2f0486b6ecd5c86a0466c3a21fa5cfcec"
-      ],
-      "tag": "athanor-config_system",
-      "selector": "0x49c01570587e3781a4578ff6c56f5ccf4aaede3f2a625856913c11fdeae06d6",
-      "systems": [
-        "dojo_init",
-        "upgrade"
-      ]
-    },
-    {
-      "address": "0x6bc6d8fc0a2801c4d058297b0d494c4df5136c759779ef1d613f3459590e8ac",
-      "class_hash": "0x61f96550dcc31840bbe5dccae19fc137458b101cc16c98b3f8d1c44e6978483",
-      "init_calldata": [],
-      "tag": "athanor-crafting_system",
-      "selector": "0x70ba60fbcb987f26e7aa8b7e4d0f52868a8ad980db557e64af4554fa07a6ff9",
-      "systems": [
-        "craft",
-        "craft_recipe",
-        "buy_hint",
-        "upgrade"
-      ]
-    },
-    {
-      "address": "0x1d4c77ba100e8c893303c7ec01983b3275188a2ca0b8804694eb7f65b88bf00",
-      "class_hash": "0x50153abf2708d87721d545d48cd142ced58ba709373fe4a6bc175f140fe810a",
-      "init_calldata": [],
-      "tag": "athanor-exploration_system",
-      "selector": "0x2609ecd691f644efd08e14c000fb859d68e8e2f293171d6eaf57f1bd03150b4",
-      "systems": [
-        "send_expedition",
-        "claim_loot",
-        "upgrade"
-      ]
-    },
-    {
-      "address": "0x6a0ca9c899ed2d3f7489baac930ac66f16bc06e43cbb9df359aa6dc205c01c4",
-      "class_hash": "0x15f21b12981b333e1ce515f3e3b231c00eaf27dfb0d6d3eed89340a3c737168",
-      "init_calldata": [
-        "0x127fd5f1fe78a71f8bcd1fec63e3fe2f0486b6ecd5c86a0466c3a21fa5cfcec",
-        "0x067e73954c97f36e4b3d137a7cd7c81445426c2d373fe60239a73e563c316cba",
-        "1",
+        "0x059b1a0c489b635d7c7f43594d187362ddd2dcea6c82db4eef2579fd185b3753",
+        "0x00ce6622be39efa11b4a50b7d2e0c342a218bc099bbd313365efe169ef0eb3e2",
+        "0x1",
         "0x0"
       ],
-      "tag": "athanor-game_system",
-      "selector": "0x6573c8c0526183c74aced276a3e8d641c894086b0556f55a033500ede0fa806",
+      "tag": "ATHANOR-Play",
+      "selector": "0x7fc3989594a8b0537db355c9ad6bd26310ced81aa62b690e4ca3bc1adbcea37",
       "systems": [
         "dojo_init",
         "create",
-        "surrender",
+        "clue",
+        "craft",
+        "recruit",
+        "buff",
+        "explore",
+        "claim",
         "upgrade"
       ]
     },
     {
-      "address": "0x5f8f9fbc6054988785a1830d9e15b41f8557b283b4c8aa63717097c31b7a860",
-      "class_hash": "0x412913bdd07b338625beee2f0923da98e23b3ff85b01b51f9237bd43757d641",
-      "init_calldata": [],
-      "tag": "athanor-hero_system",
-      "selector": "0x49b755c34d0a4e36641d9898e223aade931e7d702a3d177925cb4a084c10bec",
+      "address": "0x94e89d7ce6030cb5fded3e378d20e399ef26d3213c711792a8edf92471793d",
+      "class_hash": "0x1a4fe272379fb1b57fad613ce81bc0eb985e87f5d6dea5dca885f91a33328db",
+      "init_calldata": [
+        "0x059b1a0c489b635d7c7f43594d187362ddd2dcea6c82db4eef2579fd185b3753"
+      ],
+      "tag": "ATHANOR-Setup",
+      "selector": "0x6fb04bc521dff5dabe95f2a6e4aa6e649d1324380a3778d40c363dbf6e37307",
       "systems": [
-        "recruit_hero",
-        "apply_potion",
+        "dojo_init",
         "upgrade"
       ]
     }
   ],
   "libraries": [],
   "models": [
+    {
+      "members": [
+        {
+          "name": "game_id",
+          "type": "core::integer::u64",
+          "key": true
+        },
+        {
+          "name": "id",
+          "type": "core::integer::u8",
+          "key": true
+        },
+        {
+          "name": "role",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "health",
+          "type": "core::integer::u16",
+          "key": false
+        },
+        {
+          "name": "max_health",
+          "type": "core::integer::u16",
+          "key": false
+        },
+        {
+          "name": "power",
+          "type": "core::integer::u16",
+          "key": false
+        },
+        {
+          "name": "regen",
+          "type": "core::integer::u16",
+          "key": false
+        },
+        {
+          "name": "gold",
+          "type": "core::integer::u32",
+          "key": false
+        },
+        {
+          "name": "available_at",
+          "type": "core::integer::u64",
+          "key": false
+        },
+        {
+          "name": "ingredients",
+          "type": "core::felt252",
+          "key": false
+        }
+      ],
+      "class_hash": "0x144db7589202e5815923807e24db4d595bda9fafcf6d81c40675582ff3a0e37",
+      "tag": "ATHANOR-Character",
+      "selector": "0x599b14cd1a170abb799a7f7343e5864fa85d85770a8ee815dba2a9a81ce5764"
+    },
     {
       "members": [
         {
@@ -121,9 +146,9 @@
           "key": false
         }
       ],
-      "class_hash": "0x71c72c9930c1803cf3da69fb436ce1811cf7714c43a93360ab66ad7239c910a",
-      "tag": "athanor-Config",
-      "selector": "0x7023c616555f8d560ab71b4513bfa9f192571f7f7edcb2f1d70c85d1559b3d6"
+      "class_hash": "0x419a2f03741d99e82c95b410b07c9e7ad71f625c9cd276b386e5f8907af05e5",
+      "tag": "ATHANOR-Config",
+      "selector": "0x6308d38640a7a52f13e220613100dae9b5de691fdcd63354ad7872a43f871ff"
     },
     {
       "members": [
@@ -133,19 +158,101 @@
           "key": true
         },
         {
-          "name": "combo_key",
-          "type": "core::integer::u16",
+          "name": "ingredient_a",
+          "type": "core::integer::u8",
           "key": true
         },
         {
-          "name": "attempted",
+          "name": "ingredient_b",
+          "type": "core::integer::u8",
+          "key": true
+        },
+        {
+          "name": "effect",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "discovered",
           "type": "core::bool",
           "key": false
         }
       ],
-      "class_hash": "0x7eb701d9238a91a08f45ad9a8d9b3593bc5559bfde2019082fbcd28990a683c",
-      "tag": "athanor-FailedCombo",
-      "selector": "0x5a297124c9fb4d22e6c2382a4fb4d8d1a69de444f8cf41c1fbef8b57847ad7e"
+      "class_hash": "0x5274edb9fb02c171016d0c194062e9862145dae42e21fff84ffda149cbbcdf2",
+      "tag": "ATHANOR-Discovery",
+      "selector": "0x73e32852d13ca180d3f8f915f805810d7db93500649e0389eb4ff124a60a485"
+    },
+    {
+      "members": [
+        {
+          "name": "id",
+          "type": "core::integer::u64",
+          "key": true
+        },
+        {
+          "name": "heroes",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "started_at",
+          "type": "core::integer::u64",
+          "key": false
+        },
+        {
+          "name": "ended_at",
+          "type": "core::integer::u64",
+          "key": false
+        },
+        {
+          "name": "remaining_tries",
+          "type": "core::integer::u16",
+          "key": false
+        },
+        {
+          "name": "gold",
+          "type": "core::integer::u32",
+          "key": false
+        },
+        {
+          "name": "hint_price",
+          "type": "core::integer::u32",
+          "key": false
+        },
+        {
+          "name": "grimoire",
+          "type": "core::integer::u32",
+          "key": false
+        },
+        {
+          "name": "hints",
+          "type": "core::integer::u32",
+          "key": false
+        },
+        {
+          "name": "tries",
+          "type": "core::integer::u128",
+          "key": false
+        },
+        {
+          "name": "ingredients",
+          "type": "core::felt252",
+          "key": false
+        },
+        {
+          "name": "effects",
+          "type": "core::felt252",
+          "key": false
+        },
+        {
+          "name": "seed",
+          "type": "core::felt252",
+          "key": false
+        }
+      ],
+      "class_hash": "0x191c9b75ca55240f5fe19603ecd933961992cc3d13a64c23da663f1e132e116",
+      "tag": "ATHANOR-Game",
+      "selector": "0x166b38e0ac1200567da346e116d51c20241ce854c9f1ac48fcbc24e1c39c11d"
     },
     {
       "members": [
@@ -160,9 +267,9 @@
           "key": false
         }
       ],
-      "class_hash": "0x2198c82d423712a8674b5109b0ec1b5e7e3319f3591c3291bc8c13aebc96ac0",
-      "tag": "athanor-GameSeed",
-      "selector": "0x273da76d89d210f87f28253a569186017675f3422ad6e2c24a1c744fae85e49"
+      "class_hash": "0x6dac9a513b50548f7299242499e4b43172d8fb9cafd36b26b6734deb26c44f8",
+      "tag": "ATHANOR-GameSeed",
+      "selector": "0x4ed301006f37f208961440676631262ad2e7acaf0a77b345e35703e271544fa"
     },
     {
       "members": [
@@ -189,6 +296,11 @@
         {
           "name": "discovered_count",
           "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "failed_combo_count",
+          "type": "core::integer::u16",
           "key": false
         },
         {
@@ -227,9 +339,9 @@
           "key": false
         }
       ],
-      "class_hash": "0x71c5b15978bfae44bf655b28f71e0a62b0dc4a3aa94a200c80a5302bc8bfcd2",
-      "tag": "athanor-GameSession",
-      "selector": "0x32d8df5fa6d4ba3884476509444eeca1e3fb6064a2758589a33067abde043e7"
+      "class_hash": "0x1e6631b21fff1a607097e486f517cf65a1491477b3172a7b874d64c6ee5e5e0",
+      "tag": "ATHANOR-GameSession",
+      "selector": "0x5a575f6eae082e3e9d53e448fc8b296f3b3f0a563542ab2c5a037e34d98b1a2"
     },
     {
       "members": [
@@ -294,9 +406,9 @@
           "key": false
         }
       ],
-      "class_hash": "0x48725741f8f64ae9e804900b64d4f6d02b47fbd2d9810ce908bc60119f5fe50",
-      "tag": "athanor-GameSettings",
-      "selector": "0x5dfd23c5b49b4f175a64b1d0ed705abfe25062811e9ea15014729cfa39de547"
+      "class_hash": "0xc88422c28d382d648cc7581383f1719ce5d070ce544cd718846b7998ac9a18",
+      "tag": "ATHANOR-GameSettings",
+      "selector": "0x4329983669bc83cbc0f3e8bf4ffea4a95a5033d77ce8ab0f46b5721de8bd267"
     },
     {
       "members": [
@@ -326,9 +438,9 @@
           "key": false
         }
       ],
-      "class_hash": "0xe1a99b839cee80523652d5e78bd050058ac047b1f8e82c26abf8ef004b57fa",
-      "tag": "athanor-GameSettingsMetadata",
-      "selector": "0x6c94f2a13b875741cc8309cdd45d0fc78323d9b93a4f563b3119e8fdbf87a05"
+      "class_hash": "0x6b8796dff7bd6e99f2f35fe1dc69754af935781b4c3981639a646c8a2a9536c",
+      "tag": "ATHANOR-GameSettingsMetadata",
+      "selector": "0x35bd111e8591c1ebbdfb773fee490f8fedd653653a0405021551bce592f29b6"
     },
     {
       "members": [
@@ -338,214 +450,19 @@
           "key": true
         },
         {
-          "name": "hero_id",
+          "name": "ingredient",
           "type": "core::integer::u8",
           "key": true
         },
         {
-          "name": "hp",
-          "type": "core::integer::u16",
-          "key": false
-        },
-        {
-          "name": "max_hp",
-          "type": "core::integer::u16",
-          "key": false
-        },
-        {
-          "name": "power",
-          "type": "core::integer::u16",
-          "key": false
-        },
-        {
-          "name": "regen_per_sec",
-          "type": "core::integer::u16",
-          "key": false
-        },
-        {
-          "name": "status",
-          "type": "core::integer::u8",
-          "key": false
-        },
-        {
-          "name": "expedition_seed",
-          "type": "core::felt252",
-          "key": false
-        },
-        {
-          "name": "expedition_start",
-          "type": "core::integer::u64",
-          "key": false
-        },
-        {
-          "name": "return_at",
-          "type": "core::integer::u64",
-          "key": false
-        },
-        {
-          "name": "death_depth",
-          "type": "core::integer::u16",
-          "key": false
-        },
-        {
-          "name": "pending_gold",
+          "name": "recipes",
           "type": "core::integer::u32",
           "key": false
         }
       ],
-      "class_hash": "0x1257ccb4f646f5c29e3dc05a6f93c1e9db37e2b8ae7156575373f339730146c",
-      "tag": "athanor-Hero",
-      "selector": "0x6151bba9d8b01f84eec55384e7030a6c8d369e16afc619ad484b13da9476044"
-    },
-    {
-      "members": [
-        {
-          "name": "game_id",
-          "type": "core::integer::u64",
-          "key": true
-        },
-        {
-          "name": "hero_id",
-          "type": "core::integer::u8",
-          "key": true
-        },
-        {
-          "name": "ingredient_id",
-          "type": "core::integer::u8",
-          "key": true
-        },
-        {
-          "name": "quantity",
-          "type": "core::integer::u16",
-          "key": false
-        }
-      ],
-      "class_hash": "0x28a153a766029c6c82f7ec9f786f9951c4e1736d32fb58c569d2a6ec838ac50",
-      "tag": "athanor-HeroPendingIngredient",
-      "selector": "0x12c41f8bb7b1f566a503abef59898141c31f30b2c5219055a19870ab6bd8cb1"
-    },
-    {
-      "members": [
-        {
-          "name": "game_id",
-          "type": "core::integer::u64",
-          "key": true
-        },
-        {
-          "name": "ingredient_id",
-          "type": "core::integer::u8",
-          "key": true
-        },
-        {
-          "name": "quantity",
-          "type": "core::integer::u16",
-          "key": false
-        }
-      ],
-      "class_hash": "0x628781042bf9618f0d90f67b29a7cabb891363cb4c1366b5aa3320667ac5966",
-      "tag": "athanor-IngredientBalance",
-      "selector": "0x68619e7b65ece0c4132acc12ce50ec464ce1c677c62bdd4a6f8edfb8cb51d57"
-    },
-    {
-      "members": [
-        {
-          "name": "player",
-          "type": "core::starknet::contract_address::ContractAddress",
-          "key": true
-        },
-        {
-          "name": "total_games",
-          "type": "core::integer::u32",
-          "key": false
-        },
-        {
-          "name": "best_time",
-          "type": "core::integer::u64",
-          "key": false
-        },
-        {
-          "name": "total_recipes_discovered",
-          "type": "core::integer::u32",
-          "key": false
-        }
-      ],
-      "class_hash": "0x38d5eb200d9c8502c1b112d01db2dcf8a1330d00b74d2da9e5dbbedbad77508",
-      "tag": "athanor-PlayerMeta",
-      "selector": "0x56972d23e97c82176a1b17d1f7e2d629af36b96947c99d9f6b88afec8689216"
-    },
-    {
-      "members": [
-        {
-          "name": "game_id",
-          "type": "core::integer::u64",
-          "key": true
-        },
-        {
-          "name": "potion_index",
-          "type": "core::integer::u16",
-          "key": true
-        },
-        {
-          "name": "recipe_id",
-          "type": "core::integer::u8",
-          "key": false
-        },
-        {
-          "name": "effect_type",
-          "type": "core::integer::u8",
-          "key": false
-        },
-        {
-          "name": "effect_value",
-          "type": "core::integer::u8",
-          "key": false
-        }
-      ],
-      "class_hash": "0x46899ac935ab29cb4d12c155c7f84e950d93a45f7dcd8ad2d880715ea88198c",
-      "tag": "athanor-PotionItem",
-      "selector": "0x4b6b2c8da7a965d1f102c6ca8b7122da2fac32045675eaa819dfce8a6fcea94"
-    },
-    {
-      "members": [
-        {
-          "name": "game_id",
-          "type": "core::integer::u64",
-          "key": true
-        },
-        {
-          "name": "recipe_id",
-          "type": "core::integer::u8",
-          "key": true
-        },
-        {
-          "name": "ingredient_a",
-          "type": "core::integer::u8",
-          "key": false
-        },
-        {
-          "name": "ingredient_b",
-          "type": "core::integer::u8",
-          "key": false
-        },
-        {
-          "name": "effect_type",
-          "type": "core::integer::u8",
-          "key": false
-        },
-        {
-          "name": "effect_value",
-          "type": "core::integer::u8",
-          "key": false
-        },
-        {
-          "name": "discovered",
-          "type": "core::bool",
-          "key": false
-        }
-      ],
-      "class_hash": "0x15ecb27b03ae0e7f8e71127431d23b928a9cb44c303f318ff5d474410e7390e",
-      "tag": "athanor-Recipe",
-      "selector": "0x330c3a0b147275594e49bd6b41fafbadbfbeb3db26450286605e0c92c77faa0"
+      "class_hash": "0x380e86cd6afe0c8e52319fd9de61f6a8fa8d0960d69de78fb1dccb76dce3410",
+      "tag": "ATHANOR-Hint",
+      "selector": "0xf9a6fa56c0fb9dadf236f7465ba48dc0d34731bc991b3d86bceed071498a5f"
     }
   ],
   "events": [
@@ -572,9 +489,9 @@
           "key": false
         }
       ],
-      "class_hash": "0x4839d47beff569025f5eb4cf98052f3baade70f401278ecc7250edc44ddfa46",
-      "tag": "athanor-ExpeditionStarted",
-      "selector": "0x6a6022018c75b961dd6296e7c6f8a8f9e7623a0b935c8c43fa27f6483ca944d"
+      "class_hash": "0x34cfefd284b00b78dcbf181dbffcb5c4f4fe66a417c22294bbcd5b3a2c2507e",
+      "tag": "ATHANOR-ExpeditionStarted",
+      "selector": "0x57c34be4e353bb2b18e7528365e9d668555325eab36e401e3410d9a0233b9df"
     },
     {
       "members": [
@@ -619,9 +536,9 @@
           "key": false
         }
       ],
-      "class_hash": "0x5e001d1e352294b4f98f99ecd852c9044cdfebbcc6bd4fee0afa64999f28e4a",
-      "tag": "athanor-ExplorationEvent",
-      "selector": "0x4c8032b072c2cecf2d51be6a8b4c1428d712c23276bed3cf2cf7d4748f1b0f0"
+      "class_hash": "0x2c2867816b1db3367f2c35d0337f710935336201be744e010af2d053eca38c0",
+      "tag": "ATHANOR-ExplorationEvent",
+      "selector": "0x9abef8dc5ead60c4746ddb9f18e3d24c36cb3d9c1ee6f61567b35a1c821583"
     },
     {
       "members": [
@@ -646,9 +563,9 @@
           "key": false
         }
       ],
-      "class_hash": "0x6ab77f38b12ebe8c426a41ccec6fd5742d45be3ab5fb59abc19bb71587a7563",
-      "tag": "athanor-GameCreated",
-      "selector": "0xd3b1e2525353fbdf011e35ada666ccb7ac076025f56358cb20449a7c88a479"
+      "class_hash": "0x1e6e8dcec5c7a0766f63412592034db83b4998c44c8f88350bb01c2a2f113ff",
+      "tag": "ATHANOR-GameCreated",
+      "selector": "0x47f79a3ca3b55f1b4f98ad19c7344077a064441cbdeb6e3ddfe77b1e1138f08"
     },
     {
       "members": [
@@ -668,9 +585,9 @@
           "key": false
         }
       ],
-      "class_hash": "0x2a7a0d25516d27c7e5261b4ae9c0b913cd3f6fced26f50ac64f1ca795e73527",
-      "tag": "athanor-GrimoireCompleted",
-      "selector": "0x1896bae1084717fd8a02928a784f40454f4ac7a69c096c4ea6ba91b60695559"
+      "class_hash": "0x51c2d718584f318e7e285f8d3134e8d4b5bba0e1f731078fca2d142290b3358",
+      "tag": "ATHANOR-GrimoireCompleted",
+      "selector": "0x2598760f41d8b90589ba8f9b893e0037c269468bfabcbf805cdeeb282acc11a"
     },
     {
       "members": [
@@ -690,9 +607,9 @@
           "key": false
         }
       ],
-      "class_hash": "0x19248f30eca37df421edc97dff9bb42fdceb94d6d7e8df74c9d4faf6594463",
-      "tag": "athanor-HeroRecruited",
-      "selector": "0x4fa87cf31102b0e70bf3fe317d8f4ff25438baf3ca124930e5a2b2ce749c2a5"
+      "class_hash": "0x4ae0e37f8b7c9eb51eb735854e5bd450048c911bf89af947be6370da860f297",
+      "tag": "ATHANOR-HeroRecruited",
+      "selector": "0x562a9e01f29800f69b3fa4254c713c7a9899843ca14205203f12c2203596781"
     },
     {
       "members": [
@@ -712,9 +629,9 @@
           "key": false
         }
       ],
-      "class_hash": "0x188eda5867c31ae3b7a7bf548ede64bca19adbd8e64c3fc70e90d212066c7f4",
-      "tag": "athanor-LootClaimed",
-      "selector": "0x5ce5aee76fd682847a8d28c9052c3a439618bb54651ee4095429a04aaa973e3"
+      "class_hash": "0x360551158fb2879e2fac2e03461f746c8898ab33c45a595d07aaba33ce3e546",
+      "tag": "ATHANOR-LootClaimed",
+      "selector": "0x23d4cbb32fe2c5ba42cd8073a6d7ccc779a326dc037745de27fc43cd142123"
     },
     {
       "members": [
@@ -744,9 +661,9 @@
           "key": false
         }
       ],
-      "class_hash": "0x50c591ece716abffb216933ce6ed5ba4285b3cf6bfb5ee391f78c219efa5df7",
-      "tag": "athanor-PotionApplied",
-      "selector": "0x390689e96edaac55f32f32bf22c97a4c83d879eeca23e956681cfee7538a852"
+      "class_hash": "0x2141b7582cde8aa8da80bcfbb200cafea7ace71053a994280c1ebdcd098bbc7",
+      "tag": "ATHANOR-PotionApplied",
+      "selector": "0x2e3dfed42790865f2c6f5d60c07e7670d3d56d33a32468f2278e37fc40313ce"
     },
     {
       "members": [
@@ -781,13 +698,19 @@
           "key": false
         }
       ],
-      "class_hash": "0x2e1c93cfc4e00e66f676ea3e6deabaec65574ffdc76cfcfa2d41b7bbeaf0427",
-      "tag": "athanor-RecipeDiscovered",
-      "selector": "0x8f4eead93365ffbabee6f9cac4cffb148ddecff7bcbb40292b1a2284c22a9b"
+      "class_hash": "0x30980aa2f7d7059c0b329e2a26e35568526fd47419e18b1d304caf943e9a2f4",
+      "tag": "ATHANOR-RecipeDiscovered",
+      "selector": "0x6cbbaf4eb0d46de8c4749444e87211a1768c7e8f5675f78ea5dea54933247b9"
     }
   ],
   "external_contracts": [],
   "abis": [
+    {
+      "type": "event",
+      "name": "athanor::components::playable::PlayableComponent::Event",
+      "kind": "enum",
+      "variants": []
+    },
     {
       "type": "struct",
       "name": "athanor::events::index::ExpeditionStarted",
@@ -1388,40 +1311,6 @@
     },
     {
       "type": "struct",
-      "name": "athanor::models::crafting::FailedCombo",
-      "members": [
-        {
-          "name": "game_id",
-          "type": "core::integer::u64"
-        },
-        {
-          "name": "combo_key",
-          "type": "core::integer::u16"
-        },
-        {
-          "name": "attempted",
-          "type": "core::bool"
-        }
-      ]
-    },
-    {
-      "type": "struct",
-      "name": "athanor::models::crafting::FailedComboValue",
-      "members": [
-        {
-          "name": "attempted",
-          "type": "core::bool"
-        }
-      ]
-    },
-    {
-      "type": "event",
-      "name": "athanor::models::crafting::m_FailedCombo::Event",
-      "kind": "enum",
-      "variants": []
-    },
-    {
-      "type": "struct",
       "name": "athanor::models::game::GameSeed",
       "members": [
         {
@@ -1467,6 +1356,10 @@
         {
           "name": "discovered_count",
           "type": "core::integer::u8"
+        },
+        {
+          "name": "failed_combo_count",
+          "type": "core::integer::u16"
         },
         {
           "name": "craft_attempts",
@@ -1519,6 +1412,10 @@
           "type": "core::integer::u8"
         },
         {
+          "name": "failed_combo_count",
+          "type": "core::integer::u16"
+        },
+        {
           "name": "craft_attempts",
           "type": "core::integer::u16"
         },
@@ -1562,22 +1459,26 @@
     },
     {
       "type": "struct",
-      "name": "athanor::models::hero::Hero",
+      "name": "athanor::models::index::Character",
       "members": [
         {
           "name": "game_id",
           "type": "core::integer::u64"
         },
         {
-          "name": "hero_id",
+          "name": "id",
           "type": "core::integer::u8"
         },
         {
-          "name": "hp",
+          "name": "role",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "health",
           "type": "core::integer::u16"
         },
         {
-          "name": "max_hp",
+          "name": "max_health",
           "type": "core::integer::u16"
         },
         {
@@ -1585,77 +1486,37 @@
           "type": "core::integer::u16"
         },
         {
-          "name": "regen_per_sec",
+          "name": "regen",
           "type": "core::integer::u16"
         },
         {
-          "name": "status",
-          "type": "core::integer::u8"
-        },
-        {
-          "name": "expedition_seed",
-          "type": "core::felt252"
-        },
-        {
-          "name": "expedition_start",
-          "type": "core::integer::u64"
-        },
-        {
-          "name": "return_at",
-          "type": "core::integer::u64"
-        },
-        {
-          "name": "death_depth",
-          "type": "core::integer::u16"
-        },
-        {
-          "name": "pending_gold",
+          "name": "gold",
           "type": "core::integer::u32"
-        }
-      ]
-    },
-    {
-      "type": "struct",
-      "name": "athanor::models::hero::HeroPendingIngredient",
-      "members": [
+        },
         {
-          "name": "game_id",
+          "name": "available_at",
           "type": "core::integer::u64"
         },
         {
-          "name": "hero_id",
-          "type": "core::integer::u8"
-        },
-        {
-          "name": "ingredient_id",
-          "type": "core::integer::u8"
-        },
-        {
-          "name": "quantity",
-          "type": "core::integer::u16"
+          "name": "ingredients",
+          "type": "core::felt252"
         }
       ]
     },
     {
       "type": "struct",
-      "name": "athanor::models::hero::HeroPendingIngredientValue",
+      "name": "athanor::models::index::CharacterValue",
       "members": [
         {
-          "name": "quantity",
-          "type": "core::integer::u16"
-        }
-      ]
-    },
-    {
-      "type": "struct",
-      "name": "athanor::models::hero::HeroValue",
-      "members": [
+          "name": "role",
+          "type": "core::integer::u8"
+        },
         {
-          "name": "hp",
+          "name": "health",
           "type": "core::integer::u16"
         },
         {
-          "name": "max_hp",
+          "name": "max_health",
           "type": "core::integer::u16"
         },
         {
@@ -1663,188 +1524,30 @@
           "type": "core::integer::u16"
         },
         {
-          "name": "regen_per_sec",
+          "name": "regen",
           "type": "core::integer::u16"
         },
         {
-          "name": "status",
-          "type": "core::integer::u8"
+          "name": "gold",
+          "type": "core::integer::u32"
         },
         {
-          "name": "expedition_seed",
+          "name": "available_at",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "ingredients",
           "type": "core::felt252"
-        },
-        {
-          "name": "expedition_start",
-          "type": "core::integer::u64"
-        },
-        {
-          "name": "return_at",
-          "type": "core::integer::u64"
-        },
-        {
-          "name": "death_depth",
-          "type": "core::integer::u16"
-        },
-        {
-          "name": "pending_gold",
-          "type": "core::integer::u32"
         }
       ]
     },
     {
-      "type": "event",
-      "name": "athanor::models::hero::m_Hero::Event",
-      "kind": "enum",
-      "variants": []
-    },
-    {
-      "type": "event",
-      "name": "athanor::models::hero::m_HeroPendingIngredient::Event",
-      "kind": "enum",
-      "variants": []
-    },
-    {
       "type": "struct",
-      "name": "athanor::models::inventory::IngredientBalance",
+      "name": "athanor::models::index::Discovery",
       "members": [
         {
           "name": "game_id",
           "type": "core::integer::u64"
-        },
-        {
-          "name": "ingredient_id",
-          "type": "core::integer::u8"
-        },
-        {
-          "name": "quantity",
-          "type": "core::integer::u16"
-        }
-      ]
-    },
-    {
-      "type": "struct",
-      "name": "athanor::models::inventory::IngredientBalanceValue",
-      "members": [
-        {
-          "name": "quantity",
-          "type": "core::integer::u16"
-        }
-      ]
-    },
-    {
-      "type": "struct",
-      "name": "athanor::models::inventory::PotionItem",
-      "members": [
-        {
-          "name": "game_id",
-          "type": "core::integer::u64"
-        },
-        {
-          "name": "potion_index",
-          "type": "core::integer::u16"
-        },
-        {
-          "name": "recipe_id",
-          "type": "core::integer::u8"
-        },
-        {
-          "name": "effect_type",
-          "type": "core::integer::u8"
-        },
-        {
-          "name": "effect_value",
-          "type": "core::integer::u8"
-        }
-      ]
-    },
-    {
-      "type": "struct",
-      "name": "athanor::models::inventory::PotionItemValue",
-      "members": [
-        {
-          "name": "recipe_id",
-          "type": "core::integer::u8"
-        },
-        {
-          "name": "effect_type",
-          "type": "core::integer::u8"
-        },
-        {
-          "name": "effect_value",
-          "type": "core::integer::u8"
-        }
-      ]
-    },
-    {
-      "type": "event",
-      "name": "athanor::models::inventory::m_IngredientBalance::Event",
-      "kind": "enum",
-      "variants": []
-    },
-    {
-      "type": "event",
-      "name": "athanor::models::inventory::m_PotionItem::Event",
-      "kind": "enum",
-      "variants": []
-    },
-    {
-      "type": "struct",
-      "name": "athanor::models::player::PlayerMeta",
-      "members": [
-        {
-          "name": "player",
-          "type": "core::starknet::contract_address::ContractAddress"
-        },
-        {
-          "name": "total_games",
-          "type": "core::integer::u32"
-        },
-        {
-          "name": "best_time",
-          "type": "core::integer::u64"
-        },
-        {
-          "name": "total_recipes_discovered",
-          "type": "core::integer::u32"
-        }
-      ]
-    },
-    {
-      "type": "struct",
-      "name": "athanor::models::player::PlayerMetaValue",
-      "members": [
-        {
-          "name": "total_games",
-          "type": "core::integer::u32"
-        },
-        {
-          "name": "best_time",
-          "type": "core::integer::u64"
-        },
-        {
-          "name": "total_recipes_discovered",
-          "type": "core::integer::u32"
-        }
-      ]
-    },
-    {
-      "type": "event",
-      "name": "athanor::models::player::m_PlayerMeta::Event",
-      "kind": "enum",
-      "variants": []
-    },
-    {
-      "type": "struct",
-      "name": "athanor::models::recipe::Recipe",
-      "members": [
-        {
-          "name": "game_id",
-          "type": "core::integer::u64"
-        },
-        {
-          "name": "recipe_id",
-          "type": "core::integer::u8"
         },
         {
           "name": "ingredient_a",
@@ -1855,11 +1558,7 @@
           "type": "core::integer::u8"
         },
         {
-          "name": "effect_type",
-          "type": "core::integer::u8"
-        },
-        {
-          "name": "effect_value",
+          "name": "effect",
           "type": "core::integer::u8"
         },
         {
@@ -1870,22 +1569,10 @@
     },
     {
       "type": "struct",
-      "name": "athanor::models::recipe::RecipeValue",
+      "name": "athanor::models::index::DiscoveryValue",
       "members": [
         {
-          "name": "ingredient_a",
-          "type": "core::integer::u8"
-        },
-        {
-          "name": "ingredient_b",
-          "type": "core::integer::u8"
-        },
-        {
-          "name": "effect_type",
-          "type": "core::integer::u8"
-        },
-        {
-          "name": "effect_value",
+          "name": "effect",
           "type": "core::integer::u8"
         },
         {
@@ -1895,189 +1582,172 @@
       ]
     },
     {
+      "type": "struct",
+      "name": "athanor::models::index::Game",
+      "members": [
+        {
+          "name": "id",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "heroes",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "started_at",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "ended_at",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "remaining_tries",
+          "type": "core::integer::u16"
+        },
+        {
+          "name": "gold",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "hint_price",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "grimoire",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "hints",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "tries",
+          "type": "core::integer::u128"
+        },
+        {
+          "name": "ingredients",
+          "type": "core::felt252"
+        },
+        {
+          "name": "effects",
+          "type": "core::felt252"
+        },
+        {
+          "name": "seed",
+          "type": "core::felt252"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "athanor::models::index::GameValue",
+      "members": [
+        {
+          "name": "heroes",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "started_at",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "ended_at",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "remaining_tries",
+          "type": "core::integer::u16"
+        },
+        {
+          "name": "gold",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "hint_price",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "grimoire",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "hints",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "tries",
+          "type": "core::integer::u128"
+        },
+        {
+          "name": "ingredients",
+          "type": "core::felt252"
+        },
+        {
+          "name": "effects",
+          "type": "core::felt252"
+        },
+        {
+          "name": "seed",
+          "type": "core::felt252"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "athanor::models::index::Hint",
+      "members": [
+        {
+          "name": "game_id",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "ingredient",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "recipes",
+          "type": "core::integer::u32"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "athanor::models::index::HintValue",
+      "members": [
+        {
+          "name": "recipes",
+          "type": "core::integer::u32"
+        }
+      ]
+    },
+    {
       "type": "event",
-      "name": "athanor::models::recipe::m_Recipe::Event",
+      "name": "athanor::models::index::m_Character::Event",
+      "kind": "enum",
+      "variants": []
+    },
+    {
+      "type": "event",
+      "name": "athanor::models::index::m_Discovery::Event",
+      "kind": "enum",
+      "variants": []
+    },
+    {
+      "type": "event",
+      "name": "athanor::models::index::m_Game::Event",
+      "kind": "enum",
+      "variants": []
+    },
+    {
+      "type": "event",
+      "name": "athanor::models::index::m_Hint::Event",
       "kind": "enum",
       "variants": []
     },
     {
       "type": "interface",
-      "name": "athanor::systems::config::IConfigSystem",
-      "items": [
-        {
-          "type": "function",
-          "name": "get_game_settings",
-          "inputs": [
-            {
-              "name": "settings_id",
-              "type": "core::integer::u32"
-            }
-          ],
-          "outputs": [
-            {
-              "type": "athanor::models::config::GameSettings"
-            }
-          ],
-          "state_mutability": "view"
-        }
-      ]
-    },
-    {
-      "type": "event",
-      "name": "athanor::systems::config::config_system::Event",
-      "kind": "enum",
-      "variants": [
-        {
-          "name": "UpgradeableEvent",
-          "type": "dojo::contract::components::upgradeable::upgradeable_cpt::Event",
-          "kind": "nested"
-        },
-        {
-          "name": "WorldProviderEvent",
-          "type": "dojo::contract::components::world_provider::world_provider_cpt::Event",
-          "kind": "nested"
-        },
-        {
-          "name": "SettingsEvent",
-          "type": "game_components_minigame::extensions::settings::settings::SettingsComponent::Event",
-          "kind": "flat"
-        },
-        {
-          "name": "SRC5Event",
-          "type": "openzeppelin_introspection::src5::SRC5Component::Event",
-          "kind": "flat"
-        }
-      ]
-    },
-    {
-      "type": "interface",
-      "name": "athanor::systems::crafting::ICraftingSystem",
-      "items": [
-        {
-          "type": "function",
-          "name": "craft",
-          "inputs": [
-            {
-              "name": "game_id",
-              "type": "core::integer::u64"
-            },
-            {
-              "name": "ingredient_a",
-              "type": "core::integer::u8"
-            },
-            {
-              "name": "ingredient_b",
-              "type": "core::integer::u8"
-            }
-          ],
-          "outputs": [],
-          "state_mutability": "external"
-        },
-        {
-          "type": "function",
-          "name": "craft_recipe",
-          "inputs": [
-            {
-              "name": "game_id",
-              "type": "core::integer::u64"
-            },
-            {
-              "name": "recipe_id",
-              "type": "core::integer::u8"
-            }
-          ],
-          "outputs": [],
-          "state_mutability": "external"
-        },
-        {
-          "type": "function",
-          "name": "buy_hint",
-          "inputs": [
-            {
-              "name": "game_id",
-              "type": "core::integer::u64"
-            }
-          ],
-          "outputs": [],
-          "state_mutability": "external"
-        }
-      ]
-    },
-    {
-      "type": "event",
-      "name": "athanor::systems::crafting::crafting_system::Event",
-      "kind": "enum",
-      "variants": [
-        {
-          "name": "UpgradeableEvent",
-          "type": "dojo::contract::components::upgradeable::upgradeable_cpt::Event",
-          "kind": "nested"
-        },
-        {
-          "name": "WorldProviderEvent",
-          "type": "dojo::contract::components::world_provider::world_provider_cpt::Event",
-          "kind": "nested"
-        }
-      ]
-    },
-    {
-      "type": "interface",
-      "name": "athanor::systems::exploration::IExplorationSystem",
-      "items": [
-        {
-          "type": "function",
-          "name": "send_expedition",
-          "inputs": [
-            {
-              "name": "game_id",
-              "type": "core::integer::u64"
-            },
-            {
-              "name": "hero_id",
-              "type": "core::integer::u8"
-            }
-          ],
-          "outputs": [],
-          "state_mutability": "external"
-        },
-        {
-          "type": "function",
-          "name": "claim_loot",
-          "inputs": [
-            {
-              "name": "game_id",
-              "type": "core::integer::u64"
-            },
-            {
-              "name": "hero_id",
-              "type": "core::integer::u8"
-            }
-          ],
-          "outputs": [],
-          "state_mutability": "external"
-        }
-      ]
-    },
-    {
-      "type": "event",
-      "name": "athanor::systems::exploration::exploration_system::Event",
-      "kind": "enum",
-      "variants": [
-        {
-          "name": "UpgradeableEvent",
-          "type": "dojo::contract::components::upgradeable::upgradeable_cpt::Event",
-          "kind": "nested"
-        },
-        {
-          "name": "WorldProviderEvent",
-          "type": "dojo::contract::components::world_provider::world_provider_cpt::Event",
-          "kind": "nested"
-        }
-      ]
-    },
-    {
-      "type": "interface",
-      "name": "athanor::systems::game::IGameSystem",
+      "name": "athanor::systems::play::IPlay",
       "items": [
         {
           "type": "function",
@@ -2093,11 +1763,103 @@
         },
         {
           "type": "function",
-          "name": "surrender",
+          "name": "clue",
           "inputs": [
             {
               "name": "game_id",
               "type": "core::integer::u64"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "craft",
+          "inputs": [
+            {
+              "name": "game_id",
+              "type": "core::integer::u64"
+            },
+            {
+              "name": "ingredient_a",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "ingredient_b",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "quantity",
+              "type": "core::integer::u16"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "recruit",
+          "inputs": [
+            {
+              "name": "game_id",
+              "type": "core::integer::u64"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "buff",
+          "inputs": [
+            {
+              "name": "game_id",
+              "type": "core::integer::u64"
+            },
+            {
+              "name": "character_id",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "effect",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "quantity",
+              "type": "core::integer::u16"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "explore",
+          "inputs": [
+            {
+              "name": "game_id",
+              "type": "core::integer::u64"
+            },
+            {
+              "name": "character_id",
+              "type": "core::integer::u8"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "claim",
+          "inputs": [
+            {
+              "name": "game_id",
+              "type": "core::integer::u64"
+            },
+            {
+              "name": "character_id",
+              "type": "core::integer::u8"
             }
           ],
           "outputs": [],
@@ -2107,7 +1869,7 @@
     },
     {
       "type": "event",
-      "name": "athanor::systems::game::game_system::Event",
+      "name": "athanor::systems::play::Play::Event",
       "kind": "enum",
       "variants": [
         {
@@ -2129,50 +1891,39 @@
           "name": "SRC5Event",
           "type": "openzeppelin_introspection::src5::SRC5Component::Event",
           "kind": "flat"
+        },
+        {
+          "name": "PlayableEvent",
+          "type": "athanor::components::playable::PlayableComponent::Event",
+          "kind": "flat"
         }
       ]
     },
     {
       "type": "interface",
-      "name": "athanor::systems::hero::IHeroSystem",
+      "name": "athanor::systems::setup::IConfigSystem",
       "items": [
         {
           "type": "function",
-          "name": "recruit_hero",
+          "name": "get_game_settings",
           "inputs": [
             {
-              "name": "game_id",
-              "type": "core::integer::u64"
+              "name": "settings_id",
+              "type": "core::integer::u32"
             }
           ],
-          "outputs": [],
-          "state_mutability": "external"
-        },
-        {
-          "type": "function",
-          "name": "apply_potion",
-          "inputs": [
+          "outputs": [
             {
-              "name": "game_id",
-              "type": "core::integer::u64"
-            },
-            {
-              "name": "potion_index",
-              "type": "core::integer::u16"
-            },
-            {
-              "name": "hero_id",
-              "type": "core::integer::u8"
+              "type": "athanor::models::config::GameSettings"
             }
           ],
-          "outputs": [],
-          "state_mutability": "external"
+          "state_mutability": "view"
         }
       ]
     },
     {
       "type": "event",
-      "name": "athanor::systems::hero::hero_system::Event",
+      "name": "athanor::systems::setup::Setup::Event",
       "kind": "enum",
       "variants": [
         {
@@ -2184,6 +1935,16 @@
           "name": "WorldProviderEvent",
           "type": "dojo::contract::components::world_provider::world_provider_cpt::Event",
           "kind": "nested"
+        },
+        {
+          "name": "SettingsEvent",
+          "type": "game_components_minigame::extensions::settings::settings::SettingsComponent::Event",
+          "kind": "flat"
+        },
+        {
+          "name": "SRC5Event",
+          "type": "openzeppelin_introspection::src5::SRC5Component::Event",
+          "kind": "flat"
         }
       ]
     },
@@ -4112,9 +3873,14 @@
     {
       "type": "function",
       "name": "dojo_init",
-      "inputs": [],
+      "inputs": [
+        {
+          "name": "creator_address",
+          "type": "core::starknet::contract_address::ContractAddress"
+        }
+      ],
       "outputs": [],
-      "state_mutability": "view"
+      "state_mutability": "external"
     },
     {
       "type": "function",

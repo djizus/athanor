@@ -1,3 +1,4 @@
+use crate::constants::MAX_HEROES;
 use crate::elements::roles;
 use crate::models::character::Character;
 pub const ROLE_COUNT: u8 = 3;
@@ -37,16 +38,18 @@ pub impl RoleImpl of RoleTrait {
     #[inline]
     fn draw(mut bitmap: u8, rng: u128) -> Role {
         let mut eligibles: Array<Role> = array![];
-        let mut index: u8 = 0;
-        while bitmap > 0 {
-            index += 1;
+        for index in 0..MAX_HEROES {
             if bitmap % 2 == 0 {
                 let role: Role = Self::from(index);
                 eligibles.append(role);
             }
             bitmap /= 2;
         }
-        let index: u32 = (rng % eligibles.len().into()).try_into().unwrap();
+        let len = eligibles.len();
+        if len == 0 {
+            return Role::None;
+        }
+        let index: u32 = (rng % len.into()).try_into().unwrap();
         *eligibles.at(index)
     }
 }

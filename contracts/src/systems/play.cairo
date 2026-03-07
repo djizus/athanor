@@ -16,7 +16,6 @@ pub trait IPlay<T> {
 
 #[dojo::contract]
 pub mod Play {
-    use core::num::traits::Zero;
     use dojo::world::{WorldStorage, WorldStorageTrait};
     use game_components_minigame::interface::IMinigameTokenData;
     use game_components_minigame::libs::{assert_token_ownership, post_action, pre_action};
@@ -124,11 +123,7 @@ pub mod Play {
             // [Compute] Seed
             let store = StoreTrait::new(world);
             let vrf_addr = store.vrf_address();
-            let random = if vrf_addr.is_zero() {
-                RandomTrait::new_pseudo_random()
-            } else {
-                RandomTrait::from_vrf_address(vrf_addr, game_id.into())
-            };
+            let random = RandomTrait::new(vrf_addr, game_id.into());
             // [Effect] Create game
             self.before(world, game_id);
             self.playable.create(world, game_id, random.seed);
@@ -141,11 +136,7 @@ pub mod Play {
             // [Compute] Seed
             let store = StoreTrait::new(world);
             let vrf_addr = store.vrf_address();
-            let random = if vrf_addr.is_zero() {
-                RandomTrait::new_pseudo_random()
-            } else {
-                RandomTrait::from_vrf_address(vrf_addr, game_id.into())
-            };
+            let random = RandomTrait::new(vrf_addr, game_id.into());
             // [Effect] Glean
             self.before(world, game_id);
             self.playable.clue(world, game_id, random.seed);
@@ -164,11 +155,7 @@ pub mod Play {
             // [Compute] Seed
             let store = StoreTrait::new(world);
             let vrf_addr = store.vrf_address();
-            let random = if vrf_addr.is_zero() {
-                RandomTrait::new_pseudo_random()
-            } else {
-                RandomTrait::from_vrf_address(vrf_addr, game_id.into())
-            };
+            let random = RandomTrait::new(vrf_addr, game_id.into());
             // [Effect] Craft
             self.before(world, game_id);
             self
@@ -185,11 +172,7 @@ pub mod Play {
             // [Compute] Seed
             let store = StoreTrait::new(world);
             let vrf_addr = store.vrf_address();
-            let random = if vrf_addr.is_zero() {
-                RandomTrait::new_pseudo_random()
-            } else {
-                RandomTrait::from_vrf_address(vrf_addr, game_id.into())
-            };
+            let random = RandomTrait::new(vrf_addr, game_id.into());
             // [Effect] Recruit
             self.before(world, game_id);
             self.playable.recruit(world, game_id, random.seed);
@@ -213,11 +196,7 @@ pub mod Play {
             // [Compute] Seed
             let store = StoreTrait::new(world);
             let vrf_addr = store.vrf_address();
-            let random = if vrf_addr.is_zero() {
-                RandomTrait::new_pseudo_random()
-            } else {
-                RandomTrait::from_vrf_address(vrf_addr, game_id.into())
-            };
+            let random = RandomTrait::new(vrf_addr, game_id.into());
             // [Effect] Explore
             self.before(world, game_id);
             self.playable.explore(world, game_id, character_id, random.seed);

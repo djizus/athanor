@@ -2,10 +2,6 @@ pub fn NAMESPACE() -> ByteArray {
     "ATHANOR"
 }
 
-pub fn DEFAULT_NS() -> ByteArray {
-    "ATHANOR"
-}
-
 pub const DEFAULT_HINT_PRICE: u32 = 4;
 pub const DEFAULT_MAX_HEROES: u8 = 3;
 pub const DEFAULT_RECIPE_COUNT: u8 = 30;
