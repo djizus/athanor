@@ -75,7 +75,7 @@ pub mod Setup {
 
         self.settings_counter.write(0);
 
-        let (play_address, _) = world.dns(@PLAY()).unwrap();
+        let (play_address, _) = world.dns(@PLAY()).expect('Setup: play not found');
         let minigame_dispatcher = IMinigameDispatcher { contract_address: play_address };
         let minigame_token_address = minigame_dispatcher.token_address();
 

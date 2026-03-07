@@ -77,7 +77,7 @@ pub mod Play {
         vrf_address: ContractAddress,
     ) {
         let mut world: WorldStorage = self.world(@NAMESPACE());
-        let (config_address, _) = world.dns(@SETUP()).unwrap();
+        let (config_address, _) = world.dns(@SETUP()).expect('Play: setup not found');
         self
             .minigame
             .initializer(

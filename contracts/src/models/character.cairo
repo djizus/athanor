@@ -24,7 +24,7 @@ pub impl CharacterImpl of CharacterTrait {
             power: 0,
             regen: 0,
             gold: 0,
-            available_at: 0,
+            available_at: starknet::get_block_timestamp(),
             ingredients: 0,
         };
         role.spawn(ref character);
@@ -53,7 +53,7 @@ pub impl CharacterImpl of CharacterTrait {
         self.assert_is_available(now);
         // [Effect] Heal
         let timedelta = now - self.available_at;
-        let regen: u16 = self.regen * timedelta.try_into().unwrap();
+        let regen: u16 = self.regen * timedelta.try_into().expect('Character: timedelta too big');
         self.heal(regen);
         // [Effect] Apply expedition results
         let mut result = simulate_expedition(
@@ -68,7 +68,7 @@ pub impl CharacterImpl of CharacterTrait {
             ingredients.append(quantity);
         }
         let ingredients: u256 = Packer::pack(ingredients, INGREDIENT_SIZE);
-        self.ingredients = ingredients.try_into().unwrap();
+        self.ingredients = ingredients.try_into().expect('Character: pack ingredients');
         // [Return] Logs
         result.events
     }
@@ -101,5 +101,44 @@ pub impl CharacterAssert of AssertTrait {
     #[inline]
     fn assert_is_available(self: @Character, now: u64) {
         assert(@now > self.available_at, Errors::CHARACTER_NOT_AVAILABLE);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const GAME_ID: u64 = 1;
+    const CHARACTER_ID: u8 = 0;
+
+    #[test]
+    fn test_character_new() {
+        let character = CharacterTrait::new(GAME_ID, CHARACTER_ID, Role::Mage);
+        assert_eq!(character.game_id, 1);
+        assert_eq!(character.id, 0);
+        assert_eq!(character.role, Role::Mage.into());
+    }
+
+    #[test]
+    fn test_character_heal() {
+        let mut character = CharacterTrait::new(GAME_ID, CHARACTER_ID, Role::Mage);
+        character.health = 0;
+        character.heal(character.max_health + 1);
+        assert_eq!(character.health, character.max_health);
+    }
+
+    #[test]
+    fn test_character_buff() {
+        let mut character = CharacterTrait::new(GAME_ID, CHARACTER_ID, Role::Mage);
+        let max_health = character.max_health;
+        character.buff(Effect::Blue, 10);
+        assert_eq!(character.max_health, max_health + 50);
+    }
+
+    #[test]
+    fn test_character_explore() {
+        let mut character = CharacterTrait::new(GAME_ID, CHARACTER_ID, Role::Mage);
+        starknet::testing::set_block_timestamp(1);
+        character.explore(core::poseidon::poseidon_hash_span([0, 0].span()));
     }
 }
