@@ -120,6 +120,12 @@ export async function savePng(buffer: Buffer, outputPath: string): Promise<void>
   await writeFile(outputPath, pngBuffer);
 }
 
+export async function saveWebp(buffer: Buffer, outputPath: string, quality = 85): Promise<void> {
+  await mkdir(dirname(outputPath), { recursive: true });
+  const webpBuffer = await sharp(buffer).webp({ quality }).toBuffer();
+  await writeFile(outputPath, webpBuffer);
+}
+
 export async function saveFile(buffer: Buffer, outputPath: string): Promise<void> {
   await mkdir(dirname(outputPath), { recursive: true });
   await writeFile(outputPath, buffer);

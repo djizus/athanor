@@ -6,7 +6,7 @@ import { existsSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import manifest from './data/assets.json';
-import { generateImage, resizeImage, savePng } from './lib/fal-client';
+import { generateImage, resizeImage, savePng, saveWebp } from './lib/fal-client';
 import { MAX_CONCURRENCY, REQUEST_DELAY_MS } from './lib/env';
 import { buildPrompt } from './lib/prompts';
 import type { AssetManifest, ImageAssetDef, ImageCategory } from './lib/types';
@@ -131,7 +131,11 @@ async function processAsset(asset: ImageAssetDef, opts: CliOptions): Promise<boo
 
   const rawBuffer = await generateImage(prompt, asset.width, asset.height);
   const finalBuffer = await resizeImage(rawBuffer, asset.width, asset.height);
-  await savePng(finalBuffer, out);
+  if (out.endsWith('.webp')) {
+    await saveWebp(finalBuffer, out);
+  } else {
+    await savePng(finalBuffer, out);
+  }
 
   console.log(`  DONE  ${asset.category}/${asset.filename}`);
   return true;

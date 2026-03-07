@@ -104,7 +104,7 @@ export function displayGold(gold: number): string {
 }
 
 export function ingredientAssetUrl(ingredientId: number): string {
-  return `/assets/ingredients/${INGREDIENT_KEYS[ingredientId]}.png`
+  return `/assets/ingredients/${INGREDIENT_KEYS[ingredientId]}.webp`
 }
 
 export function roleAssetUrl(roleIndex: number): string {
@@ -113,7 +113,7 @@ export function roleAssetUrl(roleIndex: number): string {
 
 export function effectAssetUrl(effectIndex: number): string {
   const category = EFFECT_CATEGORIES[effectIndex]
-  return `/assets/potions/potion-${category}.png`
+  return `/assets/potions/potion-${category}.webp`
 }
 
 export function zoneBackgroundUrl(zoneId: number): string {

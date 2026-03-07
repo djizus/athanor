@@ -61,22 +61,27 @@ export function buildHeroPortraitPrompt(asset: ImageAssetDef): string {
 
 export function buildIngredientIconPrompt(asset: ImageAssetDef): string {
   const desc = asset.description.replace(/^(A|An)\s+/i, '');
+  const zone = asset.zoneColor ?? '#ffffff';
   return [
     `A single ${desc}.`,
-    `Centered on dark background #0a0a14. Bioluminescent ${asset.zoneColor ?? '#ffffff'} accent glow.`,
+    `Centered in frame with generous margins on all sides for circular crop.`,
+    `Dark obsidian background #0a0a14 with a soft diffuse ${zone} ambient glow emanating from behind the item — subtle enough to tint the atmosphere without overpowering the ingredient.`,
+    `Warm amber light #f0c040 rim-highlights the item edges. Faint floating ember motes and bioluminescent accents.`,
     GLOBAL_ART_STYLE,
-    `Clean, instantly readable at small sizes. Square composition.`,
-    `Single item only, no multiples. No text, no people, no UI.`,
+    `Single item only, no multiples, no surface or table. Item floating in space.`,
+    `Square composition, item occupying central 60% of frame. No text, no people, no UI.`,
   ].join(' ');
 }
 
 export function buildPotionIconPrompt(asset: ImageAssetDef): string {
   return [
     `${asset.description}.`,
-    `Centered on dark background #0a0a14. Organic glass shapes with bioluminescent liquid glow.`,
+    `Centered in frame with generous margins on all sides for circular crop.`,
+    `Dark obsidian background #0a0a14. Organic glass shapes with bioluminescent liquid glow radiating outward.`,
+    `Warm amber light #f0c040 rim-highlights the glass edges. Faint floating ember motes.`,
     GLOBAL_ART_STYLE,
-    `Clean, instantly readable at small sizes. Square composition.`,
-    `Single item only. No text, no people, no UI.`,
+    `Single item only, no surface or table. Bottle floating in space.`,
+    `Square composition, item occupying central 60% of frame. No text, no people, no UI.`,
   ].join(' ');
 }
 
