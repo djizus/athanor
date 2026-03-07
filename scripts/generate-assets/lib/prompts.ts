@@ -5,14 +5,14 @@ const GLOBAL_ART_STYLE = `Art style: neo-futurist nature 2D illustration. Organi
 export function buildBackgroundPrompt(asset: ImageAssetDef): string {
   if (asset.id === 'lab-bg') {
     return [
-      `A dark medieval alchemist's laboratory interior, viewed from slight overhead angle.`,
-      `Wooden shelves lined with glowing potion bottles in various colors. Stone walls with arcane rune carvings.`,
-      `Central wooden workbench with mortar and pestle. Candelabras casting warm flickering light.`,
-      `Bubbling cauldron in corner with green steam. Dark moody atmosphere with rich warm shadows.`,
+      `A vast dark alchemist sanctum interior in the same visual language as the loading screen: obsidian stone walls, molten amber furnace glow, floating ember motes, and soft violet arcane haze.`,
+      `Composition is side-weighted: shelves, tools, candles, and cauldrons stay on the far left and far right edges with depth layering.`,
+      `The center area must remain mostly empty and calm: open dark stone floor and soft atmospheric haze, with no table, no cauldron, no brazier, and no large props in the middle 50% of the frame, so menu UI stays highly readable.`,
+      `Arcane circles and alchemical symbols appear as abstract decorative marks on walls only, never readable text.`,
       GLOBAL_ART_STYLE,
-      `Color palette centered on background color #080810 with warm accent #f0c040.`,
+      `Color palette centered on #080810, with controlled warm highlights #f0c040 and restrained purple energy accents #7a5cff.`,
       `Full-bleed seamless scene extending edge-to-edge. No borders, no frames, no framing elements.`,
-      `No people, no text, no UI elements, no watermarks.`,
+      `No people, no readable text, no UI elements, no logos, no watermarks.`,
     ].join(' ');
   }
 
