@@ -1696,6 +1696,13 @@ button:disabled, .btn:disabled {
   font-family: var(--font-body);
 }
 
+.log-exploration .log-text { color: var(--text-primary); }
+.log-loot .log-text { color: var(--accent-gold); }
+.log-recipe .log-text { color: var(--accent-purple); }
+.log-recruit .log-text { color: var(--accent-green); }
+.log-potion .log-text { color: var(--accent-blue); }
+.log-expedition .log-text { color: var(--accent-blue); }
+
 .log-empty {
   font-size: 0.72rem;
   color: var(--text-muted);

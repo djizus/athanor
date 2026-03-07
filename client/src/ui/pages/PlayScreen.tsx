@@ -5,6 +5,7 @@ import { useGame } from '@/hooks/useGame'
 import { useHeroes } from '@/hooks/useHeroes'
 import { useInventory } from '@/hooks/useInventory'
 import { useRecipes } from '@/hooks/useRecipes'
+import { useExplorationLog } from '@/hooks/useExplorationLog'
 import { useNavigationStore } from '@/stores/navigationStore'
 import { txToast } from '@/stores/toastStore'
 import type { PhaserBridge } from '@/phaser'
@@ -42,7 +43,7 @@ export function PlayScreen({ bridge }: Props) {
   const [craftCollapsed, setCraftCollapsed] = useState(false)
   const [grimoireCollapsed, setGrimoireCollapsed] = useState(false)
   const [logsCollapsed, setLogsCollapsed] = useState(false)
-  const [logs, setLogs] = useState<Array<{ ts: number; text: string }>>([])
+  const { logs, pushInfo } = useExplorationLog(gameId ?? null)
   const logsEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -111,48 +112,49 @@ export function PlayScreen({ bridge }: Props) {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [scrollPanelIntoView])
 
-  const pushLog = useCallback((text: string) => {
-    setLogs((prev) => [...prev.slice(-99), { ts: Date.now(), text }])
-    requestAnimationFrame(() => logsEndRef.current?.scrollIntoView({ behavior: 'smooth' }))
-  }, [])
+  useEffect(() => {
+    if (logs.length > 0) {
+      requestAnimationFrame(() => logsEndRef.current?.scrollIntoView({ behavior: 'smooth' }))
+    }
+  }, [logs.length])
 
   const handleExplore = async (characterId: number) => {
     if (!account || gameId == null) return
     const hero = heroes.find((h) => h.id === characterId)
     const name = hero ? ROLE_NAMES[hero.role > 0 ? hero.role - 1 : characterId] : `Hero ${characterId}`
-    pushLog(`${name} sent on expedition...`)
+    pushInfo(`${name} sent on expedition...`)
     const t = txToast('Sending expedition')
-    try { await client.explore(account, gameId, characterId); t.success(); pushLog(`${name} is now exploring`) } catch (e) { t.error(); pushLog(`${name} expedition failed`); console.error('Explore failed:', e) }
+    try { await client.explore(account, gameId, characterId); t.success() } catch (e) { t.error(); pushInfo(`${name} expedition failed`); console.error('Explore failed:', e) }
   }
 
   const handleClaim = async (characterId: number) => {
     if (!account || gameId == null) return
     const hero = heroes.find((h) => h.id === characterId)
     const name = hero ? ROLE_NAMES[hero.role > 0 ? hero.role - 1 : characterId] : `Hero ${characterId}`
-    pushLog(`${name} claiming loot...`)
+    pushInfo(`${name} claiming loot...`)
     const t = txToast('Claiming loot')
-    try { await client.claim(account, gameId, characterId); t.success(); pushLog(`${name} claimed loot!`) } catch (e) { t.error(); pushLog(`${name} claim failed`); console.error('Claim failed:', e) }
+    try { await client.claim(account, gameId, characterId); t.success() } catch (e) { t.error(); pushInfo(`${name} claim failed`); console.error('Claim failed:', e) }
   }
 
   const handleCraft = async (ingredientA: number, ingredientB: number) => {
     if (!account || gameId == null) return
-    pushLog(`Brewing potion...`)
+    pushInfo(`Brewing potion...`)
     const t = txToast('Brewing potion')
-    try { await client.craft(account, gameId, ingredientA, ingredientB); t.success(); pushLog('Potion brewed!') } catch (e) { t.error(); pushLog('Brew failed'); console.error('Craft failed:', e) }
+    try { await client.craft(account, gameId, ingredientA, ingredientB); t.success() } catch (e) { t.error(); pushInfo('Brew failed'); console.error('Craft failed:', e) }
   }
 
   const handleClue = async () => {
     if (!account || gameId == null) return
-    pushLog('Buying hint...')
+    pushInfo('Buying hint...')
     const t = txToast('Buying hint')
-    try { await client.clue(account, gameId); t.success(); pushLog('Hint purchased!') } catch (e) { t.error(); pushLog('Hint purchase failed'); console.error('Clue failed:', e) }
+    try { await client.clue(account, gameId); t.success() } catch (e) { t.error(); pushInfo('Hint purchase failed'); console.error('Clue failed:', e) }
   }
 
   const handleRecruit = async () => {
     if (!account || gameId == null) return
-    pushLog('Recruiting hero...')
+    pushInfo('Recruiting hero...')
     const t = txToast('Recruiting hero')
-    try { await client.recruit(account, gameId); t.success(); pushLog('Hero recruited!') } catch (e) { t.error(); pushLog('Recruitment failed'); console.error('Recruit failed:', e) }
+    try { await client.recruit(account, gameId); t.success() } catch (e) { t.error(); pushInfo('Recruitment failed'); console.error('Recruit failed:', e) }
   }
 
   if (gameId == null) {
@@ -233,7 +235,7 @@ export function PlayScreen({ bridge }: Props) {
                 <span className="log-empty">No events yet...</span>
               ) : (
                 logs.map((entry, i) => (
-                  <div key={i} className="log-entry">
+                  <div key={i} className={`log-entry log-${entry.kind}`}>
                     <span className="log-ts">{new Date(entry.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
                     <span className="log-text">{entry.text}</span>
                   </div>
