@@ -2,7 +2,7 @@ import { StrictMode } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { sepolia } from '@starknet-react/chains'
-import { StarknetConfig, jsonRpcProvider, paymasterRpcProvider } from '@starknet-react/core'
+import { StarknetConfig, jsonRpcProvider, paymasterRpcProvider, type Connector } from '@starknet-react/core'
 import './index.css'
 import App from './App.tsx'
 import { LoadingScreen } from './ui/LoadingScreen'
@@ -11,13 +11,15 @@ import { cartridgeConnector } from './cartridgeConnector'
 import { DojoProvider, type DojoSetup } from './dojo/context'
 import { setupDojo } from './dojo/setup'
 
+const rpcUrl = dojoConfig().rpcUrl
+const connectors: Connector[] = cartridgeConnector ? [cartridgeConnector] : []
+
 function Root() {
   const [dojo, setDojo] = useState<DojoSetup | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [initStatus, setInitStatus] = useState('Bootstrapping client...')
   const [initError, setInitError] = useState<string | null>(null)
 
-  const rpcUrl = dojoConfig().rpcUrl
   const chain = useMemo(
     () => ({
       ...sepolia,
@@ -27,21 +29,15 @@ function Root() {
         public: { http: [rpcUrl] },
       },
     }),
-    [rpcUrl],
+    [],
   )
   const provider = useMemo(
-    () =>
-      jsonRpcProvider({
-        rpc: () => ({ nodeUrl: rpcUrl }),
-      }),
-    [rpcUrl],
+    () => jsonRpcProvider({ rpc: () => ({ nodeUrl: rpcUrl }) }),
+    [],
   )
   const paymaster = useMemo(
-    () =>
-      paymasterRpcProvider({
-        rpc: () => ({ nodeUrl: rpcUrl }),
-      }),
-    [rpcUrl],
+    () => paymasterRpcProvider({ rpc: () => ({ nodeUrl: rpcUrl }) }),
+    [],
   )
 
   useEffect(() => {
@@ -81,17 +77,22 @@ function Root() {
     }
   }, [])
 
-  console.info('[athanor:render] Root render — isLoading:', isLoading, 'dojo:', !!dojo, 'error:', initError)
-
-  if (isLoading || !dojo) {
-    return <LoadingScreen status={initStatus} error={initError} />
-  }
-
   return (
-    <StarknetConfig autoConnect chains={[chain]} provider={provider} paymasterProvider={paymaster} connectors={[cartridgeConnector]}>
-      <DojoProvider value={dojo}>
-        <App />
-      </DojoProvider>
+    <StarknetConfig
+      autoConnect
+      chains={[chain]}
+      connectors={connectors}
+      defaultChainId={sepolia.id}
+      provider={provider}
+      paymasterProvider={paymaster}
+    >
+      {isLoading || !dojo ? (
+        <LoadingScreen status={initStatus} error={initError} />
+      ) : (
+        <DojoProvider value={dojo}>
+          <App />
+        </DojoProvider>
+      )}
     </StarknetConfig>
   )
 }

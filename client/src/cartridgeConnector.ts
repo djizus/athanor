@@ -1,6 +1,11 @@
+import { type Connector } from '@starknet-react/core'
 import ControllerConnector from '@cartridge/connector/controller'
 import type { SessionPolicies } from '@cartridge/presets'
+import { shortString } from 'starknet'
 import { dojoConfig } from '../dojo.config'
+
+const NAMESPACE = import.meta.env.VITE_PUBLIC_NAMESPACE ?? 'ATHANOR'
+const RPC_URL = dojoConfig().rpcUrl
 
 function buildPolicies(): SessionPolicies {
   const config = dojoConfig()
@@ -15,21 +20,30 @@ function buildPolicies(): SessionPolicies {
     contracts: {
       [play]: {
         methods: [
-          { name: 'mint_game', entrypoint: 'mint_game' },
-          { name: 'create', entrypoint: 'create' },
-          { name: 'clue', entrypoint: 'clue' },
-          { name: 'craft', entrypoint: 'craft' },
-          { name: 'recruit', entrypoint: 'recruit' },
-          { name: 'buff', entrypoint: 'buff' },
-          { name: 'explore', entrypoint: 'explore' },
-          { name: 'claim', entrypoint: 'claim' },
+          { name: 'Mint Game', entrypoint: 'mint_game' },
+          { name: 'Create', entrypoint: 'create' },
+          { name: 'Clue', entrypoint: 'clue' },
+          { name: 'Craft', entrypoint: 'craft' },
+          { name: 'Recruit', entrypoint: 'recruit' },
+          { name: 'Buff', entrypoint: 'buff' },
+          { name: 'Explore', entrypoint: 'explore' },
+          { name: 'Claim', entrypoint: 'claim' },
         ],
       },
     },
   }
 }
 
-export const cartridgeConnector = new ControllerConnector({
-  chains: [{ rpcUrl: dojoConfig().rpcUrl }],
-  policies: buildPolicies(),
-})
+function createConnector(): Connector | null {
+  if (typeof window === 'undefined') return null
+
+  return new ControllerConnector({
+    chains: [{ rpcUrl: RPC_URL }],
+    defaultChainId: shortString.encodeShortString('SN_SEPOLIA').toString(),
+    namespace: NAMESPACE,
+    slot: 'athanor-sepolia',
+    policies: buildPolicies(),
+  }) as unknown as Connector
+}
+
+export const cartridgeConnector = createConnector()
