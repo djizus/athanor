@@ -1583,26 +1583,7 @@ button:disabled, .btn:disabled {
   100% { transform: scale(1); }
 }
 
-.ing-badge {
-  position: absolute;
-  bottom: -2px;
-  right: -2px;
-  min-width: 16px;
-  height: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 3px;
-  border-radius: 8px;
-  background: var(--bg-panel);
-  border: 1px solid var(--border-color);
-  color: var(--text-primary);
-  font-family: var(--font-body);
-  font-size: 0.62rem;
-  font-weight: 600;
-  line-height: 1;
-  z-index: 2;
-}
+
 
 .ing-cell[data-name]::after {
   content: attr(data-name);
@@ -1689,6 +1670,7 @@ button:disabled, .btn:disabled {
   border-radius: 8px;
   background: var(--accent-gold);
   color: var(--bg-primary);
+  font-family: var(--font-title);
   font-size: 0.58rem;
   font-weight: 700;
   display: flex;
@@ -1736,9 +1718,8 @@ button:disabled, .btn:disabled {
 }
 
 .craft-result-known {
-  border-style: solid;
-  border-color: var(--border-glow);
-  animation: slot-fill-pop 0.2s ease-out;
+  border: none;
+  background: none;
 }
 
 .craft-result-unknown {
@@ -1747,8 +1728,12 @@ button:disabled, .btn:disabled {
   font-size: 1.1rem;
 }
 
-.craft-result-soup,
-.craft-result-potion {
+.craft-result-circle {
+  width: 42px;
+  height: 42px;
+}
+
+.craft-result-soup {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1776,21 +1761,6 @@ button:disabled, .btn:disabled {
   border-radius: 4px;
   padding: 0 3px;
   line-height: 1.3;
-}
-
-.craft-result-bonus {
-  position: absolute;
-  top: -6px;
-  right: -8px;
-  font-size: 0.55rem;
-  font-weight: 700;
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  padding: 0 3px;
-  line-height: 1.4;
-  white-space: nowrap;
-  z-index: 2;
 }
 
 .craft-brew-btns {
@@ -1964,10 +1934,11 @@ button:disabled, .btn:disabled {
   position: absolute;
   top: -5px;
   right: -6px;
+  font-family: var(--font-title);
   font-size: 0.55rem;
   font-weight: 800;
   background: var(--effect-color, var(--accent-gold));
-  color: #fff;
+  color: var(--bg-primary);
   border-radius: 4px;
   padding: 1px 4px;
   line-height: 1.4;
@@ -1976,11 +1947,7 @@ button:disabled, .btn:disabled {
   pointer-events: none;
 }
 
-.grimoire-badge-zero {
-  background: var(--bg-panel);
-  border: 1px solid var(--border-color);
-  color: var(--text-muted);
-}
+
 
 /* ── Potion Use Popup ─────────────────────────── */
 

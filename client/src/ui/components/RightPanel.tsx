@@ -66,7 +66,7 @@ function IngredientIcon({
           style={{ width: size, height: size }}
         />
         {quantity !== undefined && (
-          <span className="ing-badge">{quantity}</span>
+          <span className="craft-slot-qty">{quantity}</span>
         )}
       </div>
     </div>
@@ -243,14 +243,16 @@ function CraftResultPreview({ discovery }: { discovery: DiscoveryData }) {
 
   const color = EFFECT_COLORS[category]
   return (
-    <div className="craft-result-potion">
+    <div
+      className="grimoire-icon-wrap craft-result-circle"
+      style={{ ['--effect-color' as string]: color }}
+    >
       <img
-        className="craft-result-icon"
+        className="grimoire-icon"
         src={effectAssetUrl(effectIdx)}
         alt={EFFECT_NAMES[effectIdx]}
-        style={{ borderColor: color }}
       />
-      <span className="craft-result-bonus" style={{ color }}>{effectStatLabel(effectIdx)}</span>
+      <span className="grimoire-badge-tr">{effectStatLabel(effectIdx)}</span>
     </div>
   )
 }
@@ -362,14 +364,19 @@ export function GrimoireContent({
           const hintIngs = hintIngredients.get(effectIdx)
 
           const handleClick = () => {
+            console.log('[Grimoire click]', { effectIdx, isDiscovered, isHinted, discovery, hintIngs, quantity, canCraft })
             if (isDiscovered && discovery) {
+              console.log('[Grimoire] selecting discovered recipe', discovery.ingredient_a, discovery.ingredient_b)
               onSelectIngredients(discovery.ingredient_a, discovery.ingredient_b)
             } else if (isHinted && hintIngs && hintIngs.length > 0) {
+              console.log('[Grimoire] selecting hinted ingredients', hintIngs)
               if (hintIngs.length >= 2) {
                 onSelectIngredients(hintIngs[0], hintIngs[1])
               } else {
                 onSelectIngredients(hintIngs[0], -1)
               }
+            } else {
+              console.log('[Grimoire] click ignored — not discovered or hinted')
             }
           }
 
@@ -377,7 +384,7 @@ export function GrimoireContent({
             <div
               key={effectIdx}
               className={`grimoire-cell${isDiscovered ? ' discovered' : ''}${isHinted ? ' hinted' : ''}${isDiscovered || isHinted ? ' grimoire-cell-clickable' : ''}`}
-              onClick={isDiscovered || isHinted ? handleClick : undefined}
+              onClick={() => { console.log('[Grimoire cell]', { effectIdx, isDiscovered, isHinted }); if (isDiscovered || isHinted) handleClick() }}
             >
               <div
                 className="grimoire-icon-wrap"
@@ -393,7 +400,7 @@ export function GrimoireContent({
                 {isDiscovered && (
                   <span className="grimoire-badge-tr">{effectStatLabel(effectIdx)}</span>
                 )}
-                <span className={`ing-badge${quantity <= 0 ? ' grimoire-badge-zero' : ''}`}>{quantity}</span>
+                <span className={`craft-slot-qty${quantity <= 0 ? ' craft-slot-qty-zero' : ''}`}>{quantity}</span>
               </div>
             </div>
           )
