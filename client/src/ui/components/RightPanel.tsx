@@ -237,10 +237,10 @@ function CraftResultPreview({ discovery }: { discovery: DiscoveryData }) {
     return (
       <div
         className="grimoire-icon-wrap craft-result-circle"
-        style={{ ['--effect-color' as string]: '#8B6914' }}
+        style={{ ['--effect-color' as string]: '#c8a040' }}
       >
         <img className="grimoire-icon" src="/assets/potions/craft-soup.webp" alt="Soup" />
-        <span className="grimoire-badge-tr" style={{ background: '#8B6914' }}>+1g</span>
+        <span className="grimoire-badge-tr" style={{ background: '#c8a040' }}>+1g</span>
       </div>
     )
   }
@@ -410,7 +410,7 @@ export function GrimoireContent({
                 {isDiscovered && (
                   <span className="grimoire-badge-tr">{effectStatLabel(effectIdx)}</span>
                 )}
-                <span className={`craft-slot-qty${quantity <= 0 ? ' craft-slot-qty-zero' : ''}`}>{quantity}</span>
+                <span className={`craft-slot-qty${quantity <= 0 ? ' craft-slot-qty-zero' : ''}`} style={quantity > 0 ? { ['--qty-color' as string]: categoryColor } : undefined}>{quantity}</span>
               </div>
             </div>
           )
