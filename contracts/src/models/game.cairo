@@ -116,9 +116,9 @@ pub impl GameImpl of GameTrait {
     }
 
     #[inline]
-    fn start(ref self: Game) {
+    fn start(ref self: Game) -> (u8, Role) {
         self.started_at = starknet::get_block_timestamp();
-        self.recruit(self.seed.into());
+        self.recruit(self.seed.into())
     }
 
     #[inline]

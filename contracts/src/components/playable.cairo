@@ -41,8 +41,11 @@ pub mod PlayableComponent {
             game.assert_not_started();
             // [Effect] Create Game
             let mut game = GameTrait::new(game_id, seed);
-            game.start();
+            let (character_id, role) = game.start();
             store.set_game(@game);
+            // [Effect] Create Character
+            let character = CharacterTrait::new(game_id, character_id, role);
+            store.set_character(@character);
         }
 
         fn clue(
@@ -115,9 +118,10 @@ pub mod PlayableComponent {
             game.assert_not_over();
             // [Effect] Recruit hero
             let (character_id, role) = game.recruit(seed.into());
+            store.set_game(@game);
+            // [Effect] Create Character
             let character = CharacterTrait::new(game_id, character_id, role);
             store.set_character(@character);
-            store.set_game(@game);
         }
 
         fn buff(

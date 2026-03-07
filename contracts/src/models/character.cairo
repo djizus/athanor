@@ -18,7 +18,7 @@ pub impl CharacterImpl of CharacterTrait {
         let mut character = Character {
             game_id,
             id,
-            role: 0,
+            role: role.into(),
             health: 0,
             max_health: 0,
             power: 0,
