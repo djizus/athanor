@@ -16,6 +16,7 @@ pub const MULTIPLIER: u32 = 10_000;
 pub mod Errors {
     pub const GAME_OVER: felt252 = 'Game is over';
     pub const GAME_NOT_OVER: felt252 = 'Game not over';
+    pub const GAME_MISSING_EFFECTS: felt252 = 'Game: missing effects';
     pub const GAME_MISSING_INGREDIENTS: felt252 = 'Game: missing ingredients';
     pub const GAME_INVALID_INGREDIENTS: felt252 = 'Game: invalid ingredients';
     pub const GAME_NOT_ENOUGH_GOLD: felt252 = 'Game: not enough gold';
@@ -156,10 +157,22 @@ pub impl GameImpl of GameTrait {
 
     #[inline]
     fn consume(ref self: Game, effect: Effect, quantity: u16) {
+        // [Check] Skip if effect is none
+        if effect == Effect::None {
+            return;
+        }
         // [Effect] Remove effect from the balance
+        let balance_index: u32 = effect.index().into();
         let effects: u256 = self.effects.into();
         let mut balances: Array<u16> = Packer::unpack(effects, EFFECT_SIZE, EFFECT_COUNT.into());
-        balances.append(quantity);
+        for index in 0_u32..EFFECT_COUNT.into() {
+            let mut balance = balances.pop_front().unwrap();
+            if index == balance_index {
+                assert(balance >= quantity, Errors::GAME_MISSING_EFFECTS);
+                balance -= quantity;
+            }
+            balances.append(balance);
+        }
         let effects: u256 = Packer::pack(balances, EFFECT_SIZE);
         self.effects = effects.try_into().unwrap();
     }
