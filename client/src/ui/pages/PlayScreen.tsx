@@ -75,6 +75,8 @@ export function PlayScreen({ bridge }: Props) {
   const [selectedHeroId, setSelectedHeroId] = useState(0)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000))
+  const [extSlotA, setExtSlotA] = useState<number | null>(null)
+  const [extSlotB, setExtSlotB] = useState<number | null>(null)
 
   const [heroesCollapsed, setHeroesCollapsed] = useState(false)
   const [craftCollapsed, setCraftCollapsed] = useState(false)
@@ -303,6 +305,8 @@ export function PlayScreen({ bridge }: Props) {
                 remainingTries={game?.remaining_tries ?? 300}
                 isGameOver={isGameOver}
                 brewAllCount={brewAllCount}
+                externalSlotA={extSlotA}
+                externalSlotB={extSlotB}
                 onCraft={(a, b) => void handleCraft(a, b)}
                 onBrewAll={() => void handleBrewAll()}
               />
@@ -327,8 +331,18 @@ export function PlayScreen({ bridge }: Props) {
                 hintCost={hintCost}
                 isGameOver={isGameOver}
                 heroes={heroes.map(h => ({ id: h.id, role: h.role }))}
+                inventory={inventory}
                 onBuyHint={() => void handleClue()}
                 onUsePotion={(eff, heroId, qty) => void handleBuff(eff, heroId, qty)}
+                onCraftFromGrimoire={(a, b) => void handleCraft(a, b)}
+                onSelectIngredients={(a, b) => {
+                  setExtSlotA(a)
+                  setExtSlotB(b)
+                  setCraftCollapsed(false)
+                  requestAnimationFrame(() => {
+                    document.querySelector('.panel-craft')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+                  })
+                }}
               />
             </div>
           )}

@@ -68,6 +68,22 @@ export const ROLE_STATS = [
 
 export const HERO_RECRUIT_COSTS = [0, 80, 200] as const
 
+// Health (indices 0-9), Power (indices 10-19), Regen (indices 20-29)
+export const EFFECT_MULTIPLIERS = [
+  5, 5, 5, 10, 10, 10, 15, 15, 15, 20,
+  1, 1, 1, 2, 2, 3, 3, 4, 4, 5,
+  1, 1, 1, 1, 2, 2, 2, 2, 3, 3,
+] as const
+
+export function effectStatLabel(effectIdx: number): string {
+  const mult = EFFECT_MULTIPLIERS[effectIdx]
+  const cat = EFFECT_CATEGORIES[effectIdx]
+  if (cat === 'health') return `+${mult} HP`
+  if (cat === 'power') return `+${mult} PWR`
+  if (cat === 'regen') return `+${mult}/s`
+  return ''
+}
+
 export const POTION_ADJECTIVES = [
   'Luminous', 'Shadow', 'Crystal', 'Ember', 'Frost',
   'Void', 'Celestial', 'Ancient', 'Mystic', 'Storm',

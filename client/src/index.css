@@ -1890,6 +1890,12 @@ button:disabled, .btn:disabled {
   letter-spacing: 0.04em;
 }
 
+.grimoire-potion-stat {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
 .grimoire-potion-recipe {
   display: flex;
   align-items: center;
@@ -1916,6 +1922,21 @@ button:disabled, .btn:disabled {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.grimoire-potion-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.grimoire-use-btn,
+.grimoire-craft-btn {
+  font-size: 0.6rem;
+  padding: 0.15rem 0.4rem;
+  white-space: nowrap;
 }
 
 /* ── Potion Use Popup ─────────────────────────── */

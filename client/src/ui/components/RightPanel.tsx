@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   EFFECT_COLORS,
   EFFECT_NAMES,
@@ -13,6 +13,7 @@ import {
   ingredientAssetUrl,
   effectAssetUrl,
   roleAssetUrl,
+  effectStatLabel,
 } from '@/game/constants'
 import { bitmapGet } from '@/game/packer'
 import type { DiscoveryData } from '@/hooks/useRecipes'
@@ -88,6 +89,8 @@ export function CraftContent({
   remainingTries,
   isGameOver,
   brewAllCount,
+  externalSlotA,
+  externalSlotB,
   onCraft,
   onBrewAll,
 }: {
@@ -96,11 +99,18 @@ export function CraftContent({
   remainingTries: number
   isGameOver: boolean
   brewAllCount: number
+  externalSlotA?: number | null
+  externalSlotB?: number | null
   onCraft: (a: number, b: number) => void
   onBrewAll: () => void
 }) {
   const [slotA, setSlotA] = useState<number | null>(null)
   const [slotB, setSlotB] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (externalSlotA !== undefined) setSlotA(externalSlotA)
+    if (externalSlotB !== undefined) setSlotB(externalSlotB)
+  }, [externalSlotA, externalSlotB])
 
   const handlePickIngredient = (id: number) => {
     if (slotA === id) { setSlotA(null); return }
@@ -336,8 +346,11 @@ export function GrimoireContent({
   hintCost,
   isGameOver,
   heroes,
+  inventory,
   onBuyHint,
   onUsePotion,
+  onCraftFromGrimoire,
+  onSelectIngredients,
 }: {
   grimoire: number
   effectQuantities: number[]
@@ -348,11 +361,20 @@ export function GrimoireContent({
   hintCost: number
   isGameOver: boolean
   heroes: GrimoireHero[]
+  inventory: InventoryItem[]
   onBuyHint: () => void
   onUsePotion: (effect: number, heroId: number, quantity: number) => void
+  onCraftFromGrimoire: (a: number, b: number) => void
+  onSelectIngredients: (a: number, b: number) => void
 }) {
   const [filter, setFilter] = useState<FilterCategory>('all')
   const [selectedEffect, setSelectedEffect] = useState<number | null>(null)
+
+  const invMap = useMemo(() => {
+    const m = new Map<number, number>()
+    for (const item of inventory) m.set(item.ingredient_id, item.quantity)
+    return m
+  }, [inventory])
 
   const discoveryMap = useMemo(() => {
     const map = new Map<number, DiscoveryData>()
@@ -366,9 +388,26 @@ export function GrimoireContent({
 
   const effects = useMemo(() => {
     const all = Array.from({ length: 30 }, (_, i) => i)
-    if (filter === 'all') return all
-    return all.filter(i => EFFECT_CATEGORIES[i] === filter)
-  }, [filter])
+    const filtered = filter === 'all' ? all : all.filter(i => EFFECT_CATEGORIES[i] === filter)
+
+    return filtered.sort((a, b) => {
+      const aDisc = bitmapGet(grimoire, a + 1) ? 1 : 0
+      const bDisc = bitmapGet(grimoire, b + 1) ? 1 : 0
+      if (aDisc !== bDisc) return bDisc - aDisc
+
+      if (aDisc && bDisc) {
+        const aQty = effectQuantities[a]
+        const bQty = effectQuantities[b]
+        if (aQty !== bQty) return bQty - aQty
+      }
+
+      const aHint = !aDisc && hintIngredients.has(a) ? 1 : 0
+      const bHint = !bDisc && hintIngredients.has(b) ? 1 : 0
+      if (aHint !== bHint) return bHint - aHint
+
+      return a - b
+    })
+  }, [filter, grimoire, effectQuantities, hintIngredients])
 
   const selectedQuantity = selectedEffect !== null ? effectQuantities[selectedEffect] : 0
 
@@ -410,11 +449,16 @@ export function GrimoireContent({
           const categoryColor = EFFECT_COLORS[category]
           const categoryLabel = category.charAt(0).toUpperCase() + category.slice(1)
 
+          const maxCraftable = discovery
+            ? Math.min(invMap.get(discovery.ingredient_a) ?? 0, invMap.get(discovery.ingredient_b) ?? 0)
+            : 0
+          const canCraft = isDiscovered && discovery && maxCraftable > 0 && !isGameOver
+
           return (
             <div
               key={effectIdx}
               className={`grimoire-potion${isDiscovered ? ' discovered' : ''}${isHinted ? ' hinted' : ''}${!isDiscovered && !isHinted ? ' locked' : ''}${canUse ? ' usable' : ''}`}
-              onClick={canUse ? () => setSelectedEffect(effectIdx) : undefined}
+              onClick={isDiscovered && discovery ? () => onSelectIngredients(discovery.ingredient_a, discovery.ingredient_b) : undefined}
             >
               <div className="grimoire-potion-icon-wrap" style={{ ['--effect-color' as string]: categoryColor }}>
                 <img
@@ -429,6 +473,9 @@ export function GrimoireContent({
                   {isDiscovered ? EFFECT_NAMES[effectIdx] : '???'}
                 </span>
                 <span className="grimoire-potion-category">{categoryLabel}</span>
+                <span className="grimoire-potion-stat" style={{ color: categoryColor }}>
+                  {effectStatLabel(effectIdx)}
+                </span>
                 {isDiscovered && discovery && (
                   <span className="grimoire-potion-recipe">
                     <img className="grimoire-potion-recipe-icon" src={ingredientAssetUrl(discovery.ingredient_a)} alt={INGREDIENT_NAMES[discovery.ingredient_a]} />
@@ -440,6 +487,24 @@ export function GrimoireContent({
                   <span className="grimoire-potion-hint">
                     Uses: {hintIngs.map(id => INGREDIENT_NAMES[id]).join(', ')}
                   </span>
+                )}
+              </div>
+              <div className="grimoire-potion-actions">
+                {canUse && (
+                  <button
+                    className="btn-sm grimoire-use-btn"
+                    onClick={(e) => { e.stopPropagation(); setSelectedEffect(effectIdx) }}
+                  >
+                    Use
+                  </button>
+                )}
+                {canCraft && (
+                  <button
+                    className="btn-sm btn-primary grimoire-craft-btn"
+                    onClick={(e) => { e.stopPropagation(); onCraftFromGrimoire(discovery.ingredient_a, discovery.ingredient_b) }}
+                  >
+                    Craft {maxCraftable}
+                  </button>
                 )}
               </div>
             </div>
