@@ -19,6 +19,7 @@ import {
   displayGold,
   displayHp,
   effectAssetUrl,
+  effectStatLabel,
   roleAssetUrl,
 } from '@/game/constants'
 import { bitmapGet, bitmapPopcount, unpackEffects } from '@/game/packer'
@@ -375,7 +376,11 @@ export function PlayScreen({ bridge }: Props) {
                   heroes={heroes.map(h => ({ id: h.id, role: h.role }))}
                   inventory={inventory}
                   onBuyHint={() => void handleClue()}
-                  onUsePotion={(eff, heroId, qty) => void handleBuff(eff, heroId, qty)}
+                  onApplyPotions={async (heroId, selections) => {
+                    for (const { effect, quantity } of selections) {
+                      await handleBuff(effect, heroId, quantity)
+                    }
+                  }}
                   onSelectIngredients={(a, b) => {
                     setSlotA(a)
                     setSlotB(b)
@@ -415,8 +420,10 @@ export function PlayScreen({ bridge }: Props) {
           heroes={heroes}
           grimoire={game?.grimoire ?? 0}
           effectQuantities={effectQuantities}
-          onApply={(effect, quantity) => {
-            void handleBuff(effect, potionTargetHeroId, quantity)
+          onApply={async (selections) => {
+            for (const { effect, quantity } of selections) {
+              await handleBuff(effect, potionTargetHeroId, quantity)
+            }
             setPotionTargetHeroId(null)
           }}
           onClose={() => setPotionTargetHeroId(null)}
@@ -438,11 +445,10 @@ function HeroPotionPopup({
   heroes: Array<{ id: number; role: number }>
   grimoire: number
   effectQuantities: number[]
-  onApply: (effect: number, quantity: number) => void
+  onApply: (selections: { effect: number; quantity: number }[]) => void
   onClose: () => void
 }) {
-  const [selectedEffect, setSelectedEffect] = useState<number | null>(null)
-  const [quantity, setQuantity] = useState(1)
+  const [selected, setSelected] = useState<Map<number, number>>(() => new Map())
 
   const hero = heroes.find((h) => h.id === heroId)
   const roleIdx = hero ? (hero.role > 0 ? hero.role - 1 : heroId) : 0
@@ -458,47 +464,69 @@ function HeroPotionPopup({
     return result
   }, [grimoire, effectQuantities])
 
-  const maxQty = selectedEffect !== null ? effectQuantities[selectedEffect] : 0
+  const togglePotion = (idx: number, delta: number) => {
+    setSelected(prev => {
+      const next = new Map(prev)
+      const cur = next.get(idx) ?? 0
+      const max = effectQuantities[idx]
+      const val = Math.max(0, Math.min(max, cur + delta))
+      if (val === 0) next.delete(idx)
+      else next.set(idx, val)
+      return next
+    })
+  }
+
+  const totalSelected = Array.from(selected.values()).reduce((a, b) => a + b, 0)
 
   return (
     <div className="potion-popup-backdrop" onClick={onClose}>
       <div className="potion-popup floating-panel" onClick={(e) => e.stopPropagation()}>
         <div className="potion-popup-header">
-          <span className="potion-popup-name">Apply Potion to {heroName}</span>
+          <span className="potion-popup-name">Apply Potions to {heroName}</span>
         </div>
         {availablePotions.length === 0 ? (
-          <p className="potion-popup-category">No potions available</p>
+          <p style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.8rem' }}>No potions available</p>
         ) : (
           <>
-            <div className="hero-potion-grid">
+            <div className="potion-popup-grid">
               {availablePotions.map(({ effectIdx, qty }) => {
                 const category = EFFECT_CATEGORIES[effectIdx]
                 const color = EFFECT_COLORS[category]
+                const count = selected.get(effectIdx) ?? 0
+                const isActive = count > 0
                 return (
-                  <button
+                  <div
                     key={effectIdx}
-                    className={`hero-potion-option${selectedEffect === effectIdx ? ' selected' : ''}`}
-                    onClick={() => { setSelectedEffect(effectIdx); setQuantity(1) }}
+                    className={`potion-popup-cell${isActive ? ' active' : ''}`}
+                    style={{ ['--effect-color' as string]: color }}
                   >
-                    <img src={effectAssetUrl(effectIdx)} alt={EFFECT_NAMES[effectIdx]} style={{ borderColor: color }} />
-                    <span className="hero-potion-option-name">{EFFECT_NAMES[effectIdx]}</span>
-                    <span className="hero-potion-option-qty" style={{ color }}>&times;{qty}</span>
-                  </button>
+                    <div className="potion-popup-cell-icon">
+                      <img src={effectAssetUrl(effectIdx)} alt={effectStatLabel(effectIdx)} style={{ borderColor: color }} />
+                    </div>
+                    <span className="potion-popup-cell-stat" style={{ color }}>{effectStatLabel(effectIdx)}</span>
+                    <span className="potion-popup-cell-stock">×{qty}</span>
+                    <div className="potion-popup-cell-qty">
+                      <button onClick={() => togglePotion(effectIdx, -1)} disabled={count <= 0}>−</button>
+                      <span>{count}</span>
+                      <button onClick={() => togglePotion(effectIdx, 1)} disabled={count >= qty}>+</button>
+                    </div>
+                  </div>
                 )
               })}
             </div>
-            {selectedEffect !== null && (
-              <div className="potion-popup-actions">
-                <div className="potion-popup-qty-control">
-                  <button onClick={() => setQuantity((q) => Math.max(1, q - 1))} disabled={quantity <= 1}>−</button>
-                  <span>{quantity}</span>
-                  <button onClick={() => setQuantity((q) => Math.min(maxQty, q + 1))} disabled={quantity >= maxQty}>+</button>
-                </div>
-                <button className="btn-primary" onClick={() => onApply(selectedEffect, quantity)}>
-                  Apply
-                </button>
-              </div>
-            )}
+            <div className="potion-popup-actions">
+              <button
+                className="btn-primary"
+                onClick={() => {
+                  if (selected.size === 0) return
+                  onApply(Array.from(selected.entries()).map(([effect, quantity]) => ({ effect, quantity })))
+                }}
+                disabled={totalSelected === 0}
+              >
+                Apply {totalSelected > 0 ? `${totalSelected} to ${heroName}` : ''}
+              </button>
+              <button onClick={onClose}>Cancel</button>
+            </div>
           </>
         )}
       </div>
@@ -640,24 +668,20 @@ function HeroSlot({
         </div>
       </div>
       <div className="hero-card-btn-row">
-        {isIdle && !lootReady && (
-          <button
-            className="btn-primary btn-sm"
-            onClick={(e) => { e.stopPropagation(); onExplore(hero.id) }}
-            disabled={isGameOver}
-          >
-            Explore
-          </button>
-        )}
-        {lootReady && (
-          <button
-            className="btn-primary btn-sm btn-loot"
-            onClick={(e) => { e.stopPropagation(); onClaim(hero.id) }}
-            disabled={isGameOver}
-          >
-            Claim
-          </button>
-        )}
+        <button
+          className="btn-primary btn-sm"
+          onClick={(e) => { e.stopPropagation(); onExplore(hero.id) }}
+          disabled={isGameOver || isExploring || displayHpVal <= 0}
+        >
+          Explore
+        </button>
+        <button
+          className="btn-primary btn-sm btn-loot"
+          onClick={(e) => { e.stopPropagation(); onClaim(hero.id) }}
+          disabled={isGameOver || !lootReady}
+        >
+          Claim
+        </button>
         <button
           className="btn-sm btn-potion"
           onClick={(e) => { e.stopPropagation(); onApplyPotion(hero.id) }}
