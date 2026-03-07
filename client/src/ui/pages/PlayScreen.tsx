@@ -27,7 +27,7 @@ interface Props {
 export function PlayScreen({ bridge }: Props) {
   const { client } = useDojo()
   const { gameId, navigate } = useNavigationStore()
-  const { account, address } = useAccount()
+  const { account } = useAccount()
   const { game } = useGame(gameId)
   const heroes = useHeroes(gameId)
   const inventory = useInventory(gameId)

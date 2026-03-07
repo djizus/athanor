@@ -17,7 +17,7 @@ export function HomePage() {
   const { address, account } = useAccount()
   const { connect, connectors } = useConnect()
   const games = useGameTokens(address)
-  const { displayName, isUsername } = usePlayerName(address)
+  const { displayName } = usePlayerName(address)
   const rank = usePlayerRank(address)
   const [isCreatingGame, setIsCreatingGame] = useState(false)
   const [error, setError] = useState<string | null>(null)
