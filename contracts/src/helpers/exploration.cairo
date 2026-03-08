@@ -102,15 +102,15 @@ fn trap_damage_range(zone_id: u8) -> (u32, u32) {
 
 fn gold_reward_range(zone_id: u8) -> (u32, u32) {
     if zone_id == 0 {
-        (200, 500)
+        (600, 1500)
     } else if zone_id == 1 {
-        (300, 700)
+        (500, 1200)
     } else if zone_id == 2 {
         (400, 1000)
     } else if zone_id == 3 {
-        (500, 1200)
+        (300, 700)
     } else {
-        (600, 1500)
+        (200, 500)
     }
 }
 

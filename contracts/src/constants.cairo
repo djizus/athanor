@@ -46,8 +46,8 @@ pub const ZONE_3_DRAIN: u16 = 400; // 4.00 HP/s (x100)
 pub const ZONE_4_DEPTH: u16 = 90;
 pub const ZONE_4_DRAIN: u16 = 500; // 5.00 HP/s (x100)
 
-// Maximum exploration depth (was 300, scaled down 7× to match new game speed)
-pub const MAX_DEPTH: u16 = 60;
+// Maximum exploration depth
+pub const MAX_DEPTH: u16 = 30;
 
 // --- Hero configuration ---
 
