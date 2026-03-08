@@ -692,6 +692,7 @@ export function PlayScreen() {
         selectedHeroId={selectedHeroId}
         isGameOver={isGameOver}
         onExplore={(heroId: number, zoneId: number) => void handleExplore(heroId, zoneId)}
+        onSelectHero={(id) => setSelectedHeroId(id)}
       />
 
       <StatusHUD
