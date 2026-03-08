@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type PendingTxAction = 'craft' | 'craftBatch' | 'clue' | 'buff' | 'explore' | 'claim' | 'recruit' | 'surrender'
+export type PendingTxAction = 'craft' | 'crafts' | 'clue' | 'buff' | 'explore' | 'claim' | 'recruit' | 'surrender'
 
 export type PendingTx = {
   id: string

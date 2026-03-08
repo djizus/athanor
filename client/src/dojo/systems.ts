@@ -1,6 +1,7 @@
 import {
   type AccountInterface,
   type BigNumberish,
+  type Call,
   CallData,
   CairoOption,
   CairoOptionVariant,
@@ -61,7 +62,18 @@ export function extractGameId(receipt: { events?: { keys?: string[]; data?: stri
 export function createSystemCalls(manifest: Manifest) {
   const playAddress = getContractAddress(manifest, 'ATHANOR-Play')
 
+  const vrfCalls = (): Call[] => [{
+    contractAddress: getVrfAddress(),
+    entrypoint: "request_random",
+    calldata: CallData.compile({
+      caller: playAddress,
+      source: { type: 0, address: playAddress },
+    }),
+  }]
+
   return {
+    // --- Direct-execute (used in HomePage, need receipt / account.address) ---
+
     mintGame: (account: AccountInterface, username: string, settingsId: number = 0) =>
       account.execute([
         {
@@ -88,14 +100,7 @@ export function createSystemCalls(manifest: Manifest) {
 
     create: (account: AccountInterface, game_id: BigNumberish) =>
       account.execute([
-        {
-          contractAddress: getVrfAddress(),
-          entrypoint: "request_random",
-          calldata: CallData.compile({
-            caller: playAddress,
-            source: { type: 0, address: playAddress },
-          }),
-        },
+        ...vrfCalls(),
         {
           contractAddress: playAddress,
           entrypoint: 'create',
@@ -103,155 +108,84 @@ export function createSystemCalls(manifest: Manifest) {
         },
       ]),
 
-    clue: (account: AccountInterface, game_id: BigNumberish) =>
-      account.execute([
-        {
-          contractAddress: getVrfAddress(),
-          entrypoint: "request_random",
-          calldata: CallData.compile({
-            caller: playAddress,
-            source: { type: 0, address: playAddress },
-          }),
-        },
-        {
-          contractAddress: playAddress,
-          entrypoint: 'clue',
-          calldata: [game_id],
-        },
-      ]),
+    // --- Call builders (return Call[] for tx batcher) ---
+
+    clue: (game_id: BigNumberish): Call[] => [
+      ...vrfCalls(),
+      { contractAddress: playAddress, entrypoint: 'clue', calldata: [game_id] },
+    ],
 
     craft: (
-      account: AccountInterface,
       game_id: BigNumberish,
       ingredient_a: BigNumberish,
       ingredient_b: BigNumberish,
       quantity: BigNumberish = 1,
-    ) =>
-      account.execute([
-        {
-          contractAddress: getVrfAddress(),
-          entrypoint: "request_random",
-          calldata: CallData.compile({
-            caller: playAddress,
-            source: { type: 0, address: playAddress },
-          }),
-        },
-        {
-          contractAddress: playAddress,
-          entrypoint: 'craft',
-          calldata: [game_id, Number(ingredient_a) + 1, Number(ingredient_b) + 1, quantity],
-        },
-      ]),
+    ): Call[] => [
+      ...vrfCalls(),
+      {
+        contractAddress: playAddress,
+        entrypoint: 'craft',
+        calldata: [game_id, Number(ingredient_a) + 1, Number(ingredient_b) + 1, quantity],
+      },
+    ],
 
-    crafts: (
-      account: AccountInterface,
-      game_id: BigNumberish,
-      pairs: [number, number][],
-    ) => {
+    crafts: (game_id: BigNumberish, pairs: [number, number][]): Call[] => {
       const ingredients = pairs.flatMap(([a, b]) => [a + 1, b + 1])
-      return account.execute([
-        {
-          contractAddress: getVrfAddress(),
-          entrypoint: "request_random",
-          calldata: CallData.compile({
-            caller: playAddress,
-            source: { type: 0, address: playAddress },
-          }),
-        },
+      return [
+        ...vrfCalls(),
         {
           contractAddress: playAddress,
           entrypoint: 'crafts',
           calldata: CallData.compile({ game_id, ingredients }),
         },
-      ])
+      ]
     },
 
-    recruit: (account: AccountInterface, game_id: BigNumberish) =>
-      account.execute([
-        {
-          contractAddress: getVrfAddress(),
-          entrypoint: "request_random",
-          calldata: CallData.compile({
-            caller: playAddress,
-            source: { type: 0, address: playAddress },
-          }),
-        },
-        {
-          contractAddress: playAddress,
-          entrypoint: 'recruit',
-          calldata: [game_id],
-        },
-      ]),
+    recruit: (game_id: BigNumberish): Call[] => [
+      ...vrfCalls(),
+      { contractAddress: playAddress, entrypoint: 'recruit', calldata: [game_id] },
+    ],
 
     buff: (
-      account: AccountInterface,
       game_id: BigNumberish,
       character_id: BigNumberish,
       effect: BigNumberish,
       quantity: BigNumberish = 1,
-    ) =>
-      account.execute([
-        {
-          contractAddress: playAddress,
-          entrypoint: 'buff',
-          calldata: [game_id, character_id, Number(effect) + 1, quantity],
-        },
-      ]),
+    ): Call[] => [
+      {
+        contractAddress: playAddress,
+        entrypoint: 'buff',
+        calldata: [game_id, character_id, Number(effect) + 1, quantity],
+      },
+    ],
 
     buffs: (
-      account: AccountInterface,
       game_id: BigNumberish,
       character_id: BigNumberish,
       effects: number[],
-    ) => {
+    ): Call[] => {
       const effectIds = effects.map(e => e + 1)
-      return account.execute([
+      return [
         {
           contractAddress: playAddress,
           entrypoint: 'buffs',
           calldata: CallData.compile({ game_id, character_id, effects: effectIds }),
         },
-      ])
+      ]
     },
 
-    explore: (account: AccountInterface, game_id: BigNumberish, character_id: BigNumberish, zone_id: BigNumberish) =>
-      account.execute([
-        {
-          contractAddress: getVrfAddress(),
-          entrypoint: "request_random",
-          calldata: CallData.compile({
-            caller: playAddress,
-            source: { type: 0, address: playAddress },
-          }),
-        },
-        {
-          contractAddress: playAddress,
-          entrypoint: 'claim',
-          calldata: [game_id, character_id],
-        },
-        {
-          contractAddress: playAddress,
-          entrypoint: 'explore',
-          calldata: [game_id, character_id, zone_id],
-        },
-      ]),
+    explore: (game_id: BigNumberish, character_id: BigNumberish, zone_id: BigNumberish): Call[] => [
+      ...vrfCalls(),
+      { contractAddress: playAddress, entrypoint: 'claim', calldata: [game_id, character_id] },
+      { contractAddress: playAddress, entrypoint: 'explore', calldata: [game_id, character_id, zone_id] },
+    ],
 
-    claim: (account: AccountInterface, game_id: BigNumberish, character_id: BigNumberish) =>
-      account.execute([
-        {
-          contractAddress: playAddress,
-          entrypoint: 'claim',
-          calldata: [game_id, character_id],
-        },
-      ]),
+    claim: (game_id: BigNumberish, character_id: BigNumberish): Call[] => [
+      { contractAddress: playAddress, entrypoint: 'claim', calldata: [game_id, character_id] },
+    ],
 
-    surrender: (account: AccountInterface, game_id: BigNumberish) =>
-      account.execute([
-        {
-          contractAddress: playAddress,
-          entrypoint: 'surrender',
-          calldata: [game_id],
-        },
-      ]),
+    surrender: (game_id: BigNumberish): Call[] => [
+      { contractAddress: playAddress, entrypoint: 'surrender', calldata: [game_id] },
+    ],
   }
 }

@@ -61,6 +61,7 @@ interface JourneyMapProps {
   onExplore: (heroId: number, zoneId: number) => void
   onSelectHero: (heroId: number) => void
   onClaim: (heroId: number) => void
+  onReturnComplete: (heroId: number) => void
 }
 
 const RING_NORMAL = { size: 90, radius: 40, stroke: 4 }
@@ -599,6 +600,7 @@ export function JourneyMap({
   onExplore,
   onSelectHero,
   onClaim,
+  onReturnComplete,
 }: JourneyMapProps) {
   const [hoveredZone, setHoveredZone] = useState<number | null>(null)
   const particlesRef = useRef(Array.from({ length: 20 }, (_, i) => i))
@@ -764,6 +766,7 @@ export function JourneyMap({
               initial={{ left: `${zonePos.x}%`, top: `${zonePos.y}%` }}
               animate={{ left: `${athanorPos.x}%`, top: `${athanorPos.y}%` }}
               transition={{ duration: duration / 1000, ease: 'linear' }}
+              onAnimationComplete={() => onReturnComplete(hero.hero_id)}
             >
               <HeroToken hero={hero} disabled />
             </motion.div>

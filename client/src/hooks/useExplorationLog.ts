@@ -66,7 +66,6 @@ const WALK_RATIO = 25
 const WALK_BASE = 100
 
 const TICK_INTERVAL_MS = 1000
-const AUTO_CLAIM_ANIM_MS = 800
 
 interface QueuedEvent {
   entry: LogEntry
@@ -294,34 +293,6 @@ export function useExplorationLog(
           }
           return next
         })
-
-        const returnTimer = window.setTimeout(() => {
-          console.log(`[DrainTick] hero=${heroId} RETURN_COMPLETE`)
-          append({ ts: Date.now(), text: `${heroName} arrived at Athanor`, kind: 'exploration' })
-
-          setHeroOverrides((prev) => {
-            const next = new Map(prev)
-            const prevOv = prev.get(heroId)
-            if (!prevOv) return prev
-            const hasLoot = prevOv.bagGold > 0 || prevOv.bagIngredients.some(q => q > 0)
-            next.set(heroId, {
-              ...prevOv,
-              returning: false,
-              zoneIndex: -1,
-              autoClaimAnimating: hasLoot,
-            })
-            return next
-          })
-
-          const cleanupTimer = window.setTimeout(() => {
-            console.log(`[DrainTick] hero=${heroId} CLEANUP → deleting override`)
-            setHeroOverrides((p) => { const n = new Map(p); n.delete(heroId); return n })
-            returnTimersRef.current.delete(heroId)
-            heroExpeditionRef.current.delete(heroId)
-          }, AUTO_CLAIM_ANIM_MS + 3000)
-          returnTimersRef.current.set(heroId, cleanupTimer)
-        }, walkDurationMs)
-        returnTimersRef.current.set(heroId, returnTimer)
       }
     }
 
@@ -469,5 +440,27 @@ export function useExplorationLog(
     }
   }, [gameId, toriiClient, append, enqueue])
 
-  return { logs, pushInfo, heroOverrides }
+  const completeReturn = useCallback((heroId: number) => {
+    const heroName = heroMapRef.current.get(heroId) ?? `Hero ${heroId}`
+    console.log(`[ReturnComplete] hero=${heroId}`)
+    append({ ts: Date.now(), text: `${heroName} arrived at Athanor`, kind: 'exploration' })
+
+    setHeroOverrides((prev) => {
+      const next = new Map(prev)
+      const prevOv = prev.get(heroId)
+      if (!prevOv) return prev
+      next.set(heroId, { ...prevOv, returning: false, zoneIndex: -1 })
+      return next
+    })
+
+    const cleanupTimer = window.setTimeout(() => {
+      console.log(`[ReturnComplete] hero=${heroId} CLEANUP → deleting override`)
+      setHeroOverrides((p) => { const n = new Map(p); n.delete(heroId); return n })
+      returnTimersRef.current.delete(heroId)
+      heroExpeditionRef.current.delete(heroId)
+    }, 3000)
+    returnTimersRef.current.set(heroId, cleanupTimer)
+  }, [append])
+
+  return { logs, pushInfo, heroOverrides, completeReturn }
 }

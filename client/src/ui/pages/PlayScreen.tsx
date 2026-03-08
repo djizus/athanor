@@ -38,6 +38,7 @@ import type { PanelMode } from '@/ui/components/RightPanel'
 import { SettingsOverlay } from '@/ui/components/SettingsOverlay'
 import { TutorialOverlay } from '@/ui/components/TutorialOverlay'
 import { useSettingsStore } from '@/stores/settingsStore'
+import { enqueueTx, flushTxQueue, setTxBatcherAccount } from '@/dojo/txBatcher'
 
 function computeOptimisticHp(
   hero: { health: number; max_health: number; regen: number; available_at: number },
@@ -256,7 +257,7 @@ export function PlayScreen() {
     }
   }, [addFloatingText, onExplorationZoneUpdate])
 
-  const { logs, pushInfo, heroOverrides } = useExplorationLog(gameId ?? null, heroes, onExplorationEvent)
+  const { logs, pushInfo, heroOverrides, completeReturn } = useExplorationLog(gameId ?? null, heroes, onExplorationEvent)
   const logsEndRef = useRef<HTMLDivElement>(null)
 
   const syncFingerprint = useMemo(() => {
@@ -286,6 +287,14 @@ export function PlayScreen() {
     const timer = window.setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000)
     return () => window.clearInterval(timer)
   }, [])
+
+  useEffect(() => {
+    if (account) setTxBatcherAccount(account)
+    return () => {
+      void flushTxQueue()
+      setTxBatcherAccount(null)
+    }
+  }, [account])
 
   useEffect(() => {
     const prev = lastSyncFingerprintRef.current
@@ -441,7 +450,7 @@ export function PlayScreen() {
     const t = txToast('Sending expedition')
     let success = false
     try {
-      await client.explore(account, gameId, characterId, zoneId)
+      await enqueueTx(client.explore(gameId, characterId, zoneId))
       success = true
       t.success()
     } catch (e) {
@@ -481,7 +490,7 @@ export function PlayScreen() {
     const t = txToast('Claiming loot')
     let success = false
     try {
-      await client.claim(account, gameId, characterId)
+      await enqueueTx(client.claim(gameId, characterId))
       success = true
       t.success()
       setBrewRefreshKey(k => k + 1)
@@ -514,7 +523,7 @@ export function PlayScreen() {
     const t = txToast('Brewing potion')
     let success = false
     try {
-      await client.craft(account, gameId, lo, hi)
+      await enqueueTx(client.craft(gameId, lo, hi))
       success = true
       t.success()
       soundManager.playSfx('brew-success', 0.4)
@@ -555,7 +564,7 @@ export function PlayScreen() {
     }
     addPendingTx({
       id: pendingId,
-      action: 'craftBatch',
+      action: 'crafts',
       inventoryDelta,
       goldDelta: 0,
       effectsDelta: new Map(),
@@ -563,7 +572,7 @@ export function PlayScreen() {
     const t = txToast(`Brewing ${pairs.length} potions`)
     let success = false
     try {
-      await client.crafts(account, gameId, pairs)
+      await enqueueTx(client.crafts(gameId, pairs))
       success = true
       t.success()
       soundManager.playSfx('brew-success', 0.4)
@@ -592,7 +601,7 @@ export function PlayScreen() {
     const t = txToast('Buying hint')
     let success = false
     try {
-      await client.clue(account, gameId)
+      await enqueueTx(client.clue(gameId))
       success = true
       t.success()
       soundManager.playSfx('notification', 0.4)
@@ -621,7 +630,7 @@ export function PlayScreen() {
     const t = txToast('Recruiting hero')
     let success = false
     try {
-      await client.recruit(account, gameId)
+      await enqueueTx(client.recruit(gameId))
       success = true
       t.success()
       soundManager.playSfx('recruit', 0.6)
@@ -704,7 +713,7 @@ export function PlayScreen() {
   const endedAt = game && Number(game.ended_at) > 0 ? Number(game.ended_at) : now
   const elapsedSeconds = Math.max(0, endedAt - startedAt)
   const isCraftPending = isActionPending('craft')
-  const isCraftBatchPending = isActionPending('craftBatch')
+  const isCraftBatchPending = isActionPending('crafts')
   const isHintPending = isActionPending('clue')
   const isBuffPending = isActionPending('buff')
   const isRecruitPending = isActionPending('recruit')
@@ -764,6 +773,7 @@ export function PlayScreen() {
         onExplore={(heroId: number, zoneId: number) => void handleExplore(heroId, zoneId)}
         onSelectHero={(id) => setSelectedHeroId(id)}
         onClaim={(id) => void handleClaim(id)}
+        onReturnComplete={completeReturn}
       />
 
       <StatusHUD
@@ -969,7 +979,7 @@ export function PlayScreen() {
             })
             let success = false
             try {
-              await client.surrender(account, gameId)
+              await enqueueTx(client.surrender(gameId))
               success = true
               setSurrendered(true)
               setSettingsOpen(false)
@@ -1060,7 +1070,7 @@ export function PlayScreen() {
             const t = txToast(`Applying ${allEffects.length} potions`)
             let success = false
             try {
-              await client.buffs(account, gameId, potionTargetHeroId, allEffects)
+              await enqueueTx(client.buffs(gameId, potionTargetHeroId, allEffects))
               success = true
               t.success()
               soundManager.playSfx('potion-apply', 0.5)
