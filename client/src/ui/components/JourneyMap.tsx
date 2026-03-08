@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion'
 import {
   ZONE_NAMES,
@@ -154,16 +154,28 @@ function HpRing({ pct, color, cfg, selected }: { pct: number; color: string; cfg
   )
 }
 
-function HeroToken({ hero, small, selected, onClick, onClaim }: {
-  hero: HeroData; small?: boolean; selected?: boolean
+function zoneFromIngredients(ingredients: number[] | null): number {
+  if (!ingredients) return -1
+  for (let i = 0; i < ingredients.length; i++) {
+    if (ingredients[i] > 0) return Math.floor(i / DEFAULT_INGREDIENTS_PER_ZONE)
+  }
+  return -1
+}
+
+function HeroToken({ hero, small, selected, disabled, onClick, onClaim }: {
+  hero: HeroData; small?: boolean; selected?: boolean; disabled?: boolean
   onClick?: () => void; onClaim?: () => void
 }) {
   const [claimBurst, setClaimBurst] = useState(false)
+  const [pulsingKeys, setPulsingKeys] = useState<Set<string>>(new Set())
   const frameRef = useRef<HTMLDivElement>(null)
+  const prevItemsRef = useRef<Map<string, number>>(new Map())
   const roleIdx = hero.role > 0 ? hero.role - 1 : hero.hero_id
   const hpPct = hero.max_health > 0 ? Math.min(100, (hero.health / hero.max_health) * 100) : 0
   const hpColor = hpPct > 50 ? 'var(--accent-green)' : hpPct > 25 ? '#ff9800' : 'var(--accent-red)'
   const ringCfg = small ? RING_SMALL : RING_NORMAL
+  const lootZone = zoneFromIngredients(hero.ingredients)
+  const orbitColor = lootZone >= 0 ? ZONE_COLORS[lootZone] : undefined
 
   const orbitItems = useMemo(() => {
     const items: { key: string; src: string; qty: number; alt: string }[] = []
@@ -179,6 +191,28 @@ function HeroToken({ hero, small, selected, onClick, onClaim }: {
     }
     return items.slice(0, 6)
   }, [hero.gold, hero.ingredients])
+
+  useEffect(() => {
+    const prev = prevItemsRef.current
+    const newPulsing = new Set<string>()
+    for (const item of orbitItems) {
+      const prevQty = prev.get(item.key)
+      if (prevQty != null && item.qty > prevQty) {
+        newPulsing.add(item.key)
+      }
+    }
+    const nextMap = new Map<string, number>()
+    for (const item of orbitItems) {
+      nextMap.set(item.key, item.qty)
+    }
+    prevItemsRef.current = nextMap
+
+    if (newPulsing.size > 0) {
+      setPulsingKeys(newPulsing)
+      const timer = setTimeout(() => setPulsingKeys(new Set()), 400)
+      return () => clearTimeout(timer)
+    }
+  }, [orbitItems])
 
   const hasLoot = orbitItems.length > 0
   const orbitRadius = small ? 42 : 56
@@ -198,11 +232,11 @@ function HeroToken({ hero, small, selected, onClick, onClaim }: {
 
   return (
     <motion.div
-      className={`hero-token${small ? ' hero-token-sm' : ''}${selected ? ' hero-token-selected' : ''}`}
+      className={`hero-token${small ? ' hero-token-sm' : ''}${selected ? ' hero-token-selected' : ''}${disabled ? ' hero-token-disabled' : ''}`}
       layoutId={`journey-hero-${hero.hero_id}`}
       data-hero-id={hero.hero_id}
       transition={{ type: 'spring', stiffness: 200, damping: 25 }}
-      onClick={(e) => { e.stopPropagation(); onClick?.() }}
+      onClick={disabled ? undefined : (e) => { e.stopPropagation(); onClick?.() }}
     >
       <div
         ref={frameRef}
@@ -226,38 +260,49 @@ function HeroToken({ hero, small, selected, onClick, onClaim }: {
         {hasLoot && (
           <div
             className={`hero-token-orbit${hero.lootReady ? ' hero-token-orbit-ready' : ''}${hero.isClaimPending ? ' hero-token-orbit-pending' : ''}`}
+            style={orbitColor ? { ['--orbit-color' as string]: orbitColor } : undefined}
             onClick={hero.lootReady ? handleClaim : undefined}
             role={hero.lootReady ? 'button' : undefined}
           >
-            {orbitItems.map((item, i) => {
-              const angle = (2 * Math.PI * i) / orbitItems.length - Math.PI / 2
-              const x = Math.cos(angle) * orbitRadius
-              const y = Math.sin(angle) * orbitRadius
-              return (
-                <span
-                  key={item.key}
-                  className="hero-token-orbit-item"
-                  style={{
-                    width: `${itemSize}px`,
-                    height: `${itemSize}px`,
-                    left: `calc(50% + ${x}px)`,
-                    top: `calc(50% + ${y}px)`,
-                  }}
-                  title={item.alt + (item.qty > 1 ? ` x${item.qty}` : '')}
-                >
-                  <span className="hero-token-orbit-inner">
-                    <img
-                      className="hero-token-orbit-icon"
-                      src={item.src}
-                      alt={item.alt}
-                    />
-                    <span className="hero-token-orbit-qty">
-                      {item.key === 'gold' ? displayGold(item.qty) : item.qty}
+            <AnimatePresence>
+              {orbitItems.map((item, i) => {
+                const x = orbitRadius
+                const y = (i - (orbitItems.length - 1) / 2) * (itemSize + 4)
+                return (
+                  <motion.span
+                    key={item.key}
+                    className={`hero-token-orbit-item${pulsingKeys.has(item.key) ? ' orbit-item-pulse' : ''}`}
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{
+                      scale: 1,
+                      opacity: 1,
+                      left: `calc(50% + ${x}px)`,
+                      top: `calc(50% + ${y}px)`,
+                    }}
+                    exit={{ scale: 0, opacity: 0 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+                    style={{
+                      width: `${itemSize}px`,
+                      height: `${itemSize}px`,
+                      position: 'absolute',
+                      transform: 'translate(-50%, -50%)',
+                    }}
+                    title={item.alt + (item.qty > 1 ? ` x${item.qty}` : '')}
+                  >
+                    <span className="hero-token-orbit-inner">
+                      <img
+                        className="hero-token-orbit-icon"
+                        src={item.src}
+                        alt={item.alt}
+                      />
+                      <span className="hero-token-orbit-qty">
+                        {item.key === 'gold' ? displayGold(item.qty) : item.qty}
+                      </span>
                     </span>
-                  </span>
-                </span>
-              )
-            })}
+                  </motion.span>
+                )
+              })}
+            </AnimatePresence>
           </div>
         )}
       </div>
@@ -508,15 +553,34 @@ export function JourneyMap({
     for (let i = -1; i < 5; i++) map.set(i, [])
 
     for (const hero of heroes) {
+      const override = heroOverrides?.get(hero.hero_id)
+      if (override?.returning) continue
+
       const pos = heroPositions.get(hero.hero_id)
       const trackerZone = pos ? pos.zoneIndex : -1
       const isActivelyExploring = pos != null && pos.zoneIndex >= 0
-      const override = isActivelyExploring ? heroOverrides?.get(hero.hero_id) : undefined
-      const zone = override?.zoneIndex ?? (pos?.returning ? -1 : trackerZone)
+      const activeOverride = isActivelyExploring ? override : undefined
+      const zone = activeOverride?.zoneIndex ?? trackerZone
       map.get(zone >= 0 && zone < 5 ? zone : -1)!.push(hero)
     }
     return map
   }, [heroes, heroPositions, heroOverrides])
+
+  const returningHeroes = useMemo(() => {
+    const list: { hero: HeroData; fromZone: number; startedAt: number; duration: number }[] = []
+    for (const hero of heroes) {
+      const override = heroOverrides?.get(hero.hero_id)
+      if (override?.returning && override.returnStartedAt && override.returnDuration) {
+        list.push({
+          hero,
+          fromZone: override.zoneIndex ?? 0,
+          startedAt: override.returnStartedAt,
+          duration: override.returnDuration,
+        })
+      }
+    }
+    return list
+  }, [heroes, heroOverrides])
 
   const textsByZone = useMemo(() => {
     const map = new Map<number, FloatingTextAnim[]>()
@@ -535,7 +599,7 @@ export function JourneyMap({
   const activeZones = useMemo(() => {
     const set = new Set<number>()
     for (const [, pos] of heroPositions) {
-      if (!pos.returning && pos.zoneIndex >= 0) {
+      if (pos.zoneIndex >= 0) {
         set.add(pos.zoneIndex)
       }
     }
@@ -544,10 +608,12 @@ export function JourneyMap({
 
   const selectedHero = heroes.find(h => h.hero_id === selectedHeroId)
   const selectedPos = heroPositions.get(selectedHeroId)
+  const selectedOverride = heroOverrides?.get(selectedHeroId)
   const canSendSelected = selectedHero != null
     && !isGameOver
     && selectedHero.health > 0
-    && (!selectedPos || (selectedPos.zoneIndex === -1 && !selectedPos.returning))
+    && !selectedOverride?.returning
+    && (!selectedPos || selectedPos.zoneIndex === -1)
 
   const origin = NODE_POSITIONS.lineOrigin
   const zones = NODE_POSITIONS.zones
@@ -624,6 +690,22 @@ export function JourneyMap({
           onFloatingTextComplete={onFloatingTextComplete}
           hintText={canSendSelected ? `Select a zone to send ${ROLE_NAMES[selectedHero!.role > 0 ? selectedHero!.role - 1 : selectedHeroId] ?? 'hero'}` : null}
         />
+
+        {returningHeroes.map(({ hero, fromZone, duration }) => {
+          const zonePos = zones[fromZone] ?? zones[0]
+          const athanorPos = NODE_POSITIONS.athanor
+          return (
+            <motion.div
+              key={`return-${hero.hero_id}`}
+              className="hero-returning-wrapper"
+              initial={{ left: `${zonePos.x}%`, top: `${zonePos.y}%` }}
+              animate={{ left: `${athanorPos.x}%`, top: `${athanorPos.y}%` }}
+              transition={{ duration: duration / 1000, ease: 'linear' }}
+            >
+              <HeroToken hero={hero} disabled />
+            </motion.div>
+          )
+        })}
       </LayoutGroup>
     </div>
   )

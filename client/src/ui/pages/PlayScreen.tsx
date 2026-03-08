@@ -11,7 +11,6 @@ import { useHints } from '@/hooks/useHints'
 import { useExplorationLog } from '@/hooks/useExplorationLog'
 import type { RawExplorationEvent, HeroOverride } from '@/hooks/useExplorationLog'
 import { useExpeditionTracker } from '@/hooks/useExpeditionTracker'
-import type { HeroPosition } from '@/hooks/useExpeditionTracker'
 import { useNavigationStore } from '@/stores/navigationStore'
 import { usePendingTxStore } from '@/stores/pendingTxStore'
 import { txToast } from '@/stores/toastStore'
@@ -800,7 +799,6 @@ export function PlayScreen() {
                   isGameOver={isGameOver}
                   now={now}
                   heroOverrides={heroOverrides}
-                  heroPositions={heroPositions}
                   onSelectHero={(id) => setSelectedHeroId(id)}
                   onRecruit={() => void handleRecruit()}
                   availablePotionTypes={availablePotionTypes}
@@ -1205,7 +1203,6 @@ interface HeroSlotProps {
   isGameOver: boolean
   now: number
   heroOverrides: Map<number, HeroOverride>
-  heroPositions: Map<number, HeroPosition>
   onSelectHero: (heroId: number) => void
   onRecruit: () => void
   availablePotionTypes: string[]
@@ -1223,7 +1220,6 @@ function HeroSlot({
   isGameOver,
   now,
   heroOverrides,
-  heroPositions,
   onSelectHero,
   onRecruit,
   availablePotionTypes,
@@ -1287,9 +1283,8 @@ function HeroSlot({
   const isExploring = remaining > 0
   const lootReady = isIdle && (hero.gold > 0 || (hero.ingredients != null && hero.ingredients !== 0n))
 
-  const heroPos = heroPositions.get(hero.id)
   const override = isExploring ? heroOverrides.get(hero.id) : undefined
-  const isReturning = isExploring && (override?.returning === true || heroPos?.returning === true)
+  const isReturning = isExploring && override?.returning === true
 
   let statusText = 'Ready'
   let statusClass = ''

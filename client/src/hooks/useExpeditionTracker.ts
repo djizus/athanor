@@ -6,7 +6,6 @@ export interface HeroPosition {
 }
 
 interface HeroExpedition {
-  startTime: number
   lastKnownZone: number
 }
 
@@ -18,10 +17,7 @@ export function useExpeditionTracker(
   const [version, setVersion] = useState(0)
 
   const onExpeditionStart = useCallback((heroId: number, zoneId: number = 0) => {
-    expeditions.current.set(heroId, {
-      startTime: Math.floor(Date.now() / 1000),
-      lastKnownZone: zoneId,
-    })
+    expeditions.current.set(heroId, { lastKnownZone: zoneId })
     setVersion(v => v + 1)
   }, [])
 
@@ -44,7 +40,7 @@ export function useExpeditionTracker(
       if (isExploring) {
         activeHeroes.add(hero.id)
         if (!expeditions.current.has(hero.id)) {
-          expeditions.current.set(hero.id, { startTime: now, lastKnownZone: 0 })
+          expeditions.current.set(hero.id, { lastKnownZone: 0 })
         }
       }
 
@@ -55,22 +51,10 @@ export function useExpeditionTracker(
       }
 
       const expedition = expeditions.current.get(hero.id)
-      if (expedition) {
-        const totalTime = availableAt - expedition.startTime
-        const forwardTime = Math.floor(totalTime * 2 / 3)
-        const elapsed = now - expedition.startTime
-
-        const returning = elapsed >= forwardTime
-        positions.set(hero.id, { zoneIndex: expedition.lastKnownZone, returning })
-      } else {
-        const remaining = availableAt - now
-        const totalGuess = remaining * 3
-        const forwardGuess = Math.floor(totalGuess * 2 / 3)
-        const elapsedGuess = totalGuess - remaining
-        const returning = elapsedGuess >= forwardGuess
-
-        positions.set(hero.id, { zoneIndex: 0, returning })
-      }
+      positions.set(hero.id, {
+        zoneIndex: expedition?.lastKnownZone ?? 0,
+        returning: false,
+      })
     }
 
     for (const heroId of expeditions.current.keys()) {
