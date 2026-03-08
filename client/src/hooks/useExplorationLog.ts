@@ -195,7 +195,7 @@ export function useExplorationLog(
   }, [heroes])
 
   const startExploration = useCallback((heroId: number, zoneId: number, hp: number) => {
-    console.log(`[StartExploration] hero=${heroId} zone=${zoneId} hp=${hp}`)
+    console.log(`[StartExploration] ${heroMapRef.current.get(heroId) ?? heroId} zone=${zoneId} hp=${hp}`)
     heroStartHpRef.current.set(heroId, hp)
     historicalFetchedRef.current.delete(heroId)
     setHeroOverrides((prev) => {
@@ -238,7 +238,7 @@ export function useExplorationLog(
             if (event.rawEvent!.kind === 'ingredient') {
               bagIngredients[event.rawEvent!.value] = (bagIngredients[event.rawEvent!.value] ?? 0) + 1
             }
-            console.log(`[DrainTick] hero=${heroId} depth=${depth} EVENT kind=${event.rawEvent!.kind} value=${event.rawEvent!.value} hpAfter=${event.rawEvent!.hpAfter} prevHealth=${prevHealth}`)
+            console.log(`[DrainTick] ${heroMapRef.current.get(heroId) ?? heroId} depth=${depth} EVENT kind=${event.rawEvent!.kind} value=${event.rawEvent!.value} hpAfter=${event.rawEvent!.hpAfter} prevHealth=${prevHealth}`)
             next.set(heroId, {
               health: event.rawEvent!.hpAfter,
               zoneIndex: event.rawEvent!.zoneId,
@@ -259,7 +259,7 @@ export function useExplorationLog(
             const zone = prevOv.zoneIndex ?? 0
             const drain = ZONE_DRAIN[zone] ?? 1
             const newHp = Math.max(0, prevOv.health - drain)
-            console.log(`[DrainTick] hero=${heroId} depth=${depth} DRAIN zone=${zone} drain=${drain} ${prevOv.health} → ${newHp}`)
+            console.log(`[DrainTick] ${heroMapRef.current.get(heroId) ?? heroId} depth=${depth} DRAIN zone=${zone} drain=${drain} ${prevOv.health} → ${newHp}`)
             next.set(heroId, { ...prevOv, health: newHp })
           }
           return next
@@ -282,7 +282,7 @@ export function useExplorationLog(
 
         const heroName = heroMapRef.current.get(heroId) ?? `Hero ${heroId}`
         const walkSeconds = (walkDurationMs / 1000).toFixed(1)
-        console.log(`[DrainTick] hero=${heroId} RETURNING deathDepth=${deathDepth} walkMs=${walkDurationMs}`)
+        console.log(`[DrainTick] ${heroMapRef.current.get(heroId) ?? heroId} RETURNING deathDepth=${deathDepth} walkMs=${walkDurationMs}`)
 
         append({ ts: Date.now(), text: `${heroName} returning to Athanor (${walkSeconds}s walk, depth ${deathDepth})`, kind: 'exploration' })
 
@@ -329,7 +329,7 @@ export function useExplorationLog(
     }
 
     queue.push(event)
-    console.log(`[Enqueue] hero=${heroId} depth=${event.rawEvent?.depth} kind=${event.rawEvent?.kind} hp=${event.rawEvent?.hpAfter} queueLen=${queue.length}`)
+    console.log(`[Enqueue] ${heroMapRef.current.get(heroId) ?? heroId} depth=${event.rawEvent?.depth} kind=${event.rawEvent?.kind} hp=${event.rawEvent?.hpAfter} queueLen=${queue.length}`)
 
     if (drainTimerRef.current == null) {
       drainTimerRef.current = window.setInterval(drainTick, TICK_INTERVAL_MS)
@@ -446,7 +446,7 @@ export function useExplorationLog(
           const walkBackSec = maxDepth * WALK_RATIO / WALK_BASE
           const isStillReturning = remainingSec > 0 && remainingSec <= walkBackSec + 2
 
-          console.log(`[HistoricalRestore] hero=${heroId} events=${events.length} maxDepth=${maxDepth} zone=${zoneId} gold=${bagGold} hp=${lastHp} remaining=${remainingSec}s walkBack=${walkBackSec}s returning=${isStillReturning}`)
+          console.log(`[HistoricalRestore] ${heroMapRef.current.get(heroId) ?? heroId} events=${events.length} maxDepth=${maxDepth} zone=${zoneId} gold=${bagGold} hp=${lastHp} remaining=${remainingSec}s walkBack=${walkBackSec}s returning=${isStillReturning}`)
 
           setHeroOverrides((prev) => {
             if (prev.has(heroId)) return prev
@@ -508,7 +508,7 @@ export function useExplorationLog(
           const result = formatEvent(shortName, values, heroName)
           if (result) {
             if (shortName === 'ExplorationEvent' && !result.rawEvent) continue
-            console.log(`[EventArrival] model=${shortName} hero=${values.hero_id} depth=${values.depth ?? '-'} kind=${values.event_kind ?? '-'} hp=${values.hp_after ?? '-'}`)
+            console.log(`[EventArrival] model=${shortName} ${heroMapRef.current.get(values.hero_id) ?? values.hero_id} depth=${values.depth ?? '-'} kind=${values.event_kind ?? '-'} hp=${values.hp_after ?? '-'}`)
             if (shortName === 'ExplorationEvent') {
               if (historicalFetchedRef.current.has(values.hero_id)) continue
               enqueue({ entry: result.entry, rawEvent: result.rawEvent })
