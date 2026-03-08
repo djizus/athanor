@@ -157,46 +157,53 @@
   color: var(--accent-gold);
 }
 
-.zone-difficulty-label {
-  font-family: var(--font-title);
-  font-size: 0.65rem;
-  letter-spacing: 0.06em;
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9), 0 0 10px rgba(0, 0, 0, 0.7);
-  white-space: nowrap;
-  text-align: center;
-  opacity: 0.8;
+/* ── Zone Skulls + Explore ──── */
+
+.zone-skulls {
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.9));
 }
 
-/* ── Explore Button Below Zone ──── */
+.zone-skulls-idle {
+  opacity: 0.7;
+  text-align: center;
+}
 
-.zone-explore-btn {
+.zone-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   background: rgba(8, 8, 16, 0.85);
-  border: 1px solid var(--accent-gold);
+  border: 1px solid var(--accent-gold-dim);
   border-radius: 6px;
-  padding: 5px 18px;
-  font-family: var(--font-title);
-  font-size: 0.72rem;
-  color: var(--accent-gold);
+  padding: 4px 14px;
   cursor: pointer;
-  letter-spacing: 0.05em;
-  transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
   z-index: 4;
   white-space: nowrap;
-  animation: explore-btn-fade-in 0.3s ease;
+  animation: action-btn-fade-in 0.3s ease;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
 }
 
-.zone-explore-btn:hover {
-  background: var(--accent-gold);
-  color: #080810;
+.zone-action-label {
+  font-family: var(--font-title);
+  font-size: 0.7rem;
+  color: var(--accent-gold);
+  letter-spacing: 0.05em;
+}
+
+.zone-action-btn:hover {
+  background: rgba(240, 192, 64, 0.15);
+  border-color: var(--accent-gold);
   transform: scale(1.06);
 }
 
-.zone-explore-btn:active {
+.zone-action-btn:active {
   transform: scale(0.96);
 }
 
-@keyframes explore-btn-fade-in {
+@keyframes action-btn-fade-in {
   from { opacity: 0; transform: translateY(-4px); }
   to { opacity: 1; transform: translateY(0); }
 }
@@ -490,8 +497,14 @@
     font-size: 0.65rem;
   }
 
-  .zone-difficulty-label {
-    font-size: 0.55rem;
+  .zone-skulls,
+  .zone-skulls-idle {
+    font-size: 0.65rem;
+  }
+
+  .zone-action-btn {
+    font-size: 0.6rem;
+    padding: 4px 12px;
   }
 
   .constellation-hint {
@@ -501,11 +514,6 @@
 
   .journey-floating-text {
     font-size: 0.85rem;
-  }
-
-  .zone-explore-btn {
-    font-size: 0.6rem;
-    padding: 4px 12px;
   }
 
   .zone-tooltip {

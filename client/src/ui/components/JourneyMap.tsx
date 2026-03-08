@@ -123,7 +123,7 @@ function ZoneTooltip({ zoneId }: { zoneId: number }) {
           {ZONE_NAMES[zoneId]}
         </span>
         <span className="zone-tooltip-risk" style={{ color: riskColor }}>
-          {'●'.repeat(zoneId + 1)}{'○'.repeat(4 - zoneId)} {riskLabel}
+          {'💀'.repeat(zoneId + 1)} {riskLabel}
         </span>
       </div>
       <div className="zone-tooltip-stats">
@@ -198,10 +198,6 @@ function ZoneNode({
         }}
       />
 
-      <span className="zone-difficulty-label" style={{ color: ZONE_RISK_COLOR[zoneId] }}>
-        {ZONE_RISK_LABEL[zoneId]}
-      </span>
-
       {heroes.length > 0 && (
         <div className="zone-node-heroes">
           {heroes.map(hero => (
@@ -210,10 +206,13 @@ function ZoneNode({
         </div>
       )}
 
-      {canSendHero && (
-        <button className="zone-explore-btn" onClick={onClick}>
-          Explore
+      {canSendHero ? (
+        <button className="zone-action-btn" onClick={onClick}>
+          <span className="zone-skulls">{'💀'.repeat(zoneId + 1)}</span>
+          <span className="zone-action-label">Explore</span>
         </button>
+      ) : (
+        <span className="zone-skulls zone-skulls-idle">{'💀'.repeat(zoneId + 1)}</span>
       )}
 
       <AnimatePresence>
