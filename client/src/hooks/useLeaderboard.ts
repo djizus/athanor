@@ -5,7 +5,7 @@ import { useDojo } from '@/dojo/useDojo'
 import { bitmapPopcount } from '@/game/packer'
 
 export type LeaderboardEntry = {
-  id: number
+  id: bigint
   discoveredCount: number
   duration: number
 }
@@ -20,7 +20,7 @@ export function useLeaderboard() {
       const game = getComponentValue(contractComponents.Game, entity)
       if (!game || game.ended_at <= 0) continue
       entries.push({
-        id: game.id,
+        id: BigInt(game.id),
         discoveredCount: bitmapPopcount(game.grimoire),
         duration: game.ended_at - game.started_at,
       })
@@ -33,7 +33,7 @@ export function useLeaderboard() {
   }, [allGameEntities, contractComponents.Game])
 
   const rankByGameId = useMemo(() => {
-    const map = new Map<number, number>()
+    const map = new Map<bigint, number>()
     for (let i = 0; i < sorted.length; i++) {
       map.set(sorted[i].id, i + 1)
     }
@@ -43,7 +43,7 @@ export function useLeaderboard() {
   return { sorted, rankByGameId }
 }
 
-export function usePlayerRank(playerGameIds: number[]): number | null {
+export function usePlayerRank(playerGameIds: bigint[]): number | null {
   const { rankByGameId } = useLeaderboard()
 
   return useMemo(() => {

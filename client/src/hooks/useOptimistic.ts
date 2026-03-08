@@ -27,7 +27,7 @@ function aggregateMapDeltas(
   return aggregated
 }
 
-export function useOptimisticInventory(gameId: number | null) {
+export function useOptimisticInventory(gameId: bigint | null) {
   const baseInventory = useInventory(gameId)
   const pending = usePendingTxStore((s) => s.pending)
   const settled = usePendingTxStore((s) => s.settled)

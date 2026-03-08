@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useGame } from './useGame'
 import { unpackIngredients, INGREDIENT_COUNT } from '@/game/packer'
 
-export function useInventory(gameId: number | null) {
+export function useInventory(gameId: bigint | null) {
   const { game } = useGame(gameId)
 
   return useMemo(() => {

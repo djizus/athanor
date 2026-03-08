@@ -31,7 +31,7 @@ export function defineContractComponents(world: World) {
             namespace,
             name: 'Game',
             types: [
-              'u64',      // id (key)
+              'felt252',  // id (key)
               'u8',       // heroes
               'u64',      // started_at
               'u64',      // ended_at
@@ -55,7 +55,7 @@ export function defineContractComponents(world: World) {
       return defineComponent(
         world,
         {
-          game_id: RecsType.Number,
+          game_id: RecsType.BigInt,
           id: RecsType.Number,
           role: RecsType.Number,
           health: RecsType.Number,
@@ -71,7 +71,7 @@ export function defineContractComponents(world: World) {
             namespace,
             name: 'Character',
             types: [
-              'u64',      // game_id (key)
+              'felt252',  // game_id (key)
               'u8',       // id (key)
               'u8',       // role
               'u16',      // health
@@ -92,7 +92,7 @@ export function defineContractComponents(world: World) {
       return defineComponent(
         world,
         {
-          game_id: RecsType.Number,
+          game_id: RecsType.BigInt,
           ingredient_a: RecsType.Number,
           ingredient_b: RecsType.Number,
           effect: RecsType.Number,
@@ -103,8 +103,8 @@ export function defineContractComponents(world: World) {
             namespace,
             name: 'Discovery',
             types: [
-              'u64',  // game_id (key)
-              'u8',   // ingredient_a (key)
+              'felt252',  // game_id (key)
+              'u8',       // ingredient_a (key)
               'u8',   // ingredient_b (key)
               'u8',   // effect
               'bool', // discovered
@@ -119,7 +119,7 @@ export function defineContractComponents(world: World) {
       return defineComponent(
         world,
         {
-          game_id: RecsType.Number,
+          game_id: RecsType.BigInt,
           ingredient: RecsType.Number,
           recipes: RecsType.Number,
         },
@@ -128,8 +128,8 @@ export function defineContractComponents(world: World) {
             namespace,
             name: 'Hint',
             types: [
-              'u64', // game_id (key)
-              'u8',  // ingredient (key)
+              'felt252', // game_id (key)
+              'u8',      // ingredient (key)
               'u32', // recipes
             ],
             customTypes: [],

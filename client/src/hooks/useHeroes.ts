@@ -3,12 +3,12 @@ import { useComponentValue } from '@dojoengine/react'
 import { toEntityId } from '@/dojo/entityId'
 import { useDojo } from '@/dojo/useDojo'
 
-export function useCharacters(gameId: number | null) {
+export function useCharacters(gameId: bigint | null) {
   const { contractComponents } = useDojo()
 
-  const key0 = useMemo(() => (gameId != null ? toEntityId([BigInt(gameId), 0n]) : undefined), [gameId])
-  const key1 = useMemo(() => (gameId != null ? toEntityId([BigInt(gameId), 1n]) : undefined), [gameId])
-  const key2 = useMemo(() => (gameId != null ? toEntityId([BigInt(gameId), 2n]) : undefined), [gameId])
+  const key0 = useMemo(() => (gameId != null ? toEntityId([gameId, 0n]) : undefined), [gameId])
+  const key1 = useMemo(() => (gameId != null ? toEntityId([gameId, 1n]) : undefined), [gameId])
+  const key2 = useMemo(() => (gameId != null ? toEntityId([gameId, 2n]) : undefined), [gameId])
 
   const char0 = useComponentValue(contractComponents.Character, key0)
   const char1 = useComponentValue(contractComponents.Character, key1)

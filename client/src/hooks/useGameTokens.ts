@@ -108,13 +108,14 @@ export function useGameTokens(playerAddress: string | undefined) {
 
         for (const entity of gameEntities) {
           const game = getComponentValue(contractComponents.Game, entity)
-          if (!game || game.id === 0n) continue
-          if (!ownedTokenIds.has(game.id)) continue
-          if (seen.has(game.id)) continue
-          seen.add(game.id)
+          if (!game || BigInt(game.id) === 0n) continue
+          const gid = BigInt(game.id)
+          if (!ownedTokenIds.has(gid)) continue
+          if (seen.has(gid)) continue
+          seen.add(gid)
 
           gameList.push({
-            game_id: game.id,
+            game_id: gid,
             discovered_count: bitmapPopcount(game.grimoire),
             game_over: game.ended_at > 0,
             started_at: game.started_at,
@@ -124,7 +125,7 @@ export function useGameTokens(playerAddress: string | undefined) {
           })
         }
 
-        gameList.sort((a, b) => Number(b.game_id) - Number(a.game_id))
+        gameList.sort((a, b) => (b.game_id > a.game_id ? 1 : b.game_id < a.game_id ? -1 : 0))
         setGames(gameList)
       } catch (error) {
         console.error('[useGameTokens] Error:', error)

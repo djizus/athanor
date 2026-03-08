@@ -4,7 +4,7 @@ import { useEntityQuery } from '@dojoengine/react'
 import { useDojo } from '@/dojo/useDojo'
 import { bitmapGet, EFFECT_COUNT } from '@/game/packer'
 
-export function useHints(gameId: number | null): Map<number, number[]> {
+export function useHints(gameId: bigint | null): Map<number, number[]> {
   const { contractComponents } = useDojo()
   const entities = useEntityQuery([Has(contractComponents.Hint)])
 
@@ -14,7 +14,7 @@ export function useHints(gameId: number | null): Map<number, number[]> {
 
     for (const entity of entities) {
       const data = getComponentValue(contractComponents.Hint, entity)
-      if (!data || data.game_id !== gameId) continue
+      if (!data || BigInt(data.game_id) !== gameId) continue
 
       const ingredient = data.ingredient - 1
       for (let i = 0; i < EFFECT_COUNT; i++) {

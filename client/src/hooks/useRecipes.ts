@@ -10,7 +10,7 @@ export type DiscoveryData = {
   discovered: boolean
 }
 
-export function useDiscoveries(gameId: number | null) {
+export function useDiscoveries(gameId: bigint | null) {
   const { contractComponents } = useDojo()
   const entities = useEntityQuery([Has(contractComponents.Discovery)])
 
@@ -22,7 +22,7 @@ export function useDiscoveries(gameId: number | null) {
     for (const entity of entities) {
       const data = getComponentValue(contractComponents.Discovery, entity)
       if (!data) continue
-      if (data.game_id !== gameId) continue
+      if (BigInt(data.game_id) !== gameId) continue
 
       result.push({
         ingredient_a: data.ingredient_a - 1,

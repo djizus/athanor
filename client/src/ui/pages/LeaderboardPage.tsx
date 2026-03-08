@@ -9,7 +9,7 @@ const { VITE_PUBLIC_NODE_URL, VITE_PUBLIC_TOKEN_ADDRESS } = import.meta.env
 const PAGE_SIZE = 10
 
 type LeaderboardRow = {
-  gameId: number
+  gameId: bigint
   discoveredCount: number
   duration: number
   player: string
@@ -30,8 +30,8 @@ function truncateAddress(hex: string): string {
   return `${hex.slice(0, 6)}...${hex.slice(-4)}`
 }
 
-async function fetchTokenOwners(gameIds: number[]): Promise<Map<number, string>> {
-  const map = new Map<number, string>()
+async function fetchTokenOwners(gameIds: bigint[]): Promise<Map<bigint, string>> {
+  const map = new Map<bigint, string>()
   if (!VITE_PUBLIC_NODE_URL || !VITE_PUBLIC_TOKEN_ADDRESS || gameIds.length === 0) return map
 
   const provider = new RpcProvider({ nodeUrl: VITE_PUBLIC_NODE_URL })
@@ -85,7 +85,7 @@ export function LeaderboardPage() {
   const { address } = useAccount()
 
   const [page, setPage] = useState(0)
-  const [owners, setOwners] = useState<Map<number, string>>(new Map())
+  const [owners, setOwners] = useState<Map<bigint, string>>(new Map())
   const [usernames, setUsernames] = useState<Map<string, string>>(new Map())
 
   useEffect(() => {
@@ -145,7 +145,7 @@ export function LeaderboardPage() {
                       const rank = page * PAGE_SIZE + i + 1
                       const isMe = connectedHex && row.ownerAddress && num.toHex(row.ownerAddress) === connectedHex
                       return (
-                        <tr key={row.gameId} className={isMe ? 'leaderboard-row-me' : undefined}>
+                         <tr key={String(row.gameId)} className={isMe ? 'leaderboard-row-me' : undefined}>
                           <td>{rank}</td>
                           <td>{isMe ? <strong>{row.player}</strong> : row.player}</td>
                           <td>{formatDuration(row.duration)}</td>

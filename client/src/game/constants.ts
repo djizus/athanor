@@ -125,3 +125,20 @@ export function effectAssetUrl(effectIndex: number): string {
 export function zoneBackgroundUrl(zoneId: number): string {
   return `/assets/backgrounds/${ZONE_BG_KEYS[zoneId]}.png`
 }
+
+/**
+ * Convert a felt252 game ID (bigint) to a short, human-friendly display string.
+ * Small IDs (<=99999) are shown as-is. Larger felt252 IDs are hashed into a
+ * 5-digit decimal number (10000–99999) via FNV-1a.
+ */
+export function formatGameId(id: bigint | number): string {
+  const n = BigInt(id)
+  if (n <= 99999n) return String(Number(n))
+  const hex = n.toString(16)
+  let hash = 0x811c9dc5 // FNV-1a offset basis
+  for (let i = 0; i < hex.length; i++) {
+    hash ^= hex.charCodeAt(i)
+    hash = Math.imul(hash, 0x01000193) // FNV prime
+  }
+  return String(((hash >>> 0) % 89999) + 10000)
+}

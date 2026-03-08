@@ -9,6 +9,7 @@ import { useDojo } from '@/dojo/useDojo'
 import { extractGameId } from '@/dojo/systems'
 import { useNavigationStore } from '@/stores/navigationStore'
 import { txToast } from '@/stores/toastStore'
+import { formatGameId } from '@/game/constants'
 import { SettingsOverlay } from '@/ui/components/SettingsOverlay'
 
 export function HomePage() {
@@ -53,7 +54,7 @@ export function HomePage() {
       const gameId = extractGameId(mintReceipt as { events?: { keys?: string[]; data?: string[] }[] })
       console.log(gameId)
 
-      if (gameId <= 0) {
+      if (gameId <= 0n) {
         throw new Error('Failed to extract game id from mint transaction receipt')
       }
 
@@ -161,7 +162,7 @@ export function HomePage() {
                 className="home-menu-button home-menu-button-primary"
                 onClick={() => navigate('play', activeGame.game_id)}
               >
-                Continue Game #{activeGame.game_id}
+                Continue Game #{formatGameId(activeGame.game_id)}
               </button>
             ) : (
               <button

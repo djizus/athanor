@@ -142,7 +142,7 @@ function createPendingTxId() {
 
 async function fetchFreshRecipes(
   toriiClient: ReturnType<typeof useDojo>['toriiClient'],
-  gameId: number,
+  gameId: bigint,
 ): Promise<DiscoveryData[]> {
   const result = await toriiClient.getEntities({
     world_addresses: [],
@@ -714,11 +714,11 @@ export function PlayScreen() {
   const allGameEntities = useEntityQuery([Has(contractComponents.Game)])
   const leaderboardRank = useMemo(() => {
     if (!isGameOver || !gameId) return null
-    const entries: { id: number; discovered: number; duration: number }[] = []
+    const entries: { id: bigint; discovered: number; duration: number }[] = []
     for (const entity of allGameEntities) {
       const g = getComponentValue(contractComponents.Game, entity)
       if (!g || g.ended_at <= 0) continue
-      entries.push({ id: g.id, discovered: bitmapPopcount(g.grimoire), duration: g.ended_at - g.started_at })
+      entries.push({ id: BigInt(g.id), discovered: bitmapPopcount(g.grimoire), duration: g.ended_at - g.started_at })
     }
     entries.sort((a, b) => b.discovered !== a.discovered ? b.discovered - a.discovered : a.duration - b.duration)
     const idx = entries.findIndex(e => e.id === gameId)

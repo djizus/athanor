@@ -167,7 +167,7 @@ function formatEvent(modelName: string, values: Record<string, number>, heroName
 const MAX_LOG = 200
 
 export function useExplorationLog(
-  gameId: number | null,
+  gameId: bigint | null,
   heroes: Array<{ id: number; role: number }> = [],
   onExplorationEvent?: (event: RawExplorationEvent) => void,
 ) {

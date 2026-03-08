@@ -3,6 +3,7 @@ import { useAccount } from '@starknet-react/core'
 import { useGameTokens } from '@/hooks/useGameTokens'
 import { useLeaderboard } from '@/hooks/useLeaderboard'
 import { useNavigationStore } from '@/stores/navigationStore'
+import { formatGameId } from '@/game/constants'
 
 function formatElapsed(startedAt: number, endedAt: number): string {
   if (startedAt <= 0) return '-'
@@ -21,7 +22,7 @@ export function MyGamesPage() {
   const { rankByGameId } = useLeaderboard()
 
   const { active, finished } = useMemo(() => {
-    const sorted = [...games].sort((a, b) => b.game_id - a.game_id)
+    const sorted = [...games].sort((a, b) => (b.game_id > a.game_id ? 1 : b.game_id < a.game_id ? -1 : 0))
     return {
       active: sorted.filter((g) => !g.game_over),
       finished: sorted.filter((g) => g.game_over),
@@ -68,9 +69,9 @@ function GamesTable({
   onSelect,
   rowClass,
 }: {
-  games: { game_id: number; started_at: number; ended_at: number; discovered_count: number; gold: number; hero_count: number }[]
-  rankByGameId: Map<number, number>
-  onSelect: (gameId: number) => void
+  games: { game_id: bigint; started_at: number; ended_at: number; discovered_count: number; gold: number; hero_count: number }[]
+  rankByGameId: Map<bigint, number>
+  onSelect: (gameId: bigint) => void
   rowClass: string
 }) {
   return (
@@ -88,11 +89,11 @@ function GamesTable({
           {games.map((g) => {
             const rank = rankByGameId.get(g.game_id)
             return (
-              <tr key={g.game_id} className={rowClass} onClick={() => onSelect(g.game_id)}>
+              <tr key={String(g.game_id)} className={rowClass} onClick={() => onSelect(g.game_id)}>
                 <td>{rank != null ? `#${rank}` : '-'}</td>
                 <td>{formatElapsed(g.started_at, g.ended_at)}</td>
                 <td>{g.discovered_count}/30</td>
-                <td>#{g.game_id}</td>
+                <td>#{formatGameId(g.game_id)}</td>
               </tr>
             )
           })}
