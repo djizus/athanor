@@ -9,11 +9,14 @@ import { SettingsOverlay } from '@/ui/components/SettingsOverlay'
 
 const { VITE_PUBLIC_NODE_URL, VITE_PUBLIC_TOKEN_ADDRESS } = import.meta.env
 
+const PAGE_SIZE = 10
+
 type LeaderboardRow = {
   gameId: number
   discoveredCount: number
   duration: number
   player: string
+  ownerAddress: string
 }
 
 function formatDuration(seconds: number): string {
@@ -87,6 +90,7 @@ export function LeaderboardPage() {
   const { displayName } = usePlayerName(address)
   const [settingsOpen, setSettingsOpen] = useState(false)
 
+  const [page, setPage] = useState(0)
   const [owners, setOwners] = useState<Map<number, string>>(new Map())
   const [usernames, setUsernames] = useState<Map<string, string>>(new Map())
 
@@ -111,57 +115,78 @@ export function LeaderboardPage() {
         discoveredCount: g.discoveredCount,
         duration: g.duration,
         player: username || (ownerAddr ? truncateAddress(ownerAddr) : '...'),
+        ownerAddress: ownerAddr,
       }
     })
   }, [completedGames, owners, usernames])
 
+  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE))
+  const pageRows = rows.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
+  const connectedHex = address ? num.toHex(address) : ''
+
   return (
     <div className="glass-page">
+      <div className="glass-page-topbar">
+        <button
+          className="home-menu-player-chip"
+          type="button"
+          onClick={() => {
+            const ctrl = connectors[0] as ControllerConnector | undefined
+            if (ctrl?.controller) void ctrl.controller.openProfile()
+          }}
+        >
+          <span className="home-menu-player-name">{displayName}</span>
+        </button>
+        <div className="glass-page-header-actions">
+          <button className="home-menu-gear" onClick={() => setSettingsOpen(true)} aria-label="Settings">
+            <span aria-hidden>&#x2699;</span>
+          </button>
+          <button onClick={() => navigate('home')}>Back</button>
+        </div>
+      </div>
+
       <div className="glass-page-panel">
         <div className="glass-page-header">
-          <button
-            className="home-menu-player-chip"
-            type="button"
-            onClick={() => {
-              const ctrl = connectors[0] as ControllerConnector | undefined
-              if (ctrl?.controller) void ctrl.controller.openProfile()
-            }}
-          >
-            <span className="home-menu-player-name">{displayName}</span>
-          </button>
           <h1 className="glass-page-title">Leaderboard</h1>
-          <div className="glass-page-header-actions">
-            <button className="home-menu-gear" onClick={() => setSettingsOpen(true)} aria-label="Settings">
-              <span aria-hidden>&#x2699;</span>
-            </button>
-            <button onClick={() => navigate('home')}>Back</button>
-          </div>
         </div>
 
         <div className="glass-page-body">
           {rows.length === 0 ? (
             <p style={{ color: 'var(--text-secondary)' }}>No completed games yet.</p>
           ) : (
-            <div className="table-scroll">
-              <table className="leaderboard-table">
-                <thead>
-                  <tr>
-                    <th>Rank</th>
-                    <th>Player</th>
-                    <th>Time</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row, index) => (
-                    <tr key={row.gameId}>
-                      <td>{index + 1}</td>
-                      <td>{row.player}</td>
-                      <td>{formatDuration(row.duration)}</td>
+            <>
+              <div className="table-scroll">
+                <table className="leaderboard-table">
+                  <thead>
+                    <tr>
+                      <th>Rank</th>
+                      <th>Player</th>
+                      <th>Time</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {pageRows.map((row, i) => {
+                      const rank = page * PAGE_SIZE + i + 1
+                      const isMe = connectedHex && row.ownerAddress && num.toHex(row.ownerAddress) === connectedHex
+                      return (
+                        <tr key={row.gameId} className={isMe ? 'leaderboard-row-me' : undefined}>
+                          <td>{rank}</td>
+                          <td>{isMe ? <strong>{row.player}</strong> : row.player}</td>
+                          <td>{formatDuration(row.duration)}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              {totalPages > 1 && (
+                <div className="leaderboard-pagination">
+                  <button disabled={page === 0} onClick={() => setPage(page - 1)}>&lsaquo; Prev</button>
+                  <span className="leaderboard-pagination-info">{page + 1} / {totalPages}</span>
+                  <button disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}>Next &rsaquo;</button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

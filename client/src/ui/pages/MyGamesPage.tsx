@@ -36,25 +36,28 @@ export function MyGamesPage() {
 
   return (
     <div className="glass-page">
+      <div className="glass-page-topbar">
+        <button
+          className="home-menu-player-chip"
+          type="button"
+          onClick={() => {
+            const ctrl = connectors[0] as ControllerConnector | undefined
+            if (ctrl?.controller) void ctrl.controller.openProfile()
+          }}
+        >
+          <span className="home-menu-player-name">{displayName}</span>
+        </button>
+        <div className="glass-page-header-actions">
+          <button className="home-menu-gear" onClick={() => setSettingsOpen(true)} aria-label="Settings">
+            <span aria-hidden>&#x2699;</span>
+          </button>
+          <button onClick={() => navigate('home')}>Back</button>
+        </div>
+      </div>
+
       <div className="glass-page-panel">
         <div className="glass-page-header">
-          <button
-            className="home-menu-player-chip"
-            type="button"
-            onClick={() => {
-              const ctrl = connectors[0] as ControllerConnector | undefined
-              if (ctrl?.controller) void ctrl.controller.openProfile()
-            }}
-          >
-            <span className="home-menu-player-name">{displayName}</span>
-          </button>
           <h1 className="glass-page-title">My Games</h1>
-          <div className="glass-page-header-actions">
-            <button className="home-menu-gear" onClick={() => setSettingsOpen(true)} aria-label="Settings">
-              <span aria-hidden>&#x2699;</span>
-            </button>
-            <button onClick={() => navigate('home')}>Back</button>
-          </div>
         </div>
 
         <div className="glass-page-body">
