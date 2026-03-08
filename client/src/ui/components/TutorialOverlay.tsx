@@ -44,21 +44,21 @@ const STEPS: TutorialStep[] = [
   },
 
   {
-    target: 'journey-map',
+    target: null,
     title: 'The Exploration Map',
-    body: 'The map shows <strong>5 zones</strong> of increasing danger. Each zone holds <strong>5 unique ingredients</strong> that can only be found there. Select a hero, then click a zone to send them on an expedition.',
+    body: 'Behind this panel you can see the map with <strong>5 zones</strong> of increasing danger. Each zone holds <strong>5 unique ingredients</strong> that can only be found there. Select a hero, then click a zone to send them on an expedition.',
     buttonLabel: 'Next',
     placement: 'bottom',
   },
   {
-    target: 'journey-map',
+    target: null,
     title: 'Risk vs. Reward',
     body: 'Deeper zones cost <strong>more HP per tick</strong> but yield <strong>rarer ingredients</strong>. During exploration, heroes encounter:<br/><strong>Ingredients</strong> — gathered for brewing<br/><strong>Gold caches</strong> — collected on return<br/><strong>Beasts</strong> — win for gold, lose for HP damage<br/><strong>Traps</strong> — unavoidable HP loss<br/><strong>Healing springs</strong> — restore HP mid-expedition',
     buttonLabel: 'Next',
     placement: 'bottom',
   },
   {
-    target: 'journey-map',
+    target: null,
     title: 'Claiming Loot',
     body: 'When an expedition ends, your hero returns to the Athanor carrying <strong>gold and ingredients</strong>. Click them to <strong>claim their loot</strong> — ingredients go to your inventory, gold to your stash. Heroes <strong>cannot explore again</strong> until loot is claimed.',
     buttonLabel: 'Next',
