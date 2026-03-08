@@ -2390,6 +2390,13 @@ button:disabled, .btn:disabled {
   justify-content: space-between;
   padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--border-color);
+  gap: 0.75rem;
+}
+
+.glass-page-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .glass-page-title {

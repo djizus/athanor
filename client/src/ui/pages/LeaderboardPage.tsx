@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Has, getComponentValue } from '@dojoengine/recs'
 import { useEntityQuery } from '@dojoengine/react'
+import { useAccount, useConnect } from '@starknet-react/core'
+import type ControllerConnector from '@cartridge/connector/controller'
 import { RpcProvider, num } from 'starknet'
 import { useDojo } from '@/dojo/useDojo'
+import { usePlayerName } from '@/hooks/usePlayerName'
 import { useNavigationStore } from '@/stores/navigationStore'
+import { SettingsOverlay } from '@/ui/components/SettingsOverlay'
 import { bitmapPopcount } from '@/game/packer'
 
 const { VITE_PUBLIC_NODE_URL, VITE_PUBLIC_TOKEN_ADDRESS } = import.meta.env
@@ -73,7 +77,7 @@ async function resolveUsernames(addresses: string[]): Promise<Map<string, string
       }
     }
   } catch {
-    // Cartridge API unavailable — fallback to truncated addresses
+    // fallback to truncated addresses
   }
   return map
 }
@@ -82,6 +86,10 @@ export function LeaderboardPage() {
   const { contractComponents } = useDojo()
   const gameEntities = useEntityQuery([Has(contractComponents.Game)])
   const { navigate } = useNavigationStore()
+  const { address } = useAccount()
+  const { connectors } = useConnect()
+  const { displayName } = usePlayerName(address)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   const [owners, setOwners] = useState<Map<number, string>>(new Map())
   const [usernames, setUsernames] = useState<Map<string, string>>(new Map())
@@ -134,8 +142,23 @@ export function LeaderboardPage() {
     <div className="glass-page">
       <div className="glass-page-panel">
         <div className="glass-page-header">
+          <button
+            className="home-menu-player-chip"
+            type="button"
+            onClick={() => {
+              const ctrl = connectors[0] as ControllerConnector | undefined
+              if (ctrl?.controller) void ctrl.controller.openProfile()
+            }}
+          >
+            <span className="home-menu-player-name">{displayName}</span>
+          </button>
           <h1 className="glass-page-title">Leaderboard</h1>
-          <button onClick={() => navigate('home')}>Back</button>
+          <div className="glass-page-header-actions">
+            <button className="home-menu-gear" onClick={() => setSettingsOpen(true)} aria-label="Settings">
+              <span aria-hidden>&#x2699;</span>
+            </button>
+            <button onClick={() => navigate('home')}>Back</button>
+          </div>
         </div>
 
         <div className="glass-page-body">
@@ -165,6 +188,8 @@ export function LeaderboardPage() {
           )}
         </div>
       </div>
+
+      <SettingsOverlay open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   )
 }
