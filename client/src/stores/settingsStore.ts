@@ -15,14 +15,14 @@ function loadPersistedSettings(): { sfxVolume: number; musicVolume: number } {
     if (raw) {
       const parsed = JSON.parse(raw) as Record<string, unknown>
       return {
-        sfxVolume: typeof parsed.sfxVolume === 'number' ? parsed.sfxVolume : 0.7,
-        musicVolume: typeof parsed.musicVolume === 'number' ? parsed.musicVolume : 0.5,
+        sfxVolume: typeof parsed.sfxVolume === 'number' ? parsed.sfxVolume : 0.3,
+        musicVolume: typeof parsed.musicVolume === 'number' ? parsed.musicVolume : 0.3,
       }
     }
   } catch {
     // ignore corrupt storage
   }
-  return { sfxVolume: 0.7, musicVolume: 0.5 }
+  return { sfxVolume: 0.3, musicVolume: 0.3 }
 }
 
 function persist(state: { sfxVolume: number; musicVolume: number }): void {

@@ -152,7 +152,7 @@ export function HomePage() {
             className="home-menu-logo"
           />
           <div className="home-menu-rank-panel">
-            <span className="home-menu-rank-text">Rank {rank != null ? `#${rank}` : '—'} · Time: {bestTime ?? '—'}</span>
+            <span className="home-menu-rank-text">{rank != null ? `Rank #${rank} · Time: ${bestTime ?? '—'}` : 'Not ranked yet'}</span>
           </div>
           <div className="home-menu-actions">
             {activeGame ? (
