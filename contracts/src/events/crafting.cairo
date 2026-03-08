@@ -3,7 +3,7 @@ pub use crate::events::index::RecipeDiscovered;
 #[generate_trait]
 pub impl RecipeDiscoveredImpl of RecipeDiscoveredTrait {
     fn new(
-        game_id: u64,
+        game_id: felt252,
         recipe_id: u8,
         ingredient_a: u8,
         ingredient_b: u8,

@@ -18,6 +18,10 @@ pub mod elements {
     }
 }
 
+pub mod metadata {
+    pub mod image;
+}
+
 pub mod types {
     pub mod category;
     pub mod effect;

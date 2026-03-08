@@ -15,12 +15,16 @@ pub trait ISetup<T> {
 #[dojo::contract]
 pub mod Setup {
     use dojo::world::{IWorldDispatcherTrait, WorldStorage, WorldStorageTrait};
-    use game_components_minigame::extensions::settings::interface::{
+    use game_components_embeddable_game_standard::minigame::extensions::settings::interface::{
         IMinigameSettings, IMinigameSettingsDetails,
     };
-    use game_components_minigame::extensions::settings::settings::SettingsComponent;
-    use game_components_minigame::extensions::settings::structs::{GameSetting, GameSettingDetails};
-    use game_components_minigame::interface::{IMinigameDispatcher, IMinigameDispatcherTrait};
+    use game_components_embeddable_game_standard::minigame::extensions::settings::settings::SettingsComponent;
+    use game_components_embeddable_game_standard::minigame::extensions::settings::structs::{
+        GameSetting, GameSettingDetails,
+    };
+    use game_components_embeddable_game_standard::minigame::interface::{
+        IMinigameDispatcher, IMinigameDispatcherTrait,
+    };
     use openzeppelin::introspection::src5::SRC5Component;
     use starknet::storage::StoragePointerWriteAccess;
     use starknet::{ContractAddress, get_block_timestamp};
@@ -56,7 +60,7 @@ pub mod Setup {
         SRC5Event: SRC5Component::Event,
     }
 
-    fn dojo_init(ref self: ContractState, creator_address: ContractAddress) {
+    fn dojo_init(ref self: ContractState) {
         let world: WorldStorage = self.world(@NAMESPACE());
         let timestamp = get_block_timestamp();
         let store = StoreImpl::new(world);
@@ -64,10 +68,11 @@ pub mod Setup {
         self.settings.initializer();
 
         store.set_settings(@GameSettingsTrait::new_default());
+        let creator_address = starknet::get_tx_info().unbox().account_contract_address;
         store
             .set_settings_meta(
                 @GameSettingsMetadata {
-                    settings_id: 0,
+                    settings_id: 1,
                     name: 'Default',
                     created_by: creator_address,
                     created_at: timestamp,
@@ -78,48 +83,66 @@ pub mod Setup {
         self.settings_counter.write(0);
 
         let (play_address, _) = world.dns(@PLAY()).expect('Setup: play not found');
-        let minigame_dispatcher = IMinigameDispatcher { contract_address: play_address };
-        let minigame_token_address = minigame_dispatcher.token_address();
+        let minigame = IMinigameDispatcher { contract_address: play_address };
+        let token_address = minigame.token_address();
 
         self
             .settings
             .create_settings(
                 game_address: play_address,
-                settings_id: 0,
-                name: "Default",
-                description: "Official Athanor settings. 3 zones, 9 ingredients, 10 recipes.",
-                settings: array![
-                    GameSetting { name: "Zones", value: "3" },
-                    GameSetting { name: "Recipes", value: "10" },
-                ]
-                    .span(),
-                minigame_token_address: minigame_token_address,
+                settings_id: 1,
+                settings_details: GameSettingDetails {
+                    name: "Default",
+                    description: "Official Athanor settings. 3 zones, 9 ingredients, 10 recipes.",
+                    settings: array![
+                        GameSetting { name: 'Zones', value: '5' },
+                        GameSetting { name: 'Ingredients', value: '25' },
+                        GameSetting { name: 'Recipes', value: '30' },
+                    ]
+                        .span(),
+                },
+                minigame_token_address: token_address,
             );
 
         // [Event] Order torii to index the tokens
-        let instance_name: felt252 = minigame_token_address.into();
+        let instance_name: felt252 = token_address.into();
         world
             .dispatcher
             .register_external_contract(
                 namespace: NAMESPACE(),
                 contract_name: "ERC721",
                 instance_name: format!("{}", instance_name),
-                contract_address: minigame_token_address,
+                contract_address: token_address,
                 block_number: 1,
             );
     }
 
     #[abi(embed_v0)]
-    impl MinigameSettingsImpl of IMinigameSettings<ContractState> {
+    impl GameSettingsImpl of IMinigameSettings<ContractState> {
         fn settings_exist(self: @ContractState, settings_id: u32) -> bool {
             let store = StoreImpl::new(self.world(@NAMESPACE()));
             let settings = store.settings(settings_id);
             settings.exists()
         }
+
+        fn settings_exist_batch(self: @ContractState, settings_ids: Span<u32>) -> Array<bool> {
+            let mut results = array![];
+            let mut i = 0;
+            while i < settings_ids.len() {
+                results.append(self.settings_exist(*settings_ids.at(i)));
+                i += 1;
+            }
+            results
+        }
     }
 
     #[abi(embed_v0)]
     impl MinigameSettingsDetailsImpl of IMinigameSettingsDetails<ContractState> {
+        // Batch operations
+        fn settings_count(self: @ContractState) -> u32 {
+            1
+        }
+
         fn settings_details(self: @ContractState, settings_id: u32) -> GameSettingDetails {
             let store = StoreImpl::new(self.world(@NAMESPACE()));
             let metadata = store.settings_meta(settings_id);
@@ -129,15 +152,27 @@ pub mod Setup {
                 description: "Athanor game settings",
                 settings: array![
                     GameSetting {
-                        name: "Active", value: if metadata.is_active {
-                            "Yes"
+                        name: 'Active', value: if metadata.is_active {
+                            'Yes'
                         } else {
-                            "No"
+                            'No'
                         },
                     },
                 ]
                     .span(),
             }
+        }
+
+        fn settings_details_batch(
+            self: @ContractState, settings_ids: Span<u32>,
+        ) -> Array<GameSettingDetails> {
+            let mut results = array![];
+            let mut i = 0;
+            while i < settings_ids.len() {
+                results.append(self.settings_details(*settings_ids.at(i)));
+                i += 1;
+            }
+            results
         }
     }
 

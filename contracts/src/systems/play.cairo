@@ -5,27 +5,27 @@ pub fn NAME() -> ByteArray {
 
 #[starknet::interface]
 pub trait IPlay<T> {
-    fn create(ref self: T, game_id: u64);
-    fn clue(ref self: T, game_id: u64);
-    fn craft(ref self: T, game_id: u64, ingredient_a: u8, ingredient_b: u8, quantity: u16);
-    fn recruit(ref self: T, game_id: u64);
-    fn buff(ref self: T, game_id: u64, character_id: u8, effect: u8, quantity: u16);
-    fn explore(ref self: T, game_id: u64, character_id: u8, zone_id: u8);
-    fn claim(ref self: T, game_id: u64, character_id: u8);
-    fn surrender(ref self: T, game_id: u64);
+    fn create(ref self: T, game_id: felt252);
+    fn clue(ref self: T, game_id: felt252);
+    fn craft(ref self: T, game_id: felt252, ingredient_a: u8, ingredient_b: u8, quantity: u16);
+    fn recruit(ref self: T, game_id: felt252);
+    fn buff(ref self: T, game_id: felt252, character_id: u8, effect: u8, quantity: u16);
+    fn explore(ref self: T, game_id: felt252, character_id: u8, zone_id: u8);
+    fn claim(ref self: T, game_id: felt252, character_id: u8);
+    fn surrender(ref self: T, game_id: felt252);
 }
 
 #[dojo::contract]
 pub mod Play {
     use dojo::world::{WorldStorage, WorldStorageTrait};
-    use game_components_minigame::interface::IMinigameTokenData;
-    use game_components_minigame::libs::{assert_token_ownership, post_action, pre_action};
-    use game_components_minigame::minigame::MinigameComponent;
+    use game_components_embeddable_game_standard::minigame::interface::IMinigameTokenData;
+    use game_components_embeddable_game_standard::minigame::minigame_component::MinigameComponent;
     use openzeppelin::introspection::src5::SRC5Component;
     use starknet::ContractAddress;
     use crate::components::playable::PlayableComponent;
     use crate::constants::NAMESPACE;
     use crate::helpers::random::{RandomImpl, RandomTrait};
+    use crate::metadata::image::IMAGE;
     use crate::models::config::Config;
     use crate::models::game::GameTrait;
     use crate::store::{StoreImpl, StoreTrait};
@@ -68,13 +68,14 @@ pub mod Play {
 
     fn dojo_init(
         ref self: ContractState,
-        creator_address: ContractAddress,
         denshokan_address: ContractAddress,
         renderer_address: Option<ContractAddress>,
         vrf_address: ContractAddress,
     ) {
         let mut world: WorldStorage = self.world(@NAMESPACE());
+        let creator_address = starknet::get_tx_info().unbox().account_contract_address;
         let (config_address, _) = world.dns(@SETUP()).expect('Play: setup not found');
+
         self
             .minigame
             .initializer(
@@ -84,13 +85,16 @@ pub mod Play {
                 developer: "djizus",
                 publisher: "djizus",
                 genre: "Strategy",
-                image: "",
+                image: IMAGE(),
                 color: Option::None,
-                client_url: Option::None,
+                client_url: Option::Some("https://athanor-psi.vercel.app/"),
                 renderer_address: Option::None,
                 settings_address: Option::Some(config_address),
                 objectives_address: Option::None,
                 token_address: denshokan_address,
+                royalty_fraction: Option::None,
+                skills_address: Option::None,
+                version: 1,
             );
 
         // Write centralized Config — all systems read from this
@@ -99,42 +103,62 @@ pub mod Play {
     }
 
     #[abi(embed_v0)]
-    impl GameTokenDataImpl of IMinigameTokenData<ContractState> {
-        fn score(self: @ContractState, token_id: u64) -> u32 {
+    impl TokenDataImpl of IMinigameTokenData<ContractState> {
+        fn score(self: @ContractState, token_id: felt252) -> u64 {
             let store = StoreImpl::new(self.world(@NAMESPACE()));
             let game = store.game(token_id);
-            game.score()
+            game.score().into()
         }
 
-        fn game_over(self: @ContractState, token_id: u64) -> bool {
+        fn game_over(self: @ContractState, token_id: felt252) -> bool {
             let store = StoreImpl::new(self.world(@NAMESPACE()));
             let game = store.game(token_id);
             game.is_over()
+        }
+
+        fn score_batch(self: @ContractState, token_ids: Span<felt252>) -> Array<u64> {
+            let mut results = array![];
+            let mut i = 0;
+            while i < token_ids.len() {
+                results.append(self.score(*token_ids.at(i)));
+                i += 1;
+            }
+            results
+        }
+
+        fn game_over_batch(self: @ContractState, token_ids: Span<felt252>) -> Array<bool> {
+            let mut results = array![];
+            let mut i = 0;
+            while i < token_ids.len() {
+                results.append(self.game_over(*token_ids.at(i)));
+                i += 1;
+            }
+            results
         }
     }
 
     #[abi(embed_v0)]
     impl GameSystemImpl of IPlay<ContractState> {
-        fn create(ref self: ContractState, game_id: u64) {
+        fn create(ref self: ContractState, game_id: felt252) {
             // [Setup] World
             let world = self.world(@NAMESPACE());
             // [Compute] Seed
             let store = StoreTrait::new(world);
             let vrf_addr = store.vrf_address();
-            let random = RandomTrait::new(vrf_addr, game_id.into());
+            let random = RandomTrait::new(vrf_addr, game_id);
             // [Effect] Create game
             self.before(world, game_id);
             self.playable.create(world, game_id, random.seed);
             self.after(world, game_id);
         }
 
-        fn clue(ref self: ContractState, game_id: u64) {
+        fn clue(ref self: ContractState, game_id: felt252) {
             // [Setup] World
             let world = self.world(@NAMESPACE());
             // [Compute] Seed
             let store = StoreTrait::new(world);
             let vrf_addr = store.vrf_address();
-            let random = RandomTrait::new(vrf_addr, game_id.into());
+            let random = RandomTrait::new(vrf_addr, game_id);
             // [Effect] Glean
             self.before(world, game_id);
             self.playable.clue(world, game_id, random.seed);
@@ -143,7 +167,7 @@ pub mod Play {
 
         fn craft(
             ref self: ContractState,
-            game_id: u64,
+            game_id: felt252,
             ingredient_a: u8,
             ingredient_b: u8,
             quantity: u16,
@@ -153,7 +177,7 @@ pub mod Play {
             // [Compute] Seed
             let store = StoreTrait::new(world);
             let vrf_addr = store.vrf_address();
-            let random = RandomTrait::new(vrf_addr, game_id.into());
+            let random = RandomTrait::new(vrf_addr, game_id);
             // [Effect] Craft
             self.before(world, game_id);
             self
@@ -164,13 +188,13 @@ pub mod Play {
             self.after(world, game_id);
         }
 
-        fn recruit(ref self: ContractState, game_id: u64) {
+        fn recruit(ref self: ContractState, game_id: felt252) {
             // [Setup] World
             let world = self.world(@NAMESPACE());
             // [Compute] Seed
             let store = StoreTrait::new(world);
             let vrf_addr = store.vrf_address();
-            let random = RandomTrait::new(vrf_addr, game_id.into());
+            let random = RandomTrait::new(vrf_addr, game_id);
             // [Effect] Recruit
             self.before(world, game_id);
             self.playable.recruit(world, game_id, random.seed);
@@ -178,7 +202,7 @@ pub mod Play {
         }
 
         fn buff(
-            ref self: ContractState, game_id: u64, character_id: u8, effect: u8, quantity: u16,
+            ref self: ContractState, game_id: felt252, character_id: u8, effect: u8, quantity: u16,
         ) {
             // [Setup] World
             let world = self.world(@NAMESPACE());
@@ -188,20 +212,20 @@ pub mod Play {
             self.after(world, game_id);
         }
 
-        fn explore(ref self: ContractState, game_id: u64, character_id: u8, zone_id: u8) {
+        fn explore(ref self: ContractState, game_id: felt252, character_id: u8, zone_id: u8) {
             // [Setup] World
             let world = self.world(@NAMESPACE());
             // [Compute] Seed
             let store = StoreTrait::new(world);
             let vrf_addr = store.vrf_address();
-            let random = RandomTrait::new(vrf_addr, game_id.into());
+            let random = RandomTrait::new(vrf_addr, game_id);
             // [Effect] Explore
             self.before(world, game_id);
             self.playable.explore(world, game_id, character_id, zone_id, random.seed);
             self.after(world, game_id);
         }
 
-        fn claim(ref self: ContractState, game_id: u64, character_id: u8) {
+        fn claim(ref self: ContractState, game_id: felt252, character_id: u8) {
             // [Setup] World
             let world = self.world(@NAMESPACE());
             // [Effect] Claim
@@ -210,7 +234,7 @@ pub mod Play {
             self.after(world, game_id);
         }
 
-        fn surrender(ref self: ContractState, game_id: u64) {
+        fn surrender(ref self: ContractState, game_id: felt252) {
             // [Setup] World
             let world = self.world(@NAMESPACE());
             // [Effect] Surrender
@@ -222,7 +246,7 @@ pub mod Play {
 
     #[generate_trait]
     pub impl PrivateImpl of PrivateTrait {
-        fn before(ref self: ContractState, world: WorldStorage, game_id: u64) {
+        fn before(ref self: ContractState, world: WorldStorage, game_id: felt252) {
             // [Check] Game is not over, otherwise return silently
             let mut store = StoreTrait::new(world);
             let game = store.game(game_id);
@@ -230,16 +254,13 @@ pub mod Play {
                 return;
             }
             // [Check] Game is playable
-            let token_address = store.token_address();
-            pre_action(token_address, game_id);
-            assert_token_ownership(token_address, game_id);
+            self.minigame.pre_action(game_id);
+            self.minigame.assert_token_ownership(game_id);
         }
 
-        fn after(ref self: ContractState, world: WorldStorage, game_id: u64) {
+        fn after(ref self: ContractState, world: WorldStorage, game_id: felt252) {
             // [Effect] Post actions
-            let store = StoreTrait::new(world);
-            let token_address = store.token_address();
-            post_action(token_address, game_id);
+            self.minigame.post_action(game_id);
         }
     }
 }

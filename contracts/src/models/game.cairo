@@ -33,7 +33,7 @@ pub mod Errors {
 #[generate_trait]
 pub impl GameImpl of GameTrait {
     #[inline]
-    fn new(id: u64, seed: felt252) -> Game {
+    fn new(id: felt252, seed: felt252) -> Game {
         Game {
             id,
             heroes: 0,

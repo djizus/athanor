@@ -17,7 +17,7 @@ pub mod Errors {
 #[generate_trait]
 pub impl CharacterImpl of CharacterTrait {
     #[inline]
-    fn new(game_id: u64, id: u8, role: Role) -> Character {
+    fn new(game_id: felt252, id: u8, role: Role) -> Character {
         let mut character = Character {
             game_id,
             id,
@@ -138,7 +138,7 @@ pub impl CharacterAssert of AssertTrait {
 mod tests {
     use super::*;
 
-    const GAME_ID: u64 = 1;
+    const GAME_ID: felt252 = 1;
     const CHARACTER_ID: u8 = 0;
 
     #[test]

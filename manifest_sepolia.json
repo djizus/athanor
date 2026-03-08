@@ -1,8 +1,8 @@
 {
   "world": {
-    "class_hash": "0x613551abceb2b37073b1149bb862ea70cf029981ce1ca47e9dd7c7ab97cb65d",
-    "address": "0x562043d4e591762eec71ab33a67c1319ba8c61a53841c9cc4e9bbab8e7c7001",
-    "seed": "athanor-v0.0.2",
+    "class_hash": "0x381899226c066a0262f45d6ab815f89818e0874ec3e66cdf72b5e92d8db4680",
+    "address": "0x22eed2366c206971b6ab82b338721a5840098206c0eca529131de62c831d336",
+    "seed": "athanor-v0.0.3",
     "name": "Athanor",
     "entrypoints": [
       "uuid",
@@ -33,13 +33,12 @@
   },
   "contracts": [
     {
-      "address": "0x505d14c8c68fba8bee37651e39ded642d3cbaee2727b6a2f7463da369428b2",
-      "class_hash": "0x2a56e2325ad15babecf25d7100259f376afe903cd99e654c838872e3d405bec",
+      "address": "0x383f0550d09d02da9fc280ea85cf2a21f25e37dbcaa4213fa9ab1423d661260",
+      "class_hash": "0x1e9b702d359cc893b3b954a8f6cc2c01036bb89f04de49febed1f79d889b817",
       "init_calldata": [
-        "0x059b1a0c489b635d7c7f43594d187362ddd2dcea6c82db4eef2579fd185b3753",
-        "0x00ce6622be39efa11b4a50b7d2e0c342a218bc099bbd313365efe169ef0eb3e2",
+        "0x0142712722e62a38f9c40fcc904610e1a14c70125876ecaaf25d803556734467",
         "0x1",
-        "0x0"
+        "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f"
       ],
       "tag": "ATHANOR-Play",
       "selector": "0x7fc3989594a8b0537db355c9ad6bd26310ced81aa62b690e4ca3bc1adbcea37",
@@ -57,11 +56,9 @@
       ]
     },
     {
-      "address": "0x94e89d7ce6030cb5fded3e378d20e399ef26d3213c711792a8edf92471793d",
-      "class_hash": "0x38c59807b97d856f2ea9be2c4917bc78d2af4f84664c656655c1f0ad2a65cdd",
-      "init_calldata": [
-        "0x059b1a0c489b635d7c7f43594d187362ddd2dcea6c82db4eef2579fd185b3753"
-      ],
+      "address": "0x100b5207c33ffb5254e4f691c8f7387ec6bb4ca323d28b4dd0d9d30bb5c9ddb",
+      "class_hash": "0x2da69266712d1ec783f1ebee821f306f993211c954f5c5f92420473018ac00b",
+      "init_calldata": [],
       "tag": "ATHANOR-Setup",
       "selector": "0x6fb04bc521dff5dabe95f2a6e4aa6e649d1324380a3778d40c363dbf6e37307",
       "systems": [
@@ -76,7 +73,7 @@
       "members": [
         {
           "name": "game_id",
-          "type": "core::integer::u64",
+          "type": "core::felt252",
           "key": true
         },
         {
@@ -125,7 +122,7 @@
           "key": false
         }
       ],
-      "class_hash": "0x144db7589202e5815923807e24db4d595bda9fafcf6d81c40675582ff3a0e37",
+      "class_hash": "0x2b46bb3531adc077f68424f0027762b93d0642191ffbf62f92e318651c47ecd",
       "tag": "ATHANOR-Character",
       "selector": "0x599b14cd1a170abb799a7f7343e5864fa85d85770a8ee815dba2a9a81ce5764"
     },
@@ -147,7 +144,7 @@
           "key": false
         }
       ],
-      "class_hash": "0x419a2f03741d99e82c95b410b07c9e7ad71f625c9cd276b386e5f8907af05e5",
+      "class_hash": "0x71c72c9930c1803cf3da69fb436ce1811cf7714c43a93360ab66ad7239c910a",
       "tag": "ATHANOR-Config",
       "selector": "0x6308d38640a7a52f13e220613100dae9b5de691fdcd63354ad7872a43f871ff"
     },
@@ -155,7 +152,7 @@
       "members": [
         {
           "name": "game_id",
-          "type": "core::integer::u64",
+          "type": "core::felt252",
           "key": true
         },
         {
@@ -179,7 +176,7 @@
           "key": false
         }
       ],
-      "class_hash": "0x5274edb9fb02c171016d0c194062e9862145dae42e21fff84ffda149cbbcdf2",
+      "class_hash": "0x6c2e65c5053c8d22a12b33ef9884ab0de776b9ce681e7dd64cab50cd2d8f4e9",
       "tag": "ATHANOR-Discovery",
       "selector": "0x73e32852d13ca180d3f8f915f805810d7db93500649e0389eb4ff124a60a485"
     },
@@ -187,7 +184,7 @@
       "members": [
         {
           "name": "id",
-          "type": "core::integer::u64",
+          "type": "core::felt252",
           "key": true
         },
         {
@@ -251,7 +248,7 @@
           "key": false
         }
       ],
-      "class_hash": "0x191c9b75ca55240f5fe19603ecd933961992cc3d13a64c23da663f1e132e116",
+      "class_hash": "0x1f073cec842ae752b68f889bdb61d1f359a9431cc863623ba526fb2752e3856",
       "tag": "ATHANOR-Game",
       "selector": "0x166b38e0ac1200567da346e116d51c20241ce854c9f1ac48fcbc24e1c39c11d"
     },
@@ -318,7 +315,7 @@
           "key": false
         }
       ],
-      "class_hash": "0xc88422c28d382d648cc7581383f1719ce5d070ce544cd718846b7998ac9a18",
+      "class_hash": "0x48725741f8f64ae9e804900b64d4f6d02b47fbd2d9810ce908bc60119f5fe50",
       "tag": "ATHANOR-GameSettings",
       "selector": "0x4329983669bc83cbc0f3e8bf4ffea4a95a5033d77ce8ab0f46b5721de8bd267"
     },
@@ -350,7 +347,7 @@
           "key": false
         }
       ],
-      "class_hash": "0x6b8796dff7bd6e99f2f35fe1dc69754af935781b4c3981639a646c8a2a9536c",
+      "class_hash": "0xe1a99b839cee80523652d5e78bd050058ac047b1f8e82c26abf8ef004b57fa",
       "tag": "ATHANOR-GameSettingsMetadata",
       "selector": "0x35bd111e8591c1ebbdfb773fee490f8fedd653653a0405021551bce592f29b6"
     },
@@ -358,7 +355,7 @@
       "members": [
         {
           "name": "game_id",
-          "type": "core::integer::u64",
+          "type": "core::felt252",
           "key": true
         },
         {
@@ -372,7 +369,7 @@
           "key": false
         }
       ],
-      "class_hash": "0x380e86cd6afe0c8e52319fd9de61f6a8fa8d0960d69de78fb1dccb76dce3410",
+      "class_hash": "0x5c1cee8a4961d10e81dc1104cfe738008a5ae5b56d44330daac2575e1b56e2f",
       "tag": "ATHANOR-Hint",
       "selector": "0xf9a6fa56c0fb9dadf236f7465ba48dc0d34731bc991b3d86bceed071498a5f"
     }
@@ -382,7 +379,7 @@
       "members": [
         {
           "name": "game_id",
-          "type": "core::integer::u64",
+          "type": "core::felt252",
           "key": true
         },
         {
@@ -401,7 +398,7 @@
           "key": false
         }
       ],
-      "class_hash": "0x34cfefd284b00b78dcbf181dbffcb5c4f4fe66a417c22294bbcd5b3a2c2507e",
+      "class_hash": "0x4debc6772596c0cc51ccc0085e371a7a1980c2ac00fbff6fdb237a97f83828e",
       "tag": "ATHANOR-ExpeditionStarted",
       "selector": "0x57c34be4e353bb2b18e7528365e9d668555325eab36e401e3410d9a0233b9df"
     },
@@ -409,7 +406,7 @@
       "members": [
         {
           "name": "game_id",
-          "type": "core::integer::u64",
+          "type": "core::felt252",
           "key": true
         },
         {
@@ -448,7 +445,7 @@
           "key": false
         }
       ],
-      "class_hash": "0x2c2867816b1db3367f2c35d0337f710935336201be744e010af2d053eca38c0",
+      "class_hash": "0x79ffa797c3f453433c8cb078d86f585441837309fe8f521165c24f3f8f0a76",
       "tag": "ATHANOR-ExplorationEvent",
       "selector": "0x9abef8dc5ead60c4746ddb9f18e3d24c36cb3d9c1ee6f61567b35a1c821583"
     },
@@ -456,7 +453,7 @@
       "members": [
         {
           "name": "game_id",
-          "type": "core::integer::u64",
+          "type": "core::felt252",
           "key": true
         },
         {
@@ -475,7 +472,7 @@
           "key": false
         }
       ],
-      "class_hash": "0x1e6e8dcec5c7a0766f63412592034db83b4998c44c8f88350bb01c2a2f113ff",
+      "class_hash": "0xe39524ba0d483fcdd124b6985685dfbc70b78d1cb0accddfca9d6c3a80c69",
       "tag": "ATHANOR-GameCreated",
       "selector": "0x47f79a3ca3b55f1b4f98ad19c7344077a064441cbdeb6e3ddfe77b1e1138f08"
     },
@@ -483,7 +480,7 @@
       "members": [
         {
           "name": "game_id",
-          "type": "core::integer::u64",
+          "type": "core::felt252",
           "key": true
         },
         {
@@ -497,7 +494,7 @@
           "key": false
         }
       ],
-      "class_hash": "0x51c2d718584f318e7e285f8d3134e8d4b5bba0e1f731078fca2d142290b3358",
+      "class_hash": "0x149249c024eab0beb4e014b2e94f012d6fd7b94eae8fa5509017ca08235545",
       "tag": "ATHANOR-GrimoireCompleted",
       "selector": "0x2598760f41d8b90589ba8f9b893e0037c269468bfabcbf805cdeeb282acc11a"
     },
@@ -505,7 +502,7 @@
       "members": [
         {
           "name": "game_id",
-          "type": "core::integer::u64",
+          "type": "core::felt252",
           "key": true
         },
         {
@@ -519,7 +516,7 @@
           "key": false
         }
       ],
-      "class_hash": "0x4ae0e37f8b7c9eb51eb735854e5bd450048c911bf89af947be6370da860f297",
+      "class_hash": "0x4e250e7afc7791f6037a373557c01e1f016f90a6aa011c5a5e034981e2465de",
       "tag": "ATHANOR-HeroRecruited",
       "selector": "0x562a9e01f29800f69b3fa4254c713c7a9899843ca14205203f12c2203596781"
     },
@@ -527,7 +524,7 @@
       "members": [
         {
           "name": "game_id",
-          "type": "core::integer::u64",
+          "type": "core::felt252",
           "key": true
         },
         {
@@ -541,7 +538,7 @@
           "key": false
         }
       ],
-      "class_hash": "0x360551158fb2879e2fac2e03461f746c8898ab33c45a595d07aaba33ce3e546",
+      "class_hash": "0x30bb6c752830158cfcfc6bc9144fe94d21d060bdb50fa837205a0429108e69f",
       "tag": "ATHANOR-LootClaimed",
       "selector": "0x23d4cbb32fe2c5ba42cd8073a6d7ccc779a326dc037745de27fc43cd142123"
     },
@@ -549,7 +546,7 @@
       "members": [
         {
           "name": "game_id",
-          "type": "core::integer::u64",
+          "type": "core::felt252",
           "key": true
         },
         {
@@ -573,7 +570,7 @@
           "key": false
         }
       ],
-      "class_hash": "0x2141b7582cde8aa8da80bcfbb200cafea7ace71053a994280c1ebdcd098bbc7",
+      "class_hash": "0x168152b1e6a0724620ded54b5ad2bba0a79fb0c301ee4a1858c92627abcdf25",
       "tag": "ATHANOR-PotionApplied",
       "selector": "0x2e3dfed42790865f2c6f5d60c07e7670d3d56d33a32468f2278e37fc40313ce"
     },
@@ -581,7 +578,7 @@
       "members": [
         {
           "name": "game_id",
-          "type": "core::integer::u64",
+          "type": "core::felt252",
           "key": true
         },
         {
@@ -610,7 +607,7 @@
           "key": false
         }
       ],
-      "class_hash": "0x30980aa2f7d7059c0b329e2a26e35568526fd47419e18b1d304caf943e9a2f4",
+      "class_hash": "0x2fb1d2b54b4f4cd254542800c21dc26fe17109167bab2b88b23045a5ecb1179",
       "tag": "ATHANOR-RecipeDiscovered",
       "selector": "0x6cbbaf4eb0d46de8c4749444e87211a1768c7e8f5675f78ea5dea54933247b9"
     }
@@ -629,7 +626,7 @@
       "members": [
         {
           "name": "game_id",
-          "type": "core::integer::u64"
+          "type": "core::felt252"
         },
         {
           "name": "hero_id",
@@ -669,7 +666,7 @@
       "members": [
         {
           "name": "game_id",
-          "type": "core::integer::u64"
+          "type": "core::felt252"
         },
         {
           "name": "event_index",
@@ -737,7 +734,7 @@
       "members": [
         {
           "name": "game_id",
-          "type": "core::integer::u64"
+          "type": "core::felt252"
         },
         {
           "name": "player",
@@ -777,7 +774,7 @@
       "members": [
         {
           "name": "game_id",
-          "type": "core::integer::u64"
+          "type": "core::felt252"
         },
         {
           "name": "player",
@@ -809,7 +806,7 @@
       "members": [
         {
           "name": "game_id",
-          "type": "core::integer::u64"
+          "type": "core::felt252"
         },
         {
           "name": "hero_id",
@@ -841,7 +838,7 @@
       "members": [
         {
           "name": "game_id",
-          "type": "core::integer::u64"
+          "type": "core::felt252"
         },
         {
           "name": "hero_id",
@@ -873,7 +870,7 @@
       "members": [
         {
           "name": "game_id",
-          "type": "core::integer::u64"
+          "type": "core::felt252"
         },
         {
           "name": "hero_id",
@@ -921,7 +918,7 @@
       "members": [
         {
           "name": "game_id",
-          "type": "core::integer::u64"
+          "type": "core::felt252"
         },
         {
           "name": "recipe_id",
@@ -1227,7 +1224,7 @@
       "members": [
         {
           "name": "game_id",
-          "type": "core::integer::u64"
+          "type": "core::felt252"
         },
         {
           "name": "id",
@@ -1311,7 +1308,7 @@
       "members": [
         {
           "name": "game_id",
-          "type": "core::integer::u64"
+          "type": "core::felt252"
         },
         {
           "name": "ingredient_a",
@@ -1351,7 +1348,7 @@
       "members": [
         {
           "name": "id",
-          "type": "core::integer::u64"
+          "type": "core::felt252"
         },
         {
           "name": "heroes",
@@ -1463,7 +1460,7 @@
       "members": [
         {
           "name": "game_id",
-          "type": "core::integer::u64"
+          "type": "core::felt252"
         },
         {
           "name": "ingredient",
@@ -1519,7 +1516,7 @@
           "inputs": [
             {
               "name": "game_id",
-              "type": "core::integer::u64"
+              "type": "core::felt252"
             }
           ],
           "outputs": [],
@@ -1531,7 +1528,7 @@
           "inputs": [
             {
               "name": "game_id",
-              "type": "core::integer::u64"
+              "type": "core::felt252"
             }
           ],
           "outputs": [],
@@ -1543,7 +1540,7 @@
           "inputs": [
             {
               "name": "game_id",
-              "type": "core::integer::u64"
+              "type": "core::felt252"
             },
             {
               "name": "ingredient_a",
@@ -1567,7 +1564,7 @@
           "inputs": [
             {
               "name": "game_id",
-              "type": "core::integer::u64"
+              "type": "core::felt252"
             }
           ],
           "outputs": [],
@@ -1579,7 +1576,7 @@
           "inputs": [
             {
               "name": "game_id",
-              "type": "core::integer::u64"
+              "type": "core::felt252"
             },
             {
               "name": "character_id",
@@ -1603,7 +1600,7 @@
           "inputs": [
             {
               "name": "game_id",
-              "type": "core::integer::u64"
+              "type": "core::felt252"
             },
             {
               "name": "character_id",
@@ -1623,7 +1620,7 @@
           "inputs": [
             {
               "name": "game_id",
-              "type": "core::integer::u64"
+              "type": "core::felt252"
             },
             {
               "name": "character_id",
@@ -1639,7 +1636,7 @@
           "inputs": [
             {
               "name": "game_id",
-              "type": "core::integer::u64"
+              "type": "core::felt252"
             }
           ],
           "outputs": [],
@@ -1664,7 +1661,7 @@
         },
         {
           "name": "MinigameEvent",
-          "type": "game_components_minigame::minigame::MinigameComponent::Event",
+          "type": "game_components_embeddable_game_standard::minigame::minigame_component::MinigameComponent::Event",
           "kind": "flat"
         },
         {
@@ -1730,7 +1727,7 @@
         },
         {
           "name": "SettingsEvent",
-          "type": "game_components_minigame::extensions::settings::settings::SettingsComponent::Event",
+          "type": "game_components_embeddable_game_standard::minigame::extensions::settings::settings::SettingsComponent::Event",
           "kind": "flat"
         },
         {
@@ -1847,21 +1844,21 @@
     },
     {
       "type": "struct",
-      "name": "core::array::Span::<game_components_metagame::extensions::context::structs::GameContext>",
+      "name": "core::array::Span::<game_components_interfaces::structs::metagame::GameContext>",
       "members": [
         {
           "name": "snapshot",
-          "type": "@core::array::Array::<game_components_metagame::extensions::context::structs::GameContext>"
+          "type": "@core::array::Array::<game_components_interfaces::structs::metagame::GameContext>"
         }
       ]
     },
     {
       "type": "struct",
-      "name": "core::array::Span::<game_components_minigame::extensions::settings::structs::GameSetting>",
+      "name": "core::array::Span::<game_components_interfaces::structs::minigame::GameSetting>",
       "members": [
         {
           "name": "snapshot",
-          "type": "@core::array::Array::<game_components_minigame::extensions::settings::structs::GameSetting>"
+          "type": "@core::array::Array::<game_components_interfaces::structs::minigame::GameSetting>"
         }
       ]
     },
@@ -1894,20 +1891,6 @@
         {
           "name": "pending_word_len",
           "type": "core::internal::bounded_int::BoundedInt::<0, 30>"
-        }
-      ]
-    },
-    {
-      "type": "enum",
-      "name": "core::option::Option::<core::array::Span::<core::integer::u32>>",
-      "variants": [
-        {
-          "name": "Some",
-          "type": "core::array::Span::<core::integer::u32>"
-        },
-        {
-          "name": "None",
-          "type": "()"
         }
       ]
     },
@@ -1983,11 +1966,11 @@
     },
     {
       "type": "enum",
-      "name": "core::option::Option::<game_components_metagame::extensions::context::structs::GameContextDetails>",
+      "name": "core::option::Option::<game_components_interfaces::structs::metagame::GameContextDetails>",
       "variants": [
         {
           "name": "Some",
-          "type": "game_components_metagame::extensions::context::structs::GameContextDetails"
+          "type": "game_components_interfaces::structs::metagame::GameContextDetails"
         },
         {
           "name": "None",
@@ -3665,12 +3648,7 @@
     {
       "type": "function",
       "name": "dojo_init",
-      "inputs": [
-        {
-          "name": "creator_address",
-          "type": "core::starknet::contract_address::ContractAddress"
-        }
-      ],
+      "inputs": [],
       "outputs": [],
       "state_mutability": "external"
     },
@@ -3706,126 +3684,20 @@
       "state_mutability": "view"
     },
     {
-      "type": "struct",
-      "name": "game_components_metagame::extensions::context::structs::GameContext",
-      "members": [
-        {
-          "name": "name",
-          "type": "core::byte_array::ByteArray"
-        },
-        {
-          "name": "value",
-          "type": "core::byte_array::ByteArray"
-        }
-      ]
-    },
-    {
-      "type": "struct",
-      "name": "game_components_metagame::extensions::context::structs::GameContextDetails",
-      "members": [
-        {
-          "name": "name",
-          "type": "core::byte_array::ByteArray"
-        },
-        {
-          "name": "description",
-          "type": "core::byte_array::ByteArray"
-        },
-        {
-          "name": "id",
-          "type": "core::option::Option::<core::integer::u32>"
-        },
-        {
-          "name": "context",
-          "type": "core::array::Span::<game_components_metagame::extensions::context::structs::GameContext>"
-        }
-      ]
-    },
-    {
-      "type": "interface",
-      "name": "game_components_minigame::extensions::settings::interface::IMinigameSettings",
-      "items": [
-        {
-          "type": "function",
-          "name": "settings_exist",
-          "inputs": [
-            {
-              "name": "settings_id",
-              "type": "core::integer::u32"
-            }
-          ],
-          "outputs": [
-            {
-              "type": "core::bool"
-            }
-          ],
-          "state_mutability": "view"
-        }
-      ]
-    },
-    {
-      "type": "interface",
-      "name": "game_components_minigame::extensions::settings::interface::IMinigameSettingsDetails",
-      "items": [
-        {
-          "type": "function",
-          "name": "settings_details",
-          "inputs": [
-            {
-              "name": "settings_id",
-              "type": "core::integer::u32"
-            }
-          ],
-          "outputs": [
-            {
-              "type": "game_components_minigame::extensions::settings::structs::GameSettingDetails"
-            }
-          ],
-          "state_mutability": "view"
-        }
-      ]
-    },
-    {
       "type": "event",
-      "name": "game_components_minigame::extensions::settings::settings::SettingsComponent::Event",
+      "name": "game_components_embeddable_game_standard::minigame::extensions::settings::settings::SettingsComponent::Event",
       "kind": "enum",
       "variants": []
     },
     {
-      "type": "struct",
-      "name": "game_components_minigame::extensions::settings::structs::GameSetting",
-      "members": [
-        {
-          "name": "name",
-          "type": "core::byte_array::ByteArray"
-        },
-        {
-          "name": "value",
-          "type": "core::byte_array::ByteArray"
-        }
-      ]
-    },
-    {
-      "type": "struct",
-      "name": "game_components_minigame::extensions::settings::structs::GameSettingDetails",
-      "members": [
-        {
-          "name": "name",
-          "type": "core::byte_array::ByteArray"
-        },
-        {
-          "name": "description",
-          "type": "core::byte_array::ByteArray"
-        },
-        {
-          "name": "settings",
-          "type": "core::array::Span::<game_components_minigame::extensions::settings::structs::GameSetting>"
-        }
-      ]
+      "type": "event",
+      "name": "game_components_embeddable_game_standard::minigame::minigame_component::MinigameComponent::Event",
+      "kind": "enum",
+      "variants": []
     },
     {
       "type": "interface",
-      "name": "game_components_minigame::interface::IMinigame",
+      "name": "game_components_interfaces::minigame::core::IMinigame",
       "items": [
         {
           "type": "function",
@@ -3881,12 +3753,12 @@
               "type": "core::option::Option::<core::integer::u64>"
             },
             {
-              "name": "objective_ids",
-              "type": "core::option::Option::<core::array::Span::<core::integer::u32>>"
+              "name": "objective_id",
+              "type": "core::option::Option::<core::integer::u32>"
             },
             {
               "name": "context",
-              "type": "core::option::Option::<game_components_metagame::extensions::context::structs::GameContextDetails>"
+              "type": "core::option::Option::<game_components_interfaces::structs::metagame::GameContextDetails>"
             },
             {
               "name": "client_url",
@@ -3897,17 +3769,49 @@
               "type": "core::option::Option::<core::starknet::contract_address::ContractAddress>"
             },
             {
+              "name": "skills_address",
+              "type": "core::option::Option::<core::starknet::contract_address::ContractAddress>"
+            },
+            {
               "name": "to",
               "type": "core::starknet::contract_address::ContractAddress"
             },
             {
               "name": "soulbound",
               "type": "core::bool"
+            },
+            {
+              "name": "paymaster",
+              "type": "core::bool"
+            },
+            {
+              "name": "salt",
+              "type": "core::integer::u16"
+            },
+            {
+              "name": "metadata",
+              "type": "core::integer::u16"
             }
           ],
           "outputs": [
             {
-              "type": "core::integer::u64"
+              "type": "core::felt252"
+            }
+          ],
+          "state_mutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "mint_game_batch",
+          "inputs": [
+            {
+              "name": "mints",
+              "type": "core::array::Array::<game_components_interfaces::structs::minigame::MintGameParams>"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "core::array::Array::<core::felt252>"
             }
           ],
           "state_mutability": "view"
@@ -3916,7 +3820,7 @@
     },
     {
       "type": "interface",
-      "name": "game_components_minigame::interface::IMinigameTokenData",
+      "name": "game_components_interfaces::minigame::core::IMinigameTokenData",
       "items": [
         {
           "type": "function",
@@ -3924,12 +3828,12 @@
           "inputs": [
             {
               "name": "token_id",
-              "type": "core::integer::u64"
+              "type": "core::felt252"
             }
           ],
           "outputs": [
             {
-              "type": "core::integer::u32"
+              "type": "core::integer::u64"
             }
           ],
           "state_mutability": "view"
@@ -3940,7 +3844,7 @@
           "inputs": [
             {
               "name": "token_id",
-              "type": "core::integer::u64"
+              "type": "core::felt252"
             }
           ],
           "outputs": [
@@ -3949,14 +3853,257 @@
             }
           ],
           "state_mutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "score_batch",
+          "inputs": [
+            {
+              "name": "token_ids",
+              "type": "core::array::Span::<core::felt252>"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "core::array::Array::<core::integer::u64>"
+            }
+          ],
+          "state_mutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "game_over_batch",
+          "inputs": [
+            {
+              "name": "token_ids",
+              "type": "core::array::Span::<core::felt252>"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "core::array::Array::<core::bool>"
+            }
+          ],
+          "state_mutability": "view"
         }
       ]
     },
     {
-      "type": "event",
-      "name": "game_components_minigame::minigame::MinigameComponent::Event",
-      "kind": "enum",
-      "variants": []
+      "type": "interface",
+      "name": "game_components_interfaces::minigame::settings::IMinigameSettings",
+      "items": [
+        {
+          "type": "function",
+          "name": "settings_exist",
+          "inputs": [
+            {
+              "name": "settings_id",
+              "type": "core::integer::u32"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "core::bool"
+            }
+          ],
+          "state_mutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "settings_exist_batch",
+          "inputs": [
+            {
+              "name": "settings_ids",
+              "type": "core::array::Span::<core::integer::u32>"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "core::array::Array::<core::bool>"
+            }
+          ],
+          "state_mutability": "view"
+        }
+      ]
+    },
+    {
+      "type": "interface",
+      "name": "game_components_interfaces::minigame::settings::IMinigameSettingsDetails",
+      "items": [
+        {
+          "type": "function",
+          "name": "settings_count",
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "core::integer::u32"
+            }
+          ],
+          "state_mutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "settings_details",
+          "inputs": [
+            {
+              "name": "settings_id",
+              "type": "core::integer::u32"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "game_components_interfaces::structs::minigame::GameSettingDetails"
+            }
+          ],
+          "state_mutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "settings_details_batch",
+          "inputs": [
+            {
+              "name": "settings_ids",
+              "type": "core::array::Span::<core::integer::u32>"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "core::array::Array::<game_components_interfaces::structs::minigame::GameSettingDetails>"
+            }
+          ],
+          "state_mutability": "view"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "game_components_interfaces::structs::metagame::GameContext",
+      "members": [
+        {
+          "name": "name",
+          "type": "core::felt252"
+        },
+        {
+          "name": "value",
+          "type": "core::felt252"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "game_components_interfaces::structs::metagame::GameContextDetails",
+      "members": [
+        {
+          "name": "name",
+          "type": "core::byte_array::ByteArray"
+        },
+        {
+          "name": "description",
+          "type": "core::byte_array::ByteArray"
+        },
+        {
+          "name": "id",
+          "type": "core::option::Option::<core::integer::u32>"
+        },
+        {
+          "name": "context",
+          "type": "core::array::Span::<game_components_interfaces::structs::metagame::GameContext>"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "game_components_interfaces::structs::minigame::GameSetting",
+      "members": [
+        {
+          "name": "name",
+          "type": "core::felt252"
+        },
+        {
+          "name": "value",
+          "type": "core::felt252"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "game_components_interfaces::structs::minigame::GameSettingDetails",
+      "members": [
+        {
+          "name": "name",
+          "type": "core::byte_array::ByteArray"
+        },
+        {
+          "name": "description",
+          "type": "core::byte_array::ByteArray"
+        },
+        {
+          "name": "settings",
+          "type": "core::array::Span::<game_components_interfaces::structs::minigame::GameSetting>"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "game_components_interfaces::structs::minigame::MintGameParams",
+      "members": [
+        {
+          "name": "player_name",
+          "type": "core::option::Option::<core::felt252>"
+        },
+        {
+          "name": "settings_id",
+          "type": "core::option::Option::<core::integer::u32>"
+        },
+        {
+          "name": "start",
+          "type": "core::option::Option::<core::integer::u64>"
+        },
+        {
+          "name": "end",
+          "type": "core::option::Option::<core::integer::u64>"
+        },
+        {
+          "name": "objective_id",
+          "type": "core::option::Option::<core::integer::u32>"
+        },
+        {
+          "name": "context",
+          "type": "core::option::Option::<game_components_interfaces::structs::metagame::GameContextDetails>"
+        },
+        {
+          "name": "client_url",
+          "type": "core::option::Option::<core::byte_array::ByteArray>"
+        },
+        {
+          "name": "renderer_address",
+          "type": "core::option::Option::<core::starknet::contract_address::ContractAddress>"
+        },
+        {
+          "name": "skills_address",
+          "type": "core::option::Option::<core::starknet::contract_address::ContractAddress>"
+        },
+        {
+          "name": "to",
+          "type": "core::starknet::contract_address::ContractAddress"
+        },
+        {
+          "name": "soulbound",
+          "type": "core::bool"
+        },
+        {
+          "name": "paymaster",
+          "type": "core::bool"
+        },
+        {
+          "name": "salt",
+          "type": "core::integer::u16"
+        },
+        {
+          "name": "metadata",
+          "type": "core::integer::u16"
+        }
+      ]
     },
     {
       "type": "interface",

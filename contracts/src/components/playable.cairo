@@ -32,7 +32,7 @@ pub mod PlayableComponent {
         fn create(
             ref self: ComponentState<TContractState>,
             world: WorldStorage,
-            game_id: u64,
+            game_id: felt252,
             seed: felt252,
         ) {
             // [Setup] Store
@@ -52,7 +52,7 @@ pub mod PlayableComponent {
         fn clue(
             ref self: ComponentState<TContractState>,
             world: WorldStorage,
-            game_id: u64,
+            game_id: felt252,
             seed: felt252,
         ) {
             // [Setup] Store
@@ -73,7 +73,7 @@ pub mod PlayableComponent {
         fn craft(
             ref self: ComponentState<TContractState>,
             world: WorldStorage,
-            game_id: u64,
+            game_id: felt252,
             ingredient_a: Ingredient,
             ingredient_b: Ingredient,
             quantity: u16,
@@ -121,7 +121,7 @@ pub mod PlayableComponent {
         fn recruit(
             ref self: ComponentState<TContractState>,
             world: WorldStorage,
-            game_id: u64,
+            game_id: felt252,
             seed: felt252,
         ) {
             // [Setup] Store
@@ -141,7 +141,7 @@ pub mod PlayableComponent {
         fn buff(
             ref self: ComponentState<TContractState>,
             world: WorldStorage,
-            game_id: u64,
+            game_id: felt252,
             character_id: u8,
             effect: Effect,
             quantity: u16,
@@ -166,7 +166,7 @@ pub mod PlayableComponent {
         fn explore(
             ref self: ComponentState<TContractState>,
             world: WorldStorage,
-            game_id: u64,
+            game_id: felt252,
             character_id: u8,
             zone_id: u8,
             seed: felt252,
@@ -204,7 +204,7 @@ pub mod PlayableComponent {
         fn claim(
             ref self: ComponentState<TContractState>,
             world: WorldStorage,
-            game_id: u64,
+            game_id: felt252,
             character_id: u8,
         ) {
             // [Setup] Store
@@ -225,7 +225,9 @@ pub mod PlayableComponent {
             store.set_game(@game);
         }
 
-        fn surrender(ref self: ComponentState<TContractState>, world: WorldStorage, game_id: u64) {
+        fn surrender(
+            ref self: ComponentState<TContractState>, world: WorldStorage, game_id: felt252,
+        ) {
             // [Setup] Store
             let store = StoreTrait::new(world);
             // [Check] Game exists

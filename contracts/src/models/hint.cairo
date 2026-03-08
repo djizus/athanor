@@ -9,7 +9,7 @@ pub mod Errors {
 
 #[generate_trait]
 pub impl HintImpl of HintTrait {
-    fn new(game_id: u64, ingredient: Ingredient) -> Hint {
+    fn new(game_id: felt252, ingredient: Ingredient) -> Hint {
         Hint { game_id, ingredient: ingredient.into(), recipes: 0 }
     }
 

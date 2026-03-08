@@ -3,7 +3,7 @@ pub use crate::events::index::{ExpeditionStarted, ExplorationEvent};
 #[generate_trait]
 pub impl ExplorationEventImpl of ExplorationEventTrait {
     fn new(
-        game_id: u64,
+        game_id: felt252,
         event_index: u16,
         hero_id: u8,
         depth: u16,
@@ -20,7 +20,7 @@ pub impl ExplorationEventImpl of ExplorationEventTrait {
 
 #[generate_trait]
 pub impl ExpeditionStartedImpl of ExpeditionStartedTrait {
-    fn new(game_id: u64, hero_id: u8, death_depth: u16, return_at: u64) -> ExpeditionStarted {
+    fn new(game_id: felt252, hero_id: u8, death_depth: u16, return_at: u64) -> ExpeditionStarted {
         ExpeditionStarted { game_id, hero_id, death_depth, return_at }
     }
 }

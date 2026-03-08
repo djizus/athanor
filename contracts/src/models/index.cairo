@@ -2,7 +2,7 @@
 #[dojo::model]
 pub struct Game {
     #[key]
-    pub id: u64,
+    pub id: felt252,
     pub heroes: u8,
     pub started_at: u64,
     pub ended_at: u64,
@@ -21,7 +21,7 @@ pub struct Game {
 #[dojo::model]
 pub struct Discovery {
     #[key]
-    pub game_id: u64,
+    pub game_id: felt252,
     #[key]
     pub ingredient_a: u8,
     #[key]
@@ -34,7 +34,7 @@ pub struct Discovery {
 #[dojo::model]
 pub struct Hint {
     #[key]
-    pub game_id: u64,
+    pub game_id: felt252,
     #[key]
     pub ingredient: u8,
     pub recipes: u32 // Bitmap of recipes that can be crafted with this ingredient
@@ -44,7 +44,7 @@ pub struct Hint {
 #[dojo::model]
 pub struct Character {
     #[key]
-    pub game_id: u64,
+    pub game_id: felt252,
     #[key]
     pub id: u8,
     pub role: u8,

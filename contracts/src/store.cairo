@@ -1,7 +1,6 @@
 use dojo::event::EventStorage;
 use dojo::model::ModelStorage;
 use dojo::world::WorldStorage;
-use game_components_token::core::interface::IMinigameTokenDispatcher;
 use starknet::ContractAddress;
 use crate::events::crafting::RecipeDiscoveredTrait;
 
@@ -53,10 +52,6 @@ pub impl StoreImpl of StoreTrait {
         self.config().token_address
     }
 
-    fn token_disp(self: @Store) -> IMinigameTokenDispatcher {
-        IMinigameTokenDispatcher { contract_address: self.config().token_address }
-    }
-
     fn vrf_disp(self: @Store) -> IVrfProviderDispatcher {
         IVrfProviderDispatcher { contract_address: self.config().vrf_address }
     }
@@ -65,7 +60,7 @@ pub impl StoreImpl of StoreTrait {
         self.config().vrf_address
     }
 
-    fn game(self: @Store, game_id: u64) -> Game {
+    fn game(self: @Store, game_id: felt252) -> Game {
         self.world.read_model(game_id)
     }
 
@@ -73,7 +68,7 @@ pub impl StoreImpl of StoreTrait {
         self.world.write_model(model);
     }
 
-    fn hint(self: @Store, game_id: u64, ingredient: u8) -> Hint {
+    fn hint(self: @Store, game_id: felt252, ingredient: u8) -> Hint {
         self.world.read_model((game_id, ingredient))
     }
 
@@ -81,7 +76,7 @@ pub impl StoreImpl of StoreTrait {
         self.world.write_model(model);
     }
 
-    fn discovery(self: @Store, game_id: u64, ingredient_a: u8, ingredient_b: u8) -> Discovery {
+    fn discovery(self: @Store, game_id: felt252, ingredient_a: u8, ingredient_b: u8) -> Discovery {
         self.world.read_model((game_id, ingredient_a, ingredient_b))
     }
 
@@ -89,7 +84,7 @@ pub impl StoreImpl of StoreTrait {
         self.world.write_model(model);
     }
 
-    fn character(self: @Store, game_id: u64, character_id: u8) -> Character {
+    fn character(self: @Store, game_id: felt252, character_id: u8) -> Character {
         self.world.read_model((game_id, character_id))
     }
 
@@ -122,14 +117,14 @@ pub impl StoreImpl of StoreTrait {
     // -----------------------------------------------------------------------
 
     fn emit_game_created(
-        mut self: Store, game_id: u64, player: ContractAddress, settings_id: u32, seed: felt252,
+        mut self: Store, game_id: felt252, player: ContractAddress, settings_id: u32, seed: felt252,
     ) {
         self.world.emit_event(@GameCreatedTrait::new(game_id, player, settings_id, seed));
     }
 
     fn emit_exploration_event(
         mut self: Store,
-        game_id: u64,
+        game_id: felt252,
         event_index: u16,
         hero_id: u8,
         depth: u16,
@@ -148,20 +143,20 @@ pub impl StoreImpl of StoreTrait {
     }
 
     fn emit_expedition_started(
-        mut self: Store, game_id: u64, hero_id: u8, death_depth: u16, return_at: u64,
+        mut self: Store, game_id: felt252, hero_id: u8, death_depth: u16, return_at: u64,
     ) {
         self
             .world
             .emit_event(@ExpeditionStartedTrait::new(game_id, hero_id, death_depth, return_at));
     }
 
-    fn emit_loot_claimed(mut self: Store, game_id: u64, hero_id: u8, gold: u32) {
+    fn emit_loot_claimed(mut self: Store, game_id: felt252, hero_id: u8, gold: u32) {
         self.world.emit_event(@LootClaimedTrait::new(game_id, hero_id, gold));
     }
 
     fn emit_recipe_discovered(
         mut self: Store,
-        game_id: u64,
+        game_id: felt252,
         recipe_id: u8,
         ingredient_a: u8,
         ingredient_b: u8,
@@ -179,7 +174,7 @@ pub impl StoreImpl of StoreTrait {
 
     fn emit_potion_applied(
         mut self: Store,
-        game_id: u64,
+        game_id: felt252,
         hero_id: u8,
         potion_index: u16,
         effect_type: u8,
@@ -192,12 +187,12 @@ pub impl StoreImpl of StoreTrait {
             );
     }
 
-    fn emit_hero_recruited(mut self: Store, game_id: u64, hero_id: u8, cost: u32) {
+    fn emit_hero_recruited(mut self: Store, game_id: felt252, hero_id: u8, cost: u32) {
         self.world.emit_event(@HeroRecruitedTrait::new(game_id, hero_id, cost));
     }
 
     fn emit_grimoire_completed(
-        mut self: Store, game_id: u64, player: ContractAddress, completion_time: u64,
+        mut self: Store, game_id: felt252, player: ContractAddress, completion_time: u64,
     ) {
         self.world.emit_event(@GrimoireCompletedTrait::new(game_id, player, completion_time));
     }
