@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAccount } from '@starknet-react/core'
-import { RpcProvider, num } from 'starknet'
-import { useLeaderboard } from '@/hooks/useLeaderboard'
+import { num } from 'starknet'
 import { useNavigationStore } from '@/stores/navigationStore'
+import { bitmapPopcount } from '@/game/packer'
 
-const { VITE_PUBLIC_NODE_URL, VITE_PUBLIC_TOKEN_ADDRESS } = import.meta.env
+const { VITE_PUBLIC_TORII_URL, VITE_PUBLIC_NAMESPACE } = import.meta.env
+const namespace = VITE_PUBLIC_NAMESPACE || 'ATHANOR'
 
 const PAGE_SIZE = 10
 
@@ -30,89 +31,73 @@ function truncateAddress(hex: string): string {
   return `${hex.slice(0, 6)}...${hex.slice(-4)}`
 }
 
-async function fetchTokenOwners(gameIds: bigint[]): Promise<Map<bigint, string>> {
-  const map = new Map<bigint, string>()
-  if (!VITE_PUBLIC_NODE_URL || !VITE_PUBLIC_TOKEN_ADDRESS || gameIds.length === 0) return map
-
-  const provider = new RpcProvider({ nodeUrl: VITE_PUBLIC_NODE_URL })
-
-  const results = await Promise.allSettled(
-    gameIds.map(async (gameId) => {
-      const result = await provider.callContract({
-        contractAddress: VITE_PUBLIC_TOKEN_ADDRESS,
-        entrypoint: 'owner_of',
-        calldata: [num.toHex(gameId), '0x0'],
-      })
-      return { gameId, owner: num.toHex(result[0]) }
-    }),
-  )
-
-  for (const result of results) {
-    if (result.status === 'fulfilled') {
-      map.set(result.value.gameId, result.value.owner)
-    }
-  }
-  return map
+function hexToNumber(hex: string | number): number {
+  if (typeof hex === 'number') return hex
+  return Number(BigInt(hex))
 }
 
-async function resolveUsernames(addresses: string[]): Promise<Map<string, string>> {
-  const map = new Map<string, string>()
-  if (addresses.length === 0) return map
+async function fetchLeaderboardSQL(): Promise<LeaderboardRow[]> {
+  if (!VITE_PUBLIC_TORII_URL) return []
+
+  const query = `
+    SELECT
+      g.id AS game_id,
+      g.grimoire,
+      g.started_at,
+      g.ended_at,
+      tb.account_address AS player,
+      COALESCE(c.username, '') AS username
+    FROM "${namespace}-Game" AS g
+    JOIN token_balances AS tb
+      ON tb.token_id LIKE '%:' || g.id
+      AND tb.account_address != '0x0000000000000000000000000000000000000000000000000000000000000000'
+    LEFT JOIN controllers AS c ON c.address = tb.account_address
+    WHERE g.ended_at != '0x0000000000000000'
+  `
 
   try {
-    const normalized = addresses.map(num.toHex)
-    const res = await fetch('https://api.cartridge.gg/lookup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ addresses: normalized }),
-    })
-    if (!res.ok) return map
-    const data: { results?: { username: string; addresses: string[] }[] } = await res.json()
-    for (const result of data.results ?? []) {
-      for (const addr of result.addresses) {
-        map.set(num.toHex(addr), result.username)
+    const res = await fetch(`${VITE_PUBLIC_TORII_URL}/sql?q=${encodeURIComponent(query)}`)
+    if (!res.ok) return []
+    const data: Record<string, string | number>[] = await res.json()
+
+    return data.map((row) => {
+      const grimoire =
+        typeof row.grimoire === 'number' ? row.grimoire : hexToNumber(row.grimoire)
+      const startedAt = hexToNumber(row.started_at)
+      const endedAt = hexToNumber(row.ended_at)
+      const playerAddr = String(row.player || '')
+      const username = String(row.username || '')
+
+      return {
+        gameId: BigInt(String(row.game_id)),
+        discoveredCount: bitmapPopcount(grimoire),
+        duration: endedAt - startedAt,
+        player: username || (playerAddr ? truncateAddress(playerAddr) : '...'),
+        ownerAddress: playerAddr,
       }
-    }
+    })
   } catch {
-    // fallback to truncated addresses
+    return []
   }
-  return map
 }
 
 export function LeaderboardPage() {
-  const { sorted: completedGames } = useLeaderboard()
   const { navigate } = useNavigationStore()
   const { address } = useAccount()
 
   const [page, setPage] = useState(0)
-  const [owners, setOwners] = useState<Map<bigint, string>>(new Map())
-  const [usernames, setUsernames] = useState<Map<string, string>>(new Map())
+  const [rawRows, setRawRows] = useState<LeaderboardRow[]>([])
 
   useEffect(() => {
-    const ids = completedGames.map((g) => g.id)
-    if (ids.length === 0) return
-    fetchTokenOwners(ids).then(setOwners)
-  }, [completedGames])
+    fetchLeaderboardSQL().then(setRawRows)
+  }, [])
 
-  useEffect(() => {
-    const addresses = [...new Set(owners.values())]
-    if (addresses.length === 0) return
-    resolveUsernames(addresses).then(setUsernames)
-  }, [owners])
-
-  const rows: LeaderboardRow[] = useMemo(() => {
-    return completedGames.map((g) => {
-      const ownerAddr = owners.get(g.id) ?? ''
-      const username = ownerAddr ? usernames.get(num.toHex(ownerAddr)) ?? '' : ''
-      return {
-        gameId: g.id,
-        discoveredCount: g.discoveredCount,
-        duration: g.duration,
-        player: username || (ownerAddr ? truncateAddress(ownerAddr) : '...'),
-        ownerAddress: ownerAddr,
-      }
+  const rows = useMemo(() => {
+    return [...rawRows].sort((a, b) => {
+      if (b.discoveredCount !== a.discoveredCount) return b.discoveredCount - a.discoveredCount
+      return a.duration - b.duration
     })
-  }, [completedGames, owners, usernames])
+  }, [rawRows])
 
   const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE))
   const pageRows = rows.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
@@ -143,9 +128,15 @@ export function LeaderboardPage() {
                   <tbody>
                     {pageRows.map((row, i) => {
                       const rank = page * PAGE_SIZE + i + 1
-                      const isMe = connectedHex && row.ownerAddress && num.toHex(row.ownerAddress) === connectedHex
+                      const isMe =
+                        connectedHex &&
+                        row.ownerAddress &&
+                        num.toHex(row.ownerAddress) === connectedHex
                       return (
-                         <tr key={String(row.gameId)} className={isMe ? 'leaderboard-row-me' : undefined}>
+                        <tr
+                          key={String(row.gameId)}
+                          className={isMe ? 'leaderboard-row-me' : undefined}
+                        >
                           <td>{rank}</td>
                           <td>{isMe ? <strong>{row.player}</strong> : row.player}</td>
                           <td>{formatDuration(row.duration)}</td>
@@ -157,16 +148,21 @@ export function LeaderboardPage() {
               </div>
               {totalPages > 1 && (
                 <div className="leaderboard-pagination">
-                  <button disabled={page === 0} onClick={() => setPage(page - 1)}>&lsaquo; Prev</button>
-                  <span className="leaderboard-pagination-info">{page + 1} / {totalPages}</span>
-                  <button disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}>Next &rsaquo;</button>
+                  <button disabled={page === 0} onClick={() => setPage(page - 1)}>
+                    &lsaquo; Prev
+                  </button>
+                  <span className="leaderboard-pagination-info">
+                    {page + 1} / {totalPages}
+                  </span>
+                  <button disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}>
+                    Next &rsaquo;
+                  </button>
                 </div>
               )}
             </>
           )}
         </div>
       </div>
-
     </div>
   )
 }
