@@ -164,7 +164,7 @@ export function HomePage() {
           />
           <div className="home-menu-rank-panel">
             <span className="home-menu-rank-icon">{rankIcon}</span>
-            <span className="home-menu-rank-text">Rank {rank != null ? `#${rank}` : '—'} · Best: {bestTime ?? '—'} · Runs: {totalGames}</span>
+            <span className="home-menu-rank-text">Rank {rank != null ? `#${rank}` : '—'} · Time: {bestTime ?? '—'} · Runs: {totalGames}</span>
           </div>
           <div className="home-menu-actions">
             {activeGame ? (
