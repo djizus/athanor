@@ -1023,6 +1023,11 @@ button:disabled, .btn:disabled {
 
 .settings-close-btn {
   margin-top: 0.25rem;
+  min-height: 2rem;
+  font-size: 0.85rem;
+  padding: 0.35rem 1.5rem;
+  align-self: center;
+  width: auto;
 }
 
 .settings-surrender-section {
