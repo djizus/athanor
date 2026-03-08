@@ -11,7 +11,6 @@ import { useHints } from '@/hooks/useHints'
 import { useExplorationLog } from '@/hooks/useExplorationLog'
 import type { RawExplorationEvent, HeroOverride } from '@/hooks/useExplorationLog'
 import { useExpeditionTracker } from '@/hooks/useExpeditionTracker'
-import type { HeroPosition } from '@/hooks/useExpeditionTracker'
 import { useNavigationStore } from '@/stores/navigationStore'
 import { usePendingTxStore } from '@/stores/pendingTxStore'
 import { txToast } from '@/stores/toastStore'
@@ -37,6 +36,8 @@ import { StatusHUD } from '@/ui/components/StatusHUD'
 import { BrewContent, IngredientsContent, GrimoireContent } from '@/ui/components/RightPanel'
 import type { PanelMode } from '@/ui/components/RightPanel'
 import { SettingsOverlay } from '@/ui/components/SettingsOverlay'
+import { TutorialOverlay } from '@/ui/components/TutorialOverlay'
+import { useSettingsStore } from '@/stores/settingsStore'
 
 function computeOptimisticHp(
   hero: { health: number; max_health: number; regen: number; available_at: number },
@@ -180,6 +181,7 @@ export function PlayScreen() {
   const notifySyncTick = usePendingTxStore((s) => s.notifySyncTick)
   const isActionPending = usePendingTxStore((s) => s.isActionPending)
   const isHeroActionPending = usePendingTxStore((s) => s.isHeroActionPending)
+  const { tutorialEnabled, setTutorialEnabled } = useSettingsStore()
 
   const [selectedHeroId, setSelectedHeroId] = useState(0)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -775,7 +777,7 @@ export function PlayScreen() {
       />
 
       <div className={`play-left-panels${mobilePanel && mobilePanel !== 'heroes' && mobilePanel !== 'logs' ? ' mobile-hidden' : ''}${mobilePanel === 'heroes' || mobilePanel === 'logs' ? ' mobile-open' : ''}`}>
-        <div className={`side-panel floating-panel panel-heroes${mobilePanel === 'logs' ? ' mobile-panel-hidden' : ''}`}>
+        <div className={`side-panel floating-panel panel-heroes${mobilePanel === 'logs' ? ' mobile-panel-hidden' : ''}`} data-tutorial="heroes">
 
           <button className="side-panel-header" onClick={() => setHeroesCollapsed((v) => !v)}>
             <span className="side-panel-title">Heroes</span>
@@ -797,7 +799,6 @@ export function PlayScreen() {
                   isGameOver={isGameOver}
                   now={now}
                   heroOverrides={heroOverrides}
-                  heroPositions={heroPositions}
                   onSelectHero={(id) => setSelectedHeroId(id)}
                   onRecruit={() => void handleRecruit()}
                   availablePotionTypes={availablePotionTypes}
@@ -810,7 +811,7 @@ export function PlayScreen() {
           )}
         </div>
 
-        <div className={`side-panel floating-panel panel-logs${mobilePanel === 'heroes' ? ' mobile-panel-hidden' : ''}`}>
+        <div className={`side-panel floating-panel panel-logs${mobilePanel === 'heroes' ? ' mobile-panel-hidden' : ''}`} data-tutorial="logs">
           <button className="side-panel-header" onClick={() => setLogsCollapsed((v) => !v)}>
             <span className="side-panel-title">Exploration Log</span>
             <span className="side-panel-chevron">{logsCollapsed ? '▸' : '▾'}</span>
@@ -834,7 +835,7 @@ export function PlayScreen() {
       </div>
 
       <div className={`play-right-panels${mobilePanel && mobilePanel !== 'brew' ? ' mobile-hidden' : ''}${mobilePanel === 'brew' ? ' mobile-open' : ''}`}>
-        <div className="side-panel floating-panel panel-brew">
+        <div className="side-panel floating-panel panel-brew" data-tutorial="brew">
           <button className="side-panel-header" onClick={() => setBrewCollapsed((v) => !v)}>
             <span className="side-panel-title">Brew</span>
             <span className="side-panel-chevron">{brewCollapsed ? '▸' : '▾'}</span>
@@ -856,7 +857,7 @@ export function PlayScreen() {
                 onBrewAll={() => void handleBrewAll()}
               />
 
-              <div className="collection-tabs">
+              <div className="collection-tabs" data-tutorial="collection-tabs">
                 <button
                   className={`collection-tab${collectionTab === 'ingredients' ? ' active' : ''}`}
                   onClick={() => setCollectionTab('ingredients')}
@@ -871,8 +872,9 @@ export function PlayScreen() {
                 </button>
               </div>
 
+              <div data-tutorial="grimoire">
               {collectionTab === 'ingredients' ? (
-                <div data-claim-target="ingredients">
+                <div data-claim-target="ingredients" data-tutorial="ingredients">
                   <IngredientsContent
                     inventory={inventory}
                     slotA={slotA}
@@ -904,6 +906,7 @@ export function PlayScreen() {
                 />
                 </div>
               )}
+              </div>
             </div>
           )}
         </div>
@@ -999,6 +1002,19 @@ export function PlayScreen() {
           </button>
         ))}
       </div>
+
+      {tutorialEnabled && (
+        <TutorialOverlay
+          onComplete={() => setTutorialEnabled(false)}
+          onStepChange={(_step, target) => {
+            if (target === 'hint-btn' || target === 'grimoire') {
+              setCollectionTab('grimoire')
+            } else if (target === 'ingredients') {
+              setCollectionTab('ingredients')
+            }
+          }}
+        />
+      )}
 
       {potionTargetHeroId !== null && (
         <HeroPotionPopup
@@ -1187,7 +1203,6 @@ interface HeroSlotProps {
   isGameOver: boolean
   now: number
   heroOverrides: Map<number, HeroOverride>
-  heroPositions: Map<number, HeroPosition>
   onSelectHero: (heroId: number) => void
   onRecruit: () => void
   availablePotionTypes: string[]
@@ -1205,7 +1220,6 @@ function HeroSlot({
   isGameOver,
   now,
   heroOverrides,
-  heroPositions,
   onSelectHero,
   onRecruit,
   availablePotionTypes,
@@ -1269,9 +1283,8 @@ function HeroSlot({
   const isExploring = remaining > 0
   const lootReady = isIdle && (hero.gold > 0 || (hero.ingredients != null && hero.ingredients !== 0n))
 
-  const heroPos = heroPositions.get(hero.id)
   const override = isExploring ? heroOverrides.get(hero.id) : undefined
-  const isReturning = isExploring && (override?.returning === true || heroPos?.returning === true)
+  const isReturning = isExploring && override?.returning === true
 
   let statusText = 'Ready'
   let statusClass = ''

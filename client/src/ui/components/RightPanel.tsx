@@ -126,7 +126,7 @@ export function BrewContent({
 
   return (
     <>
-      <div className="craft-slots">
+      <div className="craft-slots" data-tutorial="craft-slots">
         <button
           className={`craft-slot${slotA != null ? ' craft-slot-filled' : ''}`}
           onClick={() => onSetSlotA(null)}
@@ -459,7 +459,7 @@ export function GrimoireContent({
         })}
       </div>
 
-      <div className="grimoire-btn-row">
+      <div className="grimoire-btn-row" data-tutorial="hint-btn">
         <button onClick={onBuyHint} disabled={isGameOver || gold < hintCost || isHintPending}>
           {isHintPending && !isGameOver ? '...' : `Hint (${displayGold(hintCost)}g)`}
         </button>

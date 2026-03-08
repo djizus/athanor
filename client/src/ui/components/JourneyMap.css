@@ -376,6 +376,11 @@
   z-index: 5;
 }
 
+@keyframes orbit-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 .hero-token-orbit-ready {
   pointer-events: auto;
   cursor: pointer;
@@ -386,7 +391,7 @@
 }
 
 .hero-token-orbit-ready:hover .hero-token-orbit-inner {
-  filter: drop-shadow(0 0 6px rgba(240, 192, 64, 0.5));
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--orbit-color, #f0c040) 50%, transparent));
 }
 
 .hero-token-orbit-pending {
@@ -394,14 +399,8 @@
   pointer-events: none;
 }
 
-@keyframes orbit-rotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
 .hero-token-orbit-item {
   position: absolute;
-  transform: translate(-50%, -50%);
 }
 
 .hero-token-orbit-inner {
@@ -411,11 +410,11 @@
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  border: 1px solid rgba(200, 160, 64, 0.35);
+  border: 1px solid color-mix(in srgb, var(--orbit-color, #c8a040) 35%, transparent);
   background: rgba(10, 8, 4, 0.85);
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
   animation: orbit-counter-rotate 60s linear infinite;
-  transition: filter 0.2s ease;
+  transition: filter 0.2s ease, border-color 0.3s ease;
   position: relative;
 }
 
@@ -427,12 +426,22 @@
 @keyframes orbit-item-glow {
   0%, 100% {
     box-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
-    border-color: rgba(200, 160, 64, 0.35);
+    border-color: color-mix(in srgb, var(--orbit-color, #c8a040) 35%, transparent);
   }
   50% {
-    box-shadow: 0 0 10px rgba(240, 192, 64, 0.35);
-    border-color: var(--accent-gold);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--orbit-color, #c8a040) 45%, transparent);
+    border-color: var(--orbit-color, var(--accent-gold));
   }
+}
+
+.orbit-item-pulse .hero-token-orbit-inner {
+  animation: orbit-item-pulse 0.4s ease-out;
+}
+
+@keyframes orbit-item-pulse {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.35); }
+  100% { transform: scale(1); }
 }
 
 .hero-token-orbit-icon {
@@ -462,6 +471,26 @@
   z-index: 2;
   pointer-events: none;
   white-space: nowrap;
+}
+
+/* ── Returning Hero ──── */
+
+.hero-returning-wrapper {
+  position: absolute;
+  z-index: 3;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.hero-token-disabled {
+  opacity: 0.45;
+  pointer-events: none;
+  filter: grayscale(0.3) brightness(0.8);
+  cursor: default;
+}
+
+.hero-token-disabled:hover {
+  transform: none;
 }
 
 /* ── Zone Tooltip ──── */

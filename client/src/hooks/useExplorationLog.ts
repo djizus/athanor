@@ -34,6 +34,8 @@ export interface HeroOverride {
   bagGold: number
   bagIngredients: number[]
   returning?: boolean
+  returnStartedAt?: number
+  returnDuration?: number
 }
 
 const CATEGORY_NONE = 0
@@ -57,7 +59,12 @@ const CATEGORY_TO_KIND: Record<number, ExplorationEventKind> = {
 // Per-depth HP drain per zone (contracts/src/constants.cairo ZONE_*_DRAIN / 100)
 const ZONE_DRAIN = [1, 2, 3, 4, 5]
 
-const TICK_INTERVAL_MS = 1500
+// Mirrors contracts/src/constants.cairo DEFAULT_WALK_RATIO and WALK_BASE_MULTIPLIER
+// Walk-back time = death_depth * (WALK_RATIO / WALK_BASE) seconds
+const WALK_RATIO = 25
+const WALK_BASE = 100
+
+const TICK_INTERVAL_MS = 1000
 
 interface QueuedEvent {
   entry: LogEntry
@@ -172,6 +179,8 @@ export function useExplorationLog(
   const heroDepthRef = useRef<Map<number, number>>(new Map())
   const drainTimerRef = useRef<number | null>(null)
   const heroMapRef = useRef<Map<number, string>>(new Map())
+  const heroExpeditionRef = useRef<Map<number, { deathDepth: number; returnAt: number }>>(new Map())
+  const returnTimersRef = useRef<Map<number, number>>(new Map())
   const onEventRef = useRef(onExplorationEvent)
   onEventRef.current = onExplorationEvent
 
@@ -203,7 +212,6 @@ export function useExplorationLog(
 
         if (event.rawEvent) {
           processedEvent = true
-          const heroDied = event.rawEvent.hpAfter <= 0
           setHeroOverrides((prev) => {
             const next = new Map(prev)
             const prevOv = prev.get(heroId)
@@ -218,7 +226,6 @@ export function useExplorationLog(
               zoneIndex: event.rawEvent!.zoneId,
               bagGold,
               bagIngredients,
-              returning: heroDied || prevOv?.returning,
             })
             return next
           })
@@ -244,23 +251,37 @@ export function useExplorationLog(
       } else {
         heroQueuesRef.current.delete(heroId)
         heroDepthRef.current.delete(heroId)
+
+        const expedition = heroExpeditionRef.current.get(heroId)
+        const walkDurationMs = expedition
+          ? Math.max(TICK_INTERVAL_MS, expedition.deathDepth * WALK_RATIO / WALK_BASE * TICK_INTERVAL_MS)
+          : 2000
+
         setHeroOverrides((prev) => {
           const next = new Map(prev)
           const prevOv = prev.get(heroId)
           if (prevOv) {
-            next.set(heroId, { ...prevOv, returning: true })
+            next.set(heroId, { ...prevOv, returning: true, returnStartedAt: Date.now(), returnDuration: walkDurationMs })
           }
           return next
         })
+
+        const timer = window.setTimeout(() => {
+          setHeroOverrides((prev) => {
+            const next = new Map(prev)
+            next.delete(heroId)
+            return next
+          })
+          returnTimersRef.current.delete(heroId)
+          heroExpeditionRef.current.delete(heroId)
+        }, walkDurationMs)
+        returnTimersRef.current.set(heroId, timer)
       }
     }
 
     if (!anyRemaining) {
       window.clearInterval(drainTimerRef.current!)
       drainTimerRef.current = null
-      setTimeout(() => {
-        setHeroOverrides(new Map())
-      }, 2000)
     }
   }, [append])
 
@@ -354,6 +375,12 @@ export function useExplorationLog(
             if (shortName === 'ExplorationEvent') {
               enqueue({ entry: result.entry, rawEvent: result.rawEvent })
             } else {
+              if (shortName === 'ExpeditionStarted' && values.hero_id && values.death_depth) {
+                heroExpeditionRef.current.set(values.hero_id, {
+                  deathDepth: values.death_depth,
+                  returnAt: values.return_at,
+                })
+              }
               append(result.entry)
             }
           }
@@ -379,8 +406,13 @@ export function useExplorationLog(
         window.clearInterval(drainTimerRef.current)
         drainTimerRef.current = null
       }
+      for (const timer of returnTimersRef.current.values()) {
+        window.clearTimeout(timer)
+      }
+      returnTimersRef.current.clear()
       heroQueuesRef.current.clear()
       heroDepthRef.current.clear()
+      heroExpeditionRef.current.clear()
     }
   }, [gameId, toriiClient, append, enqueue])
 
