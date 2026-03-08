@@ -33,6 +33,7 @@ export interface HeroOverride {
   zoneIndex?: number
   bagGold: number
   bagIngredients: number[]
+  returning?: boolean
 }
 
 const CATEGORY_TRAP = 1
@@ -198,6 +199,11 @@ export function useExplorationLog(
       append(event.entry)
 
       if (event.rawEvent) {
+        console.debug('[Zone Debug] drainTick hero', heroId,
+          '| processing depth:', event.rawEvent.depth, 'zone:', event.rawEvent.zoneId,
+          'hp:', event.rawEvent.hpAfter, 'kind:', event.rawEvent.kind,
+          '| remaining in queue:', queue.length)
+        const heroDied = event.rawEvent.hpAfter <= 0
         setHeroOverrides((prev) => {
           const next = new Map(prev)
           const prevOv = prev.get(heroId)
@@ -207,18 +213,29 @@ export function useExplorationLog(
           if (event.rawEvent!.kind === 'ingredient') {
             bagIngredients[event.rawEvent!.value] = (bagIngredients[event.rawEvent!.value] ?? 0) + 1
           }
-          next.set(heroId, { health: event.rawEvent!.hpAfter, zoneIndex: event.rawEvent!.zoneId, bagGold, bagIngredients })
+          next.set(heroId, {
+            health: event.rawEvent!.hpAfter,
+            zoneIndex: event.rawEvent!.zoneId,
+            bagGold,
+            bagIngredients,
+            returning: heroDied || prevOv?.returning,
+          })
           return next
         })
         onEventRef.current?.(event.rawEvent)
       }
 
-      if (queue.length > 0) anyRemaining = true
-      else {
+      if (queue.length > 0) {
+        anyRemaining = true
+      } else {
         heroQueuesRef.current.delete(heroId)
+        // Keep override alive with returning=true so HeroSlot shows "Returning"
         setHeroOverrides((prev) => {
           const next = new Map(prev)
-          next.delete(heroId)
+          const prevOv = prev.get(heroId)
+          if (prevOv) {
+            next.set(heroId, { ...prevOv, returning: true })
+          }
           return next
         })
       }
@@ -238,6 +255,9 @@ export function useExplorationLog(
       heroQueuesRef.current.set(heroId, queue)
 
       if (event.rawEvent) {
+        console.debug('[Zone Debug] enqueue FIRST event for hero', heroId,
+          '| arrived zone:', event.rawEvent.zoneId, 'depth:', event.rawEvent.depth, 'kind:', event.rawEvent.kind,
+          '| setting initial zoneIndex to 0 (start)')
         const preHp = computePreEventHp(
           event.rawEvent.kind === 'trap' ? CATEGORY_TRAP
             : event.rawEvent.kind === 'beastLose' ? CATEGORY_BEAST_LOSE
@@ -248,7 +268,7 @@ export function useExplorationLog(
         )
         setHeroOverrides((prev) => {
           const next = new Map(prev)
-          next.set(heroId, { health: preHp, zoneIndex: event.rawEvent!.zoneId, bagGold: 0, bagIngredients: new Array(25).fill(0) })
+          next.set(heroId, { health: preHp, zoneIndex: 0, bagGold: 0, bagIngredients: new Array(25).fill(0) })
           return next
         })
       }

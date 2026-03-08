@@ -786,7 +786,8 @@ function HeroSlot({
   const lootReady = isIdle && (hero.gold > 0 || (hero.ingredients != null && hero.ingredients !== 0n))
 
   const heroPos = heroPositions.get(hero.id)
-  const isReturning = isExploring && heroPos?.returning === true
+  const override = isExploring ? heroOverrides.get(hero.id) : undefined
+  const isReturning = isExploring && (override?.returning === true || heroPos?.returning === true)
 
   let statusText = 'Ready'
   let statusClass = ''
@@ -794,7 +795,6 @@ function HeroSlot({
   else if (isExploring) { statusText = `Exploring ${remaining}s`; statusClass = 'exploring' }
   else if (lootReady) { statusText = 'Loot Ready'; statusClass = 'loot-ready' }
 
-  const override = heroOverrides.get(hero.id)
   const regenElapsed = isIdle ? Math.max(0, now - availableAt) : 0
   const baseHp = override ? override.health : hero.health
   const optimisticHp = override
