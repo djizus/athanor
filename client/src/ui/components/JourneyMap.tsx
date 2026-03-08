@@ -8,7 +8,6 @@ import {
   roleAssetUrl,
   ROLE_NAMES,
   ingredientAssetUrl,
-  displayGold,
 } from '@/game/constants'
 import type { HeroPosition } from '@/hooks/useExpeditionTracker'
 import type { HeroOverride } from '@/hooks/useExplorationLog'
@@ -62,14 +61,63 @@ interface JourneyMapProps {
   onClaim: (heroId: number) => void
 }
 
+const RING_NORMAL = { size: 66, radius: 28, stroke: 3.5 }
+const RING_SMALL = { size: 48, radius: 20, stroke: 3 }
+
+function HpRing({ pct, color, cfg, selected }: { pct: number; color: string; cfg: typeof RING_NORMAL; selected?: boolean }) {
+  const circ = 2 * Math.PI * cfg.radius
+  const offset = circ * (1 - pct / 100)
+
+  return (
+    <svg
+      className={`hero-token-ring${selected ? ' hero-token-ring-selected' : ''}`}
+      width={cfg.size}
+      height={cfg.size}
+      viewBox={`0 0 ${cfg.size} ${cfg.size}`}
+    >
+      <circle
+        cx={cfg.size / 2}
+        cy={cfg.size / 2}
+        r={cfg.radius}
+        fill="none"
+        stroke="rgba(255,255,255,0.08)"
+        strokeWidth={cfg.stroke}
+      />
+      <circle
+        className="hero-token-ring-fill"
+        cx={cfg.size / 2}
+        cy={cfg.size / 2}
+        r={cfg.radius}
+        fill="none"
+        stroke={color}
+        strokeWidth={cfg.stroke}
+        strokeLinecap="round"
+        strokeDasharray={circ}
+        strokeDashoffset={offset}
+        transform={`rotate(-90 ${cfg.size / 2} ${cfg.size / 2})`}
+      />
+    </svg>
+  )
+}
+
 function HeroToken({ hero, small, selected, onClick, onClaim }: {
   hero: HeroData; small?: boolean; selected?: boolean
   onClick?: () => void; onClaim?: () => void
 }) {
+  const [claimBurst, setClaimBurst] = useState(false)
   const roleIdx = hero.role > 0 ? hero.role - 1 : hero.hero_id
   const hpPct = hero.max_health > 0 ? Math.min(100, (hero.health / hero.max_health) * 100) : 0
   const hpColor = hpPct > 50 ? 'var(--accent-green)' : hpPct > 25 ? '#ff9800' : 'var(--accent-red)'
   const hasLoot = hero.gold > 0 || (hero.ingredients && hero.ingredients.some(q => q > 0))
+  const ringCfg = small ? RING_SMALL : RING_NORMAL
+  const lootCount = (hero.gold > 0 ? 1 : 0) + (hero.ingredients ? hero.ingredients.filter(q => q > 0).length : 0)
+
+  const handleClaim = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setClaimBurst(true)
+    setTimeout(() => setClaimBurst(false), 600)
+    onClaim?.()
+  }
 
   return (
     <motion.div
@@ -78,28 +126,33 @@ function HeroToken({ hero, small, selected, onClick, onClaim }: {
       transition={{ type: 'spring', stiffness: 200, damping: 25 }}
       onClick={(e) => { e.stopPropagation(); onClick?.() }}
     >
-      <img
-        className="hero-token-portrait"
-        src={roleAssetUrl(roleIdx)}
-        alt={ROLE_NAMES[roleIdx] ?? 'Hero'}
-      />
-      <div className="hero-token-hp">
-        <div className="hero-token-hp-fill" style={{ width: `${hpPct}%`, background: hpColor }} />
+      <div className="hero-token-frame-wrap">
+        <HpRing pct={hpPct} color={hpColor} cfg={ringCfg} selected={selected} />
+        <img
+          className="hero-token-frame"
+          src="/assets/ui/hero-frame.webp"
+          alt=""
+          draggable={false}
+        />
+        <img
+          className="hero-token-portrait"
+          src={roleAssetUrl(roleIdx)}
+          alt={ROLE_NAMES[roleIdx] ?? 'Hero'}
+        />
+        {claimBurst && <div className="hero-token-claim-burst" />}
       </div>
+
       {hasLoot && (
-        <div className="hero-token-bag">
-          {hero.gold > 0 && <span className="hero-token-bag-gold">{displayGold(hero.gold)}g</span>}
-          {hero.ingredients && hero.ingredients.map((qty, idx) =>
-            qty > 0 ? (
-              <img key={idx} className="hero-token-bag-icon" src={ingredientAssetUrl(idx)} alt={INGREDIENT_NAMES[idx]} title={`${INGREDIENT_NAMES[idx]} x${qty}`} />
-            ) : null,
-          )}
+        <div className={`hero-token-satchel${hero.lootReady ? ' hero-token-satchel-ready' : ''}`}>
+          <img className="hero-token-satchel-icon" src="/assets/ui/satchel.webp" alt="" draggable={false} />
+          {lootCount > 0 && <span className="hero-token-satchel-badge">{lootCount}</span>}
         </div>
       )}
+
       {hero.lootReady && onClaim && (
         <button
           className="hero-token-claim"
-          onClick={(e) => { e.stopPropagation(); onClaim() }}
+          onClick={handleClaim}
           disabled={hero.isClaimPending}
         >
           {hero.isClaimPending ? '...' : 'Claim'}

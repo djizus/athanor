@@ -197,6 +197,17 @@ export function buildZonePortalPrompt(asset: ImageAssetDef): string {
   ].join(' ');
 }
 
+export function buildUiIconPrompt(asset: ImageAssetDef): string {
+  return [
+    `${asset.description}.`,
+    `Centered in frame with generous margins on all sides. Single item floating in dark void.`,
+    `Dark obsidian background #0a0a14 with warm amber #f0c040 rim lighting. Faint floating ember motes.`,
+    GLOBAL_ART_STYLE,
+    `Game icon style, flat 2D, square composition, item occupying central 65% of frame.`,
+    `No text, no people, no UI elements, no duplicates.`,
+  ].join(' ');
+}
+
 export function buildPrompt(asset: ImageAssetDef): string {
   switch (asset.category) {
     case 'backgrounds': return buildBackgroundPrompt(asset);
@@ -212,5 +223,6 @@ export function buildPrompt(asset: ImageAssetDef): string {
       if (asset.id === 'constellation-bg') return buildConstellationBgPrompt();
       return buildZonePortalPrompt(asset);
     }
+    case 'ui': return buildUiIconPrompt(asset);
   }
 }

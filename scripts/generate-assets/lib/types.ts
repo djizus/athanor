@@ -1,7 +1,7 @@
 export interface ImageAssetDef {
   id: string;
   filename: string;
-  category: 'backgrounds' | 'heroes' | 'ingredients' | 'potions' | 'branding' | 'zones';
+  category: 'backgrounds' | 'heroes' | 'ingredients' | 'potions' | 'branding' | 'zones' | 'ui';
   width: number;
   height: number;
   description: string;
@@ -23,6 +23,7 @@ export interface AssetManifest {
   potions: ImageAssetDef[];
   branding: ImageAssetDef[];
   zones: ImageAssetDef[];
+  ui: ImageAssetDef[];
 }
 
 export const IMAGE_CATEGORIES = [
@@ -32,6 +33,7 @@ export const IMAGE_CATEGORIES = [
   'potions',
   'branding',
   'zones',
+  'ui',
 ] as const;
 
 export type ImageCategory = (typeof IMAGE_CATEGORIES)[number];

@@ -154,5 +154,10 @@
     { "id": "portal-spire", "filename": "portal-spire.webp", "category": "zones", "width": 512, "height": 512, "description": "Arcane tower portal — swirling violet energy and floating arcane runes, ethereal purple glow", "zoneColor": "#9e4a9e" },
     { "id": "portal-abyss", "filename": "portal-abyss.webp", "category": "zones", "width": 512, "height": 512, "description": "Deep underwater portal — bioluminescent blue coral and dark abyssal water, cold blue glow", "zoneColor": "#4a90d9" },
     { "id": "portal-crystalveil", "filename": "portal-crystalveil.webp", "category": "zones", "width": 512, "height": 512, "description": "Frozen crystal portal — emerald and teal crystals, ice formations and prismatic light, cool teal glow", "zoneColor": "#2a8a6a" }
+  ],
+  "ui": [
+    { "id": "satchel", "filename": "satchel.webp", "category": "ui", "width": 256, "height": 256, "description": "A small leather adventurer's satchel pouch, dark brown leather with gold buckle clasp, worn and well-traveled, alchemical stitching patterns, slightly open revealing warm amber glow from within" },
+    { "id": "gold-coin", "filename": "gold-coin.webp", "category": "ui", "width": 256, "height": 256, "description": "A single gold coin with an alchemical furnace symbol engraved on its face, warm amber-gold glow, slightly worn edges" },
+    { "id": "hero-frame", "filename": "hero-frame.webp", "category": "ui", "width": 512, "height": 512, "description": "An ornate circular portrait frame for an RPG hero avatar — dark metal ring with gold filigree inlay, alchemical rune etchings along the border, warm amber accent glow on the inner edge, the center is completely black void" }
   ]
 }
