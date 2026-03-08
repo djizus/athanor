@@ -256,7 +256,7 @@ export function PlayScreen() {
     }
   }, [addFloatingText, onExplorationZoneUpdate])
 
-  const { logs, pushInfo, heroOverrides, completeReturn } = useExplorationLog(gameId ?? null, heroes, onExplorationEvent)
+  const { logs, pushInfo, heroOverrides, completeReturn, snapshotHeroHp } = useExplorationLog(gameId ?? null, heroes, onExplorationEvent)
   const logsEndRef = useRef<HTMLDivElement>(null)
 
   const syncFingerprint = useMemo(() => {
@@ -288,12 +288,15 @@ export function PlayScreen() {
   }, [])
 
   useEffect(() => {
-    if (account) setTxBatcherAccount(account)
+    setTxBatcherAccount(account ?? null)
+  }, [account])
+
+  useEffect(() => {
     return () => {
       void flushTxQueue()
       setTxBatcherAccount(null)
     }
-  }, [account])
+  }, [])
 
   useEffect(() => {
     const prev = lastSyncFingerprintRef.current
@@ -434,6 +437,7 @@ export function PlayScreen() {
       }
     }
 
+    if (hero) snapshotHeroHp(characterId, hero.health)
     pushInfo(`${name} sent to ${ZONE_NAMES[zoneId] ?? `Zone ${zoneId}`}...`)
     onExpeditionStart(characterId, zoneId)
     soundManager.playSfx('expedition-start', 0.5)
