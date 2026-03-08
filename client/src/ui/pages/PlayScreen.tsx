@@ -393,6 +393,51 @@ export function PlayScreen() {
     if (!account || gameId == null) return
     const hero = heroes.find((h) => h.id === characterId)
     const name = hero ? ROLE_NAMES[hero.role > 0 ? hero.role - 1 : characterId] : `Hero ${characterId}`
+
+    if (hero) {
+      const hasLoot = hero.gold > 0 || (hero.ingredients != null && hero.ingredients !== 0n)
+      if (hasLoot) {
+        const heroEl = document.querySelector(`[data-hero-id="${characterId}"]`)
+        if (heroEl) {
+          const src = heroEl.getBoundingClientRect()
+          const sx = src.left + src.width / 2
+          const sy = src.top + src.height / 2
+
+          if (hero.gold > 0) {
+            const goldTarget = document.querySelector('[data-claim-target="gold"]')
+            if (goldTarget) {
+              const tr = goldTarget.getBoundingClientRect()
+              spawnFlyingOrb(sx, sy, tr.left + tr.width / 2, tr.top + tr.height / 2, '/assets/ui/gold-coin.webp')
+            }
+            addGoldFloat(`+${hero.gold}g`)
+          }
+
+          if (hero.ingredients != null && hero.ingredients !== 0n) {
+            const bagItems = unpackCharacterIngredients(BigInt(hero.ingredients))
+            const invTarget = document.querySelector('[data-claim-target="ingredients"]')
+            if (invTarget) {
+              const tr = invTarget.getBoundingClientRect()
+              bagItems.forEach((qty, idx) => {
+                if (qty > 0) {
+                  setTimeout(() => {
+                    spawnFlyingOrb(
+                      sx + (Math.random() - 0.5) * 20,
+                      sy + (Math.random() - 0.5) * 10,
+                      tr.left + 40,
+                      tr.top + tr.height / 2,
+                      ingredientAssetUrl(idx),
+                    )
+                  }, idx * 80)
+                }
+              })
+            }
+          }
+
+          soundManager.playSfx('claim-loot', 0.5)
+        }
+      }
+    }
+
     pushInfo(`${name} sent to ${ZONE_NAMES[zoneId] ?? `Zone ${zoneId}`}...`)
     onExpeditionStart(characterId, zoneId)
     soundManager.playSfx('expedition-start', 0.5)
@@ -639,7 +684,20 @@ export function PlayScreen() {
   }
 
   const gold = game?.gold ?? 0
-  const hasPotions = effectQuantities.some((q) => q > 0)
+  const availablePotionTypes = useMemo(() => {
+    const types: string[] = []
+    const categoryTotals: Record<string, number> = {}
+    for (let i = 0; i < effectQuantities.length; i++) {
+      if (effectQuantities[i] > 0) {
+        const cat = EFFECT_CATEGORIES[i]
+        categoryTotals[cat] = (categoryTotals[cat] ?? 0) + effectQuantities[i]
+      }
+    }
+    for (const cat of ['health', 'power', 'regen'] as const) {
+      if ((categoryTotals[cat] ?? 0) > 0) types.push(cat)
+    }
+    return types
+  }, [effectQuantities])
   const heroCount = game ? bitmapPopcount(game.heroes) : Math.max(1, heroes.length)
   const hintCost = game?.hint_price ?? 4
   const startedAt = game ? Number(game.started_at) : now
@@ -669,8 +727,8 @@ export function PlayScreen() {
     heroes.map(h => {
       const availableAt = Number(h.available_at)
       const isExploring = availableAt > now
-      const override = isExploring ? heroOverrides.get(h.id) : undefined
-      const isIdle = !isExploring
+      const override = heroOverrides.get(h.id)
+      const isIdle = !isExploring && !override
       const heroGold = override ? override.bagGold : h.gold
       const heroIngs = override
         ? override.bagIngredients
@@ -742,10 +800,8 @@ export function PlayScreen() {
                   heroPositions={heroPositions}
                   onSelectHero={(id) => setSelectedHeroId(id)}
                   onRecruit={() => void handleRecruit()}
-                  onClaim={(id) => void handleClaim(id)}
-                  hasPotions={hasPotions}
+                  availablePotionTypes={availablePotionTypes}
                   isRecruitPending={isRecruitPending}
-                  isClaimPending={isHeroActionPending(slot, 'claim')}
                   isBuffPending={isBuffPending}
                   onApplyPotion={(id) => setPotionTargetHeroId(id)}
                 />
@@ -1134,10 +1190,8 @@ interface HeroSlotProps {
   heroPositions: Map<number, HeroPosition>
   onSelectHero: (heroId: number) => void
   onRecruit: () => void
-  onClaim: (characterId: number) => void
-  hasPotions: boolean
+  availablePotionTypes: string[]
   isRecruitPending: boolean
-  isClaimPending: boolean
   isBuffPending: boolean
   onApplyPotion: (heroId: number) => void
 }
@@ -1154,10 +1208,8 @@ function HeroSlot({
   heroPositions,
   onSelectHero,
   onRecruit,
-  onClaim,
-  hasPotions,
+  availablePotionTypes,
   isRecruitPending,
-  isClaimPending,
   isBuffPending,
   onApplyPotion,
 }: HeroSlotProps) {
@@ -1248,6 +1300,24 @@ function HeroSlot({
       <div className="hero-card-name-row">
         <span className="hero-card-name">{roleName}</span>
         <span className={`hero-card-status ${statusClass}`}>{statusText}</span>
+        {isIdle && !isGameOver && (
+          <button
+            className="btn-sm btn-apply-inline"
+            onClick={(e) => { e.stopPropagation(); onApplyPotion(hero.id) }}
+            disabled={isBuffPending || availablePotionTypes.length === 0}
+          >
+            {availablePotionTypes.length > 0 ? (
+              <>
+                Apply
+                {availablePotionTypes.map(type => (
+                  <img key={type} className="btn-apply-icon" src={`/assets/potions/potion-${type}.webp`} alt={type} />
+                ))}
+              </>
+            ) : (
+              <span className="btn-apply-no-potions">No potions</span>
+            )}
+          </button>
+        )}
       </div>
       <div className="hero-card-top">
         <img
@@ -1284,44 +1354,6 @@ function HeroSlot({
           ))}
         </div>
       )}
-      {(() => {
-        const bagGold = override ? override.bagGold : hero.gold
-        const bagIngs = override
-          ? override.bagIngredients
-          : (hero.ingredients != null && hero.ingredients !== 0n
-            ? unpackCharacterIngredients(BigInt(hero.ingredients))
-            : null)
-        const hasItems = bagGold > 0 || (bagIngs && bagIngs.some(q => q > 0))
-        return hasItems ? (
-          <div className="hero-bag">
-            {bagGold > 0 && <span className="hero-bag-gold">{bagGold}g</span>}
-            {bagIngs && bagIngs.map((qty, idx) =>
-              qty > 0 ? (
-                <span key={idx} className="hero-bag-item">
-                  <img className="hero-bag-icon" src={ingredientAssetUrl(idx)} alt="" />
-                  {qty > 1 && <span className="hero-bag-qty">{qty}</span>}
-                </span>
-              ) : null,
-            )}
-          </div>
-        ) : null
-      })()}
-      <div className="hero-card-btn-row">
-        <button
-          className="btn-primary btn-sm btn-loot"
-          onClick={(e) => { e.stopPropagation(); onClaim(hero.id) }}
-          disabled={isGameOver || !lootReady || isClaimPending}
-        >
-          {isClaimPending && !isGameOver ? 'Claiming...' : 'Claim'}
-        </button>
-        <button
-          className="btn-sm btn-potion"
-          onClick={(e) => { e.stopPropagation(); onApplyPotion(hero.id) }}
-          disabled={isGameOver || !hasPotions || isExploring || isBuffPending}
-        >
-          Apply Potion
-        </button>
-      </div>
     </div>
   )
 }

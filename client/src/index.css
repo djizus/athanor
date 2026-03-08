@@ -1492,6 +1492,48 @@ button:disabled, .btn:disabled {
 .hero-card-status.returning { color: var(--accent-gold); }
 .hero-card-status.loot-ready { color: var(--accent-green); font-weight: 600; }
 
+.btn-apply-inline {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-title);
+  font-size: 0.62rem;
+  letter-spacing: 0.03em;
+  color: var(--accent-gold);
+  background: rgba(240, 192, 64, 0.08);
+  border: 1px solid rgba(240, 192, 64, 0.3);
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.btn-apply-icon {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.btn-apply-inline:hover:not(:disabled) {
+  background: rgba(240, 192, 64, 0.18);
+  border-color: var(--accent-gold);
+}
+
+.btn-apply-inline:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.btn-apply-no-potions {
+  font-size: 0.58rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 .hero-bag {
   display: flex;
   align-items: center;
