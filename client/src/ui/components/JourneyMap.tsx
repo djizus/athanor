@@ -519,7 +519,7 @@ function ZoneNode({
       )}
 
       {canSendHero && (
-        <button className="zone-action-btn" onClick={onClick}>
+        <button className={`zone-action-btn${heroes.length > 0 ? ' zone-action-btn-below-heroes' : ''}`} onClick={onClick}>
           Explore
         </button>
       )}
