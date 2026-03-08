@@ -1,11 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useAccount, useConnect } from '@starknet-react/core'
-import type ControllerConnector from '@cartridge/connector/controller'
+import { useAccount } from '@starknet-react/core'
 import { RpcProvider, num } from 'starknet'
 import { useLeaderboard } from '@/hooks/useLeaderboard'
-import { usePlayerName } from '@/hooks/usePlayerName'
 import { useNavigationStore } from '@/stores/navigationStore'
-import { SettingsOverlay } from '@/ui/components/SettingsOverlay'
 
 const { VITE_PUBLIC_NODE_URL, VITE_PUBLIC_TOKEN_ADDRESS } = import.meta.env
 
@@ -86,9 +83,6 @@ export function LeaderboardPage() {
   const { sorted: completedGames } = useLeaderboard()
   const { navigate } = useNavigationStore()
   const { address } = useAccount()
-  const { connectors } = useConnect()
-  const { displayName } = usePlayerName(address)
-  const [settingsOpen, setSettingsOpen] = useState(false)
 
   const [page, setPage] = useState(0)
   const [owners, setOwners] = useState<Map<number, string>>(new Map())
@@ -126,27 +120,10 @@ export function LeaderboardPage() {
 
   return (
     <div className="glass-page">
-      <div className="glass-page-topbar">
-        <button
-          className="home-menu-player-chip"
-          type="button"
-          onClick={() => {
-            const ctrl = connectors[0] as ControllerConnector | undefined
-            if (ctrl?.controller) void ctrl.controller.openProfile()
-          }}
-        >
-          <span className="home-menu-player-name">{displayName}</span>
-        </button>
-        <button className="home-menu-gear" onClick={() => setSettingsOpen(true)} aria-label="Settings">
-          <span aria-hidden>&#x2699;</span>
-          <span>Settings</span>
-        </button>
-      </div>
-
       <div className="glass-page-panel">
         <div className="glass-page-header">
           <h1 className="glass-page-title">Leaderboard</h1>
-          <button className="home-menu-button" onClick={() => navigate('home')}>Back</button>
+          <button onClick={() => navigate('home')}>Back</button>
         </div>
 
         <div className="glass-page-body">
@@ -190,7 +167,6 @@ export function LeaderboardPage() {
         </div>
       </div>
 
-      <SettingsOverlay open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   )
 }

@@ -2404,18 +2404,6 @@ button:disabled, .btn:disabled {
 
 .glass-page > * { pointer-events: auto; }
 
-.glass-page-topbar {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding: 0.75rem 1rem;
-  z-index: 2;
-}
-
 .glass-page-panel {
   background: rgba(13, 15, 30, 0.82);
   backdrop-filter: blur(16px);
@@ -2437,12 +2425,6 @@ button:disabled, .btn:disabled {
   padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--border-color);
   gap: 0.75rem;
-}
-
-.glass-page-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
 }
 
 .glass-page-title {

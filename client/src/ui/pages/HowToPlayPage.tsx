@@ -1,39 +1,14 @@
-import { useState } from 'react'
-import { useAccount, useConnect } from '@starknet-react/core'
-import type ControllerConnector from '@cartridge/connector/controller'
-import { usePlayerName } from '@/hooks/usePlayerName'
 import { useNavigationStore } from '@/stores/navigationStore'
-import { SettingsOverlay } from '@/ui/components/SettingsOverlay'
 
 export function HowToPlayPage() {
   const { navigate } = useNavigationStore()
-  const { address } = useAccount()
-  const { connectors } = useConnect()
-  const { displayName } = usePlayerName(address)
-  const [settingsOpen, setSettingsOpen] = useState(false)
 
   return (
     <div className="glass-page">
-      <div className="glass-page-topbar">
-        <button
-          className="home-menu-player-chip"
-          type="button"
-          onClick={() => {
-            const ctrl = connectors[0] as ControllerConnector | undefined
-            if (ctrl?.controller) void ctrl.controller.openProfile()
-          }}
-        >
-          <span className="home-menu-player-name">{displayName}</span>
-        </button>
-        <button className="home-menu-gear" onClick={() => setSettingsOpen(true)} aria-label="Settings">
-          <span aria-hidden>&#x2699;</span>
-          <span>Settings</span>
-        </button>
-      </div>
-
       <div className="glass-page-panel">
         <div className="glass-page-header">
           <h1 className="glass-page-title">How to Play</h1>
+          <button onClick={() => navigate('home')}>Back</button>
           <button className="home-menu-button" onClick={() => navigate('home')}>Back</button>
         </div>
 
@@ -140,7 +115,6 @@ export function HowToPlayPage() {
         </div>
       </div>
 
-      <SettingsOverlay open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   )
 }
