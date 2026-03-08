@@ -497,6 +497,20 @@
   object-fit: cover;
 }
 
+.loot-particle {
+  position: absolute;
+  z-index: 9;
+  pointer-events: none;
+  filter: drop-shadow(0 0 6px rgba(240, 192, 64, 0.7));
+}
+
+.loot-particle-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
 /* ── Map Particles ──── */
 
 .map-particles {

@@ -163,19 +163,37 @@ function HeroToken({ hero, small, selected, onClick, onClaim }: {
 }
 
 function FloatingText({ text, color, icon, onComplete }: { text: string; color: string; icon?: string; onComplete: () => void }) {
+  const isLoot = text.includes('+') && !text.includes('HP')
+
   return (
-    <motion.div
-      className="journey-floating-text"
-      style={{ color }}
-      initial={{ opacity: 1, y: 0, scale: 1 }}
-      animate={{ opacity: 0, y: -44, scale: 1.15 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.85, ease: 'easeOut' }}
-      onAnimationComplete={onComplete}
-    >
-      {text}
-      {icon && <img className="journey-floating-icon" src={icon} alt="" />}
-    </motion.div>
+    <>
+      <motion.div
+        className="journey-floating-text"
+        style={{ color }}
+        initial={{ opacity: 1, y: 0, scale: 1 }}
+        animate={{ opacity: 0, y: -44, scale: 1.15 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.85, ease: 'easeOut' }}
+        onAnimationComplete={onComplete}
+      >
+        {text}
+        {icon && <img className="journey-floating-icon" src={icon} alt="" />}
+      </motion.div>
+      {isLoot && (
+        <motion.div
+          className="loot-particle"
+          initial={{ opacity: 0.9, y: 0, x: 0, scale: 1 }}
+          animate={{ opacity: 0, y: 60, x: (Math.random() - 0.5) * 20, scale: 0.3 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.7, ease: 'easeIn' }}
+        >
+          {icon
+            ? <img className="loot-particle-icon" src={icon} alt="" />
+            : <img className="loot-particle-icon" src="/assets/ui/gold-coin.webp" alt="" />
+          }
+        </motion.div>
+      )}
+    </>
   )
 }
 
