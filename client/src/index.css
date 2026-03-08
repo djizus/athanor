@@ -1494,6 +1494,9 @@ button:disabled, .btn:disabled {
 
 .btn-apply-inline {
   margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-family: var(--font-title);
   font-size: 0.62rem;
   letter-spacing: 0.03em;
@@ -1506,6 +1509,13 @@ button:disabled, .btn:disabled {
   transition: background 0.15s ease, border-color 0.15s ease;
   white-space: nowrap;
   flex-shrink: 0;
+}
+
+.btn-apply-icon {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .btn-apply-inline:hover:not(:disabled) {

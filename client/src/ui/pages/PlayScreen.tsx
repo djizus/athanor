@@ -1293,7 +1293,7 @@ function HeroSlot({
             onClick={(e) => { e.stopPropagation(); onApplyPotion(hero.id) }}
             disabled={isBuffPending}
           >
-            ⚗ Apply
+            <img className="btn-apply-icon" src="/assets/potions/potion-health.webp" alt="" /> Apply
           </button>
         )}
       </div>
