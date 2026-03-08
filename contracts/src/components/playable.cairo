@@ -118,6 +118,21 @@ pub mod PlayableComponent {
             store.set_game(@game);
         }
 
+        fn crafts(
+            ref self: ComponentState<TContractState>,
+            world: WorldStorage,
+            game_id: felt252,
+            mut ingredients: Array<u8>,
+            seed: felt252,
+        ) {
+            let len = ingredients.len() / 2;
+            for _ in 0..len {
+                let ingredient_a: Ingredient = ingredients.pop_front().unwrap().into();
+                let ingredient_b: Ingredient = ingredients.pop_front().unwrap().into();
+                self.craft(world, game_id, ingredient_a, ingredient_b, 1, seed);
+            }
+        }
+
         fn recruit(
             ref self: ComponentState<TContractState>,
             world: WorldStorage,
@@ -161,6 +176,18 @@ pub mod PlayableComponent {
             character.buff(effect, quantity);
             store.set_character(@character);
             store.set_game(@game);
+        }
+
+        fn buffs(
+            ref self: ComponentState<TContractState>,
+            world: WorldStorage,
+            game_id: felt252,
+            character_id: u8,
+            mut effects: Array<u8>,
+        ) {
+            while let Some(effect) = effects.pop_front() {
+                self.buff(world, game_id, character_id, effect.into(), 1);
+            }
         }
 
         fn explore(

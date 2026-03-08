@@ -34,7 +34,7 @@
   "contracts": [
     {
       "address": "0x383f0550d09d02da9fc280ea85cf2a21f25e37dbcaa4213fa9ab1423d661260",
-      "class_hash": "0x1e9b702d359cc893b3b954a8f6cc2c01036bb89f04de49febed1f79d889b817",
+      "class_hash": "0x2b6e08dd46bfc4fa0c9f95d7eb8e6c08d13ddaaec4495b46f13654cbb76ad08",
       "init_calldata": [
         "0x0142712722e62a38f9c40fcc904610e1a14c70125876ecaaf25d803556734467",
         "0x1",
@@ -47,8 +47,10 @@
         "create",
         "clue",
         "craft",
+        "crafts",
         "recruit",
         "buff",
+        "buffs",
         "explore",
         "claim",
         "surrender",
@@ -1560,6 +1562,22 @@
         },
         {
           "type": "function",
+          "name": "crafts",
+          "inputs": [
+            {
+              "name": "game_id",
+              "type": "core::felt252"
+            },
+            {
+              "name": "ingredients",
+              "type": "core::array::Array::<core::integer::u8>"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
           "name": "recruit",
           "inputs": [
             {
@@ -1589,6 +1607,26 @@
             {
               "name": "quantity",
               "type": "core::integer::u16"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "buffs",
+          "inputs": [
+            {
+              "name": "game_id",
+              "type": "core::felt252"
+            },
+            {
+              "name": "character_id",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "effects",
+              "type": "core::array::Array::<core::integer::u8>"
             }
           ],
           "outputs": [],

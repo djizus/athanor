@@ -8,8 +8,10 @@ pub trait IPlay<T> {
     fn create(ref self: T, game_id: felt252);
     fn clue(ref self: T, game_id: felt252);
     fn craft(ref self: T, game_id: felt252, ingredient_a: u8, ingredient_b: u8, quantity: u16);
+    fn crafts(ref self: T, game_id: felt252, ingredients: Array<u8>);
     fn recruit(ref self: T, game_id: felt252);
     fn buff(ref self: T, game_id: felt252, character_id: u8, effect: u8, quantity: u16);
+    fn buffs(ref self: T, game_id: felt252, character_id: u8, effects: Array<u8>);
     fn explore(ref self: T, game_id: felt252, character_id: u8, zone_id: u8);
     fn claim(ref self: T, game_id: felt252, character_id: u8);
     fn surrender(ref self: T, game_id: felt252);
@@ -188,6 +190,19 @@ pub mod Play {
             self.after(world, game_id);
         }
 
+        fn crafts(ref self: ContractState, game_id: felt252, ingredients: Array<u8>) {
+            // [Setup] World
+            let world = self.world(@NAMESPACE());
+            // [Compute] Seed
+            let store = StoreTrait::new(world);
+            let vrf_addr = store.vrf_address();
+            let random = RandomTrait::new(vrf_addr, game_id);
+            // [Effect] Craft
+            self.before(world, game_id);
+            self.playable.crafts(world, game_id, ingredients, random.seed);
+            self.after(world, game_id);
+        }
+
         fn recruit(ref self: ContractState, game_id: felt252) {
             // [Setup] World
             let world = self.world(@NAMESPACE());
@@ -209,6 +224,15 @@ pub mod Play {
             // [Effect] Buff
             self.before(world, game_id);
             self.playable.buff(world, game_id, character_id, effect.into(), quantity);
+            self.after(world, game_id);
+        }
+
+        fn buffs(ref self: ContractState, game_id: felt252, character_id: u8, effects: Array<u8>) {
+            // [Setup] World
+            let world = self.world(@NAMESPACE());
+            // [Effect] Buff
+            self.before(world, game_id);
+            self.playable.buffs(world, game_id, character_id, effects);
             self.after(world, game_id);
         }
 
