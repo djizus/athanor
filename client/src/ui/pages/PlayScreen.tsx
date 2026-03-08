@@ -856,19 +856,28 @@ function HeroSlot({
           ))}
         </div>
       )}
-      {(hero.gold > 0 || (hero.ingredients != null && hero.ingredients !== 0n)) && (
-        <div className="hero-bag">
-          {hero.gold > 0 && <span className="hero-bag-gold">{hero.gold}g</span>}
-          {hero.ingredients != null && hero.ingredients !== 0n && unpackCharacterIngredients(BigInt(hero.ingredients)).map((qty, idx) =>
-            qty > 0 ? (
-              <span key={idx} className="hero-bag-item">
-                <img className="hero-bag-icon" src={ingredientAssetUrl(idx)} alt="" />
-                {qty > 1 && <span className="hero-bag-qty">{qty}</span>}
-              </span>
-            ) : null,
-          )}
-        </div>
-      )}
+      {(() => {
+        const bagGold = override ? override.bagGold : hero.gold
+        const bagIngs = override
+          ? override.bagIngredients
+          : (hero.ingredients != null && hero.ingredients !== 0n
+            ? unpackCharacterIngredients(BigInt(hero.ingredients))
+            : null)
+        const hasItems = bagGold > 0 || (bagIngs && bagIngs.some(q => q > 0))
+        return hasItems ? (
+          <div className="hero-bag">
+            {bagGold > 0 && <span className="hero-bag-gold">{bagGold}g</span>}
+            {bagIngs && bagIngs.map((qty, idx) =>
+              qty > 0 ? (
+                <span key={idx} className="hero-bag-item">
+                  <img className="hero-bag-icon" src={ingredientAssetUrl(idx)} alt="" />
+                  {qty > 1 && <span className="hero-bag-qty">{qty}</span>}
+                </span>
+              ) : null,
+            )}
+          </div>
+        ) : null
+      })()}
       <div className="hero-card-btn-row">
         <button
           className="btn-primary btn-sm"

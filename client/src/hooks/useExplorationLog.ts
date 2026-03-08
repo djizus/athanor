@@ -31,6 +31,8 @@ export interface RawExplorationEvent {
 export interface HeroOverride {
   health: number
   zoneIndex?: number
+  bagGold: number
+  bagIngredients: number[]
 }
 
 const CATEGORY_TRAP = 1
@@ -198,7 +200,14 @@ export function useExplorationLog(
       if (event.rawEvent) {
         setHeroOverrides((prev) => {
           const next = new Map(prev)
-          next.set(heroId, { health: event.rawEvent!.hpAfter, zoneIndex: event.rawEvent!.zoneId })
+          const prevOv = prev.get(heroId)
+          const bagGold = (prevOv?.bagGold ?? 0)
+            + (event.rawEvent!.kind === 'gold' || event.rawEvent!.kind === 'beastWin' ? event.rawEvent!.value : 0)
+          const bagIngredients = [...(prevOv?.bagIngredients ?? new Array(25).fill(0))]
+          if (event.rawEvent!.kind === 'ingredient') {
+            bagIngredients[event.rawEvent!.value] = (bagIngredients[event.rawEvent!.value] ?? 0) + 1
+          }
+          next.set(heroId, { health: event.rawEvent!.hpAfter, zoneIndex: event.rawEvent!.zoneId, bagGold, bagIngredients })
           return next
         })
         onEventRef.current?.(event.rawEvent)
@@ -239,7 +248,7 @@ export function useExplorationLog(
         )
         setHeroOverrides((prev) => {
           const next = new Map(prev)
-          next.set(heroId, { health: preHp, zoneIndex: event.rawEvent!.zoneId })
+          next.set(heroId, { health: preHp, zoneIndex: event.rawEvent!.zoneId, bagGold: 0, bagIngredients: new Array(25).fill(0) })
           return next
         })
       }
