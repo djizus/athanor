@@ -115,7 +115,7 @@ const STEPS: TutorialStep[] = [
   {
     target: null,
     title: 'Strategy Tips',
-    body: '<strong>Recruit early</strong> — multiple heroes explore in parallel, saving massive time.<br/><br/><strong>Discover All often</strong> — test combos immediately after each haul.<br/><br/><strong>Apply potions</strong> — Regen recovers HP faster, Power earns more gold, Health survives deeper zones.<br/><br/><strong>Claim loot fast</strong> — idle heroes waste precious seconds.<br/><br/><strong>Save hints</strong> for the final undiscovered potions.',
+    body: '<strong>Recruit early</strong> — multiple heroes explore in parallel, saving massive time.<br/><strong>Discover All often</strong> — test combos immediately after each haul.<br/><strong>Apply potions</strong> — Regen recovers HP faster, Power earns more gold, Health survives deeper zones.<br/><strong>Claim loot fast</strong> — idle heroes waste precious seconds.<br/><strong>Save hints</strong> for the final undiscovered potions.',
     buttonLabel: 'Next',
     placement: 'bottom',
   },

@@ -2956,7 +2956,7 @@ button:disabled, .btn:disabled {
 .tutorial-step-indicator {
   font-family: var(--font-body);
   font-size: 0.75rem;
-  color: var(--text-muted);
+  color: var(--text-primary);
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
