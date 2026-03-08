@@ -11,7 +11,7 @@ interface HeroExpedition {
 }
 
 export function useExpeditionTracker(
-  heroes: Array<{ id: number; health: number; available_at: number }>,
+  heroes: Array<{ id: number; available_at: number }>,
   now: number,
 ) {
   const expeditions = useRef(new Map<number, HeroExpedition>())
@@ -39,7 +39,7 @@ export function useExpeditionTracker(
 
     for (const hero of heroes) {
       const availableAt = Number(hero.available_at)
-      const isExploring = availableAt > now && hero.health > 0
+      const isExploring = availableAt > now
 
       if (isExploring) {
         activeHeroes.add(hero.id)

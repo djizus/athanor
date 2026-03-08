@@ -38,6 +38,18 @@ import { BrewContent, IngredientsContent, GrimoireContent } from '@/ui/component
 import type { PanelMode } from '@/ui/components/RightPanel'
 import { SettingsOverlay } from '@/ui/components/SettingsOverlay'
 
+function computeOptimisticHp(
+  hero: { health: number; max_health: number; regen: number; available_at: number },
+  now: number,
+  override: { health: number } | undefined,
+): number {
+  if (override) return override.health
+  const availableAt = Number(hero.available_at)
+  const isIdle = availableAt <= now
+  const regenElapsed = isIdle ? Math.max(0, now - availableAt) : 0
+  return Math.min(hero.health + hero.regen * regenElapsed, hero.max_health)
+}
+
 function formatGameDuration(seconds: number): string {
   if (seconds <= 0) return '-'
   const h = Math.floor(seconds / 3600)
@@ -655,19 +667,12 @@ export function PlayScreen() {
 
   const journeyHeroes = useMemo(() =>
     heroes.map(h => {
-      const override = heroOverrides.get(h.id)
-      const availableAt = Number(h.available_at)
-      const isExploring = availableAt > now && h.health > 0
-      const isIdle = !isExploring
-      const regenElapsed = isIdle ? Math.max(0, now - availableAt) : 0
-      const baseHp = override ? override.health : h.health
-      const health = override
-        ? baseHp
-        : Math.min(baseHp + h.regen * regenElapsed, h.max_health)
+      const isExploring = Number(h.available_at) > now
+      const override = isExploring ? heroOverrides.get(h.id) : undefined
       return {
         hero_id: h.id,
         role: h.role,
-        health,
+        health: computeOptimisticHp(h, now, override),
         max_health: h.max_health,
         gold: override ? override.bagGold : h.gold,
         ingredients: override ? override.bagIngredients : h.ingredients,
@@ -1188,11 +1193,7 @@ function HeroSlot({
   else if (isExploring) { statusText = `Exploring ${remaining}s`; statusClass = 'exploring' }
   else if (lootReady) { statusText = 'Loot Ready'; statusClass = 'loot-ready' }
 
-  const regenElapsed = isIdle ? Math.max(0, now - availableAt) : 0
-  const baseHp = override ? override.health : hero.health
-  const optimisticHp = override
-    ? baseHp
-    : Math.min(baseHp + hero.regen * regenElapsed, hero.max_health)
+  const optimisticHp = computeOptimisticHp(hero, now, override)
 
   const hpPct = hero.max_health > 0 ? Math.min(100, (optimisticHp / hero.max_health) * 100) : 0
   const regenPreviewPct = (isIdle && optimisticHp < hero.max_health && hero.regen > 0)

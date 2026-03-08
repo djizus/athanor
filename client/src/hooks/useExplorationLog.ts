@@ -258,6 +258,9 @@ export function useExplorationLog(
     if (!anyRemaining) {
       window.clearInterval(drainTimerRef.current!)
       drainTimerRef.current = null
+      setTimeout(() => {
+        setHeroOverrides(new Map())
+      }, 2000)
     }
   }, [append])
 
@@ -281,7 +284,7 @@ export function useExplorationLog(
         )
         setHeroOverrides((prev) => {
           const next = new Map(prev)
-          next.set(heroId, { health: preHp, zoneIndex: 0, bagGold: 0, bagIngredients: new Array(25).fill(0) })
+          next.set(heroId, { health: preHp, zoneIndex: event.rawEvent!.zoneId, bagGold: 0, bagIngredients: new Array(25).fill(0) })
           return next
         })
       }

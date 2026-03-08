@@ -288,11 +288,11 @@ export function JourneyMap({
     for (let i = -1; i < 5; i++) map.set(i, [])
 
     for (const hero of heroes) {
-      const override = heroOverrides?.get(hero.hero_id)
-      const playbackZone = override?.zoneIndex
       const pos = heroPositions.get(hero.hero_id)
-      const trackerZone = pos ? (pos.returning ? -1 : pos.zoneIndex) : -1
-      const zone = playbackZone != null ? playbackZone : trackerZone
+      const trackerZone = pos ? pos.zoneIndex : -1
+      const isActivelyExploring = pos != null && pos.zoneIndex >= 0
+      const override = isActivelyExploring ? heroOverrides?.get(hero.hero_id) : undefined
+      const zone = override?.zoneIndex ?? (pos?.returning ? -1 : trackerZone)
       map.get(zone >= 0 && zone < 5 ? zone : -1)!.push(hero)
     }
     return map
