@@ -565,10 +565,6 @@ export function PlayScreen() {
                 <span className="game-over-stat-label">Time</span>
                 <span className="game-over-stat-value">{formatGameDuration(elapsedSeconds)}</span>
               </div>
-              <div className="game-over-stat">
-                <span className="game-over-stat-label">Recipes</span>
-                <span className="game-over-stat-value">{discoveredCount}/30</span>
-              </div>
               {leaderboardRank != null && (
                 <div className="game-over-stat">
                   <span className="game-over-stat-label">Rank</span>

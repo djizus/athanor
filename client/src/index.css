@@ -2334,6 +2334,11 @@ button:disabled, .btn:disabled {
   color: var(--accent-gold);
 }
 
+.game-over-card.won .game-over-flavor,
+.game-over-card.won .game-over-stat-value {
+  color: #fff;
+}
+
 .game-over-card.lost .game-over-stat-value {
   color: var(--text-primary);
 }
