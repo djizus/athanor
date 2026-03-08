@@ -2,6 +2,8 @@ pub fn NAMESPACE() -> ByteArray {
     "ATHANOR"
 }
 
+pub const WORLD_RESOURCE: felt252 = 0;
+
 // --- Default values ---
 pub const DEFAULT_INGREDIENTS: felt252 =
     0x1004010040100401004010040100401004010040100401004010040100401; // 1 of each ingredient

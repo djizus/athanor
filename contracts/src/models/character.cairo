@@ -56,6 +56,9 @@ pub impl CharacterImpl of CharacterTrait {
         // [Check] Character is available
         let now = starknet::get_block_timestamp();
         self.assert_is_available(now);
+        // [Effect] Heal
+        self.health = self.health();
+        self.available_at = now;
         // [Effect] Apply effect
         effect.apply(ref self, quantity);
     }
@@ -159,14 +162,14 @@ mod tests {
         let mut character = CharacterTrait::new(GAME_ID, CHARACTER_ID, Role::Mage);
         starknet::testing::set_block_timestamp(1);
         let first_logs = character.explore(0, 0);
-        assert_eq!(character.health, 0);
+        assert_eq!(character.health, 32);
         let resterored_at = character.available_at
             + (character.max_health / character.regen).into();
         starknet::testing::set_block_timestamp(resterored_at);
         assert_eq!(character.health(), character.max_health);
         let (ingredients, gold) = character.claim();
-        assert_eq!(ingredients, 5499707722753);
-        assert_eq!(gold, 15);
+        assert_eq!(ingredients, 7700877412356);
+        assert_eq!(gold, 24);
         let second_logs = character.explore(0, 0);
         assert_eq!(first_logs.len(), second_logs.len());
     }

@@ -34,7 +34,7 @@
   "contracts": [
     {
       "address": "0x505d14c8c68fba8bee37651e39ded642d3cbaee2727b6a2f7463da369428b2",
-      "class_hash": "0x5c15d7665179e03a31e2918568350dcda556d668d25a9692a7dd96e39d929b1",
+      "class_hash": "0x38ad04de033079c0b2c2d440de8b418dc0733ff3438014dcb16786a4e635175",
       "init_calldata": [
         "0x059b1a0c489b635d7c7f43594d187362ddd2dcea6c82db4eef2579fd185b3753",
         "0x00ce6622be39efa11b4a50b7d2e0c342a218bc099bbd313365efe169ef0eb3e2",
@@ -58,7 +58,7 @@
     },
     {
       "address": "0x94e89d7ce6030cb5fded3e378d20e399ef26d3213c711792a8edf92471793d",
-      "class_hash": "0xebf4e2a4af08587fae28cdcfbb357a95ff6cb48f401d74a11c293b6c8919",
+      "class_hash": "0x38c59807b97d856f2ea9be2c4917bc78d2af4f84664c656655c1f0ad2a65cdd",
       "init_calldata": [
         "0x059b1a0c489b635d7c7f43594d187362ddd2dcea6c82db4eef2579fd185b3753"
       ],
@@ -1681,7 +1681,7 @@
     },
     {
       "type": "interface",
-      "name": "athanor::systems::setup::IConfigSystem",
+      "name": "athanor::systems::setup::ISetup",
       "items": [
         {
           "type": "function",
@@ -1697,6 +1697,18 @@
               "type": "athanor::models::config::GameSettings"
             }
           ],
+          "state_mutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "set_vrf_address",
+          "inputs": [
+            {
+              "name": "vrf_address",
+              "type": "core::starknet::contract_address::ContractAddress"
+            }
+          ],
+          "outputs": [],
           "state_mutability": "view"
         }
       ]

@@ -1,3 +1,4 @@
+use starknet::ContractAddress;
 use crate::models::config::GameSettings;
 
 #[inline]
@@ -6,8 +7,9 @@ pub fn NAME() -> ByteArray {
 }
 
 #[starknet::interface]
-pub trait IConfigSystem<T> {
+pub trait ISetup<T> {
     fn get_game_settings(self: @T, settings_id: u32) -> GameSettings;
+    fn set_vrf_address(self: @T, vrf_address: ContractAddress);
 }
 
 #[dojo::contract]
@@ -22,11 +24,11 @@ pub mod Setup {
     use openzeppelin::introspection::src5::SRC5Component;
     use starknet::storage::StoragePointerWriteAccess;
     use starknet::{ContractAddress, get_block_timestamp};
-    use crate::constants::NAMESPACE;
+    use crate::constants::{NAMESPACE, WORLD_RESOURCE};
     use crate::models::config::{GameSettings, GameSettingsMetadata, GameSettingsTrait};
     use crate::store::{StoreImpl, StoreTrait};
     use crate::systems::play::NAME as PLAY;
-    use super::IConfigSystem;
+    use super::ISetup;
 
     component!(path: SettingsComponent, storage: settings, event: SettingsEvent);
     component!(path: SRC5Component, storage: src5, event: SRC5Event);
@@ -140,10 +142,30 @@ pub mod Setup {
     }
 
     #[abi(embed_v0)]
-    impl ConfigSystemImpl of IConfigSystem<ContractState> {
+    impl SetupImpl of ISetup<ContractState> {
         fn get_game_settings(self: @ContractState, settings_id: u32) -> GameSettings {
             let store = StoreImpl::new(self.world(@NAMESPACE()));
             store.settings(settings_id)
+        }
+
+        fn set_vrf_address(self: @ContractState, vrf_address: ContractAddress) {
+            // [Setup] World and Store
+            let mut world = self.world(@NAMESPACE());
+            let mut store = StoreImpl::new(world);
+            // [Check] Caller is allowed
+            self.assert_only_owner(world);
+            // [Effect] Update config
+            let mut config = store.config();
+            config.vrf_address = vrf_address;
+            store.set_config(@config);
+        }
+    }
+
+    #[generate_trait]
+    pub impl PrivateImpl of PrivateTrait {
+        fn assert_only_owner(self: @ContractState, world: WorldStorage) {
+            let caller = starknet::get_caller_address();
+            assert!(world.dispatcher.is_owner(WORLD_RESOURCE, caller), "Unauthorized caller");
         }
     }
 }
