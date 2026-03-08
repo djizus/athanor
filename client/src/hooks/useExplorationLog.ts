@@ -279,54 +279,49 @@ export function useExplorationLog(
         const walkSeconds = (walkDurationMs / 1000).toFixed(1)
         console.log(`[DrainTick] hero=${heroId} QUEUE_EMPTY deathDepth=${deathDepth} (expedition=${expedition?.deathDepth} maxEvent=${maxDepth}) walkMs=${walkDurationMs}`)
 
-        const startReturning = () => {
-          append({ ts: Date.now(), text: `${heroName} returning to Athanor (${walkSeconds}s walk, depth ${deathDepth})`, kind: 'exploration' })
+        append({ ts: Date.now(), text: `${heroName} returning to Athanor (${walkSeconds}s walk, depth ${deathDepth})`, kind: 'exploration' })
+
+        setHeroOverrides((prev) => {
+          const next = new Map(prev)
+          const prevOv = prev.get(heroId)
+          if (prevOv) {
+            next.set(heroId, {
+              ...prevOv,
+              returning: true,
+              returnStartedAt: Date.now(),
+              returnDuration: walkDurationMs,
+            })
+          }
+          return next
+        })
+
+        const returnTimer = window.setTimeout(() => {
+          console.log(`[DrainTick] hero=${heroId} RETURN_COMPLETE`)
+          append({ ts: Date.now(), text: `${heroName} arrived at Athanor`, kind: 'exploration' })
 
           setHeroOverrides((prev) => {
             const next = new Map(prev)
             const prevOv = prev.get(heroId)
-            if (prevOv) {
-              next.set(heroId, {
-                ...prevOv,
-                autoClaimAnimating: false,
-                returning: true,
-                returnStartedAt: Date.now(),
-                returnDuration: walkDurationMs,
-                bagGold: 0,
-                bagIngredients: new Array(25).fill(0),
-              })
-            }
+            if (!prevOv) return prev
+            const hasLoot = prevOv.bagGold > 0 || prevOv.bagIngredients.some(q => q > 0)
+            next.set(heroId, {
+              ...prevOv,
+              returning: false,
+              zoneIndex: -1,
+              autoClaimAnimating: hasLoot,
+            })
             return next
           })
 
-          const timer = window.setTimeout(() => {
-            console.log(`[DrainTick] hero=${heroId} RETURN_COMPLETE → clearing override`)
-            append({ ts: Date.now(), text: `${heroName} arrived at Athanor`, kind: 'exploration' })
-            setHeroOverrides((prev) => {
-              const next = new Map(prev)
-              next.delete(heroId)
-              return next
-            })
+          const cleanupTimer = window.setTimeout(() => {
+            console.log(`[DrainTick] hero=${heroId} CLEANUP → deleting override`)
+            setHeroOverrides((p) => { const n = new Map(p); n.delete(heroId); return n })
             returnTimersRef.current.delete(heroId)
             heroExpeditionRef.current.delete(heroId)
-          }, walkDurationMs)
-          returnTimersRef.current.set(heroId, timer)
-        }
-
-        setHeroOverrides((prev) => {
-          const prevOv = prev.get(heroId)
-          const hasLoot = prevOv && (prevOv.bagGold > 0 || prevOv.bagIngredients.some(q => q > 0))
-
-          if (hasLoot) {
-            const next = new Map(prev)
-            next.set(heroId, { ...prevOv!, autoClaimAnimating: true })
-            window.setTimeout(startReturning, AUTO_CLAIM_ANIM_MS)
-            return next
-          } else {
-            startReturning()
-            return prev
-          }
-        })
+          }, AUTO_CLAIM_ANIM_MS + 3000)
+          returnTimersRef.current.set(heroId, cleanupTimer)
+        }, walkDurationMs)
+        returnTimersRef.current.set(heroId, returnTimer)
       }
     }
 

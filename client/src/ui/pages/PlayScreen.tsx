@@ -634,34 +634,6 @@ export function PlayScreen() {
     }
   }
 
-  const handleBuff = async (effect: number, heroId: number, quantity: number) => {
-    if (!account || gameId == null) return
-    pushInfo(`Applying potion to hero...`)
-    const pendingId = createPendingTxId()
-    addPendingTx({
-      id: pendingId,
-      action: 'buff',
-      heroId,
-      inventoryDelta: new Map(),
-      goldDelta: 0,
-      effectsDelta: new Map<number, number>([[effect, -quantity]]),
-    })
-    const t = txToast('Applying potion')
-    let success = false
-    try {
-      await client.buff(account, gameId, heroId, effect, quantity)
-      success = true
-      t.success()
-      soundManager.playSfx('potion-apply', 0.5)
-    } catch (e) {
-      t.error()
-      pushInfo('Potion application failed')
-      console.error('Buff failed:', e)
-    } finally {
-      finalizePendingTx(pendingId, success)
-    }
-  }
-
   const handleExploreRef = useRef(handleExplore)
   handleExploreRef.current = handleExplore
   const nowRef = useRef(now)

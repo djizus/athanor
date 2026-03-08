@@ -606,13 +606,15 @@ export function JourneyMap({
       const override = heroOverrides?.get(hero.hero_id)
       if (override?.returning) continue
 
+      if (override) {
+        const zone = override.zoneIndex ?? -1
+        map.get(zone >= 0 && zone < 5 ? zone : -1)!.push(hero)
+        continue
+      }
+
       const pos = heroPositions.get(hero.hero_id)
       const trackerZone = pos ? pos.zoneIndex : -1
-      const overrideZone = override?.zoneIndex ?? -1
-      const isActivelyExploring = (pos != null && pos.zoneIndex >= 0) || overrideZone >= 0
-      const activeOverride = isActivelyExploring ? override : undefined
-      const zone = activeOverride?.zoneIndex ?? trackerZone
-      map.get(zone >= 0 && zone < 5 ? zone : -1)!.push(hero)
+      map.get(trackerZone >= 0 && trackerZone < 5 ? trackerZone : -1)!.push(hero)
     }
     return map
   }, [heroes, heroPositions, heroOverrides])
