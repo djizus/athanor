@@ -17,7 +17,7 @@ export interface LogEntry {
   kind: 'exploration' | 'loot' | 'recipe' | 'recruit' | 'potion' | 'expedition' | 'info'
 }
 
-export type ExplorationEventKind = 'trap' | 'gold' | 'heal' | 'beastWin' | 'beastLose' | 'ingredient'
+export type ExplorationEventKind = 'drain' | 'trap' | 'gold' | 'heal' | 'beastWin' | 'beastLose' | 'ingredient'
 
 export interface RawExplorationEvent {
   kind: ExplorationEventKind
@@ -36,6 +36,7 @@ export interface HeroOverride {
   returning?: boolean
 }
 
+const CATEGORY_NONE = 0
 const CATEGORY_TRAP = 1
 const CATEGORY_GOLD = 2
 const CATEGORY_HEAL = 3
@@ -44,6 +45,7 @@ const CATEGORY_BEAST_LOSE = 5
 const CATEGORY_INGREDIENT = 6
 
 const CATEGORY_TO_KIND: Record<number, ExplorationEventKind> = {
+  [CATEGORY_NONE]: 'drain',
   [CATEGORY_TRAP]: 'trap',
   [CATEGORY_GOLD]: 'gold',
   [CATEGORY_HEAL]: 'heal',
@@ -51,6 +53,9 @@ const CATEGORY_TO_KIND: Record<number, ExplorationEventKind> = {
   [CATEGORY_BEAST_LOSE]: 'beastLose',
   [CATEGORY_INGREDIENT]: 'ingredient',
 }
+
+// Per-depth HP drain per zone (contracts/src/constants.cairo ZONE_*_DRAIN / 100)
+const ZONE_DRAIN = [1, 2, 3, 4, 5]
 
 const TICK_INTERVAL_MS = 1500
 
@@ -93,6 +98,7 @@ function computePreEventHp(eventKind: number, value: number, hpAfter: number): n
 
 function formatExplorationDetail(eventKind: number, value: number, hpAfter: number): string {
   switch (eventKind) {
+    case CATEGORY_NONE: return `collapsed from exhaustion`
     case CATEGORY_TRAP: return `took ${value} trap damage (HP: ${hpAfter})`
     case CATEGORY_GOLD: return `found ${displayGold(value)}g`
     case CATEGORY_HEAL: return `healed ${value} HP (HP: ${hpAfter})`
@@ -163,6 +169,7 @@ export function useExplorationLog(
   const [heroOverrides, setHeroOverrides] = useState<Map<number, HeroOverride>>(() => new Map())
   const subRef = useRef<{ cancel: () => void } | null>(null)
   const heroQueuesRef = useRef<Map<number, QueuedEvent[]>>(new Map())
+  const heroDepthRef = useRef<Map<number, number>>(new Map())
   const drainTimerRef = useRef<number | null>(null)
   const heroMapRef = useRef<Map<number, string>>(new Map())
   const onEventRef = useRef(onExplorationEvent)
@@ -184,52 +191,59 @@ export function useExplorationLog(
   const drainTick = useCallback(() => {
     let anyRemaining = false
     for (const [heroId, queue] of heroQueuesRef.current) {
+      const depth = (heroDepthRef.current.get(heroId) ?? -1) + 1
+      heroDepthRef.current.set(heroId, depth)
+
       queue.sort((a, b) => (a.rawEvent?.depth ?? 0) - (b.rawEvent?.depth ?? 0))
-      const event = queue.shift()
-      if (!event) {
-        heroQueuesRef.current.delete(heroId)
-        setHeroOverrides((prev) => {
-          const next = new Map(prev)
-          next.delete(heroId)
-          return next
-        })
-        continue
+
+      let processedEvent = false
+      while (queue.length > 0 && (queue[0].rawEvent?.depth ?? 0) <= depth) {
+        const event = queue.shift()!
+        append(event.entry)
+
+        if (event.rawEvent) {
+          processedEvent = true
+          const heroDied = event.rawEvent.hpAfter <= 0
+          setHeroOverrides((prev) => {
+            const next = new Map(prev)
+            const prevOv = prev.get(heroId)
+            const bagGold = (prevOv?.bagGold ?? 0)
+              + (event.rawEvent!.kind === 'gold' || event.rawEvent!.kind === 'beastWin' ? event.rawEvent!.value : 0)
+            const bagIngredients = [...(prevOv?.bagIngredients ?? new Array(25).fill(0))]
+            if (event.rawEvent!.kind === 'ingredient') {
+              bagIngredients[event.rawEvent!.value] = (bagIngredients[event.rawEvent!.value] ?? 0) + 1
+            }
+            next.set(heroId, {
+              health: event.rawEvent!.hpAfter,
+              zoneIndex: event.rawEvent!.zoneId,
+              bagGold,
+              bagIngredients,
+              returning: heroDied || prevOv?.returning,
+            })
+            return next
+          })
+          onEventRef.current?.(event.rawEvent)
+        }
       }
 
-      append(event.entry)
-
-      if (event.rawEvent) {
-        console.debug('[Zone Debug] drainTick hero', heroId,
-          '| processing depth:', event.rawEvent.depth, 'zone:', event.rawEvent.zoneId,
-          'hp:', event.rawEvent.hpAfter, 'kind:', event.rawEvent.kind,
-          '| remaining in queue:', queue.length)
-        const heroDied = event.rawEvent.hpAfter <= 0
+      if (!processedEvent) {
         setHeroOverrides((prev) => {
           const next = new Map(prev)
           const prevOv = prev.get(heroId)
-          const bagGold = (prevOv?.bagGold ?? 0)
-            + (event.rawEvent!.kind === 'gold' || event.rawEvent!.kind === 'beastWin' ? event.rawEvent!.value : 0)
-          const bagIngredients = [...(prevOv?.bagIngredients ?? new Array(25).fill(0))]
-          if (event.rawEvent!.kind === 'ingredient') {
-            bagIngredients[event.rawEvent!.value] = (bagIngredients[event.rawEvent!.value] ?? 0) + 1
+          if (prevOv && prevOv.health > 0) {
+            const zone = prevOv.zoneIndex ?? 0
+            const drain = ZONE_DRAIN[zone] ?? 1
+            next.set(heroId, { ...prevOv, health: Math.max(0, prevOv.health - drain) })
           }
-          next.set(heroId, {
-            health: event.rawEvent!.hpAfter,
-            zoneIndex: event.rawEvent!.zoneId,
-            bagGold,
-            bagIngredients,
-            returning: heroDied || prevOv?.returning,
-          })
           return next
         })
-        onEventRef.current?.(event.rawEvent)
       }
 
       if (queue.length > 0) {
         anyRemaining = true
       } else {
         heroQueuesRef.current.delete(heroId)
-        // Keep override alive with returning=true so HeroSlot shows "Returning"
+        heroDepthRef.current.delete(heroId)
         setHeroOverrides((prev) => {
           const next = new Map(prev)
           const prevOv = prev.get(heroId)
@@ -255,9 +269,8 @@ export function useExplorationLog(
       heroQueuesRef.current.set(heroId, queue)
 
       if (event.rawEvent) {
-        console.debug('[Zone Debug] enqueue FIRST event for hero', heroId,
-          '| arrived zone:', event.rawEvent.zoneId, 'depth:', event.rawEvent.depth, 'kind:', event.rawEvent.kind,
-          '| setting initial zoneIndex to 0 (start)')
+        const firstDepth = event.rawEvent.depth
+        heroDepthRef.current.set(heroId, firstDepth - 1)
         const preHp = computePreEventHp(
           event.rawEvent.kind === 'trap' ? CATEGORY_TRAP
             : event.rawEvent.kind === 'beastLose' ? CATEGORY_BEAST_LOSE
@@ -364,6 +377,7 @@ export function useExplorationLog(
         drainTimerRef.current = null
       }
       heroQueuesRef.current.clear()
+      heroDepthRef.current.clear()
     }
   }, [gameId, toriiClient, append, enqueue])
 
