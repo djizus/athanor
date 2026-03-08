@@ -69,6 +69,32 @@ function computeUntriedPairs(
   return pairs
 }
 
+const NAMESPACE = import.meta.env.VITE_PUBLIC_NAMESPACE || 'ATHANOR'
+const DISCOVERY_MODEL = `${NAMESPACE}-Discovery`
+
+async function fetchFreshRecipes(
+  toriiClient: ReturnType<typeof useDojo>['toriiClient'],
+  gameId: number,
+): Promise<DiscoveryData[]> {
+  const result = await toriiClient.getEntities({
+    world_addresses: [],
+    pagination: { limit: 500, cursor: undefined, direction: 'Forward', order_by: [] },
+    clause: { Keys: { keys: ['0x' + gameId.toString(16)], pattern_matching: 'VariableLen', models: [DISCOVERY_MODEL] } },
+    no_hashed_keys: false,
+    models: [DISCOVERY_MODEL],
+    historical: false,
+  })
+  return result.items
+    .map(e => e.models[DISCOVERY_MODEL])
+    .filter(Boolean)
+    .map(m => ({
+      ingredient_a: Number((m.ingredient_a as { value: unknown }).value) - 1,
+      ingredient_b: Number((m.ingredient_b as { value: unknown }).value) - 1,
+      effect: Number((m.effect as { value: unknown }).value) - 1,
+      discovered: Boolean((m.discovered as { value: unknown }).value),
+    }))
+}
+
 export function PlayScreen() {
   const { client, toriiClient } = useDojo()
   const { gameId, navigate } = useNavigationStore()
@@ -92,6 +118,8 @@ export function PlayScreen() {
   const [potionTargetHeroId, setPotionTargetHeroId] = useState<number | null>(null)
   const [mobilePanel, setMobilePanel] = useState<string | null>(null)
   const [surrendered, setSurrendered] = useState(false)
+  const [brewAllCount, setBrewAllCount] = useState(0)
+  const [brewRefreshKey, setBrewRefreshKey] = useState(0)
 
   const [floatingTexts, setFloatingTexts] = useState<FloatingTextAnim[]>([])
   const [goldFloats, setGoldFloats] = useState<{ id: string; text: string }[]>([])
@@ -231,6 +259,15 @@ export function PlayScreen() {
     }
   }, [logs.length])
 
+  useEffect(() => {
+    if (gameId == null) return
+    let stale = false
+    fetchFreshRecipes(toriiClient, gameId)
+      .then(fresh => { if (!stale) setBrewAllCount(computeUntriedPairs(inventory, fresh).length) })
+      .catch(() => {})
+    return () => { stale = true }
+  }, [toriiClient, gameId, inventory, recipes, brewRefreshKey])
+
   const handleExplore = async (characterId: number) => {
     if (!account || gameId == null) return
     const hero = heroes.find((h) => h.id === characterId)
@@ -252,7 +289,7 @@ export function PlayScreen() {
       addGoldFloat(`+${hero.gold}g`)
     }
     const t = txToast('Claiming loot')
-    try { await client.claim(account, gameId, characterId); t.success() } catch (e) { t.error(); pushInfo(`${name} claim failed`); console.error('Claim failed:', e) }
+    try { await client.claim(account, gameId, characterId); t.success(); setBrewRefreshKey(k => k + 1) } catch (e) { t.error(); pushInfo(`${name} claim failed`); console.error('Claim failed:', e) }
   }
 
   const handleCraft = async (ingredientA: number, ingredientB: number) => {
@@ -269,6 +306,7 @@ export function PlayScreen() {
       await client.craft(account, gameId, lo, hi)
       t.success()
       soundManager.playSfx('brew-success', 0.4)
+      setBrewRefreshKey(k => k + 1)
       if (isSoup) {
         addGoldFloat('+1g')
       }
@@ -280,33 +318,7 @@ export function PlayScreen() {
 
   const handleBrewAll = async () => {
     if (!account || gameId == null) return
-    // Fetch fresh Discovery entities from Torii to avoid stale subscription data
-    const namespace = import.meta.env.VITE_PUBLIC_NAMESPACE || 'ATHANOR'
-    const modelTag = `${namespace}-Discovery`
-    const hexGameId = '0x' + gameId.toString(16)
-    let freshRecipes: DiscoveryData[]
-    try {
-      const result = await toriiClient.getEntities({
-        world_addresses: [],
-        pagination: { limit: 500, cursor: undefined, direction: 'Forward', order_by: [] },
-        clause: { Keys: { keys: [hexGameId], pattern_matching: 'VariableLen', models: [modelTag] } },
-        no_hashed_keys: false,
-        models: [modelTag],
-        historical: false,
-      })
-      freshRecipes = result.items
-        .map(e => e.models[modelTag])
-        .filter(Boolean)
-        .map(m => ({
-          ingredient_a: Number((m.ingredient_a as { value: unknown }).value) - 1,
-          ingredient_b: Number((m.ingredient_b as { value: unknown }).value) - 1,
-          effect: Number((m.effect as { value: unknown }).value) - 1,
-          discovered: Boolean((m.discovered as { value: unknown }).value),
-        }))
-    } catch (e) {
-      console.error('Failed to fetch fresh discoveries, falling back to cached:', e)
-      freshRecipes = recipes
-    }
+    const freshRecipes = await fetchFreshRecipes(toriiClient, gameId)
     const pairs = computeUntriedPairs(inventory, freshRecipes)
     if (pairs.length === 0) { pushInfo('No new combinations available'); return }
     pushInfo(`Brewing ${pairs.length} new combinations...`)
@@ -315,6 +327,7 @@ export function PlayScreen() {
       await client.craftBatch(account, gameId, pairs)
       t.success()
       soundManager.playSfx('brew-success', 0.4)
+      setBrewRefreshKey(k => k + 1)
     } catch (e) { t.error(); pushInfo('Batch brew failed'); console.error('Batch craft failed:', e) }
   }
 
@@ -349,7 +362,6 @@ export function PlayScreen() {
   }
 
   const gold = game?.gold ?? 0
-  const brewAllCount = useMemo(() => computeUntriedPairs(inventory, recipes).length, [inventory, recipes])
   const effectQuantities = useMemo(() => game ? unpackEffects(BigInt(game.effects)) : Array(30).fill(0) as number[], [game])
   const hasPotions = effectQuantities.some((q) => q > 0)
   const heroCount = game ? bitmapPopcount(game.heroes) : heroes.length
