@@ -393,6 +393,51 @@ export function PlayScreen() {
     if (!account || gameId == null) return
     const hero = heroes.find((h) => h.id === characterId)
     const name = hero ? ROLE_NAMES[hero.role > 0 ? hero.role - 1 : characterId] : `Hero ${characterId}`
+
+    if (hero) {
+      const hasLoot = hero.gold > 0 || (hero.ingredients != null && hero.ingredients !== 0n)
+      if (hasLoot) {
+        const heroEl = document.querySelector(`[data-hero-id="${characterId}"]`)
+        if (heroEl) {
+          const src = heroEl.getBoundingClientRect()
+          const sx = src.left + src.width / 2
+          const sy = src.top + src.height / 2
+
+          if (hero.gold > 0) {
+            const goldTarget = document.querySelector('[data-claim-target="gold"]')
+            if (goldTarget) {
+              const tr = goldTarget.getBoundingClientRect()
+              spawnFlyingOrb(sx, sy, tr.left + tr.width / 2, tr.top + tr.height / 2, '/assets/ui/gold-coin.webp')
+            }
+            addGoldFloat(`+${hero.gold}g`)
+          }
+
+          if (hero.ingredients != null && hero.ingredients !== 0n) {
+            const bagItems = unpackCharacterIngredients(BigInt(hero.ingredients))
+            const invTarget = document.querySelector('[data-claim-target="ingredients"]')
+            if (invTarget) {
+              const tr = invTarget.getBoundingClientRect()
+              bagItems.forEach((qty, idx) => {
+                if (qty > 0) {
+                  setTimeout(() => {
+                    spawnFlyingOrb(
+                      sx + (Math.random() - 0.5) * 20,
+                      sy + (Math.random() - 0.5) * 10,
+                      tr.left + 40,
+                      tr.top + tr.height / 2,
+                      ingredientAssetUrl(idx),
+                    )
+                  }, idx * 80)
+                }
+              })
+            }
+          }
+
+          soundManager.playSfx('claim-loot', 0.5)
+        }
+      }
+    }
+
     pushInfo(`${name} sent to ${ZONE_NAMES[zoneId] ?? `Zone ${zoneId}`}...`)
     onExpeditionStart(characterId, zoneId)
     soundManager.playSfx('expedition-start', 0.5)
