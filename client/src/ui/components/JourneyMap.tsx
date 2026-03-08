@@ -103,15 +103,16 @@ function ConstellationLine({ x1, y1, x2, y2, color, active }: {
   )
 }
 
-function ZoneTooltip({ zoneId }: { zoneId: number }) {
+function ZoneTooltip({ zoneId, canSend }: { zoneId: number; canSend: boolean }) {
   const name = ZONE_NAMES[zoneId]
   const drain = ZONE_DRAIN[zoneId]
 
   return (
     <div className="zone-tooltip">
       <span className="zone-tooltip-name" style={{ color: ZONE_COLORS[zoneId] }}>{name}</span>
-      <span className="zone-tooltip-stat">Drain: {drain} HP/tick</span>
+      <span className="zone-tooltip-stat zone-tooltip-stat-drain">HP Drain: {drain}/tick</span>
       <span className="zone-tooltip-stat">Zone {zoneId + 1} of 5</span>
+      {canSend && <span className="zone-tooltip-stat" style={{ color: 'var(--accent-gold)' }}>Click to explore</span>}
     </div>
   )
 }
@@ -158,6 +159,7 @@ function ZoneNode({
       onClick={canSendHero ? onClick : undefined}
     >
       <div className="zone-node-glow" />
+      {canSendHero && <div className="zone-node-ring" />}
       <img
         className="zone-node-icon"
         src={`/assets/zones/${portalKey}.webp`}
@@ -179,7 +181,7 @@ function ZoneNode({
         ))}
       </AnimatePresence>
 
-      {isHovered && <ZoneTooltip zoneId={zoneId} />}
+      {isHovered && <ZoneTooltip zoneId={zoneId} canSend={canSendHero} />}
     </div>
   )
 }

@@ -68,14 +68,31 @@
   cursor: pointer;
 }
 
+.zone-node-clickable .zone-node-ring {
+  position: absolute;
+  width: 102px;
+  height: 102px;
+  border-radius: 50%;
+  border: 2px solid var(--accent-gold);
+  opacity: 0;
+  z-index: 0;
+  pointer-events: none;
+  animation: zone-ring-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes zone-ring-pulse {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.12); }
+}
+
 .zone-node-clickable:hover {
   transform: translate(-50%, -50%) scale(1.08);
 }
 
 .zone-node-glow {
   position: absolute;
-  width: 120px;
-  height: 120px;
+  width: 140px;
+  height: 140px;
   border-radius: 50%;
   background: radial-gradient(circle, var(--zone-color, #c8a040) 0%, transparent 70%);
   opacity: 0.12;
@@ -98,8 +115,8 @@
 }
 
 .zone-node-icon {
-  width: 72px;
-  height: 72px;
+  width: 86px;
+  height: 86px;
   border-radius: 50%;
   border: 2px solid var(--zone-color, #a08020);
   object-fit: cover;
@@ -127,7 +144,7 @@
 
 .zone-node-label {
   font-family: var(--font-title);
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   color: var(--zone-color, #a08020);
   letter-spacing: 0.05em;
   text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9), 0 0 12px rgba(0, 0, 0, 0.7);
@@ -142,8 +159,8 @@
 }
 
 .athanor-icon {
-  width: 88px;
-  height: 88px;
+  width: 106px;
+  height: 106px;
   border-color: var(--accent-gold-dim);
   box-shadow:
     0 0 24px rgba(240, 192, 64, 0.2),
@@ -151,8 +168,8 @@
 }
 
 .athanor-glow {
-  width: 160px;
-  height: 160px;
+  width: 180px;
+  height: 180px;
   opacity: 0.2;
   animation: athanor-pulse 3.5s ease-in-out infinite;
 }
@@ -224,31 +241,38 @@
 
 .zone-tooltip {
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% + 12px);
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(10, 10, 20, 0.92);
+  background: rgba(8, 8, 16, 0.95);
   border: 1px solid var(--zone-color, #a08020);
-  border-radius: 6px;
-  padding: 6px 10px;
+  border-radius: 8px;
+  padding: 10px 16px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  min-width: 120px;
+  gap: 6px;
+  min-width: 160px;
   z-index: 20;
   pointer-events: none;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.8);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.9),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .zone-tooltip-name {
   font-family: var(--font-title);
-  font-size: 0.72rem;
+  font-size: 0.95rem;
   letter-spacing: 0.04em;
+  text-shadow: 0 0 8px var(--zone-color, #a08020);
 }
 
 .zone-tooltip-stat {
-  font-size: 0.6rem;
-  color: var(--text-muted);
+  font-size: 0.78rem;
+  color: #b0b0cc;
+}
+
+.zone-tooltip-stat-drain {
+  color: var(--accent-red);
 }
 
 /* ── Floating Text ──── */
@@ -305,23 +329,28 @@
 
 @media (max-width: 767px) {
   .zone-node-icon {
-    width: 52px;
-    height: 52px;
+    width: 62px;
+    height: 62px;
   }
 
   .athanor-icon {
-    width: 64px;
-    height: 64px;
+    width: 76px;
+    height: 76px;
   }
 
   .zone-node-glow {
-    width: 80px;
-    height: 80px;
+    width: 96px;
+    height: 96px;
   }
 
   .athanor-glow {
-    width: 110px;
-    height: 110px;
+    width: 130px;
+    height: 130px;
+  }
+
+  .zone-node-clickable .zone-node-ring {
+    width: 76px;
+    height: 76px;
   }
 
   .hero-token-portrait {

@@ -714,7 +714,7 @@ export function PlayScreen() {
                   heroPositions={heroPositions}
                   onSelectHero={(id) => setSelectedHeroId(id)}
                   onRecruit={() => void handleRecruit()}
-                  onExplore={(id) => void handleExplore(id, 0)}
+                  onExplore={(id) => setSelectedHeroId(id)}
                   onClaim={(id) => void handleClaim(id)}
                   hasPotions={hasPotions}
                   isRecruitPending={isRecruitPending}
