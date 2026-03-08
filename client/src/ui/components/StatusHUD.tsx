@@ -21,7 +21,7 @@ export function StatusHUD({ gold, discoveredCount, elapsedSeconds, goldFloats, o
   const pct = Math.min(100, (discoveredCount / 30) * 100)
 
   return (
-    <div className="status-hud floating-panel">
+    <div className="status-hud floating-panel" data-tutorial="status-hud">
       <button className="status-hud-btn status-hud-back" onClick={onBack}>
         ← Back
       </button>

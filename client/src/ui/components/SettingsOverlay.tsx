@@ -8,7 +8,7 @@ type SettingsOverlayProps = {
 }
 
 export function SettingsOverlay({ open, onClose, onSurrender }: SettingsOverlayProps) {
-  const { sfxVolume, musicVolume, setSfxVolume, setMusicVolume } = useSettingsStore()
+  const { sfxVolume, musicVolume, tutorialEnabled, setSfxVolume, setMusicVolume, setTutorialEnabled } = useSettingsStore()
   const [confirmSurrender, setConfirmSurrender] = useState(false)
 
   if (!open) return null
@@ -47,6 +47,19 @@ export function SettingsOverlay({ open, onClose, onSurrender }: SettingsOverlayP
             />
             <span className="settings-slider-value">{Math.round(musicVolume * 100)}%</span>
           </div>
+        </div>
+
+        <div className="settings-section">
+          <h3 className="settings-section-label">Gameplay</h3>
+          <label className="settings-toggle-row">
+            <span className="settings-toggle-label">Show Tutorial</span>
+            <input
+              type="checkbox"
+              className="settings-toggle"
+              checked={tutorialEnabled}
+              onChange={(e) => setTutorialEnabled(e.target.checked)}
+            />
+          </label>
         </div>
 
         {onSurrender && (
