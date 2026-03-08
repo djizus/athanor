@@ -168,7 +168,7 @@
   left: 50%;
   transform: translateX(-50%);
   display: flex;
-  gap: 4px;
+  gap: 56px;
   justify-content: center;
   z-index: 3;
   margin-top: 4px;
@@ -224,7 +224,7 @@
 
 .zone-node-heroes {
   display: flex;
-  gap: 4px;
+  gap: 56px;
   justify-content: center;
   position: relative;
   z-index: 3;
@@ -442,16 +442,23 @@
 
 .hero-token-orbit-qty {
   position: absolute;
-  bottom: -3px;
-  right: -5px;
-  font-size: 0.48rem;
-  font-weight: 700;
-  color: var(--accent-gold);
-  background: rgba(20, 12, 4, 0.92);
-  border: 1px solid rgba(160, 120, 40, 0.45);
-  border-radius: 4px;
+  bottom: -4px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
   padding: 0 3px;
-  line-height: 1.2;
+  border-radius: 8px;
+  background: var(--accent-gold);
+  color: var(--bg-primary);
+  font-family: var(--font-title);
+  font-size: 0.58rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  z-index: 2;
+  pointer-events: none;
   white-space: nowrap;
 }
 

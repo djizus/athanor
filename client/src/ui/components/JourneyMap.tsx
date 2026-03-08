@@ -250,12 +250,9 @@ function HeroToken({ hero, small, selected, onClick, onClaim }: {
                     src={item.src}
                     alt={item.alt}
                   />
-                  {item.qty > 1 && (
-                    <span className="hero-token-orbit-qty">{item.key === 'gold' ? displayGold(item.qty) : item.qty}</span>
-                  )}
-                  {item.key === 'gold' && item.qty === 1 && (
-                    <span className="hero-token-orbit-qty">{displayGold(item.qty)}</span>
-                  )}
+                  <span className="hero-token-orbit-qty">
+                    {item.key === 'gold' ? displayGold(item.qty) : item.qty}
+                  </span>
                 </span>
               )
             })}
