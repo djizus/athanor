@@ -471,17 +471,13 @@ export function PlayScreen() {
                 slotB={slotB}
                 inventory={inventory}
                 recipes={recipes}
+                brewAllCount={brewAllCount}
                 isGameOver={isGameOver}
                 onSetSlotA={setSlotA}
                 onSetSlotB={setSlotB}
                 onCraft={(a, b) => void handleCraft(a, b)}
+                onBrewAll={() => void handleBrewAll()}
               />
-
-              <div className="craft-btn-row">
-                <button onClick={() => void handleBrewAll()} disabled={isGameOver || brewAllCount === 0}>
-                  Brew All ({brewAllCount})
-                </button>
-              </div>
 
               <div className="collection-tabs">
                 <button

@@ -1805,9 +1805,15 @@ button:disabled, .btn:disabled {
   display: flex;
   gap: 0.25rem;
   margin-left: 0.35rem;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .craft-brew-btn {
+}
+
+.craft-brew-all-btn {
+  min-width: 7.5rem;
 }
 
 .craft-brew-btn:not(:disabled) {
@@ -1836,14 +1842,6 @@ button:disabled, .btn:disabled {
   font-size: 0.75rem;
   padding: 0.5rem 0;
 }
-
-.craft-btn-row {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-
-.craft-btn-row button { flex: 1; }
 
 .collection-tabs {
   display: flex;

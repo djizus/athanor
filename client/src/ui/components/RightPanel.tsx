@@ -83,19 +83,23 @@ export function BrewContent({
   slotB,
   inventory,
   recipes,
+  brewAllCount,
   isGameOver,
   onSetSlotA,
   onSetSlotB,
   onCraft,
+  onBrewAll,
 }: {
   slotA: number | null
   slotB: number | null
   inventory: InventoryItem[]
   recipes: DiscoveryData[]
+  brewAllCount: number
   isGameOver: boolean
   onSetSlotA: (v: number | null) => void
   onSetSlotB: (v: number | null) => void
   onCraft: (a: number, b: number) => void
+  onBrewAll: () => void
 }) {
   const qtyA = slotA != null ? (inventory.find(i => i.ingredient_id === slotA)?.quantity ?? 0) : 0
   const qtyB = slotB != null ? (inventory.find(i => i.ingredient_id === slotB)?.quantity ?? 0) : 0
@@ -172,6 +176,13 @@ export function BrewContent({
               ×{Math.min(qtyA, qtyB)}
             </button>
           )}
+          <button
+            className="btn-sm craft-brew-btn craft-brew-all-btn"
+            onClick={onBrewAll}
+            disabled={isGameOver || brewAllCount === 0}
+          >
+            Brew All ({brewAllCount})
+          </button>
         </div>
       </div>
     </>
@@ -436,4 +447,3 @@ export function GrimoireContent({
     </>
   )
 }
-
