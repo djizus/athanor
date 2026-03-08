@@ -134,7 +134,7 @@ export function createSystemCalls(manifest: Manifest) {
         },
       ]),
 
-    explore: (account: AccountInterface, game_id: BigNumberish, character_id: BigNumberish) =>
+    explore: (account: AccountInterface, game_id: BigNumberish, character_id: BigNumberish, zone_id: BigNumberish) =>
       account.execute([
         {
           contractAddress: playAddress,
@@ -144,7 +144,7 @@ export function createSystemCalls(manifest: Manifest) {
         {
           contractAddress: playAddress,
           entrypoint: 'explore',
-          calldata: [game_id, character_id],
+          calldata: [game_id, character_id, zone_id],
         },
       ]),
 

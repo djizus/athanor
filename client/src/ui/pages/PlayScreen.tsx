@@ -23,6 +23,7 @@ import {
   EFFECT_COLORS,
   HERO_RECRUIT_COSTS,
   ROLE_NAMES,
+  ZONE_NAMES,
   displayGold,
   displayHp,
   effectAssetUrl,
@@ -376,12 +377,12 @@ export function PlayScreen() {
     return () => { stale = true }
   }, [toriiClient, gameId, inventory, recipes, brewRefreshKey, slotA, slotB])
 
-  const handleExplore = async (characterId: number) => {
+  const handleExplore = async (characterId: number, zoneId: number) => {
     if (!account || gameId == null) return
     const hero = heroes.find((h) => h.id === characterId)
     const name = hero ? ROLE_NAMES[hero.role > 0 ? hero.role - 1 : characterId] : `Hero ${characterId}`
-    pushInfo(`${name} sent on expedition...`)
-    onExpeditionStart(characterId)
+    pushInfo(`${name} sent to ${ZONE_NAMES[zoneId] ?? `Zone ${zoneId}`}...`)
+    onExpeditionStart(characterId, zoneId)
     soundManager.playSfx('expedition-start', 0.5)
     const pendingId = createPendingTxId()
     addPendingTx({
@@ -395,7 +396,7 @@ export function PlayScreen() {
     const t = txToast('Sending expedition')
     let success = false
     try {
-      await client.explore(account, gameId, characterId)
+      await client.explore(account, gameId, characterId, zoneId)
       success = true
       t.success()
     } catch (e) {
@@ -673,6 +674,9 @@ export function PlayScreen() {
         heroOverrides={heroOverrides}
         floatingTexts={floatingTexts}
         onFloatingTextComplete={removeFloatingText}
+        selectedHeroId={selectedHeroId}
+        isGameOver={isGameOver}
+        onExplore={(heroId: number, zoneId: number) => void handleExplore(heroId, zoneId)}
       />
 
       <StatusHUD
@@ -710,11 +714,9 @@ export function PlayScreen() {
                   heroPositions={heroPositions}
                   onSelectHero={(id) => setSelectedHeroId(id)}
                   onRecruit={() => void handleRecruit()}
-                  onExplore={(id) => void handleExplore(id)}
                   onClaim={(id) => void handleClaim(id)}
                   hasPotions={hasPotions}
                   isRecruitPending={isRecruitPending}
-                  isExplorePending={isHeroActionPending(slot, 'explore')}
                   isClaimPending={isHeroActionPending(slot, 'claim')}
                   isBuffPending={isBuffPending}
                   onApplyPotion={(id) => setPotionTargetHeroId(id)}
@@ -1083,11 +1085,9 @@ interface HeroSlotProps {
   heroPositions: Map<number, HeroPosition>
   onSelectHero: (heroId: number) => void
   onRecruit: () => void
-  onExplore: (characterId: number) => void
   onClaim: (characterId: number) => void
   hasPotions: boolean
   isRecruitPending: boolean
-  isExplorePending: boolean
   isClaimPending: boolean
   isBuffPending: boolean
   onApplyPotion: (heroId: number) => void
@@ -1105,11 +1105,9 @@ function HeroSlot({
   heroPositions,
   onSelectHero,
   onRecruit,
-  onExplore,
   onClaim,
   hasPotions,
   isRecruitPending,
-  isExplorePending,
   isClaimPending,
   isBuffPending,
   onApplyPotion,
@@ -1264,13 +1262,6 @@ function HeroSlot({
         ) : null
       })()}
       <div className="hero-card-btn-row">
-        <button
-          className="btn-primary btn-sm"
-          onClick={(e) => { e.stopPropagation(); onExplore(hero.id) }}
-          disabled={isGameOver || isExploring || displayHpVal <= 0 || isExplorePending}
-        >
-          {isExplorePending && !isGameOver ? 'Exploring...' : 'Explore'}
-        </button>
         <button
           className="btn-primary btn-sm btn-loot"
           onClick={(e) => { e.stopPropagation(); onClaim(hero.id) }}

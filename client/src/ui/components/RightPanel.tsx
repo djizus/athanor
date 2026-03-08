@@ -197,7 +197,7 @@ export function BrewContent({
               ? 'Brewing...'
               : selectedIngredient == null
                 ? `Discover All (${brewAllCount})`
-                : `Discover with ${selectedIngredientShortName}... (${brewAllCount})`}
+                : `Discover ${selectedIngredientShortName}... (${brewAllCount})`}
           </button>
         )}
       </div>
