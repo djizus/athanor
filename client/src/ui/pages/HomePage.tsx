@@ -40,7 +40,7 @@ export function HomePage() {
   // }, [activeGame, navigate])
 
   const handleCreateGame = async () => {
-    if (!account) return
+    if (!account || !displayName) return
 
     setError(null)
     setIsCreatingGame(true)
@@ -48,7 +48,7 @@ export function HomePage() {
     const t = txToast('Creating game')
     try {
       const provider = new RpcProvider({ nodeUrl: config.rpcUrl })
-      const mintResult = await client.mintGame(account)
+      const mintResult = await client.mintGame(account, displayName)
       const mintReceipt = await provider.waitForTransaction(mintResult.transaction_hash)
       const gameId = extractGameId(mintReceipt as { events?: { keys?: string[]; data?: string[] }[] })
 

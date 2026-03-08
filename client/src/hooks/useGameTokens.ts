@@ -99,22 +99,22 @@ export function useGameTokens(playerAddress: string | undefined) {
           })
 
         const ownedTokenIds = new Set(
-          erc721Tokens.map((t: ERC721TokenMeta) => Number(BigInt(t.tokenId))),
+          erc721Tokens.map((t: ERC721TokenMeta) => BigInt(t.tokenId)),
         )
 
         const gameEntities = runQuery([Has(contractComponents.Game)])
         const gameList: GameToken[] = []
-        const seen = new Set<number>()
+        const seen = new Set<bigint>()
 
         for (const entity of gameEntities) {
           const game = getComponentValue(contractComponents.Game, entity)
-          if (!game || game.id === 0) continue
+          if (!game || game.id === 0n) continue
           if (!ownedTokenIds.has(game.id)) continue
           if (seen.has(game.id)) continue
           seen.add(game.id)
 
           gameList.push({
-            game_id: game.id,
+            game_id: Number(game.id),
             discovered_count: bitmapPopcount(game.grimoire),
             game_over: game.ended_at > 0,
             started_at: game.started_at,

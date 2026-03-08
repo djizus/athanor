@@ -12,7 +12,7 @@ export function defineContractComponents(world: World) {
       return defineComponent(
         world,
         {
-          id: RecsType.Number,
+          id: RecsType.BigInt,
           heroes: RecsType.Number,
           started_at: RecsType.Number,
           ended_at: RecsType.Number,

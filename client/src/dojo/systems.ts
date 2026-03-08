@@ -59,23 +59,27 @@ export function createSystemCalls(manifest: Manifest) {
   const playAddress = getContractAddress(manifest, 'ATHANOR-Play')
 
   return {
-    mintGame: (account: AccountInterface, settingsId: number = 0) =>
+    mintGame: (account: AccountInterface, username: string, settingsId: number = 0) =>
       account.execute([
         {
           contractAddress: playAddress,
           entrypoint: 'mint_game',
-          calldata: CallData.compile([
-            new CairoOption(CairoOptionVariant.None),
-            new CairoOption(CairoOptionVariant.Some, settingsId),
-            new CairoOption(CairoOptionVariant.None),
-            new CairoOption(CairoOptionVariant.None),
-            new CairoOption(CairoOptionVariant.None),
-            new CairoOption(CairoOptionVariant.None),
-            new CairoOption(CairoOptionVariant.None),
-            new CairoOption(CairoOptionVariant.None),
-            account.address,
-            true,
-          ]),
+          calldata: CallData.compile({
+            player_name: new CairoOption(CairoOptionVariant.Some, shortString.encodeShortString(username)),
+            settings_id: new CairoOption(CairoOptionVariant.Some, settingsId),
+            start: new CairoOption(CairoOptionVariant.None),
+            end: new CairoOption(CairoOptionVariant.None),
+            objective_id: new CairoOption(CairoOptionVariant.None),
+            context: new CairoOption(CairoOptionVariant.None),
+            client_url: new CairoOption(CairoOptionVariant.None),
+            renderer_address: new CairoOption(CairoOptionVariant.None),
+            skills_address: new CairoOption(CairoOptionVariant.None),
+            to: account.address,
+            soulbound: false,
+            paymaster: true,
+            salt: 0,
+            metadata: 0,
+          }),
         },
       ]),
 
