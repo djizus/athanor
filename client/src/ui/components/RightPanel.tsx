@@ -5,7 +5,6 @@ import {
   EFFECT_NAMES,
   EFFECT_CATEGORIES,
   INGREDIENT_NAMES,
-  INGREDIENTS_PER_ZONE,
   ZONE_COLORS,
   ZONE_NAMES,
   displayGold,
@@ -15,6 +14,7 @@ import {
   effectStatLabel,
 } from '@/game/constants'
 import { bitmapGet } from '@/game/packer'
+import { useGameSettings } from '@/hooks/useGameSettings'
 import type { DiscoveryData } from '@/hooks/useRecipes'
 
 export type PanelMode = 'ingredients' | 'grimoire'
@@ -75,8 +75,6 @@ function IngredientIcon({
 }
 
 /* ── Brew Panel Content ───────────────────────── */
-
-const TOTAL_COMBINATIONS = 25 * 24 / 2
 
 export function BrewContent({
   slotA,
@@ -222,19 +220,21 @@ export function IngredientsContent({
   remainingTries: number
   onPickIngredient: (id: number) => void
 }) {
-  const tried = TOTAL_COMBINATIONS - remainingTries
-  const progressPct = TOTAL_COMBINATIONS > 0 ? Math.min(100, (tried / TOTAL_COMBINATIONS) * 100) : 0
+  const { ingredientsPerZone, totalIngredients } = useGameSettings()
+  const totalCombinations = totalIngredients * (totalIngredients - 1) / 2
+  const tried = totalCombinations - remainingTries
+  const progressPct = totalCombinations > 0 ? Math.min(100, (tried / totalCombinations) * 100) : 0
 
   return (
     <>
       <div className="hero-card-hp" style={{ marginBottom: '0.5rem' }}>
         <div className="hero-card-hp-fill" style={{ width: `${progressPct}%`, background: 'var(--accent-gold)' }} />
-        <span className="hero-card-bar-label">{tried}/{TOTAL_COMBINATIONS}</span>
+        <span className="hero-card-bar-label">{tried}/{totalCombinations}</span>
       </div>
       {ZONE_NAMES.map((zoneName, zi) => {
         const zoneItems = inventory.slice(
-          zi * INGREDIENTS_PER_ZONE,
-          zi * INGREDIENTS_PER_ZONE + INGREDIENTS_PER_ZONE,
+          zi * ingredientsPerZone,
+          zi * ingredientsPerZone + ingredientsPerZone,
         )
         return (
           <div key={zoneName}>
