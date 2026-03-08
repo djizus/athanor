@@ -2971,14 +2971,15 @@ button:disabled, .btn:disabled {
 
 .tutorial-tooltip-body {
   font-family: var(--font-body);
-  font-size: 0.95rem;
-  color: var(--text-secondary);
-  line-height: 1.5;
+  font-size: 1rem;
+  color: var(--text-primary);
+  line-height: 1.55;
   margin: 0;
+  text-align: justify;
 }
 
 .tutorial-tooltip-body strong {
-  color: var(--text-primary);
+  color: var(--accent-gold);
   font-weight: 600;
 }
 
