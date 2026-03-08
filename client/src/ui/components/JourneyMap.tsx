@@ -384,8 +384,7 @@ function ZoneNode({
 
       {canSendHero && (
         <button className="zone-action-btn" onClick={onClick}>
-          <span className="zone-skulls">{'💀'.repeat(zoneId + 1)}</span>
-          <span className="zone-action-label">Explore</span>
+          Explore
         </button>
       )}
 
