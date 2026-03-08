@@ -38,6 +38,7 @@ interface HeroData {
   ingredients: number[] | null
   lootReady: boolean
   isClaimPending: boolean
+  isAutoClaimAnimating?: boolean
 }
 
 export interface FloatingTextAnim {
@@ -162,6 +163,8 @@ function zoneFromIngredients(ingredients: number[] | null): number {
   return -1
 }
 
+const ORBIT_SLOT_COUNT = 6
+
 function HeroToken({ hero, small, selected, disabled, onClick, onClaim }: {
   hero: HeroData; small?: boolean; selected?: boolean; disabled?: boolean
   onClick?: () => void; onClaim?: () => void
@@ -171,40 +174,53 @@ function HeroToken({ hero, small, selected, disabled, onClick, onClaim }: {
   const frameRef = useRef<HTMLDivElement>(null)
   const orbitElRef = useRef<HTMLDivElement>(null)
   const prevItemsRef = useRef<Map<string, number>>(new Map())
+  const autoClaimFiredRef = useRef(false)
   const roleIdx = hero.role > 0 ? hero.role - 1 : hero.hero_id
   const hpPct = hero.max_health > 0 ? Math.min(100, (hero.health / hero.max_health) * 100) : 0
   const hpColor = hpPct > 50 ? 'var(--accent-green)' : hpPct > 25 ? '#ff9800' : 'var(--accent-red)'
   const ringCfg = small ? RING_SMALL : RING_NORMAL
   const lootZone = zoneFromIngredients(hero.ingredients)
   const orbitColor = lootZone >= 0 ? ZONE_COLORS[lootZone] : undefined
+  const isAutoClaiming = !!hero.isAutoClaimAnimating
 
-  const orbitItems = useMemo(() => {
-    const items: { key: string; src: string; qty: number; alt: string }[] = []
+  const orbitSlots = useMemo(() => {
+    const slots: Array<{ key: string; src: string; qty: number; alt: string } | null> =
+      new Array(ORBIT_SLOT_COUNT).fill(null)
+
     if (hero.gold > 0) {
-      items.push({ key: 'gold', src: '/assets/ui/gold-coin.webp', qty: hero.gold, alt: 'Gold' })
+      slots[0] = { key: 'gold', src: '/assets/ui/gold-coin.webp', qty: hero.gold, alt: 'Gold' }
     }
     if (hero.ingredients) {
-      hero.ingredients.forEach((qty, idx) => {
-        if (qty > 0) {
-          items.push({ key: `ing-${idx}`, src: ingredientAssetUrl(idx), qty, alt: INGREDIENT_NAMES[idx] })
+      for (let i = 0; i < hero.ingredients.length; i++) {
+        if (hero.ingredients[i] > 0) {
+          const slotIdx = (i % DEFAULT_INGREDIENTS_PER_ZONE) + 1
+          if (slotIdx < ORBIT_SLOT_COUNT) {
+            slots[slotIdx] = {
+              key: `ing-${i}`,
+              src: ingredientAssetUrl(i),
+              qty: hero.ingredients[i],
+              alt: INGREDIENT_NAMES[i],
+            }
+          }
         }
-      })
+      }
     }
-    return items.slice(0, 6)
+    return slots
   }, [hero.gold, hero.ingredients])
 
   useEffect(() => {
     const prev = prevItemsRef.current
     const newPulsing = new Set<string>()
-    for (const item of orbitItems) {
-      const prevQty = prev.get(item.key)
-      if (prevQty != null && item.qty > prevQty) {
-        newPulsing.add(item.key)
+    for (const slot of orbitSlots) {
+      if (!slot) continue
+      const prevQty = prev.get(slot.key)
+      if (prevQty != null && slot.qty > prevQty) {
+        newPulsing.add(slot.key)
       }
     }
     const nextMap = new Map<string, number>()
-    for (const item of orbitItems) {
-      nextMap.set(item.key, item.qty)
+    for (const slot of orbitSlots) {
+      if (slot) nextMap.set(slot.key, slot.qty)
     }
     prevItemsRef.current = nextMap
 
@@ -213,9 +229,21 @@ function HeroToken({ hero, small, selected, disabled, onClick, onClaim }: {
       const timer = setTimeout(() => setPulsingKeys(new Set()), 400)
       return () => clearTimeout(timer)
     }
-  }, [orbitItems])
+  }, [orbitSlots])
 
-  const hasLoot = orbitItems.length > 0
+  useEffect(() => {
+    if (!isAutoClaiming) {
+      autoClaimFiredRef.current = false
+      return
+    }
+    if (autoClaimFiredRef.current) return
+    autoClaimFiredRef.current = true
+    if (frameRef.current) {
+      spawnClaimParticles(frameRef.current, hero)
+    }
+  }, [isAutoClaiming]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const hasLoot = orbitSlots.some(s => s != null)
   const orbitRadius = small ? 42 : 56
   const itemSize = small ? 24 : 30
 
@@ -280,47 +308,51 @@ function HeroToken({ hero, small, selected, disabled, onClick, onClaim }: {
             onClick={hero.lootReady ? handleClaim : undefined}
             role={hero.lootReady ? 'button' : undefined}
           >
-            <AnimatePresence>
-              {orbitItems.map((item, i) => {
-                const angle = (2 * Math.PI * i) / orbitItems.length - Math.PI / 2
-                const x = Math.cos(angle) * orbitRadius
-                const y = Math.sin(angle) * orbitRadius
-                return (
-                  <motion.span
-                    key={item.key}
-                    className={`hero-token-orbit-item${pulsingKeys.has(item.key) ? ' orbit-item-pulse' : ''}`}
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{
-                      scale: 1,
-                      opacity: 1,
-                      left: `calc(50% + ${x}px)`,
-                      top: `calc(50% + ${y}px)`,
-                    }}
-                    exit={{ scale: 0, opacity: 0 }}
-                    transition={{ type: 'spring', stiffness: 400, damping: 15 }}
-                    style={{
-                      width: `${itemSize}px`,
-                      height: `${itemSize}px`,
-                      position: 'absolute',
-                      marginLeft: `${-itemSize / 2}px`,
-                      marginTop: `${-itemSize / 2}px`,
-                    }}
-                    title={item.alt + (item.qty > 1 ? ` x${item.qty}` : '')}
-                  >
+            {orbitSlots.map((slot, i) => {
+              const angle = (2 * Math.PI * i) / ORBIT_SLOT_COUNT - Math.PI / 2
+              const x = Math.cos(angle) * orbitRadius
+              const y = Math.sin(angle) * orbitRadius
+              const filled = slot != null
+              const visible = filled && !isAutoClaiming
+              return (
+                <motion.span
+                  key={`orbit-slot-${i}`}
+                  className={`hero-token-orbit-item${filled && pulsingKeys.has(slot!.key) ? ' orbit-item-pulse' : ''}`}
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{
+                    scale: visible ? 1 : 0,
+                    opacity: visible ? 1 : 0,
+                    left: `calc(50% + ${x}px)`,
+                    top: `calc(50% + ${y}px)`,
+                  }}
+                  transition={isAutoClaiming
+                    ? { type: 'spring', stiffness: 300, damping: 20, delay: i * 0.06 }
+                    : { type: 'spring', stiffness: 400, damping: 15 }
+                  }
+                  style={{
+                    width: `${itemSize}px`,
+                    height: `${itemSize}px`,
+                    position: 'absolute',
+                    marginLeft: `${-itemSize / 2}px`,
+                    marginTop: `${-itemSize / 2}px`,
+                  }}
+                  title={filled ? slot!.alt + (slot!.qty > 1 ? ` x${slot!.qty}` : '') : undefined}
+                >
+                  {filled && (
                     <span className="hero-token-orbit-inner">
                       <img
                         className="hero-token-orbit-icon"
-                        src={item.src}
-                        alt={item.alt}
+                        src={slot!.src}
+                        alt={slot!.alt}
                       />
                       <span className="hero-token-orbit-qty">
-                        {item.key === 'gold' ? displayGold(item.qty) : item.qty}
+                        {slot!.key === 'gold' ? displayGold(slot!.qty) : slot!.qty}
                       </span>
                     </span>
-                  </motion.span>
-                )
-              })}
-            </AnimatePresence>
+                  )}
+                </motion.span>
+              )
+            })}
           </div>
         )}
       </div>

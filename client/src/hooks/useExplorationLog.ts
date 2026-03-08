@@ -33,6 +33,7 @@ export interface HeroOverride {
   zoneIndex?: number
   bagGold: number
   bagIngredients: number[]
+  autoClaimAnimating?: boolean
   returning?: boolean
   returnStartedAt?: number
   returnDuration?: number
@@ -65,6 +66,7 @@ const WALK_RATIO = 25
 const WALK_BASE = 100
 
 const TICK_INTERVAL_MS = 1000
+const AUTO_CLAIM_ANIM_MS = 800
 
 interface QueuedEvent {
   entry: LogEntry
@@ -105,14 +107,14 @@ function computePreEventHp(eventKind: number, value: number, hpAfter: number): n
 
 function formatExplorationDetail(eventKind: number, value: number, hpAfter: number): string {
   switch (eventKind) {
-    case CATEGORY_NONE: return `collapsed from exhaustion`
+    case CATEGORY_NONE: return `collapsed from exhaustion (HP: ${hpAfter})`
     case CATEGORY_TRAP: return `took ${value} trap damage (HP: ${hpAfter})`
-    case CATEGORY_GOLD: return `found ${displayGold(value)}g`
+    case CATEGORY_GOLD: return `found ${displayGold(value)}g (HP: ${hpAfter})`
     case CATEGORY_HEAL: return `healed ${value} HP (HP: ${hpAfter})`
-    case CATEGORY_BEAST_WIN: return `slew a beast, looted ${displayGold(value)}g`
+    case CATEGORY_BEAST_WIN: return `slew a beast, looted ${displayGold(value)}g (HP: ${hpAfter})`
     case CATEGORY_BEAST_LOSE: return `lost to a beast, took ${value} damage (HP: ${hpAfter})`
-    case CATEGORY_INGREDIENT: return `found ${INGREDIENT_NAMES[value] ?? `ingredient #${value}`}`
-    default: return `unknown event ${eventKind}`
+    case CATEGORY_INGREDIENT: return `found ${INGREDIENT_NAMES[value] ?? `ingredient #${value}`} (HP: ${hpAfter})`
+    default: return `unknown event ${eventKind} (HP: ${hpAfter})`
   }
 }
 
@@ -180,6 +182,7 @@ export function useExplorationLog(
   const drainTimerRef = useRef<number | null>(null)
   const heroMapRef = useRef<Map<number, string>>(new Map())
   const heroExpeditionRef = useRef<Map<number, { deathDepth: number; returnAt: number }>>(new Map())
+  const heroMaxDepthRef = useRef<Map<number, number>>(new Map())
   const returnTimersRef = useRef<Map<number, number>>(new Map())
   const onEventRef = useRef(onExplorationEvent)
   onEventRef.current = onExplorationEvent
@@ -214,11 +217,15 @@ export function useExplorationLog(
       let processedEvent = false
       while (queue.length > 0 && (queue[0].rawEvent?.depth ?? 0) <= depth) {
         const event = queue.shift()!
-        console.log(`[DrainTick] hero=${heroId} PROCESS depth=${event.rawEvent?.depth} kind=${event.rawEvent?.kind} value=${event.rawEvent?.value}`)
+        console.log(`[DrainTick] hero=${heroId} PROCESS depth=${event.rawEvent?.depth} kind=${event.rawEvent?.kind} value=${event.rawEvent?.value} hp=${event.rawEvent?.hpAfter}`)
         append(event.entry)
 
         if (event.rawEvent) {
           processedEvent = true
+          // Track max depth for walk-back fallback
+          const curMax = heroMaxDepthRef.current.get(heroId) ?? 0
+          if (event.rawEvent.depth > curMax) heroMaxDepthRef.current.set(heroId, event.rawEvent.depth)
+
           setHeroOverrides((prev) => {
             const next = new Map(prev)
             const prevOv = prev.get(heroId)
@@ -261,31 +268,65 @@ export function useExplorationLog(
         heroDepthRef.current.delete(heroId)
 
         const expedition = heroExpeditionRef.current.get(heroId)
-        const walkDurationMs = expedition
-          ? Math.max(TICK_INTERVAL_MS, expedition.deathDepth * WALK_RATIO / WALK_BASE * TICK_INTERVAL_MS)
+        const maxDepth = heroMaxDepthRef.current.get(heroId) ?? 0
+        const deathDepth = expedition?.deathDepth ?? maxDepth
+        const walkDurationMs = deathDepth > 0
+          ? Math.max(TICK_INTERVAL_MS, deathDepth * WALK_RATIO / WALK_BASE * TICK_INTERVAL_MS)
           : 2000
-        console.log(`[DrainTick] hero=${heroId} QUEUE_EMPTY → returning walkMs=${walkDurationMs} deathDepth=${expedition?.deathDepth}`)
+        heroMaxDepthRef.current.delete(heroId)
 
-        setHeroOverrides((prev) => {
-          const next = new Map(prev)
-          const prevOv = prev.get(heroId)
-          if (prevOv) {
-            next.set(heroId, { ...prevOv, returning: true, returnStartedAt: Date.now(), returnDuration: walkDurationMs })
-          }
-          return next
-        })
+        const heroName = heroMapRef.current.get(heroId) ?? `Hero ${heroId}`
+        const walkSeconds = (walkDurationMs / 1000).toFixed(1)
+        console.log(`[DrainTick] hero=${heroId} QUEUE_EMPTY deathDepth=${deathDepth} (expedition=${expedition?.deathDepth} maxEvent=${maxDepth}) walkMs=${walkDurationMs}`)
 
-        const timer = window.setTimeout(() => {
-          console.log(`[DrainTick] hero=${heroId} RETURN_COMPLETE → clearing override`)
+        const startReturning = () => {
+          append({ ts: Date.now(), text: `${heroName} returning to Athanor (${walkSeconds}s walk, depth ${deathDepth})`, kind: 'exploration' })
+
           setHeroOverrides((prev) => {
             const next = new Map(prev)
-            next.delete(heroId)
+            const prevOv = prev.get(heroId)
+            if (prevOv) {
+              next.set(heroId, {
+                ...prevOv,
+                autoClaimAnimating: false,
+                returning: true,
+                returnStartedAt: Date.now(),
+                returnDuration: walkDurationMs,
+                bagGold: 0,
+                bagIngredients: new Array(25).fill(0),
+              })
+            }
             return next
           })
-          returnTimersRef.current.delete(heroId)
-          heroExpeditionRef.current.delete(heroId)
-        }, walkDurationMs)
-        returnTimersRef.current.set(heroId, timer)
+
+          const timer = window.setTimeout(() => {
+            console.log(`[DrainTick] hero=${heroId} RETURN_COMPLETE → clearing override`)
+            append({ ts: Date.now(), text: `${heroName} arrived at Athanor`, kind: 'exploration' })
+            setHeroOverrides((prev) => {
+              const next = new Map(prev)
+              next.delete(heroId)
+              return next
+            })
+            returnTimersRef.current.delete(heroId)
+            heroExpeditionRef.current.delete(heroId)
+          }, walkDurationMs)
+          returnTimersRef.current.set(heroId, timer)
+        }
+
+        setHeroOverrides((prev) => {
+          const prevOv = prev.get(heroId)
+          const hasLoot = prevOv && (prevOv.bagGold > 0 || prevOv.bagIngredients.some(q => q > 0))
+
+          if (hasLoot) {
+            const next = new Map(prev)
+            next.set(heroId, { ...prevOv!, autoClaimAnimating: true })
+            window.setTimeout(startReturning, AUTO_CLAIM_ANIM_MS)
+            return next
+          } else {
+            startReturning()
+            return prev
+          }
+        })
       }
     }
 
@@ -429,6 +470,7 @@ export function useExplorationLog(
       heroQueuesRef.current.clear()
       heroDepthRef.current.clear()
       heroExpeditionRef.current.clear()
+      heroMaxDepthRef.current.clear()
     }
   }, [gameId, toriiClient, append, enqueue])
 

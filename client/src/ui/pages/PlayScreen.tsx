@@ -747,6 +747,7 @@ export function PlayScreen() {
         ingredients: heroIngs,
         lootReady,
         isClaimPending: isHeroActionPending(h.id, 'claim'),
+        isAutoClaimAnimating: override?.autoClaimAnimating ?? false,
       }
     }),
     [heroes, heroOverrides, now, isHeroActionPending],
