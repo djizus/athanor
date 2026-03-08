@@ -178,15 +178,15 @@ export function BrewContent({
           >
             ×{maxBatchQty}
           </button>
-          <button
-            className="btn-sm craft-brew-btn craft-brew-all-btn"
-            onClick={onBrewAll}
-            disabled={isGameOver || brewAllCount === 0}
-          >
-            Brew All ({brewAllCount})
-          </button>
         </div>
       </div>
+      <button
+        className="btn-sm craft-brew-btn craft-brew-all-btn"
+        onClick={onBrewAll}
+        disabled={isGameOver || brewAllCount === 0}
+      >
+        Brew All ({brewAllCount})
+      </button>
     </>
   )
 }
