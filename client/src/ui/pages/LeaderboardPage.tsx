@@ -1,14 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Has, getComponentValue } from '@dojoengine/recs'
-import { useEntityQuery } from '@dojoengine/react'
 import { useAccount, useConnect } from '@starknet-react/core'
 import type ControllerConnector from '@cartridge/connector/controller'
 import { RpcProvider, num } from 'starknet'
-import { useDojo } from '@/dojo/useDojo'
+import { useLeaderboard } from '@/hooks/useLeaderboard'
 import { usePlayerName } from '@/hooks/usePlayerName'
 import { useNavigationStore } from '@/stores/navigationStore'
 import { SettingsOverlay } from '@/ui/components/SettingsOverlay'
-import { bitmapPopcount } from '@/game/packer'
 
 const { VITE_PUBLIC_NODE_URL, VITE_PUBLIC_TOKEN_ADDRESS } = import.meta.env
 
@@ -83,8 +80,7 @@ async function resolveUsernames(addresses: string[]): Promise<Map<string, string
 }
 
 export function LeaderboardPage() {
-  const { contractComponents } = useDojo()
-  const gameEntities = useEntityQuery([Has(contractComponents.Game)])
+  const { sorted: completedGames } = useLeaderboard()
   const { navigate } = useNavigationStore()
   const { address } = useAccount()
   const { connectors } = useConnect()
@@ -93,20 +89,6 @@ export function LeaderboardPage() {
 
   const [owners, setOwners] = useState<Map<number, string>>(new Map())
   const [usernames, setUsernames] = useState<Map<string, string>>(new Map())
-
-  const completedGames = useMemo(() => {
-    const games: { id: number; discoveredCount: number; duration: number }[] = []
-    for (const entity of gameEntities) {
-      const game = getComponentValue(contractComponents.Game, entity)
-      if (!game || game.ended_at <= 0) continue
-      games.push({
-        id: game.id,
-        discoveredCount: bitmapPopcount(game.grimoire),
-        duration: game.ended_at - game.started_at,
-      })
-    }
-    return games
-  }, [contractComponents.Game, gameEntities])
 
   useEffect(() => {
     const ids = completedGames.map((g) => g.id)
@@ -121,21 +103,16 @@ export function LeaderboardPage() {
   }, [owners])
 
   const rows: LeaderboardRow[] = useMemo(() => {
-    return completedGames
-      .map((g) => {
-        const ownerAddr = owners.get(g.id) ?? ''
-        const username = ownerAddr ? usernames.get(num.toHex(ownerAddr)) ?? '' : ''
-        return {
-          gameId: g.id,
-          discoveredCount: g.discoveredCount,
-          duration: g.duration,
-          player: username || (ownerAddr ? truncateAddress(ownerAddr) : '...'),
-        }
-      })
-      .sort((a, b) => {
-        if (b.discoveredCount !== a.discoveredCount) return b.discoveredCount - a.discoveredCount
-        return a.duration - b.duration
-      })
+    return completedGames.map((g) => {
+      const ownerAddr = owners.get(g.id) ?? ''
+      const username = ownerAddr ? usernames.get(num.toHex(ownerAddr)) ?? '' : ''
+      return {
+        gameId: g.id,
+        discoveredCount: g.discoveredCount,
+        duration: g.duration,
+        player: username || (ownerAddr ? truncateAddress(ownerAddr) : '...'),
+      }
+    })
   }, [completedGames, owners, usernames])
 
   return (
