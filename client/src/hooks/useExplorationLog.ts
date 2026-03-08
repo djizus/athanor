@@ -59,6 +59,11 @@ const CATEGORY_TO_KIND: Record<number, ExplorationEventKind> = {
 // Per-depth HP drain per zone (contracts/src/constants.cairo ZONE_*_DRAIN / 100)
 const ZONE_DRAIN = [1, 2, 3, 4, 5]
 
+// Mirrors contracts/src/constants.cairo DEFAULT_WALK_RATIO and WALK_BASE_MULTIPLIER
+// Walk-back time = death_depth * (WALK_RATIO / WALK_BASE) seconds
+const WALK_RATIO = 25
+const WALK_BASE = 100
+
 const TICK_INTERVAL_MS = 1000
 
 interface QueuedEvent {
@@ -175,7 +180,6 @@ export function useExplorationLog(
   const drainTimerRef = useRef<number | null>(null)
   const heroMapRef = useRef<Map<number, string>>(new Map())
   const heroExpeditionRef = useRef<Map<number, { deathDepth: number; returnAt: number }>>(new Map())
-  const heroStartTimeRef = useRef<Map<number, number>>(new Map())
   const returnTimersRef = useRef<Map<number, number>>(new Map())
   const onEventRef = useRef(onExplorationEvent)
   onEventRef.current = onExplorationEvent
@@ -249,13 +253,9 @@ export function useExplorationLog(
         heroDepthRef.current.delete(heroId)
 
         const expedition = heroExpeditionRef.current.get(heroId)
-        const startTime = heroStartTimeRef.current.get(heroId)
-        let walkDurationMs = 2000
-        if (expedition && startTime) {
-          const totalSeconds = expedition.returnAt - startTime
-          const walkSeconds = Math.max(1, totalSeconds - expedition.deathDepth)
-          walkDurationMs = walkSeconds * 1000
-        }
+        const walkDurationMs = expedition
+          ? Math.max(TICK_INTERVAL_MS, expedition.deathDepth * WALK_RATIO / WALK_BASE * TICK_INTERVAL_MS)
+          : 2000
 
         setHeroOverrides((prev) => {
           const next = new Map(prev)
@@ -274,7 +274,6 @@ export function useExplorationLog(
           })
           returnTimersRef.current.delete(heroId)
           heroExpeditionRef.current.delete(heroId)
-          heroStartTimeRef.current.delete(heroId)
         }, walkDurationMs)
         returnTimersRef.current.set(heroId, timer)
       }
@@ -292,7 +291,6 @@ export function useExplorationLog(
     if (!queue) {
       queue = []
       heroQueuesRef.current.set(heroId, queue)
-      heroStartTimeRef.current.set(heroId, Math.floor(Date.now() / 1000))
 
       if (event.rawEvent) {
         const firstDepth = event.rawEvent.depth
@@ -415,7 +413,6 @@ export function useExplorationLog(
       heroQueuesRef.current.clear()
       heroDepthRef.current.clear()
       heroExpeditionRef.current.clear()
-      heroStartTimeRef.current.clear()
     }
   }, [gameId, toriiClient, append, enqueue])
 

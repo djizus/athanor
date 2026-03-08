@@ -560,7 +560,8 @@ export function JourneyMap({
 
       const pos = heroPositions.get(hero.hero_id)
       const trackerZone = pos ? pos.zoneIndex : -1
-      const isActivelyExploring = pos != null && pos.zoneIndex >= 0
+      const overrideZone = override?.zoneIndex ?? -1
+      const isActivelyExploring = (pos != null && pos.zoneIndex >= 0) || overrideZone >= 0
       const activeOverride = isActivelyExploring ? override : undefined
       const zone = activeOverride?.zoneIndex ?? trackerZone
       map.get(zone >= 0 && zone < 5 ? zone : -1)!.push(hero)
