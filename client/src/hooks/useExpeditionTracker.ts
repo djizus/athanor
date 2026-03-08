@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
-import { getZoneForDepth, ZONE_DEPTHS } from '@/game/constants'
 
 export interface HeroPosition {
   zoneIndex: number
@@ -61,30 +60,16 @@ export function useExpeditionTracker(
         const forwardTime = Math.floor(totalTime * 2 / 3)
         const elapsed = now - expedition.startTime
 
-        if (elapsed >= forwardTime) {
-          positions.set(hero.id, { zoneIndex: expedition.lastKnownZone, returning: true })
-        } else {
-          const currentDepth = Math.min(elapsed, forwardTime)
-          const computedZone = getZoneForDepth(currentDepth)
-          positions.set(hero.id, {
-            zoneIndex: Math.max(computedZone, expedition.lastKnownZone),
-            returning: false,
-          })
-        }
+        const returning = elapsed >= forwardTime
+        positions.set(hero.id, { zoneIndex: expedition.lastKnownZone, returning })
       } else {
         const remaining = availableAt - now
-        const maxDepth = ZONE_DEPTHS[ZONE_DEPTHS.length - 1]
-        const maxExpeditionTime = Math.floor(3 * maxDepth / 2)
-        const estimatedTotal = Math.min(remaining * 3, maxExpeditionTime * 3)
-        const estimatedForward = Math.floor(estimatedTotal * 2 / 3)
-        const estimatedElapsed = estimatedTotal - remaining
+        const totalGuess = remaining * 3
+        const forwardGuess = Math.floor(totalGuess * 2 / 3)
+        const elapsedGuess = totalGuess - remaining
+        const returning = elapsedGuess >= forwardGuess
 
-        if (estimatedElapsed >= estimatedForward) {
-          positions.set(hero.id, { zoneIndex: 4, returning: true })
-        } else {
-          const depth = Math.min(estimatedElapsed, estimatedForward)
-          positions.set(hero.id, { zoneIndex: getZoneForDepth(depth), returning: false })
-        }
+        positions.set(hero.id, { zoneIndex: 0, returning })
       }
     }
 

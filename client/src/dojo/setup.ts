@@ -86,6 +86,7 @@ export async function setupDojo(onStatus?: (status: string) => void) {
     `${namespace}-Character`,
     `${namespace}-Discovery`,
     `${namespace}-Hint`,
+    `${namespace}-GameSettings`,
   ] as `${string}-${string}`[]
 
   const modelsToWatch = [

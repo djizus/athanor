@@ -6,6 +6,7 @@ import { useDojo } from '@/dojo/useDojo'
 import { useGame } from '@/hooks/useGame'
 import { useHeroes } from '@/hooks/useHeroes'
 import { useInventory } from '@/hooks/useInventory'
+import { useOptimisticEffects, useOptimisticGold, useOptimisticInventory } from '@/hooks/useOptimistic'
 import { useRecipes } from '@/hooks/useRecipes'
 import { useHints } from '@/hooks/useHints'
 import { useExplorationLog } from '@/hooks/useExplorationLog'
@@ -13,6 +14,7 @@ import type { RawExplorationEvent, HeroOverride } from '@/hooks/useExplorationLo
 import { useExpeditionTracker } from '@/hooks/useExpeditionTracker'
 import type { HeroPosition } from '@/hooks/useExpeditionTracker'
 import { useNavigationStore } from '@/stores/navigationStore'
+import { usePendingTxStore } from '@/stores/pendingTxStore'
 import { txToast } from '@/stores/toastStore'
 import { soundManager } from '@/sound/SoundManager'
 import { JourneyMap } from '@/ui/components/JourneyMap'
@@ -29,7 +31,7 @@ import {
   ingredientAssetUrl,
   roleAssetUrl,
 } from '@/game/constants'
-import { bitmapGet, bitmapPopcount, unpackEffects, unpackCharacterIngredients } from '@/game/packer'
+import { bitmapGet, bitmapPopcount, unpackCharacterIngredients } from '@/game/packer'
 import type { DiscoveryData } from '@/hooks/useRecipes'
 import { StatusHUD } from '@/ui/components/StatusHUD'
 import { BrewContent, IngredientsContent, GrimoireContent } from '@/ui/components/RightPanel'
@@ -80,8 +82,50 @@ function computeUntriedPairs(
   return pairs
 }
 
+function computeUntriedPairsForFirstIngredient(
+  inventory: { ingredient_id: number; quantity: number }[],
+  recipes: DiscoveryData[],
+  firstIngredient: number,
+): [number, number][] {
+  const tried = new Set<string>()
+  for (const r of recipes) {
+    tried.add(`${r.ingredient_a}-${r.ingredient_b}`)
+    tried.add(`${r.ingredient_b}-${r.ingredient_a}`)
+  }
+
+  const inv = new Map<number, number>()
+  for (const item of inventory) {
+    if (item.quantity > 0) inv.set(item.ingredient_id, item.quantity)
+  }
+
+  const firstQty = inv.get(firstIngredient) ?? 0
+  if (firstQty <= 0) return []
+
+  const ids = [...inv.keys()].filter(id => id !== firstIngredient).sort((a, b) => a - b)
+  const pairs: [number, number][] = []
+  let remainingFirst = firstQty
+
+  for (const id of ids) {
+    if (remainingFirst <= 0) break
+    if (tried.has(`${firstIngredient}-${id}`)) continue
+    const q = inv.get(id) ?? 0
+    if (q <= 0) continue
+    const lo = Math.min(firstIngredient, id)
+    const hi = Math.max(firstIngredient, id)
+    pairs.push([lo, hi])
+    remainingFirst -= 1
+    inv.set(id, q - 1)
+  }
+
+  return pairs
+}
+
 const NAMESPACE = import.meta.env.VITE_PUBLIC_NAMESPACE || 'ATHANOR'
 const DISCOVERY_MODEL = `${NAMESPACE}-Discovery`
+
+function createPendingTxId() {
+  return `pending-${Date.now()}-${Math.random()}`
+}
 
 async function fetchFreshRecipes(
   toriiClient: ReturnType<typeof useDojo>['toriiClient'],
@@ -112,9 +156,17 @@ export function PlayScreen() {
   const { account } = useAccount()
   const { game } = useGame(gameId)
   const heroes = useHeroes(gameId)
-  const inventory = useInventory(gameId)
+  const baseInventory = useInventory(gameId)
+  const inventory = useOptimisticInventory(gameId)
   const recipes = useRecipes(gameId)
   const hintIngredients = useHints(gameId)
+  const optimisticGold = useOptimisticGold(game)
+  const effectQuantities = useOptimisticEffects(game)
+  const addPendingTx = usePendingTxStore((s) => s.addTx)
+  const finalizePendingTx = usePendingTxStore((s) => s.finalizeTx)
+  const notifySyncTick = usePendingTxStore((s) => s.notifySyncTick)
+  const isActionPending = usePendingTxStore((s) => s.isActionPending)
+  const isHeroActionPending = usePendingTxStore((s) => s.isHeroActionPending)
 
   const [selectedHeroId, setSelectedHeroId] = useState(0)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -135,6 +187,7 @@ export function PlayScreen() {
   const [floatingTexts, setFloatingTexts] = useState<FloatingTextAnim[]>([])
   const [goldFloats, setGoldFloats] = useState<{ id: string; text: string }[]>([])
   const floatingIdRef = useRef(0)
+  const lastSyncFingerprintRef = useRef<string | null>(null)
 
   const { heroPositions, onExpeditionStart, onExplorationZoneUpdate } = useExpeditionTracker(heroes, now)
 
@@ -191,10 +244,41 @@ export function PlayScreen() {
   const { logs, pushInfo, heroOverrides } = useExplorationLog(gameId ?? null, heroes, onExplorationEvent)
   const logsEndRef = useRef<HTMLDivElement>(null)
 
+  const syncFingerprint = useMemo(() => {
+    const gamePart = game
+      ? [
+        game.id,
+        game.gold,
+        String(game.effects),
+        game.remaining_tries,
+        game.grimoire,
+        game.heroes,
+        game.hint_price,
+        game.started_at,
+        game.ended_at,
+      ].join(':')
+      : 'no-game'
+    const inventoryPart = baseInventory
+      .map(item => `${item.ingredient_id}:${item.quantity}`)
+      .join('|')
+    const heroesPart = heroes
+      .map(hero => `${hero.id}:${hero.health}:${hero.max_health}:${hero.available_at}:${hero.gold}:${hero.ingredients}`)
+      .join('|')
+    return `${gamePart}#${inventoryPart}#${heroesPart}`
+  }, [game, baseInventory, heroes])
+
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000)
     return () => window.clearInterval(timer)
   }, [])
+
+  useEffect(() => {
+    const prev = lastSyncFingerprintRef.current
+    if (prev !== null && prev !== syncFingerprint) {
+      notifySyncTick()
+    }
+    lastSyncFingerprintRef.current = syncFingerprint
+  }, [syncFingerprint, notifySyncTick])
 
   const prevDiscoveredRef = useRef(0)
   const prevGameOverRef = useRef(false)
@@ -274,10 +358,23 @@ export function PlayScreen() {
     if (gameId == null) return
     let stale = false
     fetchFreshRecipes(toriiClient, gameId)
-      .then(fresh => { if (!stale) setBrewAllCount(computeUntriedPairs(inventory, fresh).length) })
+      .then((fresh) => {
+        if (stale) return
+        const selectedIngredient = slotA ?? slotB
+        const selectedCount = Number(slotA != null) + Number(slotB != null)
+        if (selectedCount >= 2) {
+          setBrewAllCount(0)
+          return
+        }
+        if (selectedCount === 1 && selectedIngredient != null) {
+          setBrewAllCount(computeUntriedPairsForFirstIngredient(inventory, fresh, selectedIngredient).length)
+          return
+        }
+        setBrewAllCount(computeUntriedPairs(inventory, fresh).length)
+      })
       .catch(() => {})
     return () => { stale = true }
-  }, [toriiClient, gameId, inventory, recipes, brewRefreshKey])
+  }, [toriiClient, gameId, inventory, recipes, brewRefreshKey, slotA, slotB])
 
   const handleExplore = async (characterId: number) => {
     if (!account || gameId == null) return
@@ -286,8 +383,28 @@ export function PlayScreen() {
     pushInfo(`${name} sent on expedition...`)
     onExpeditionStart(characterId)
     soundManager.playSfx('expedition-start', 0.5)
+    const pendingId = createPendingTxId()
+    addPendingTx({
+      id: pendingId,
+      action: 'explore',
+      heroId: characterId,
+      inventoryDelta: new Map(),
+      goldDelta: 0,
+      effectsDelta: new Map(),
+    })
     const t = txToast('Sending expedition')
-    try { await client.explore(account, gameId, characterId); t.success() } catch (e) { t.error(); pushInfo(`${name} expedition failed`); console.error('Explore failed:', e) }
+    let success = false
+    try {
+      await client.explore(account, gameId, characterId)
+      success = true
+      t.success()
+    } catch (e) {
+      t.error()
+      pushInfo(`${name} expedition failed`)
+      console.error('Explore failed:', e)
+    } finally {
+      finalizePendingTx(pendingId, success)
+    }
   }
 
   const handleClaim = async (characterId: number) => {
@@ -299,8 +416,36 @@ export function PlayScreen() {
     if (hero && hero.gold > 0) {
       addGoldFloat(`+${hero.gold}g`)
     }
+    const pendingId = createPendingTxId()
+    const claimInventoryDelta = new Map<number, number>()
+    if (hero && hero.ingredients != null && hero.ingredients !== 0n) {
+      const bagItems = unpackCharacterIngredients(BigInt(hero.ingredients))
+      for (let i = 0; i < bagItems.length; i++) {
+        if (bagItems[i] > 0) claimInventoryDelta.set(i, bagItems[i])
+      }
+    }
+    addPendingTx({
+      id: pendingId,
+      action: 'claim',
+      heroId: characterId,
+      inventoryDelta: claimInventoryDelta,
+      goldDelta: hero?.gold ?? 0,
+      effectsDelta: new Map(),
+    })
     const t = txToast('Claiming loot')
-    try { await client.claim(account, gameId, characterId); t.success(); setBrewRefreshKey(k => k + 1) } catch (e) { t.error(); pushInfo(`${name} claim failed`); console.error('Claim failed:', e) }
+    let success = false
+    try {
+      await client.claim(account, gameId, characterId)
+      success = true
+      t.success()
+      setBrewRefreshKey(k => k + 1)
+    } catch (e) {
+      t.error()
+      pushInfo(`${name} claim failed`)
+      console.error('Claim failed:', e)
+    } finally {
+      finalizePendingTx(pendingId, success)
+    }
   }
 
   const handleCraft = async (ingredientA: number, ingredientB: number) => {
@@ -312,55 +457,163 @@ export function PlayScreen() {
       (r) => r.discovered && Math.min(r.ingredient_a, r.ingredient_b) === lo && Math.max(r.ingredient_a, r.ingredient_b) === hi,
     )
     const isSoup = existingRecipe != null && EFFECT_CATEGORIES[existingRecipe.effect] === undefined
+    const pendingId = createPendingTxId()
+    addPendingTx({
+      id: pendingId,
+      action: 'craft',
+      inventoryDelta: new Map<number, number>([[lo, -1], [hi, -1]]),
+      goldDelta: 0,
+      effectsDelta: new Map(),
+    })
     const t = txToast('Brewing potion')
+    let success = false
     try {
       await client.craft(account, gameId, lo, hi)
+      success = true
       t.success()
       soundManager.playSfx('brew-success', 0.4)
       setBrewRefreshKey(k => k + 1)
       if (isSoup) {
         addGoldFloat('+1g')
       }
-      const remaining = (id: number) => (inventory.find(i => i.ingredient_id === id)?.quantity ?? 0) - 1
-      if (slotA != null && remaining(slotA) <= 0) setSlotA(null)
-      if (slotB != null && remaining(slotB) <= 0) setSlotB(null)
-    } catch (e) { t.error(); pushInfo('Brew failed'); console.error('Craft failed:', e) }
+      const qty = (id: number) => inventory.find(i => i.ingredient_id === id)?.quantity ?? 0
+      if (slotA != null && qty(slotA) <= 0) setSlotA(null)
+      if (slotB != null && qty(slotB) <= 0) setSlotB(null)
+    } catch (e) {
+      t.error()
+      pushInfo('Brew failed')
+      console.error('Craft failed:', e)
+    } finally {
+      finalizePendingTx(pendingId, success)
+    }
   }
 
   const handleBrewAll = async () => {
     if (!account || gameId == null) return
     const freshRecipes = await fetchFreshRecipes(toriiClient, gameId)
-    const pairs = computeUntriedPairs(inventory, freshRecipes)
+    const selectedIngredient = slotA ?? slotB
+    const selectedCount = Number(slotA != null) + Number(slotB != null)
+    if (selectedCount >= 2) return
+    const pairs = selectedCount === 1 && selectedIngredient != null
+      ? computeUntriedPairsForFirstIngredient(inventory, freshRecipes, selectedIngredient)
+      : computeUntriedPairs(inventory, freshRecipes)
     if (pairs.length === 0) { pushInfo('No new combinations available'); return }
-    pushInfo(`Brewing ${pairs.length} new combinations...`)
+    pushInfo(selectedCount === 1
+      ? `Brewing ${pairs.length} new combinations for selected ingredient...`
+      : `Brewing ${pairs.length} new combinations...`)
+    const pendingId = createPendingTxId()
+    const inventoryDelta = new Map<number, number>()
+    for (const [a, b] of pairs) {
+      inventoryDelta.set(a, (inventoryDelta.get(a) ?? 0) - 1)
+      inventoryDelta.set(b, (inventoryDelta.get(b) ?? 0) - 1)
+    }
+    addPendingTx({
+      id: pendingId,
+      action: 'craftBatch',
+      inventoryDelta,
+      goldDelta: 0,
+      effectsDelta: new Map(),
+    })
     const t = txToast(`Brewing ${pairs.length} potions`)
+    let success = false
     try {
       await client.craftBatch(account, gameId, pairs)
+      success = true
       t.success()
       soundManager.playSfx('brew-success', 0.4)
       setBrewRefreshKey(k => k + 1)
-    } catch (e) { t.error(); pushInfo('Batch brew failed'); console.error('Batch craft failed:', e) }
+    } catch (e) {
+      t.error()
+      pushInfo('Batch brew failed')
+      console.error('Batch craft failed:', e)
+    } finally {
+      finalizePendingTx(pendingId, success)
+    }
   }
 
   const handleClue = async () => {
     if (!account || gameId == null) return
     pushInfo('Buying hint...')
+    const pendingId = createPendingTxId()
+    const currentHintCost = game?.hint_price ?? 4
+    addPendingTx({
+      id: pendingId,
+      action: 'clue',
+      inventoryDelta: new Map(),
+      goldDelta: -currentHintCost,
+      effectsDelta: new Map(),
+    })
     const t = txToast('Buying hint')
-    try { await client.clue(account, gameId); t.success(); soundManager.playSfx('notification', 0.4) } catch (e) { t.error(); pushInfo('Hint purchase failed'); console.error('Clue failed:', e) }
+    let success = false
+    try {
+      await client.clue(account, gameId)
+      success = true
+      t.success()
+      soundManager.playSfx('notification', 0.4)
+    } catch (e) {
+      t.error()
+      pushInfo('Hint purchase failed')
+      console.error('Clue failed:', e)
+    } finally {
+      finalizePendingTx(pendingId, success)
+    }
   }
 
   const handleRecruit = async () => {
     if (!account || gameId == null) return
     pushInfo('Recruiting hero...')
+    const pendingId = createPendingTxId()
+    const currentHeroCount = game ? bitmapPopcount(game.heroes) : heroes.length
+    const recruitCost = HERO_RECRUIT_COSTS[Math.min(currentHeroCount, 2)]
+    addPendingTx({
+      id: pendingId,
+      action: 'recruit',
+      inventoryDelta: new Map(),
+      goldDelta: -recruitCost,
+      effectsDelta: new Map(),
+    })
     const t = txToast('Recruiting hero')
-    try { await client.recruit(account, gameId); t.success(); soundManager.playSfx('recruit', 0.6) } catch (e) { t.error(); pushInfo('Recruitment failed'); console.error('Recruit failed:', e) }
+    let success = false
+    try {
+      await client.recruit(account, gameId)
+      success = true
+      t.success()
+      soundManager.playSfx('recruit', 0.6)
+    } catch (e) {
+      t.error()
+      pushInfo('Recruitment failed')
+      console.error('Recruit failed:', e)
+    } finally {
+      finalizePendingTx(pendingId, success)
+    }
   }
 
   const handleBuff = async (effect: number, heroId: number, quantity: number) => {
     if (!account || gameId == null) return
     pushInfo(`Applying potion to hero...`)
+    const pendingId = createPendingTxId()
+    addPendingTx({
+      id: pendingId,
+      action: 'buff',
+      heroId,
+      inventoryDelta: new Map(),
+      goldDelta: 0,
+      effectsDelta: new Map<number, number>([[effect, -quantity]]),
+    })
     const t = txToast('Applying potion')
-    try { await client.buff(account, gameId, heroId, effect, quantity); t.success(); soundManager.playSfx('potion-apply', 0.5) } catch (e) { t.error(); pushInfo('Potion application failed'); console.error('Buff failed:', e) }
+    let success = false
+    try {
+      await client.buff(account, gameId, heroId, effect, quantity)
+      success = true
+      t.success()
+      soundManager.playSfx('potion-apply', 0.5)
+    } catch (e) {
+      t.error()
+      pushInfo('Potion application failed')
+      console.error('Buff failed:', e)
+    } finally {
+      finalizePendingTx(pendingId, success)
+    }
   }
 
   if (gameId == null) {
@@ -372,14 +625,18 @@ export function PlayScreen() {
     )
   }
 
-  const gold = game?.gold ?? 0
-  const effectQuantities = useMemo(() => game ? unpackEffects(BigInt(game.effects)) : Array(30).fill(0) as number[], [game])
+  const gold = optimisticGold
   const hasPotions = effectQuantities.some((q) => q > 0)
-  const heroCount = game ? bitmapPopcount(game.heroes) : heroes.length
+  const heroCount = game ? bitmapPopcount(game.heroes) : Math.max(1, heroes.length)
   const hintCost = game?.hint_price ?? 4
   const startedAt = game ? Number(game.started_at) : now
   const endedAt = game && Number(game.ended_at) > 0 ? Number(game.ended_at) : now
   const elapsedSeconds = Math.max(0, endedAt - startedAt)
+  const isCraftPending = isActionPending('craft')
+  const isCraftBatchPending = isActionPending('craftBatch')
+  const isHintPending = isActionPending('clue')
+  const isBuffPending = isActionPending('buff')
+  const isRecruitPending = isActionPending('recruit')
 
   const allGameEntities = useEntityQuery([Has(contractComponents.Game)])
   const leaderboardRank = useMemo(() => {
@@ -436,6 +693,9 @@ export function PlayScreen() {
           </button>
           {!heroesCollapsed && (
             <div className="side-panel-body">
+              {heroCount > 0 && heroes.length === 0 && (
+                <div className="panel-spinner">Loading heroes...</div>
+              )}
               {[0, 1, 2].map((slot) => (
                 <HeroSlot
                   key={slot}
@@ -453,6 +713,10 @@ export function PlayScreen() {
                   onExplore={(id) => void handleExplore(id)}
                   onClaim={(id) => void handleClaim(id)}
                   hasPotions={hasPotions}
+                  isRecruitPending={isRecruitPending}
+                  isExplorePending={isHeroActionPending(slot, 'explore')}
+                  isClaimPending={isHeroActionPending(slot, 'claim')}
+                  isBuffPending={isBuffPending}
                   onApplyPotion={(id) => setPotionTargetHeroId(id)}
                 />
               ))}
@@ -498,6 +762,8 @@ export function PlayScreen() {
                 recipes={recipes}
                 brewAllCount={brewAllCount}
                 isGameOver={isGameOver}
+                isBrewing={isCraftPending || isCraftBatchPending}
+                isBrewingAll={isCraftBatchPending}
                 onSetSlotA={setSlotA}
                 onSetSlotB={setSlotB}
                 onCraft={(a, b) => void handleCraft(a, b)}
@@ -537,6 +803,7 @@ export function PlayScreen() {
                   gold={gold}
                   hintCost={hintCost}
                   isGameOver={isGameOver}
+                  isHintPending={isHintPending}
                   inventory={inventory}
                   newlyDiscovered={newlyDiscoveredEffects}
                   onBuyHint={() => void handleClue()}
@@ -600,12 +867,24 @@ export function PlayScreen() {
           onClose={() => setSettingsOpen(false)}
           onSurrender={async () => {
             if (!account || gameId == null) return
+            const pendingId = createPendingTxId()
+            addPendingTx({
+              id: pendingId,
+              action: 'surrender',
+              inventoryDelta: new Map(),
+              goldDelta: 0,
+              effectsDelta: new Map(),
+            })
+            let success = false
             try {
               await client.surrender(account, gameId)
+              success = true
               setSurrendered(true)
               setSettingsOpen(false)
             } catch (e) {
               console.error('Surrender failed:', e)
+            } finally {
+              finalizePendingTx(pendingId, success)
             }
           }}
         />
@@ -637,6 +916,7 @@ export function PlayScreen() {
           heroes={heroes}
           grimoire={game?.grimoire ?? 0}
           effectQuantities={effectQuantities}
+          isBuffPending={isBuffPending}
           onApply={async (selections) => {
             for (const { effect, quantity } of selections) {
               await handleBuff(effect, potionTargetHeroId, quantity)
@@ -655,6 +935,7 @@ function HeroPotionPopup({
   heroes,
   grimoire,
   effectQuantities,
+  isBuffPending,
   onApply,
   onClose,
 }: {
@@ -662,6 +943,7 @@ function HeroPotionPopup({
   heroes: Array<{ id: number; role: number }>
   grimoire: number
   effectQuantities: number[]
+  isBuffPending: boolean
   onApply: (selections: { effect: number; quantity: number }[]) => void
   onClose: () => void
 }) {
@@ -766,9 +1048,9 @@ function HeroPotionPopup({
                   if (selected.size === 0) return
                   onApply(Array.from(selected.entries()).map(([effect, quantity]) => ({ effect, quantity })))
                 }}
-                disabled={totalSelected === 0}
+                disabled={totalSelected === 0 || isBuffPending}
               >
-                Apply {totalSelected > 0 ? `${totalSelected} to ${heroName}` : ''}
+                {isBuffPending ? 'Applying...' : `Apply ${totalSelected > 0 ? `${totalSelected} to ${heroName}` : ''}`}
               </button>
               <button onClick={onClose}>Cancel</button>
             </div>
@@ -804,6 +1086,10 @@ interface HeroSlotProps {
   onExplore: (characterId: number) => void
   onClaim: (characterId: number) => void
   hasPotions: boolean
+  isRecruitPending: boolean
+  isExplorePending: boolean
+  isClaimPending: boolean
+  isBuffPending: boolean
   onApplyPotion: (heroId: number) => void
 }
 
@@ -822,6 +1108,10 @@ function HeroSlot({
   onExplore,
   onClaim,
   hasPotions,
+  isRecruitPending,
+  isExplorePending,
+  isClaimPending,
+  isBuffPending,
   onApplyPotion,
 }: HeroSlotProps) {
   const hero = heroes.find((h) => h.id === slot)
@@ -855,7 +1145,7 @@ function HeroSlot({
     if (slot < heroCount) return null
     if (slot === heroCount && heroCount < 3) {
       const cost = HERO_RECRUIT_COSTS[Math.min(heroCount, 2)]
-      const canAfford = gold >= cost && !isGameOver
+      const canAfford = gold >= cost && !isGameOver && !isRecruitPending
       return (
         <div className="hero-card hero-card-locked">
           <div className="hero-card-locked-icon">+</div>
@@ -864,7 +1154,7 @@ function HeroSlot({
             onClick={onRecruit}
             disabled={!canAfford}
           >
-            Recruit ({displayGold(cost)}g)
+            {isRecruitPending && !isGameOver ? 'Recruiting...' : `Recruit (${displayGold(cost)}g)`}
           </button>
         </div>
       )
@@ -977,21 +1267,21 @@ function HeroSlot({
         <button
           className="btn-primary btn-sm"
           onClick={(e) => { e.stopPropagation(); onExplore(hero.id) }}
-          disabled={isGameOver || isExploring || displayHpVal <= 0}
+          disabled={isGameOver || isExploring || displayHpVal <= 0 || isExplorePending}
         >
-          Explore
+          {isExplorePending && !isGameOver ? 'Exploring...' : 'Explore'}
         </button>
         <button
           className="btn-primary btn-sm btn-loot"
           onClick={(e) => { e.stopPropagation(); onClaim(hero.id) }}
-          disabled={isGameOver || !lootReady}
+          disabled={isGameOver || !lootReady || isClaimPending}
         >
-          Claim
+          {isClaimPending && !isGameOver ? 'Claiming...' : 'Claim'}
         </button>
         <button
           className="btn-sm btn-potion"
           onClick={(e) => { e.stopPropagation(); onApplyPotion(hero.id) }}
-          disabled={isGameOver || !hasPotions || isExploring}
+          disabled={isGameOver || !hasPotions || isExploring || isBuffPending}
         >
           Apply Potion
         </button>

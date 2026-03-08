@@ -5,7 +5,6 @@ import {
   EFFECT_NAMES,
   EFFECT_CATEGORIES,
   INGREDIENT_NAMES,
-  INGREDIENTS_PER_ZONE,
   ZONE_COLORS,
   ZONE_NAMES,
   displayGold,
@@ -15,6 +14,7 @@ import {
   effectStatLabel,
 } from '@/game/constants'
 import { bitmapGet } from '@/game/packer'
+import { useGameSettings } from '@/hooks/useGameSettings'
 import type { DiscoveryData } from '@/hooks/useRecipes'
 
 export type PanelMode = 'ingredients' | 'grimoire'
@@ -76,8 +76,6 @@ function IngredientIcon({
 
 /* ── Brew Panel Content ───────────────────────── */
 
-const TOTAL_COMBINATIONS = 25 * 24 / 2
-
 export function BrewContent({
   slotA,
   slotB,
@@ -85,6 +83,8 @@ export function BrewContent({
   recipes,
   brewAllCount,
   isGameOver,
+  isBrewing,
+  isBrewingAll,
   onSetSlotA,
   onSetSlotB,
   onCraft,
@@ -96,6 +96,8 @@ export function BrewContent({
   recipes: DiscoveryData[]
   brewAllCount: number
   isGameOver: boolean
+  isBrewing: boolean
+  isBrewingAll: boolean
   onSetSlotA: (v: number | null) => void
   onSetSlotB: (v: number | null) => void
   onCraft: (a: number, b: number) => void
@@ -104,6 +106,10 @@ export function BrewContent({
   const qtyA = slotA != null ? (inventory.find(i => i.ingredient_id === slotA)?.quantity ?? 0) : 0
   const qtyB = slotB != null ? (inventory.find(i => i.ingredient_id === slotB)?.quantity ?? 0) : 0
   const maxBatchQty = slotA != null && slotB != null ? Math.min(qtyA, qtyB) : 0
+  const selectedCount = Number(slotA != null) + Number(slotB != null)
+  const selectedIngredient = slotA ?? slotB
+  const selectedIngredientName = selectedIngredient == null ? '' : INGREDIENT_NAMES[selectedIngredient]
+  const selectedIngredientShortName = selectedIngredientName.trim().split(/\s+/)[0] ?? ''
 
   const handleBrew = () => {
     if (slotA != null && slotB != null) onCraft(slotA, slotB)
@@ -160,33 +166,41 @@ export function BrewContent({
             <span className="craft-result-unknown">?</span>
           )}
         </div>
-        <div className="craft-brew-btns">
+        {selectedCount === 2 ? (
+          <div className="craft-brew-btns">
+            <button
+              className="btn-primary btn-sm craft-brew-btn"
+              onClick={handleBrew}
+              disabled={isGameOver || slotA == null || slotB == null || qtyA <= 0 || qtyB <= 0 || isBrewing}
+            >
+              {isBrewing && !isGameOver ? 'Brewing...' : 'Brew'}
+            </button>
+            <button
+              className="btn-sm craft-brew-btn"
+              onClick={() => {
+                if (slotA == null || slotB == null) return
+                for (let i = 0; i < maxBatchQty; i++) onCraft(slotA, slotB)
+              }}
+              disabled={isGameOver || slotA == null || slotB == null || maxBatchQty <= 0 || isBrewing}
+            >
+              ×{maxBatchQty}
+            </button>
+          </div>
+        ) : (
           <button
-            className="btn-primary btn-sm craft-brew-btn"
-            onClick={handleBrew}
-            disabled={isGameOver || slotA == null || slotB == null || qtyA <= 0 || qtyB <= 0}
+            className="btn-sm craft-brew-btn craft-brew-all-btn"
+            onClick={onBrewAll}
+            disabled={isGameOver || brewAllCount === 0 || isBrewing}
+            title={selectedIngredient == null ? 'Discover all untried recipes' : `Discover untried recipes with ${selectedIngredientName}`}
           >
-            Brew
+            {isBrewingAll && !isGameOver
+              ? 'Brewing...'
+              : selectedIngredient == null
+                ? `Discover All (${brewAllCount})`
+                : `Discover with ${selectedIngredientShortName}... (${brewAllCount})`}
           </button>
-          <button
-            className="btn-sm craft-brew-btn"
-            onClick={() => {
-              if (slotA == null || slotB == null) return
-              for (let i = 0; i < maxBatchQty; i++) onCraft(slotA, slotB)
-            }}
-            disabled={isGameOver || slotA == null || slotB == null || maxBatchQty <= 0}
-          >
-            ×{maxBatchQty}
-          </button>
-        </div>
+        )}
       </div>
-      <button
-        className="btn-sm craft-brew-btn craft-brew-all-btn"
-        onClick={onBrewAll}
-        disabled={isGameOver || brewAllCount === 0}
-      >
-        Brew All ({brewAllCount})
-      </button>
     </>
   )
 }
@@ -206,19 +220,21 @@ export function IngredientsContent({
   remainingTries: number
   onPickIngredient: (id: number) => void
 }) {
-  const tried = TOTAL_COMBINATIONS - remainingTries
-  const progressPct = TOTAL_COMBINATIONS > 0 ? Math.min(100, (tried / TOTAL_COMBINATIONS) * 100) : 0
+  const { ingredientsPerZone, totalIngredients } = useGameSettings()
+  const totalCombinations = totalIngredients * (totalIngredients - 1) / 2
+  const tried = totalCombinations - remainingTries
+  const progressPct = totalCombinations > 0 ? Math.min(100, (tried / totalCombinations) * 100) : 0
 
   return (
     <>
       <div className="hero-card-hp" style={{ marginBottom: '0.5rem' }}>
         <div className="hero-card-hp-fill" style={{ width: `${progressPct}%`, background: 'var(--accent-gold)' }} />
-        <span className="hero-card-bar-label">{tried}/{TOTAL_COMBINATIONS}</span>
+        <span className="hero-card-bar-label">{tried}/{totalCombinations}</span>
       </div>
       {ZONE_NAMES.map((zoneName, zi) => {
         const zoneItems = inventory.slice(
-          zi * INGREDIENTS_PER_ZONE,
-          zi * INGREDIENTS_PER_ZONE + INGREDIENTS_PER_ZONE,
+          zi * ingredientsPerZone,
+          zi * ingredientsPerZone + ingredientsPerZone,
         )
         return (
           <div key={zoneName}>
@@ -287,6 +303,7 @@ export function GrimoireContent({
   gold,
   hintCost,
   isGameOver,
+  isHintPending,
   inventory,
   newlyDiscovered,
   onBuyHint,
@@ -300,6 +317,7 @@ export function GrimoireContent({
   gold: number
   hintCost: number
   isGameOver: boolean
+  isHintPending: boolean
   inventory: InventoryItem[]
   newlyDiscovered?: Set<number>
   onBuyHint: () => void
@@ -442,8 +460,8 @@ export function GrimoireContent({
       </div>
 
       <div className="grimoire-btn-row">
-        <button onClick={onBuyHint} disabled={isGameOver || gold < hintCost}>
-          Hint ({displayGold(hintCost)}g)
+        <button onClick={onBuyHint} disabled={isGameOver || gold < hintCost || isHintPending}>
+          {isHintPending && !isGameOver ? '...' : `Hint (${displayGold(hintCost)}g)`}
         </button>
       </div>
     </>

@@ -1,8 +1,8 @@
-export const ZONE_COUNT = 5
-export const INGREDIENTS_PER_ZONE = 5
-export const TOTAL_INGREDIENTS = 25
-export const TOTAL_EFFECTS = 30
-export const MAX_HEROES = 3
+export const DEFAULT_ZONE_COUNT = 5
+export const DEFAULT_INGREDIENTS_PER_ZONE = 5
+export const DEFAULT_TOTAL_INGREDIENTS = 25
+export const DEFAULT_TOTAL_EFFECTS = 30
+export const DEFAULT_MAX_HEROES = 3
 
 export const ZONE_NAMES = [
   'Amber Hollows', 'Ember Cavern', 'Aether Spire', 'Sunken Abyss', 'Crystalveil Reach',
@@ -13,8 +13,6 @@ export const ZONE_COLORS = ['#c8a040', '#b85030', '#9e4a9e', '#4a90d9', '#2a8a6a
 export const ZONE_BG_KEYS = [
   'zone-hollows', 'zone-cavern', 'zone-spire', 'zone-abyss', 'zone-crystalveil',
 ] as const
-
-export const ZONE_DEPTHS = [0, 20, 40, 60, 90] as const
 
 export const INGREDIENT_NAMES = [
   'Amber Sap', 'Copper Dust', 'Fog Essence', 'Iron Filing', 'Moonpetal',
@@ -99,15 +97,8 @@ export const POTION_NOUNS = [
   'Infusion', 'Concentrate', 'Decoction', 'Distillate', 'Remedy',
 ] as const
 
-export function getZoneForDepth(depth: number): number {
-  for (let i = ZONE_DEPTHS.length - 1; i >= 0; i--) {
-    if (depth >= ZONE_DEPTHS[i]) return i
-  }
-  return 0
-}
-
-export function getZoneForIngredient(ingredientId: number): number {
-  return Math.floor(ingredientId / INGREDIENTS_PER_ZONE)
+export function getZoneForIngredient(ingredientId: number, ingredientsPerZone = DEFAULT_INGREDIENTS_PER_ZONE): number {
+  return Math.floor(ingredientId / ingredientsPerZone)
 }
 
 export function displayHp(hp: number): string {
