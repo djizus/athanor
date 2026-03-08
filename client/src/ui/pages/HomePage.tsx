@@ -18,7 +18,8 @@ export function HomePage() {
   const { connect, connectors } = useConnect()
   const { games } = useGameTokens(address)
   const { displayName } = usePlayerName(address)
-  const rank = usePlayerRank(address)
+  const playerGameIds = useMemo(() => games.map(g => g.game_id), [games])
+  const rank = usePlayerRank(playerGameIds)
   const [isCreatingGame, setIsCreatingGame] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -67,7 +68,16 @@ export function HomePage() {
     }
   }
 
-  const bestTime = 'NA'
+  const bestTime = useMemo(() => {
+    const completed = games.filter(g => g.game_over && g.ended_at > g.started_at)
+    if (completed.length === 0) return null
+    const best = Math.min(...completed.map(g => g.ended_at - g.started_at))
+    const h = Math.floor(best / 3600)
+    const m = Math.floor((best % 3600) / 60)
+    const s = best % 60
+    if (h > 0) return `${h}h ${m}m ${s}s`
+    return `${m}m ${s}s`
+  }, [games])
   const totalGames = games.length
   const particles = Array.from({ length: 12 }, (_, idx) => idx)
 
@@ -154,7 +164,7 @@ export function HomePage() {
           />
           <div className="home-menu-rank-panel">
             <span className="home-menu-rank-icon">{rankIcon}</span>
-            <span className="home-menu-rank-text">Rank {rank != null ? `#${rank}` : '—'} · Best: {bestTime === 'NA' ? '—' : bestTime} · Runs: {totalGames}</span>
+            <span className="home-menu-rank-text">Rank {rank != null ? `#${rank}` : '—'} · Best: {bestTime ?? '—'} · Runs: {totalGames}</span>
           </div>
           <div className="home-menu-actions">
             {activeGame ? (
