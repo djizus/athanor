@@ -70,7 +70,7 @@ function computeUntriedPairs(
 }
 
 export function PlayScreen() {
-  const { client } = useDojo()
+  const { client, toriiClient } = useDojo()
   const { gameId, navigate } = useNavigationStore()
   const { account } = useAccount()
   const { game } = useGame(gameId)
@@ -280,8 +280,35 @@ export function PlayScreen() {
 
   const handleBrewAll = async () => {
     if (!account || gameId == null) return
-    const pairs = computeUntriedPairs(inventory, recipes)
-    if (pairs.length === 0) return
+    // Fetch fresh Discovery entities from Torii to avoid stale subscription data
+    const namespace = import.meta.env.VITE_PUBLIC_NAMESPACE || 'ATHANOR'
+    const modelTag = `${namespace}-Discovery`
+    const hexGameId = '0x' + gameId.toString(16)
+    let freshRecipes: DiscoveryData[]
+    try {
+      const result = await toriiClient.getEntities({
+        world_addresses: [],
+        pagination: { limit: 500, cursor: undefined, direction: 'Forward', order_by: [] },
+        clause: { Keys: { keys: [hexGameId], pattern_matching: 'VariableLen', models: [modelTag] } },
+        no_hashed_keys: false,
+        models: [modelTag],
+        historical: false,
+      })
+      freshRecipes = result.items
+        .map(e => e.models[modelTag])
+        .filter(Boolean)
+        .map(m => ({
+          ingredient_a: Number((m.ingredient_a as { value: unknown }).value) - 1,
+          ingredient_b: Number((m.ingredient_b as { value: unknown }).value) - 1,
+          effect: Number((m.effect as { value: unknown }).value) - 1,
+          discovered: Boolean((m.discovered as { value: unknown }).value),
+        }))
+    } catch (e) {
+      console.error('Failed to fetch fresh discoveries, falling back to cached:', e)
+      freshRecipes = recipes
+    }
+    const pairs = computeUntriedPairs(inventory, freshRecipes)
+    if (pairs.length === 0) { pushInfo('No new combinations available'); return }
     pushInfo(`Brewing ${pairs.length} new combinations...`)
     const t = txToast(`Brewing ${pairs.length} potions`)
     try {
