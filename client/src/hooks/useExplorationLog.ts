@@ -163,7 +163,7 @@ const MAX_LOG = 200
 
 export function useExplorationLog(
   gameId: bigint | null,
-  heroes: Array<{ id: number; role: number }> = [],
+  heroes: Array<{ id: number; role: number; available_at: number }> = [],
   onExplorationEvent?: (event: RawExplorationEvent) => void,
 ) {
   const { toriiClient } = useDojo()
@@ -182,6 +182,9 @@ export function useExplorationLog(
 
   const heroStartHpRef = useRef<Map<number, number>>(new Map())
 
+  const heroesRef = useRef(heroes)
+  heroesRef.current = heroes
+
   useEffect(() => {
     const map = new Map<number, string>()
     for (const hero of heroes) {
@@ -194,6 +197,7 @@ export function useExplorationLog(
   const startExploration = useCallback((heroId: number, zoneId: number, hp: number) => {
     console.log(`[StartExploration] hero=${heroId} zone=${zoneId} hp=${hp}`)
     heroStartHpRef.current.set(heroId, hp)
+    historicalFetchedRef.current.delete(heroId)
     setHeroOverrides((prev) => {
       const next = new Map(prev)
       next.set(heroId, { health: hp, zoneIndex: zoneId, bagGold: 0, bagIngredients: new Array(25).fill(0) })
@@ -336,6 +340,8 @@ export function useExplorationLog(
     append({ ts: Date.now(), text, kind: 'info' })
   }, [append])
 
+  const historicalFetchedRef = useRef<Set<number>>(new Set())
+
   useEffect(() => {
     if (gameId == null || !toriiClient) return
 
@@ -359,6 +365,123 @@ export function useExplorationLog(
     }
 
     let cancelled = false
+
+    const nowSec = Math.floor(Date.now() / 1000)
+    const currentHeroes = heroesRef.current
+    const exploringHeroIds = new Set(
+      currentHeroes.filter(h => Number(h.available_at) > nowSec).map(h => h.id),
+    )
+
+    if (exploringHeroIds.size > 0) {
+      const explorationModel = `${namespace}-ExplorationEvent`
+      toriiClient.getEventMessages({
+        world_addresses: [],
+        pagination: { limit: 500, cursor: undefined, direction: 'Forward', order_by: [] },
+        clause: {
+          Keys: {
+            keys: [hexGameId],
+            pattern_matching: 'VariableLen' as const,
+            models: [explorationModel],
+          },
+        },
+        no_hashed_keys: false,
+        models: [explorationModel],
+        historical: true,
+      }).then((result) => {
+        if (cancelled) return
+
+        const eventsByHero = new Map<number, Array<{ depth: number; zoneId: number; kind: ExplorationEventKind; value: number; hpAfter: number }>>()
+
+        for (const entity of result.items) {
+          const modelData = entity.models[explorationModel]
+          if (!modelData) continue
+          const values = parseModelValues(modelData as Record<string, unknown>)
+          const heroId = values.hero_id
+          if (!exploringHeroIds.has(heroId)) continue
+          if (historicalFetchedRef.current.has(heroId)) continue
+
+          const kind = CATEGORY_TO_KIND[values.event_kind]
+          if (!kind) continue
+
+          let events = eventsByHero.get(heroId)
+          if (!events) { events = []; eventsByHero.set(heroId, events) }
+          events.push({
+            depth: values.depth,
+            zoneId: values.zone_id,
+            kind,
+            value: values.value,
+            hpAfter: values.hp_after,
+          })
+        }
+
+        for (const [heroId, events] of eventsByHero) {
+          if (events.length === 0) continue
+          events.sort((a, b) => a.depth - b.depth)
+
+          let bagGold = 0
+          const bagIngredients = new Array(25).fill(0)
+          let lastHp = 0
+          let zoneId = events[0].zoneId
+          let maxDepth = 0
+
+          for (const ev of events) {
+            if (ev.kind === 'gold' || ev.kind === 'beastWin') bagGold += ev.value
+            if (ev.kind === 'ingredient') bagIngredients[ev.value] = (bagIngredients[ev.value] ?? 0) + 1
+            lastHp = ev.hpAfter
+            zoneId = ev.zoneId
+            if (ev.depth > maxDepth) maxDepth = ev.depth
+          }
+
+          historicalFetchedRef.current.add(heroId)
+          heroMaxDepthRef.current.set(heroId, maxDepth)
+
+          const hero = currentHeroes.find(h => h.id === heroId)
+          const availableAt = hero ? Number(hero.available_at) : 0
+          const remainingSec = availableAt - nowSec
+          const walkDurationMs = maxDepth > 0
+            ? Math.max(TICK_INTERVAL_MS, maxDepth * WALK_RATIO / WALK_BASE * TICK_INTERVAL_MS)
+            : 2000
+          // available_at = tx_time + (1 + WALK_RATIO/WALK_BASE) * death_depth
+          // walk-back portion = death_depth * WALK_RATIO / WALK_BASE seconds
+          const walkBackSec = maxDepth * WALK_RATIO / WALK_BASE
+          const isStillReturning = remainingSec > 0 && remainingSec <= walkBackSec + 2
+
+          console.log(`[HistoricalRestore] hero=${heroId} events=${events.length} maxDepth=${maxDepth} zone=${zoneId} gold=${bagGold} hp=${lastHp} remaining=${remainingSec}s walkBack=${walkBackSec}s returning=${isStillReturning}`)
+
+          setHeroOverrides((prev) => {
+            if (prev.has(heroId)) return prev
+            const next = new Map(prev)
+            if (isStillReturning) {
+              const elapsedReturnMs = (walkBackSec - remainingSec) * 1000
+              next.set(heroId, {
+                health: lastHp,
+                zoneIndex: zoneId,
+                bagGold,
+                bagIngredients,
+                returning: true,
+                returnStartedAt: Date.now() - Math.max(0, elapsedReturnMs),
+                returnDuration: walkDurationMs,
+              })
+            } else {
+              next.set(heroId, {
+                health: lastHp,
+                zoneIndex: zoneId,
+                bagGold,
+                bagIngredients,
+              })
+            }
+            return next
+          })
+
+          const heroName = heroMapRef.current.get(heroId) ?? `Hero ${heroId}`
+          append({ ts: Date.now(), text: `${heroName} exploration restored (${events.length} events, depth ${maxDepth})`, kind: 'info' })
+        }
+      }).catch((err) => {
+        if (!cancelled) {
+          console.error('[ExplorationLog] Historical event fetch failed:', err)
+        }
+      })
+    }
 
     toriiClient.onEventMessageUpdated(
       clause,
@@ -387,6 +510,7 @@ export function useExplorationLog(
             if (shortName === 'ExplorationEvent' && !result.rawEvent) continue
             console.log(`[EventArrival] model=${shortName} hero=${values.hero_id} depth=${values.depth ?? '-'} kind=${values.event_kind ?? '-'} hp=${values.hp_after ?? '-'}`)
             if (shortName === 'ExplorationEvent') {
+              if (historicalFetchedRef.current.has(values.hero_id)) continue
               enqueue({ entry: result.entry, rawEvent: result.rawEvent })
             } else {
               if (shortName === 'ExpeditionStarted' && values.hero_id != null && values.death_depth > 0) {
@@ -446,6 +570,7 @@ export function useExplorationLog(
       setHeroOverrides((p) => { const n = new Map(p); n.delete(heroId); return n })
       returnTimersRef.current.delete(heroId)
       heroExpeditionRef.current.delete(heroId)
+      historicalFetchedRef.current.delete(heroId)
     }, 3000)
     returnTimersRef.current.set(heroId, cleanupTimer)
   }, [append])
