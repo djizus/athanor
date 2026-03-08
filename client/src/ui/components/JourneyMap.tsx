@@ -318,7 +318,12 @@ function HeroToken({ hero, small, selected, disabled, onClick, onClaim }: {
                 <motion.span
                   key={`orbit-slot-${i}`}
                   className={`hero-token-orbit-item${filled && pulsingKeys.has(slot!.key) ? ' orbit-item-pulse' : ''}`}
-                  initial={{ scale: 0, opacity: 0 }}
+                  initial={{
+                    scale: 0,
+                    opacity: 0,
+                    left: `calc(50% + ${x}px)`,
+                    top: `calc(50% + ${y}px)`,
+                  }}
                   animate={{
                     scale: visible ? 1 : 0,
                     opacity: visible ? 1 : 0,
