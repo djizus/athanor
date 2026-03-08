@@ -304,6 +304,7 @@ export function useExplorationLog(
 
       if (event.rawEvent) {
         const startHp = heroHealthRef.current.get(heroId) ?? event.rawEvent.hpAfter
+        console.log(`[InitHP] hero=${heroId} startHp=${startHp} fromRef=${heroHealthRef.current.get(heroId)} fallbackHpAfter=${event.rawEvent.hpAfter} refSize=${heroHealthRef.current.size} refKeys=[${[...heroHealthRef.current.keys()]}]`)
         setHeroOverrides((prev) => {
           const next = new Map(prev)
           next.set(heroId, { health: startHp, zoneIndex: event.rawEvent!.zoneId, bagGold: 0, bagIngredients: new Array(25).fill(0) })
