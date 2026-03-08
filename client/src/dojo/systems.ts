@@ -177,10 +177,12 @@ export function createSystemCalls(manifest: Manifest) {
       ])
     },
 
-    explore: (game_id: BigNumberish, character_id: BigNumberish, zone_id: BigNumberish): Call[] => [
-      { contractAddress: playAddress, entrypoint: 'claim', calldata: [game_id, character_id] },
-      { contractAddress: playAddress, entrypoint: 'explore', calldata: [game_id, character_id, zone_id] },
-    ],
+    explore: (account: AccountInterface, game_id: BigNumberish, character_id: BigNumberish, zone_id: BigNumberish) =>
+      account.execute([
+        ...vrfCalls(),
+        { contractAddress: playAddress, entrypoint: 'claim', calldata: [game_id, character_id] },
+        { contractAddress: playAddress, entrypoint: 'explore', calldata: [game_id, character_id, zone_id] },
+      ]),
 
     claim: (account: AccountInterface, game_id: BigNumberish, character_id: BigNumberish) =>
       account.execute([
