@@ -192,6 +192,16 @@
     0 1px 4px rgba(0, 0, 0, 0.95),
     0 0 10px rgba(0, 0, 0, 0.6);
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.journey-floating-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 /* ── Responsive ── */

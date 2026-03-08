@@ -1462,6 +1462,51 @@ button:disabled, .btn:disabled {
 .hero-card-status.returning { color: var(--accent-gold); }
 .hero-card-status.loot-ready { color: var(--accent-green); font-weight: 600; }
 
+.hero-bag {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  padding: 0.25rem 0;
+}
+
+.hero-bag-gold {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--accent-gold);
+}
+
+.hero-bag-item {
+  position: relative;
+  display: inline-flex;
+}
+
+.hero-bag-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--border-color);
+}
+
+.hero-bag-qty {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
 .hero-card-btn-row {
   display: flex;
   gap: 0.35rem;

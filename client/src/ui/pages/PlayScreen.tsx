@@ -24,9 +24,10 @@ import {
   displayHp,
   effectAssetUrl,
   effectStatLabel,
+  ingredientAssetUrl,
   roleAssetUrl,
 } from '@/game/constants'
-import { bitmapGet, bitmapPopcount, unpackEffects } from '@/game/packer'
+import { bitmapGet, bitmapPopcount, unpackEffects, unpackCharacterIngredients } from '@/game/packer'
 import type { DiscoveryData } from '@/hooks/useRecipes'
 import { StatusHUD } from '@/ui/components/StatusHUD'
 import { BrewContent, IngredientsContent, GrimoireContent } from '@/ui/components/RightPanel'
@@ -98,9 +99,9 @@ export function PlayScreen() {
 
   const { heroPositions, onExpeditionStart, onExplorationZoneUpdate } = useExpeditionTracker(heroes, now)
 
-  const addFloatingText = useCallback((heroId: number, text: string, color: string, zoneId?: number) => {
+  const addFloatingText = useCallback((heroId: number, text: string, color: string, zoneId?: number, icon?: string) => {
     const id = String(floatingIdRef.current++)
-    setFloatingTexts(prev => [...prev, { id, heroId, text, color, zoneId }])
+    setFloatingTexts(prev => [...prev, { id, heroId, text, color, zoneId, icon }])
   }, [])
 
   const removeFloatingText = useCallback((id: string) => {
@@ -143,7 +144,7 @@ export function PlayScreen() {
         break
       case 'ingredient':
         soundManager.playSfx('gold-find', 0.3)
-        addFloatingText(event.heroId, '+1 Ingredient', '#a050d0', zone)
+        addFloatingText(event.heroId, '+1', '#a050d0', zone, ingredientAssetUrl(event.value))
         break
     }
   }, [addFloatingText, onExplorationZoneUpdate])
@@ -853,6 +854,19 @@ function HeroSlot({
               +{d.value} {d.label}
             </span>
           ))}
+        </div>
+      )}
+      {(hero.gold > 0 || (hero.ingredients != null && hero.ingredients !== 0n)) && (
+        <div className="hero-bag">
+          {hero.gold > 0 && <span className="hero-bag-gold">{hero.gold}g</span>}
+          {hero.ingredients != null && hero.ingredients !== 0n && unpackCharacterIngredients(BigInt(hero.ingredients)).map((qty, idx) =>
+            qty > 0 ? (
+              <span key={idx} className="hero-bag-item">
+                <img className="hero-bag-icon" src={ingredientAssetUrl(idx)} alt="" />
+                {qty > 1 && <span className="hero-bag-qty">{qty}</span>}
+              </span>
+            ) : null,
+          )}
         </div>
       )}
       <div className="hero-card-btn-row">

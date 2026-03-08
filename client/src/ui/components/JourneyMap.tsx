@@ -17,6 +17,7 @@ export interface FloatingTextAnim {
   text: string
   color: string
   zoneId?: number
+  icon?: string
 }
 
 interface JourneyMapProps {
@@ -50,7 +51,7 @@ function HeroToken({ hero }: { hero: HeroData }) {
   )
 }
 
-function FloatingText({ text, color, onComplete }: { text: string; color: string; onComplete: () => void }) {
+function FloatingText({ text, color, icon, onComplete }: { text: string; color: string; icon?: string; onComplete: () => void }) {
   return (
     <motion.div
       className="journey-floating-text"
@@ -62,6 +63,7 @@ function FloatingText({ text, color, onComplete }: { text: string; color: string
       onAnimationComplete={onComplete}
     >
       {text}
+      {icon && <img className="journey-floating-icon" src={icon} alt="" />}
     </motion.div>
   )
 }
@@ -100,7 +102,7 @@ function ZoneBand({
       </div>
       <AnimatePresence>
         {floatingTexts.map(ft => (
-          <FloatingText key={ft.id} text={ft.text} color={ft.color} onComplete={() => onFloatingTextComplete(ft.id)} />
+          <FloatingText key={ft.id} text={ft.text} color={ft.color} icon={ft.icon} onComplete={() => onFloatingTextComplete(ft.id)} />
         ))}
       </AnimatePresence>
       {isActive && (
@@ -136,7 +138,7 @@ function HomeBand({
       </div>
       <AnimatePresence>
         {floatingTexts.map(ft => (
-          <FloatingText key={ft.id} text={ft.text} color={ft.color} onComplete={() => onFloatingTextComplete(ft.id)} />
+          <FloatingText key={ft.id} text={ft.text} color={ft.color} icon={ft.icon} onComplete={() => onFloatingTextComplete(ft.id)} />
         ))}
       </AnimatePresence>
     </div>
