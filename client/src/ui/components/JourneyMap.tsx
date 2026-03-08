@@ -33,6 +33,8 @@ interface HeroData {
   role: number
   health: number
   max_health: number
+  gold: number
+  ingredients: bigint | number[] | null
 }
 
 export interface FloatingTextAnim {
@@ -186,7 +188,7 @@ function ZoneNode({
       onMouseLeave={onLeave}
     >
       <div className="zone-node-glow" />
-      {canSendHero && <div className="zone-node-ring" />}
+      <div className={`zone-node-ring${canSendHero ? ' zone-node-ring-active' : ''}`} />
       <img
         className="zone-node-icon"
         src={`/assets/zones/${portalKey}.webp`}
@@ -326,17 +328,6 @@ export function JourneyMap({
     && !isGameOver
     && selectedHero.health > 0
     && (!selectedPos || (selectedPos.zoneIndex === -1 && !selectedPos.returning))
-
-  console.log('[JourneyMap] selection debug:', {
-    selectedHeroId,
-    heroCount: heroes.length,
-    heroIds: heroes.map(h => h.hero_id),
-    selectedHeroFound: selectedHero != null,
-    selectedHeroHealth: selectedHero?.health,
-    isGameOver,
-    selectedPos,
-    canSendSelected,
-  })
 
   const ath = NODE_POSITIONS.athanor
   const zones = NODE_POSITIONS.zones

@@ -79,18 +79,24 @@
 
 .zone-node-ring {
   position: absolute;
-  width: 116px;
-  height: 116px;
+  width: 104px;
+  height: 104px;
   border-radius: 50%;
-  border: 2px solid var(--accent-gold);
+  border: 2px solid rgba(255, 255, 255, 0.12);
   z-index: 0;
   pointer-events: none;
+  transition: border-color 0.4s ease, box-shadow 0.4s ease;
+}
+
+.zone-node-ring-active {
+  border-color: var(--accent-gold);
+  box-shadow: 0 0 10px rgba(240, 192, 64, 0.25);
   animation: zone-ring-pulse 1.8s ease-in-out infinite;
 }
 
 @keyframes zone-ring-pulse {
-  0%, 100% { opacity: 0.3; transform: scale(1); }
-  50% { opacity: 0.8; transform: scale(1.12); }
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.08); }
 }
 
 .zone-node-icon {
@@ -484,8 +490,8 @@
   }
 
   .zone-node-ring {
-    width: 84px;
-    height: 84px;
+    width: 76px;
+    height: 76px;
   }
 
   .hero-token-portrait {

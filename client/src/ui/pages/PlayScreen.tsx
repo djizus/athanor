@@ -656,25 +656,25 @@ export function PlayScreen() {
   const journeyHeroes = useMemo(() =>
     heroes.map(h => {
       const override = heroOverrides.get(h.id)
+      const availableAt = Number(h.available_at)
+      const isExploring = availableAt > now && h.health > 0
+      const isIdle = !isExploring
+      const regenElapsed = isIdle ? Math.max(0, now - availableAt) : 0
+      const baseHp = override ? override.health : h.health
+      const health = override
+        ? baseHp
+        : Math.min(baseHp + h.regen * regenElapsed, h.max_health)
       return {
         hero_id: h.id,
         role: h.role,
-        health: override ? override.health : h.health,
+        health,
         max_health: h.max_health,
+        gold: override ? override.bagGold : h.gold,
+        ingredients: override ? override.bagIngredients : h.ingredients,
       }
     }),
-    [heroes, heroOverrides],
+    [heroes, heroOverrides, now],
   )
-
-  console.log('[PlayScreen] render:', {
-    selectedHeroId,
-    heroCount: heroes.length,
-    heroIds: heroes.map(h => h.id),
-    journeyHeroIds: journeyHeroes.map(h => h.hero_id),
-    isGameOver,
-    heroPositionsSize: heroPositions.size,
-    heroPositionsEntries: Array.from(heroPositions.entries()),
-  })
 
   return (
     <div className="play-screen">
@@ -722,7 +722,7 @@ export function PlayScreen() {
                   now={now}
                   heroOverrides={heroOverrides}
                   heroPositions={heroPositions}
-                  onSelectHero={(id) => { console.log('[PlayScreen] hero selected:', id); setSelectedHeroId(id) }}
+                  onSelectHero={(id) => setSelectedHeroId(id)}
                   onRecruit={() => void handleRecruit()}
                   onClaim={(id) => void handleClaim(id)}
                   hasPotions={hasPotions}
