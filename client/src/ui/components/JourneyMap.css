@@ -382,7 +382,7 @@
 }
 
 .hero-token-orbit-ready .hero-token-orbit-inner {
-  animation: orbit-item-glow 1.5s ease-in-out infinite;
+  animation: orbit-counter-rotate 60s linear infinite, orbit-item-glow 1.5s ease-in-out infinite;
 }
 
 .hero-token-orbit-ready:hover .hero-token-orbit-inner {
