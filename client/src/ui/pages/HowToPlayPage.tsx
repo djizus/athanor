@@ -9,7 +9,6 @@ export function HowToPlayPage() {
         <div className="glass-page-header">
           <h1 className="glass-page-title">How to Play</h1>
           <button onClick={() => navigate('home')}>Back</button>
-          <button className="home-menu-button" onClick={() => navigate('home')}>Back</button>
         </div>
 
         <div className="glass-page-body htp-body">
