@@ -125,7 +125,7 @@ export function PlayScreen() {
 
   const [heroesCollapsed, setHeroesCollapsed] = useState(false)
   const [brewCollapsed, setBrewCollapsed] = useState(false)
-  const [logsCollapsed, setLogsCollapsed] = useState(false)
+  const [logsCollapsed, setLogsCollapsed] = useState(true)
   const [potionTargetHeroId, setPotionTargetHeroId] = useState<number | null>(null)
   const [mobilePanel, setMobilePanel] = useState<string | null>(null)
   const [surrendered, setSurrendered] = useState(false)
