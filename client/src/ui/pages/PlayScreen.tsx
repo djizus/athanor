@@ -1006,7 +1006,16 @@ export function PlayScreen() {
       </div>
 
       {tutorialEnabled && (
-        <TutorialOverlay onComplete={() => setTutorialEnabled(false)} />
+        <TutorialOverlay
+          onComplete={() => setTutorialEnabled(false)}
+          onStepChange={(_step, target) => {
+            if (target === 'hint-btn' || target === 'grimoire') {
+              setCollectionTab('grimoire')
+            } else if (target === 'ingredients') {
+              setCollectionTab('ingredients')
+            }
+          }}
+        />
       )}
 
       {potionTargetHeroId !== null && (

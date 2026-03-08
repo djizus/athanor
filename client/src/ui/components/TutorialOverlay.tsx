@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 
 type TutorialOverlayProps = {
   onComplete: () => void
+  onStepChange?: (step: number, target: string | null) => void
 }
 
 type TutorialStep = {
@@ -147,12 +148,17 @@ function measureTarget(target: string): Rect | null {
   }
 }
 
-export function TutorialOverlay({ onComplete }: TutorialOverlayProps) {
-  const [step, setStep] = useState(0)
+export function TutorialOverlay({ onComplete, onStepChange }: TutorialOverlayProps) {
+  const [step, setStepRaw] = useState(0)
   const [rect, setRect] = useState<Rect | null>(null)
   const [visible, setVisible] = useState(false)
   const tooltipRef = useRef<HTMLDivElement>(null)
   const current = STEPS[step]
+
+  const goToStep = useCallback((next: number) => {
+    setStepRaw(next)
+    onStepChange?.(next, STEPS[next].target)
+  }, [onStepChange])
 
   useEffect(() => {
     const raf = requestAnimationFrame(() => setVisible(true))
@@ -189,7 +195,7 @@ export function TutorialOverlay({ onComplete }: TutorialOverlayProps) {
       } else if (e.key === 'Enter' || e.key === 'ArrowRight') {
         handleNext()
       } else if (e.key === 'ArrowLeft' && step > 0) {
-        setStep(s => s - 1)
+        goToStep(step - 1)
       }
     }
     window.addEventListener('keydown', onKeyDown)
@@ -200,9 +206,9 @@ export function TutorialOverlay({ onComplete }: TutorialOverlayProps) {
     if (step >= STEPS.length - 1) {
       onComplete()
     } else {
-      setStep(s => s + 1)
+      goToStep(step + 1)
     }
-  }, [step, onComplete])
+  }, [step, onComplete, goToStep])
 
   const isCentered = current.target === null
   const showSpotlight = !isCentered && rect !== null
@@ -251,7 +257,7 @@ export function TutorialOverlay({ onComplete }: TutorialOverlayProps) {
             {step > 0 && (
               <button
                 className="tutorial-btn-back"
-                onClick={() => setStep(s => s - 1)}
+                onClick={() => goToStep(step - 1)}
               >
                 Back
               </button>
