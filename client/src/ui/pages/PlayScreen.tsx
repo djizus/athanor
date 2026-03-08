@@ -560,26 +560,26 @@ export function PlayScreen() {
               <p className="game-over-flavor">The Athanor blazes with primordial fire. All secrets are yours.</p>
             )}
             {surrendered && <p className="game-over-flavor">The Athanor grows cold. Your ambition fades to ash.</p>}
+            {!surrendered && discoveredCount < 30 && (
+              <p className="game-over-flavor">Your heroes fell. The Grimoire remains incomplete.</p>
+            )}
             <div className="game-over-stats">
-              <div className="game-over-stat">
-                <span className="game-over-stat-label">Time</span>
-                <span className="game-over-stat-value">{formatGameDuration(elapsedSeconds)}</span>
-              </div>
               {leaderboardRank != null && (
                 <div className="game-over-stat">
                   <span className="game-over-stat-label">Rank</span>
                   <span className="game-over-stat-value">#{leaderboardRank}</span>
                 </div>
               )}
+              <div className="game-over-stat">
+                <span className="game-over-stat-label">Time</span>
+                <span className="game-over-stat-value">{formatGameDuration(elapsedSeconds)}</span>
+              </div>
             </div>
             <div className="game-over-actions">
-              {!surrendered && (
+              {discoveredCount >= 30 && (
                 <button onClick={() => {
                   const time = formatGameDuration(elapsedSeconds)
-                  const won = discoveredCount >= 30
-                  const text = won
-                    ? `I completed the Grimoire in ${time}${leaderboardRank ? `, rank #${leaderboardRank}` : ''} on Athanor! Think you can beat that?\n\nPlay now:`
-                    : `I discovered ${discoveredCount}/30 recipes in ${time} on Athanor. Can you complete the Grimoire?\n\nPlay now:`
+                  const text = `I completed the Grimoire in ${time}${leaderboardRank ? `, rank #${leaderboardRank}` : ''} on Athanor! Think you can beat that?\n\nPlay now:`
                   const url = window.location.origin
                   window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank')
                 }}>

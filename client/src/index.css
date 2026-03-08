@@ -2334,7 +2334,6 @@ button:disabled, .btn:disabled {
   color: var(--accent-gold);
 }
 
-.game-over-card.won .game-over-flavor,
 .game-over-card.won .game-over-stat-value {
   color: #fff;
 }
