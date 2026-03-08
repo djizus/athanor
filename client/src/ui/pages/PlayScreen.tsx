@@ -586,6 +586,9 @@ export function PlayScreen() {
           </button>
           {!heroesCollapsed && (
             <div className="side-panel-body">
+              {heroCount > 0 && heroes.length === 0 && (
+                <div className="panel-spinner">Loading heroes...</div>
+              )}
               {[0, 1, 2].map((slot) => (
                 <HeroSlot
                   key={slot}
@@ -1030,12 +1033,7 @@ function HeroSlot({
   }, [hero?.max_health, hero?.power, hero?.regen])
 
   if (!hero) {
-    // Hero data not yet synced from chain — show loading placeholder for known hero slots
-    if (slot < heroCount) return (
-      <div className="hero-card hero-card-loading">
-        <span className="hero-card-loading-text">Loading...</span>
-      </div>
-    )
+    if (slot < heroCount) return null
     if (slot === heroCount && heroCount < 3) {
       const cost = HERO_RECRUIT_COSTS[Math.min(heroCount, 2)]
       const canAfford = gold >= cost && !isGameOver && !isRecruitPending
