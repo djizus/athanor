@@ -77,10 +77,37 @@
   50% { opacity: 0.45; transform: scale(1.12); }
 }
 
+/* ── Difficulty Ring ──── */
+
+.zone-difficulty-ring {
+  position: absolute;
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  border: 2px solid var(--ring-color, #5a5a7a);
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  animation: difficulty-ring-breathe var(--ring-speed, 2.8s) ease-in-out infinite;
+  box-shadow: 0 0 8px var(--ring-color, #5a5a7a);
+}
+
+.zone-difficulty-1 { border-width: 2px; }
+.zone-difficulty-2 { border-width: 2.5px; }
+.zone-difficulty-3 { border-width: 3px; box-shadow: 0 0 12px var(--ring-color); }
+.zone-difficulty-4 { border-width: 3.5px; box-shadow: 0 0 16px var(--ring-color); }
+
+@keyframes difficulty-ring-breathe {
+  0%, 100% { opacity: 0.35; transform: scale(1); }
+  50% { opacity: 0.75; transform: scale(1.08); }
+}
+
+/* Selection ring (hero selected) */
+
 .zone-node-ring {
   position: absolute;
-  width: 102px;
-  height: 102px;
+  width: 116px;
+  height: 116px;
   border-radius: 50%;
   border: 2px solid var(--accent-gold);
   z-index: 0;
@@ -90,7 +117,7 @@
 
 @keyframes zone-ring-pulse {
   0%, 100% { opacity: 0.3; transform: scale(1); }
-  50% { opacity: 0.8; transform: scale(1.15); }
+  50% { opacity: 0.8; transform: scale(1.12); }
 }
 
 .zone-node-icon {
@@ -351,6 +378,76 @@
   object-fit: cover;
 }
 
+/* ── Map Particles ──── */
+
+.map-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.map-particle {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, rgba(255, 222, 160, 0.9), rgba(255, 180, 90, 0.15));
+  opacity: 0;
+  filter: blur(0.3px);
+  animation: map-particle-drift 14s linear infinite;
+}
+
+.map-particle:nth-child(odd) {
+  width: 2px;
+  height: 2px;
+  background: radial-gradient(circle at 35% 35%, rgba(200, 210, 255, 0.8), rgba(130, 140, 220, 0.12));
+}
+
+.map-particle:nth-child(3n) {
+  width: 4px;
+  height: 4px;
+}
+
+.map-particle:nth-child(1)  { left:  5%; top: 90%; animation-delay: 0s;    animation-duration: 13.2s; }
+.map-particle:nth-child(2)  { left: 12%; top: 78%; animation-delay: 1.4s;  animation-duration: 15.1s; }
+.map-particle:nth-child(3)  { left: 20%; top: 85%; animation-delay: 3.2s;  animation-duration: 12.8s; }
+.map-particle:nth-child(4)  { left: 28%; top: 92%; animation-delay: 0.7s;  animation-duration: 14.6s; }
+.map-particle:nth-child(5)  { left: 35%; top: 80%; animation-delay: 2.1s;  animation-duration: 16.0s; }
+.map-particle:nth-child(6)  { left: 42%; top: 88%; animation-delay: 4.0s;  animation-duration: 13.5s; }
+.map-particle:nth-child(7)  { left: 50%; top: 93%; animation-delay: 1.0s;  animation-duration: 14.2s; }
+.map-particle:nth-child(8)  { left: 57%; top: 82%; animation-delay: 2.8s;  animation-duration: 15.4s; }
+.map-particle:nth-child(9)  { left: 64%; top: 87%; animation-delay: 0.3s;  animation-duration: 12.9s; }
+.map-particle:nth-child(10) { left: 71%; top: 91%; animation-delay: 3.6s;  animation-duration: 14.8s; }
+.map-particle:nth-child(11) { left: 78%; top: 79%; animation-delay: 1.7s;  animation-duration: 16.2s; }
+.map-particle:nth-child(12) { left: 85%; top: 86%; animation-delay: 2.5s;  animation-duration: 13.1s; }
+.map-particle:nth-child(13) { left:  8%; top: 95%; animation-delay: 4.4s;  animation-duration: 15.7s; }
+.map-particle:nth-child(14) { left: 16%; top: 70%; animation-delay: 0.9s;  animation-duration: 12.4s; }
+.map-particle:nth-child(15) { left: 33%; top: 96%; animation-delay: 3.0s;  animation-duration: 14.0s; }
+.map-particle:nth-child(16) { left: 47%; top: 74%; animation-delay: 1.5s;  animation-duration: 16.5s; }
+.map-particle:nth-child(17) { left: 60%; top: 94%; animation-delay: 2.3s;  animation-duration: 13.8s; }
+.map-particle:nth-child(18) { left: 74%; top: 72%; animation-delay: 4.2s;  animation-duration: 15.0s; }
+.map-particle:nth-child(19) { left: 88%; top: 90%; animation-delay: 0.5s;  animation-duration: 14.3s; }
+.map-particle:nth-child(20) { left: 93%; top: 76%; animation-delay: 3.4s;  animation-duration: 12.6s; }
+
+@keyframes map-particle-drift {
+  0% {
+    transform: translate3d(0, 0, 0) scale(0.6);
+    opacity: 0;
+  }
+  8% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.35;
+  }
+  100% {
+    transform: translate3d(calc(-6px + 12px * var(--drift, 0)), -70vh, 0) scale(1.1);
+    opacity: 0;
+  }
+}
+
 /* ── Hint Bar ──── */
 
 .constellation-hint {
@@ -400,9 +497,14 @@
     height: 130px;
   }
 
-  .zone-node-ring {
+  .zone-difficulty-ring {
     width: 76px;
     height: 76px;
+  }
+
+  .zone-node-ring {
+    width: 84px;
+    height: 84px;
   }
 
   .hero-token-portrait {

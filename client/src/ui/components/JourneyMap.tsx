@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion'
 import {
   ZONE_NAMES,
@@ -96,13 +96,13 @@ function FloatingText({ text, color, icon, onComplete }: { text: string; color: 
 }
 
 const NODE_POSITIONS = {
-  athanor: { x: 50, y: 78 },
+  athanor: { x: 50, y: 82 },
   zones: [
-    { x: 44, y: 65 },
-    { x: 56, y: 53 },
-    { x: 44, y: 41 },
-    { x: 56, y: 29 },
-    { x: 50, y: 17 },
+    { x: 25, y: 60 },
+    { x: 72, y: 56 },
+    { x: 18, y: 34 },
+    { x: 78, y: 30 },
+    { x: 50, y: 16 },
   ],
 } as const
 
@@ -186,6 +186,13 @@ function ZoneNode({
       onMouseLeave={onLeave}
     >
       <div className="zone-node-glow" />
+      <div
+        className={`zone-difficulty-ring zone-difficulty-${zoneId}`}
+        style={{
+          ['--ring-color' as string]: ZONE_RISK_COLOR[zoneId],
+          ['--ring-speed' as string]: `${2.8 - zoneId * 0.35}s`,
+        }}
+      />
       {canSendHero && <div className="zone-node-ring" />}
       <img
         className="zone-node-icon"
@@ -276,6 +283,7 @@ export function JourneyMap({
   onExplore,
 }: JourneyMapProps) {
   const [hoveredZone, setHoveredZone] = useState<number | null>(null)
+  const particlesRef = useRef(Array.from({ length: 20 }, (_, i) => i))
 
   const heroesByZone = useMemo(() => {
     const map = new Map<number, HeroData[]>()
@@ -337,32 +345,25 @@ export function JourneyMap({
       />
       <div className="constellation-overlay" />
 
+      <div className="map-particles" aria-hidden>
+        {particlesRef.current.map(i => (
+          <span key={`map-particle-${i}`} className="map-particle" />
+        ))}
+      </div>
+
       <svg className="constellation-lines">
-        <line
-          x1={`${ath.x}%`} y1={`${ath.y}%`}
-          x2={`${zones[0].x}%`} y2={`${zones[0].y}%`}
-          stroke={ZONE_COLORS[0]}
-          strokeWidth="2"
-          strokeDasharray="8 10"
-          strokeLinecap="round"
-          strokeOpacity={activeZones.has(0) ? '0.9' : '0.45'}
-        />
-        {zones.map((pos, i) => {
-          if (i === 0) return null
-          const prev = zones[i - 1]
-          return (
-            <line
-              key={i}
-              x1={`${prev.x}%`} y1={`${prev.y}%`}
-              x2={`${pos.x}%`} y2={`${pos.y}%`}
-              stroke={ZONE_COLORS[i]}
-              strokeWidth="2"
-              strokeDasharray="8 10"
-              strokeLinecap="round"
-              strokeOpacity={activeZones.has(i) ? '0.9' : '0.45'}
-            />
-          )
-        })}
+        {zones.map((pos, i) => (
+          <line
+            key={i}
+            x1={`${ath.x}%`} y1={`${ath.y}%`}
+            x2={`${pos.x}%`} y2={`${pos.y}%`}
+            stroke={ZONE_COLORS[i]}
+            strokeWidth="1.5"
+            strokeDasharray="6 8"
+            strokeLinecap="round"
+            strokeOpacity={activeZones.has(i) ? '0.8' : '0.3'}
+          />
+        ))}
       </svg>
 
       <LayoutGroup>
