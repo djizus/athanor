@@ -16,53 +16,126 @@ const STEPS: TutorialStep[] = [
   {
     target: null,
     title: 'Welcome, Alchemist!',
-    body: 'Let me guide you through the Athanor. You\'ll learn how to explore, brew potions, and complete your Grimoire.',
+    body: 'You are standing before the <strong>Athanor</strong> — a mythical furnace of transmutation. Your quest: discover all <strong>30 potions</strong> hidden within its depths. Let me show you how.',
     buttonLabel: "Let's Begin",
     placement: 'bottom',
   },
   {
     target: 'status-hud',
-    title: 'Dashboard',
-    body: 'Your dashboard shows your <strong>gold</strong>, elapsed <strong>time</strong>, and <strong>grimoire progress</strong>. Discover all 30 potions to win!',
+    title: 'The Race Against Time',
+    body: 'This is your dashboard. It shows your <strong>gold</strong>, elapsed <strong>time</strong>, and <strong>grimoire progress</strong> (potions discovered out of 30). Games are <strong>ranked by completion time</strong> on the leaderboard — every second counts.',
     buttonLabel: 'Next',
     placement: 'bottom',
   },
+
   {
     target: 'heroes',
-    title: 'Heroes',
-    body: 'Your <strong>heroes</strong> explore the depths for you. Each has HP, Power, and Regen stats. You start with one and can recruit up to 3.',
+    title: 'Your Heroes',
+    body: 'You begin with <strong>one hero</strong> and can recruit up to <strong>3</strong>. Each hero has three stats:<br/><strong>HP</strong> — how much damage they can take while exploring<br/><strong>Power</strong> — increases gold earned and combat strength<br/><strong>Regen</strong> — HP recovered per second while idle at the Athanor',
     buttonLabel: 'Next',
     placement: 'right',
   },
   {
+    target: 'heroes',
+    title: 'Recruiting & Buffing',
+    body: 'Spend gold to <strong>recruit</strong> additional heroes — more heroes means parallel exploration, which is key to fast completion times. Once you have potions, you can <strong>apply them</strong> to heroes to permanently boost their stats.',
+    buttonLabel: 'Next',
+    placement: 'right',
+  },
+
+  {
     target: 'journey-map',
-    title: 'Exploration Map',
-    body: 'The <strong>exploration map</strong>. Click a zone to send a hero on an expedition. Deeper zones are more dangerous but yield rarer ingredients.',
+    title: 'The Exploration Map',
+    body: 'The map shows <strong>5 zones</strong> of increasing danger. Each zone holds <strong>5 unique ingredients</strong> that can only be found there. Select a hero, then click a zone to send them on an expedition.',
     buttonLabel: 'Next',
     placement: 'bottom',
   },
   {
-    target: 'brew',
-    title: 'Brewing Station',
-    body: 'The <strong>brewing station</strong>. Select two ingredients and combine them to discover potions — or get Soup (+1 gold). Use <strong>Brew All</strong> to try every untested combo at once.',
+    target: 'journey-map',
+    title: 'Risk vs. Reward',
+    body: 'Deeper zones cost <strong>more HP per tick</strong> but yield <strong>rarer ingredients</strong>. During exploration, heroes encounter:<br/><strong>Ingredients</strong> — gathered for brewing<br/><strong>Gold caches</strong> — collected on return<br/><strong>Beasts</strong> — win for gold, lose for HP damage<br/><strong>Traps</strong> — unavoidable HP loss<br/><strong>Healing springs</strong> — restore HP mid-expedition',
+    buttonLabel: 'Next',
+    placement: 'bottom',
+  },
+  {
+    target: 'journey-map',
+    title: 'Claiming Loot',
+    body: 'When an expedition ends, your hero returns to the Athanor carrying <strong>gold and ingredients</strong>. Click them to <strong>claim their loot</strong> — ingredients go to your inventory, gold to your stash. Heroes <strong>cannot explore again</strong> until loot is claimed.',
+    buttonLabel: 'Next',
+    placement: 'bottom',
+  },
+
+  {
+    target: 'logs',
+    title: 'Exploration Log',
+    body: 'Events from your expeditions appear here in real time — gold found, beasts fought, ingredients gathered, traps sprung. Keep an eye on it to track what your heroes are doing.',
+    buttonLabel: 'Next',
+    placement: 'right',
+  },
+
+  {
+    target: 'ingredients',
+    title: 'Your Ingredients',
+    body: 'Ingredients are organized by the <strong>zone</strong> they come from. Each zone has 5 unique materials. The progress bar at the top shows how many of all possible combinations you have tried so far.',
+    buttonLabel: 'Next',
+    placement: 'left',
+  },
+  {
+    target: 'craft-slots',
+    title: 'Brewing Potions',
+    body: 'Click two ingredients from your inventory to load them into the <strong>brew slots</strong>. Press <strong>Brew</strong> to combine them. Every unique pair produces a specific result — either a <strong>potion</strong> or a <strong>Soup</strong> (failed recipe, but you still get +1 gold).',
+    buttonLabel: 'Next',
+    placement: 'left',
+  },
+  {
+    target: 'craft-slots',
+    title: 'Brew All — Your Best Friend',
+    body: '<strong>Brew All</strong> (or "Discover All") automatically tries <strong>every untested combination</strong> in your inventory at once. After each exploration haul, hit Brew All to quickly test all new ingredient pairs. You can also select one ingredient first to Brew All combos <strong>with that ingredient only</strong>.',
+    buttonLabel: 'Next',
+    placement: 'left',
+  },
+
+  {
+    target: 'collection-tabs',
+    title: 'Ingredients & Grimoire Tabs',
+    body: 'Switch between <strong>Ingredients</strong> (your inventory) and <strong>Grimoire</strong> (your discovered potions) using these tabs. Keyboard shortcuts: <strong>I</strong> for Ingredients, <strong>G</strong> for Grimoire.',
     buttonLabel: 'Next',
     placement: 'left',
   },
   {
     target: 'grimoire',
-    title: 'Grimoire',
-    body: 'Your <strong>Grimoire</strong> tracks all discoveries. Buy <strong>hints</strong> with gold to reveal ingredients for undiscovered potions.',
+    title: 'The Grimoire',
+    body: 'Your Grimoire tracks all <strong>30 potions</strong>. Discovered potions show their effect — <span style="color:#d04050"><strong>Health</strong></span> (max HP), <span style="color:#4080d0"><strong>Power</strong></span> (combat/gold), or <span style="color:#40c060"><strong>Regen</strong></span> (HP recovery). Click a discovered potion to auto-load its recipe into the brew slots for re-crafting. <strong>Filling the entire Grimoire wins the game.</strong>',
     buttonLabel: 'Next',
     placement: 'left',
   },
   {
+    target: 'hint-btn',
+    title: 'Buying Hints',
+    body: 'Stuck on the last few potions? Spend gold to buy a <strong>hint</strong>. It reveals one ingredient of an undiscovered recipe. Hinted potions show a <strong>star badge</strong> in your Grimoire — click them to auto-fill the known ingredient. Hints cost more as you buy them.',
+    buttonLabel: 'Next',
+    placement: 'left',
+  },
+
+  {
+    target: null,
+    title: 'Strategy Tips',
+    body: '<strong>Recruit early</strong> — multiple heroes explore in parallel, saving massive time.<br/><strong>Brew All often</strong> — test combos immediately after each haul.<br/><strong>Apply potions</strong> — Regen lets heroes recover faster, Power earns more gold, Health lets them survive deeper zones.<br/><strong>Claim loot fast</strong> — idle heroes waste time.<br/><strong>Save hints</strong> for the final few undiscovered potions when you have fewer untested combos.',
+    buttonLabel: 'Next',
+    placement: 'bottom',
+  },
+  {
     target: null,
     title: "You're Ready!",
-    body: 'Discover all 30 potions as fast as you can. Your time is tracked on the leaderboard. Good luck!',
+    body: 'Discover all <strong>30 potions</strong> as fast as you can. Your completion time determines your <strong>leaderboard rank</strong>. The clock is ticking — good luck, Alchemist!',
     buttonLabel: 'Start Playing',
     placement: 'bottom',
   },
 ]
+
+const LAST_HIGHLIGHTED_STEP = STEPS.reduce(
+  (last, s, i) => (s.target !== null ? i : last), 0,
+)
 
 const SPOTLIGHT_PAD = 10
 
@@ -165,7 +238,7 @@ export function TutorialOverlay({ onComplete }: TutorialOverlayProps) {
       >
         {!isCentered && (
           <span className="tutorial-step-indicator">
-            {step} / {STEPS.length - 2}
+            {step} / {LAST_HIGHLIGHTED_STEP}
           </span>
         )}
         <h3 className="tutorial-tooltip-title">{current.title}</h3>

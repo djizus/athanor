@@ -813,7 +813,7 @@ export function PlayScreen() {
           )}
         </div>
 
-        <div className={`side-panel floating-panel panel-logs${mobilePanel === 'heroes' ? ' mobile-panel-hidden' : ''}`}>
+        <div className={`side-panel floating-panel panel-logs${mobilePanel === 'heroes' ? ' mobile-panel-hidden' : ''}`} data-tutorial="logs">
           <button className="side-panel-header" onClick={() => setLogsCollapsed((v) => !v)}>
             <span className="side-panel-title">Exploration Log</span>
             <span className="side-panel-chevron">{logsCollapsed ? '▸' : '▾'}</span>
@@ -859,7 +859,7 @@ export function PlayScreen() {
                 onBrewAll={() => void handleBrewAll()}
               />
 
-              <div className="collection-tabs">
+              <div className="collection-tabs" data-tutorial="collection-tabs">
                 <button
                   className={`collection-tab${collectionTab === 'ingredients' ? ' active' : ''}`}
                   onClick={() => setCollectionTab('ingredients')}
@@ -876,7 +876,7 @@ export function PlayScreen() {
 
               <div data-tutorial="grimoire">
               {collectionTab === 'ingredients' ? (
-                <div data-claim-target="ingredients">
+                <div data-claim-target="ingredients" data-tutorial="ingredients">
                   <IngredientsContent
                     inventory={inventory}
                     slotA={slotA}
