@@ -223,8 +223,13 @@ pub mod Play {
     #[generate_trait]
     pub impl PrivateImpl of PrivateTrait {
         fn before(ref self: ContractState, world: WorldStorage, game_id: u64) {
-            // [Check] Game is playable
+            // [Check] Game is not over, otherwise return silently
             let mut store = StoreTrait::new(world);
+            let game = store.game(game_id);
+            if game.is_over() {
+                return;
+            }
+            // [Check] Game is playable
             let token_address = store.token_address();
             pre_action(token_address, game_id);
             assert_token_ownership(token_address, game_id);

@@ -84,10 +84,7 @@ pub mod PlayableComponent {
             // [Check] Game exists
             let mut game = store.game(game_id);
             game.assert_is_started();
-            // [Check] If game is over, return silently
-            if game.is_over() {
-                return;
-            }
+            game.assert_not_over();
             // [Check] Discovery
             let mut discovery = store.discovery(game_id, ingredient_a.into(), ingredient_b.into());
             let variation = store.discovery(game_id, ingredient_b.into(), ingredient_a.into());
