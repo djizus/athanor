@@ -16,11 +16,11 @@ import './JourneyMap.css'
 
 const ZONE_DRAIN = [1, 2, 3, 4, 5]
 const ZONE_GOLD_RANGE: [number, number][] = [
-  [200, 500],
-  [300, 600],
-  [400, 900],
-  [500, 1200],
-  [600, 1500],
+  [6, 15],
+  [5, 12],
+  [4, 10],
+  [3, 7],
+  [2, 5],
 ]
 const ZONE_RISK_LABEL = ['Low', 'Moderate', 'High', 'Extreme', 'Deadly'] as const
 const ZONE_RISK_COLOR = ['#40c060', '#a0c040', '#f0c040', '#e07030', '#d04050'] as const
@@ -553,7 +553,7 @@ export function JourneyMap({
   const zones = NODE_POSITIONS.zones
 
   return (
-    <div className="journey-map">
+    <div className="journey-map" data-tutorial="journey-map">
       <img
         className="constellation-bg"
         src="/assets/zones/constellation-bg.webp"

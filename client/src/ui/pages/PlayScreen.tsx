@@ -37,6 +37,8 @@ import { StatusHUD } from '@/ui/components/StatusHUD'
 import { BrewContent, IngredientsContent, GrimoireContent } from '@/ui/components/RightPanel'
 import type { PanelMode } from '@/ui/components/RightPanel'
 import { SettingsOverlay } from '@/ui/components/SettingsOverlay'
+import { TutorialOverlay } from '@/ui/components/TutorialOverlay'
+import { useSettingsStore } from '@/stores/settingsStore'
 
 function computeOptimisticHp(
   hero: { health: number; max_health: number; regen: number; available_at: number },
@@ -180,6 +182,7 @@ export function PlayScreen() {
   const notifySyncTick = usePendingTxStore((s) => s.notifySyncTick)
   const isActionPending = usePendingTxStore((s) => s.isActionPending)
   const isHeroActionPending = usePendingTxStore((s) => s.isHeroActionPending)
+  const { tutorialEnabled, setTutorialEnabled } = useSettingsStore()
 
   const [selectedHeroId, setSelectedHeroId] = useState(0)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -775,7 +778,7 @@ export function PlayScreen() {
       />
 
       <div className={`play-left-panels${mobilePanel && mobilePanel !== 'heroes' && mobilePanel !== 'logs' ? ' mobile-hidden' : ''}${mobilePanel === 'heroes' || mobilePanel === 'logs' ? ' mobile-open' : ''}`}>
-        <div className={`side-panel floating-panel panel-heroes${mobilePanel === 'logs' ? ' mobile-panel-hidden' : ''}`}>
+        <div className={`side-panel floating-panel panel-heroes${mobilePanel === 'logs' ? ' mobile-panel-hidden' : ''}`} data-tutorial="heroes">
 
           <button className="side-panel-header" onClick={() => setHeroesCollapsed((v) => !v)}>
             <span className="side-panel-title">Heroes</span>
@@ -834,7 +837,7 @@ export function PlayScreen() {
       </div>
 
       <div className={`play-right-panels${mobilePanel && mobilePanel !== 'brew' ? ' mobile-hidden' : ''}${mobilePanel === 'brew' ? ' mobile-open' : ''}`}>
-        <div className="side-panel floating-panel panel-brew">
+        <div className="side-panel floating-panel panel-brew" data-tutorial="brew">
           <button className="side-panel-header" onClick={() => setBrewCollapsed((v) => !v)}>
             <span className="side-panel-title">Brew</span>
             <span className="side-panel-chevron">{brewCollapsed ? '▸' : '▾'}</span>
@@ -871,6 +874,7 @@ export function PlayScreen() {
                 </button>
               </div>
 
+              <div data-tutorial="grimoire">
               {collectionTab === 'ingredients' ? (
                 <div data-claim-target="ingredients">
                   <IngredientsContent
@@ -904,6 +908,7 @@ export function PlayScreen() {
                 />
                 </div>
               )}
+              </div>
             </div>
           )}
         </div>
@@ -999,6 +1004,10 @@ export function PlayScreen() {
           </button>
         ))}
       </div>
+
+      {tutorialEnabled && (
+        <TutorialOverlay onComplete={() => setTutorialEnabled(false)} />
+      )}
 
       {potionTargetHeroId !== null && (
         <HeroPotionPopup
