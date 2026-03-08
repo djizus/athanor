@@ -45,7 +45,7 @@ const STEPS: TutorialStep[] = [
   {
     target: null,
     title: 'The Exploration Map',
-    body: 'Behind this panel is the map with <strong>5 zones</strong> of increasing danger. Each zone holds <strong>5 unique ingredients</strong> that can only be found there.<br/><br/>Select a hero, then click a zone to send them on an expedition.',
+    body: 'Behind this panel is the map with <strong>5 zones</strong> of increasing danger. Each zone holds <strong>5 unique ingredients</strong> that can only be found there.<br/><br/>Select a hero, then click a zone to send them on an expedition. You can also press <strong>1–5</strong> to send the selected hero to a zone directly.',
     buttonLabel: 'Next',
     placement: 'bottom',
   },
@@ -94,7 +94,7 @@ const STEPS: TutorialStep[] = [
   {
     target: 'collection-tabs',
     title: 'Ingredients & Grimoire Tabs',
-    body: 'Switch between <strong>Ingredients</strong> (your inventory) and <strong>Grimoire</strong> (your discovered potions) using these tabs.<br/><br/>Keyboard shortcuts: <strong>Tab</strong> to cycle heroes, <strong>I</strong> for Ingredients, <strong>G</strong> for Grimoire.',
+    body: 'Switch between <strong>Ingredients</strong> (your inventory) and <strong>Grimoire</strong> (your discovered potions) using these tabs.<br/><br/>Keyboard shortcuts: <strong>Tab</strong> to cycle heroes, <strong>1–5</strong> to explore zones, <strong>I</strong> for Ingredients, <strong>G</strong> for Grimoire.',
     buttonLabel: 'Next',
     placement: 'left',
   },
