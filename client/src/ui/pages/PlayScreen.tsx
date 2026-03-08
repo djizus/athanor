@@ -667,18 +667,29 @@ export function PlayScreen() {
 
   const journeyHeroes = useMemo(() =>
     heroes.map(h => {
-      const isExploring = Number(h.available_at) > now
+      const availableAt = Number(h.available_at)
+      const isExploring = availableAt > now
       const override = isExploring ? heroOverrides.get(h.id) : undefined
+      const isIdle = !isExploring
+      const heroGold = override ? override.bagGold : h.gold
+      const heroIngs = override
+        ? override.bagIngredients
+        : (h.ingredients != null && h.ingredients !== 0n
+          ? unpackCharacterIngredients(BigInt(h.ingredients))
+          : null)
+      const lootReady = isIdle && (heroGold > 0 || (heroIngs != null && heroIngs.some(q => q > 0)))
       return {
         hero_id: h.id,
         role: h.role,
         health: computeOptimisticHp(h, now, override),
         max_health: h.max_health,
-        gold: override ? override.bagGold : h.gold,
-        ingredients: override ? override.bagIngredients : h.ingredients,
+        gold: heroGold,
+        ingredients: heroIngs,
+        lootReady,
+        isClaimPending: isHeroActionPending(h.id, 'claim'),
       }
     }),
-    [heroes, heroOverrides, now],
+    [heroes, heroOverrides, now, isHeroActionPending],
   )
 
   return (
@@ -693,6 +704,7 @@ export function PlayScreen() {
         isGameOver={isGameOver}
         onExplore={(heroId: number, zoneId: number) => void handleExplore(heroId, zoneId)}
         onSelectHero={(id) => setSelectedHeroId(id)}
+        onClaim={(id) => void handleClaim(id)}
       />
 
       <StatusHUD

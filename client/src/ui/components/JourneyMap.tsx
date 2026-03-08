@@ -8,6 +8,7 @@ import {
   roleAssetUrl,
   ROLE_NAMES,
   ingredientAssetUrl,
+  displayGold,
 } from '@/game/constants'
 import type { HeroPosition } from '@/hooks/useExpeditionTracker'
 import type { HeroOverride } from '@/hooks/useExplorationLog'
@@ -34,7 +35,9 @@ interface HeroData {
   health: number
   max_health: number
   gold: number
-  ingredients: bigint | number[] | null
+  ingredients: number[] | null
+  lootReady: boolean
+  isClaimPending: boolean
 }
 
 export interface FloatingTextAnim {
@@ -56,12 +59,17 @@ interface JourneyMapProps {
   isGameOver: boolean
   onExplore: (heroId: number, zoneId: number) => void
   onSelectHero: (heroId: number) => void
+  onClaim: (heroId: number) => void
 }
 
-function HeroToken({ hero, small, selected, onClick }: { hero: HeroData; small?: boolean; selected?: boolean; onClick?: () => void }) {
+function HeroToken({ hero, small, selected, onClick, onClaim }: {
+  hero: HeroData; small?: boolean; selected?: boolean
+  onClick?: () => void; onClaim?: () => void
+}) {
   const roleIdx = hero.role > 0 ? hero.role - 1 : hero.hero_id
   const hpPct = hero.max_health > 0 ? Math.min(100, (hero.health / hero.max_health) * 100) : 0
   const hpColor = hpPct > 50 ? 'var(--accent-green)' : hpPct > 25 ? '#ff9800' : 'var(--accent-red)'
+  const hasLoot = hero.gold > 0 || (hero.ingredients && hero.ingredients.some(q => q > 0))
 
   return (
     <motion.div
@@ -78,6 +86,25 @@ function HeroToken({ hero, small, selected, onClick }: { hero: HeroData; small?:
       <div className="hero-token-hp">
         <div className="hero-token-hp-fill" style={{ width: `${hpPct}%`, background: hpColor }} />
       </div>
+      {hasLoot && (
+        <div className="hero-token-bag">
+          {hero.gold > 0 && <span className="hero-token-bag-gold">{displayGold(hero.gold)}g</span>}
+          {hero.ingredients && hero.ingredients.map((qty, idx) =>
+            qty > 0 ? (
+              <img key={idx} className="hero-token-bag-icon" src={ingredientAssetUrl(idx)} alt={INGREDIENT_NAMES[idx]} title={`${INGREDIENT_NAMES[idx]} x${qty}`} />
+            ) : null,
+          )}
+        </div>
+      )}
+      {hero.lootReady && onClaim && (
+        <button
+          className="hero-token-claim"
+          onClick={(e) => { e.stopPropagation(); onClaim() }}
+          disabled={hero.isClaimPending}
+        >
+          {hero.isClaimPending ? '...' : 'Claim'}
+        </button>
+      )}
     </motion.div>
   )
 }
@@ -155,6 +182,7 @@ function ZoneNode({
   canSendHero,
   selectedHeroId,
   onSelectHero,
+  onClaim,
   floatingTexts,
   onFloatingTextComplete,
   onHover,
@@ -170,6 +198,7 @@ function ZoneNode({
   canSendHero: boolean
   selectedHeroId: number
   onSelectHero: (heroId: number) => void
+  onClaim: (heroId: number) => void
   floatingTexts: FloatingTextAnim[]
   onFloatingTextComplete: (id: string) => void
   onHover: () => void
@@ -207,18 +236,16 @@ function ZoneNode({
       {heroes.length > 0 && (
         <div className="zone-node-heroes">
           {heroes.map(hero => (
-            <HeroToken key={hero.hero_id} hero={hero} small selected={hero.hero_id === selectedHeroId} onClick={() => onSelectHero(hero.hero_id)} />
+            <HeroToken key={hero.hero_id} hero={hero} small selected={hero.hero_id === selectedHeroId} onClick={() => onSelectHero(hero.hero_id)} onClaim={() => onClaim(hero.hero_id)} />
           ))}
         </div>
       )}
 
-      {canSendHero ? (
+      {canSendHero && (
         <button className="zone-action-btn" onClick={onClick}>
           <span className="zone-skulls">{'💀'.repeat(zoneId + 1)}</span>
           <span className="zone-action-label">Explore</span>
         </button>
-      ) : (
-        <span className="zone-skulls zone-skulls-idle">{'💀'.repeat(zoneId + 1)}</span>
       )}
 
       <AnimatePresence>
@@ -236,6 +263,7 @@ function AthanorNode({
   heroes,
   selectedHeroId,
   onSelectHero,
+  onClaim,
   floatingTexts,
   onFloatingTextComplete,
   hintText,
@@ -243,6 +271,7 @@ function AthanorNode({
   heroes: HeroData[]
   selectedHeroId: number
   onSelectHero: (heroId: number) => void
+  onClaim: (heroId: number) => void
   floatingTexts: FloatingTextAnim[]
   onFloatingTextComplete: (id: string) => void
   hintText: string | null
@@ -266,7 +295,7 @@ function AthanorNode({
       {heroes.length > 0 && (
         <div className="zone-node-heroes">
           {heroes.map(hero => (
-            <HeroToken key={hero.hero_id} hero={hero} selected={hero.hero_id === selectedHeroId} onClick={() => onSelectHero(hero.hero_id)} />
+            <HeroToken key={hero.hero_id} hero={hero} selected={hero.hero_id === selectedHeroId} onClick={() => onSelectHero(hero.hero_id)} onClaim={() => onClaim(hero.hero_id)} />
           ))}
         </div>
       )}
@@ -294,6 +323,7 @@ export function JourneyMap({
   isGameOver,
   onExplore,
   onSelectHero,
+  onClaim,
 }: JourneyMapProps) {
   const [hoveredZone, setHoveredZone] = useState<number | null>(null)
   const particlesRef = useRef(Array.from({ length: 20 }, (_, i) => i))
@@ -398,6 +428,7 @@ export function JourneyMap({
             canSendHero={canSendSelected}
             selectedHeroId={selectedHeroId}
             onSelectHero={onSelectHero}
+            onClaim={onClaim}
             floatingTexts={textsByZone.get(zoneId) ?? []}
             onFloatingTextComplete={onFloatingTextComplete}
             onHover={() => setHoveredZone(zoneId)}
@@ -413,6 +444,7 @@ export function JourneyMap({
           heroes={heroesByZone.get(-1) ?? []}
           selectedHeroId={selectedHeroId}
           onSelectHero={onSelectHero}
+          onClaim={onClaim}
           floatingTexts={textsByZone.get(-1) ?? []}
           onFloatingTextComplete={onFloatingTextComplete}
           hintText={canSendSelected ? `Select a zone to send ${ROLE_NAMES[selectedHero!.role > 0 ? selectedHero!.role - 1 : selectedHeroId] ?? 'hero'}` : null}
