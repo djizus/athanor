@@ -74,7 +74,7 @@ function spawnClaimParticles(
   const sy = sourceRect.top + sourceRect.height / 2
 
   const goldTarget = document.querySelector('[data-claim-target="gold"]')
-  const invTarget = document.querySelector('[data-claim-target="inventory"]')
+  const invTarget = document.querySelector('[data-claim-target="ingredients"]')
 
   if (hero.gold > 0 && goldTarget) {
     const tr = goldTarget.getBoundingClientRect()
@@ -99,7 +99,7 @@ function spawnClaimParticles(
   }
 }
 
-function spawnFlyingOrb(
+export function spawnFlyingOrb(
   fromX: number, fromY: number,
   toX: number, toY: number,
   iconSrc: string,
@@ -181,10 +181,12 @@ function HeroToken({ hero, small, selected, onClick, onClaim }: {
     <motion.div
       className={`hero-token${small ? ' hero-token-sm' : ''}${selected ? ' hero-token-selected' : ''}`}
       layoutId={`journey-hero-${hero.hero_id}`}
+      data-hero-id={hero.hero_id}
       transition={{ type: 'spring', stiffness: 200, damping: 25 }}
       onClick={(e) => { e.stopPropagation(); onClick?.() }}
     >
       <div className="hero-token-frame-wrap">
+        {selected && <div className="hero-token-select-glow" />}
         <HpRing pct={hpPct} color={hpColor} cfg={ringCfg} selected={selected} />
         <img
           className="hero-token-frame"
@@ -199,30 +201,35 @@ function HeroToken({ hero, small, selected, onClick, onClaim }: {
         />
         {claimBurst && <div className="hero-token-claim-burst" />}
       </div>
+      {selected && (
+        <span className="hero-token-name">{ROLE_NAMES[roleIdx] ?? 'Hero'}</span>
+      )}
 
       {hasLoot && (
         <div
           ref={satchelRef}
-          className={`hero-token-satchel${hero.lootReady ? ' hero-token-satchel-ready' : ''}${hero.isClaimPending ? ' hero-token-satchel-pending' : ''}`}
+          className={`hero-token-loot${hero.lootReady ? ' hero-token-loot-ready' : ''}${hero.isClaimPending ? ' hero-token-loot-pending' : ''}`}
           onClick={hero.lootReady ? handleClaim : undefined}
           role={hero.lootReady ? 'button' : undefined}
         >
-          <img className="hero-token-satchel-icon" src="/assets/ui/satchel.webp" alt="" draggable={false} />
-          <div className="hero-token-satchel-contents">
+          <div className="hero-token-loot-items">
             {hero.gold > 0 && (
-              <span className="hero-token-satchel-gold">
-                <img className="hero-token-satchel-coin" src="/assets/ui/gold-coin.webp" alt="" />
+              <span className="hero-token-loot-gold">
+                <img className="hero-token-loot-coin" src="/assets/ui/gold-coin.webp" alt="" />
                 {displayGold(hero.gold)}
               </span>
             )}
             {hero.ingredients && hero.ingredients.map((qty, idx) =>
               qty > 0 ? (
-                <img key={idx} className="hero-token-satchel-ing" src={ingredientAssetUrl(idx)} alt={INGREDIENT_NAMES[idx]} title={`${INGREDIENT_NAMES[idx]} x${qty}`} />
+                <span key={idx} className="hero-token-loot-ing-wrap">
+                  <img className="hero-token-loot-ing" src={ingredientAssetUrl(idx)} alt={INGREDIENT_NAMES[idx]} title={`${INGREDIENT_NAMES[idx]} x${qty}`} />
+                  {qty > 1 && <span className="hero-token-loot-ing-qty">{qty}</span>}
+                </span>
               ) : null,
             )}
           </div>
           {hero.lootReady && (
-            <span className="hero-token-satchel-claim-hint">
+            <span className="hero-token-loot-claim">
               {hero.isClaimPending ? '...' : 'Claim'}
             </span>
           )}
@@ -269,6 +276,7 @@ function FloatingText({ text, color, icon, onComplete }: { text: string; color: 
 
 const NODE_POSITIONS = {
   athanor: { x: 50, y: 80 },
+  lineOrigin: { x: 50, y: 76 },
   zones: [
     { x: 38, y: 62 },
     { x: 62, y: 56 },
@@ -514,7 +522,7 @@ export function JourneyMap({
     && selectedHero.health > 0
     && (!selectedPos || (selectedPos.zoneIndex === -1 && !selectedPos.returning))
 
-  const ath = NODE_POSITIONS.athanor
+  const origin = NODE_POSITIONS.lineOrigin
   const zones = NODE_POSITIONS.zones
 
   return (
@@ -536,7 +544,7 @@ export function JourneyMap({
         {zones.map((pos, i) => (
           <g key={i}>
             <line
-              x1={`${ath.x}%`} y1={`${ath.y}%`}
+              x1={`${origin.x}%`} y1={`${origin.y}%`}
               x2={`${pos.x}%`} y2={`${pos.y}%`}
               stroke="rgba(0,0,0,0.8)"
               strokeWidth="5"
@@ -544,7 +552,7 @@ export function JourneyMap({
               strokeLinecap="round"
             />
             <line
-              x1={`${ath.x}%`} y1={`${ath.y}%`}
+              x1={`${origin.x}%`} y1={`${origin.y}%`}
               x2={`${pos.x}%`} y2={`${pos.y}%`}
               stroke={ZONE_COLORS[i]}
               strokeWidth="2"

@@ -16,7 +16,7 @@ import { useNavigationStore } from '@/stores/navigationStore'
 import { usePendingTxStore } from '@/stores/pendingTxStore'
 import { txToast } from '@/stores/toastStore'
 import { soundManager } from '@/sound/SoundManager'
-import { JourneyMap } from '@/ui/components/JourneyMap'
+import { JourneyMap, spawnFlyingOrb } from '@/ui/components/JourneyMap'
 import type { FloatingTextAnim } from '@/ui/components/JourneyMap'
 import {
   EFFECT_CATEGORIES,
@@ -717,7 +717,7 @@ export function PlayScreen() {
       />
 
       <div className={`play-left-panels${mobilePanel && mobilePanel !== 'heroes' && mobilePanel !== 'logs' ? ' mobile-hidden' : ''}${mobilePanel === 'heroes' || mobilePanel === 'logs' ? ' mobile-open' : ''}`}>
-        <div className={`side-panel floating-panel panel-heroes${mobilePanel === 'logs' ? ' mobile-panel-hidden' : ''}`} data-claim-target="inventory">
+        <div className={`side-panel floating-panel panel-heroes${mobilePanel === 'logs' ? ' mobile-panel-hidden' : ''}`}>
 
           <button className="side-panel-header" onClick={() => setHeroesCollapsed((v) => !v)}>
             <span className="side-panel-title">Heroes</span>
@@ -816,15 +816,18 @@ export function PlayScreen() {
               </div>
 
               {collectionTab === 'ingredients' ? (
-                <IngredientsContent
-                  inventory={inventory}
-                  slotA={slotA}
-                  slotB={slotB}
-                  remainingTries={game?.remaining_tries ?? 300}
-                  onPickIngredient={handlePickIngredient}
-                />
+                <div data-claim-target="ingredients">
+                  <IngredientsContent
+                    inventory={inventory}
+                    slotA={slotA}
+                    slotB={slotB}
+                    remainingTries={game?.remaining_tries ?? 300}
+                    onPickIngredient={handlePickIngredient}
+                  />
+                </div>
               ) : (
-                <GrimoireContent
+                <div data-claim-target="grimoire">
+                  <GrimoireContent
                   grimoire={game?.grimoire ?? 0}
                   effectQuantities={effectQuantities}
                   recipes={recipes}
@@ -843,6 +846,7 @@ export function PlayScreen() {
                     setSlotB(b >= 0 ? b : null)
                   }}
                 />
+                </div>
               )}
             </div>
           )}
@@ -948,6 +952,23 @@ export function PlayScreen() {
           effectQuantities={effectQuantities}
           isBuffPending={isBuffPending}
           onApply={async (selections) => {
+            const grimoireEl = document.querySelector('[data-claim-target="grimoire"]')
+            const heroEl = document.querySelector(`[data-hero-id="${potionTargetHeroId}"]`)
+            if (grimoireEl && heroEl) {
+              const src = grimoireEl.getBoundingClientRect()
+              const dst = heroEl.getBoundingClientRect()
+              selections.forEach(({ effect }, i) => {
+                setTimeout(() => {
+                  spawnFlyingOrb(
+                    src.left + src.width / 2,
+                    src.top + src.height / 2,
+                    dst.left + dst.width / 2,
+                    dst.top + dst.height / 2,
+                    effectAssetUrl(effect),
+                  )
+                }, i * 100)
+              })
+            }
             for (const { effect, quantity } of selections) {
               await handleBuff(effect, potionTargetHeroId, quantity)
             }
