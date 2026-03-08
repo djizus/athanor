@@ -169,6 +169,7 @@ function HeroToken({ hero, small, selected, disabled, onClick, onClaim }: {
   const [claimBurst, setClaimBurst] = useState(false)
   const [pulsingKeys, setPulsingKeys] = useState<Set<string>>(new Set())
   const frameRef = useRef<HTMLDivElement>(null)
+  const orbitElRef = useRef<HTMLDivElement>(null)
   const prevItemsRef = useRef<Map<string, number>>(new Map())
   const roleIdx = hero.role > 0 ? hero.role - 1 : hero.hero_id
   const hpPct = hero.max_health > 0 ? Math.min(100, (hero.health / hero.max_health) * 100) : 0
@@ -218,6 +219,20 @@ function HeroToken({ hero, small, selected, disabled, onClick, onClaim }: {
   const orbitRadius = small ? 42 : 56
   const itemSize = small ? 24 : 30
 
+  useEffect(() => {
+    if (!hasLoot) return
+    let raf: number
+    const tick = () => {
+      if (orbitElRef.current) {
+        const deg = (performance.now() / 60000 * 360) % 360
+        orbitElRef.current.style.setProperty('--orbit-angle', `${deg}deg`)
+      }
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [hasLoot])
+
   const handleClaim = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
     if (!hero.lootReady || hero.isClaimPending) return
@@ -259,6 +274,7 @@ function HeroToken({ hero, small, selected, disabled, onClick, onClaim }: {
 
         {hasLoot && (
           <div
+            ref={orbitElRef}
             className={`hero-token-orbit${hero.lootReady ? ' hero-token-orbit-ready' : ''}${hero.isClaimPending ? ' hero-token-orbit-pending' : ''}`}
             style={orbitColor ? { ['--orbit-color' as string]: orbitColor } : undefined}
             onClick={hero.lootReady ? handleClaim : undefined}
