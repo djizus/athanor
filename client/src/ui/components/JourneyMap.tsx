@@ -1,11 +1,29 @@
 import { useMemo, useState } from 'react'
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion'
-import { ZONE_NAMES, ZONE_COLORS, roleAssetUrl, ROLE_NAMES } from '@/game/constants'
+import {
+  ZONE_NAMES,
+  ZONE_COLORS,
+  INGREDIENT_NAMES,
+  DEFAULT_INGREDIENTS_PER_ZONE,
+  roleAssetUrl,
+  ROLE_NAMES,
+  ingredientAssetUrl,
+} from '@/game/constants'
 import type { HeroPosition } from '@/hooks/useExpeditionTracker'
 import type { HeroOverride } from '@/hooks/useExplorationLog'
 import './JourneyMap.css'
 
 const ZONE_DRAIN = [1, 2, 3, 4, 5]
+const ZONE_GOLD_RANGE: [number, number][] = [
+  [600, 1500],
+  [500, 1200],
+  [400, 900],
+  [300, 600],
+  [200, 500],
+]
+const ZONE_RISK_LABEL = ['Low', 'Moderate', 'High', 'Extreme', 'Deadly'] as const
+const ZONE_RISK_COLOR = ['#40c060', '#a0c040', '#f0c040', '#e07030', '#d04050'] as const
+
 const ZONE_PORTAL_KEYS = [
   'portal-hollows', 'portal-cavern', 'portal-spire', 'portal-abyss', 'portal-crystalveil',
 ] as const
@@ -78,56 +96,49 @@ function FloatingText({ text, color, icon, onComplete }: { text: string; color: 
 }
 
 const NODE_POSITIONS = {
-  athanor: { x: 50, y: 85 },
+  athanor: { x: 50, y: 78 },
   zones: [
-    { x: 42, y: 68 },
-    { x: 58, y: 53 },
-    { x: 42, y: 38 },
-    { x: 58, y: 23 },
-    { x: 50, y: 8 },
+    { x: 44, y: 65 },
+    { x: 56, y: 53 },
+    { x: 44, y: 41 },
+    { x: 56, y: 29 },
+    { x: 50, y: 17 },
   ],
 } as const
 
-function ConstellationLine({ x1, y1, x2, y2, color, active }: {
-  x1: number; y1: number; x2: number; y2: number; color: string; active: boolean
-}) {
-  return (
-    <>
-      <line
-        x1={`${x1}%`} y1={`${y1}%`}
-        x2={`${x2}%`} y2={`${y2}%`}
-        stroke={active ? color : '#c8a040'}
-        strokeWidth={active ? 3 : 1.5}
-        strokeDasharray={active ? 'none' : '4 6'}
-        strokeLinecap="round"
-        strokeOpacity={active ? 0.9 : 0.5}
-        className={active ? 'constellation-line-active' : 'constellation-line'}
-      />
-      {active && (
-        <line
-          x1={`${x1}%`} y1={`${y1}%`}
-          x2={`${x2}%`} y2={`${y2}%`}
-          stroke={color}
-          strokeWidth={6}
-          strokeLinecap="round"
-          strokeOpacity={0.15}
-          className="constellation-line-glow"
-        />
-      )}
-    </>
-  )
-}
-
-function ZoneTooltip({ zoneId, canSend }: { zoneId: number; canSend: boolean }) {
-  const name = ZONE_NAMES[zoneId]
+function ZoneTooltip({ zoneId }: { zoneId: number }) {
   const drain = ZONE_DRAIN[zoneId]
+  const [goldMin, goldMax] = ZONE_GOLD_RANGE[zoneId]
+  const riskLabel = ZONE_RISK_LABEL[zoneId]
+  const riskColor = ZONE_RISK_COLOR[zoneId]
+  const startIdx = zoneId * DEFAULT_INGREDIENTS_PER_ZONE
+  const ingredientIds = Array.from({ length: DEFAULT_INGREDIENTS_PER_ZONE }, (_, i) => startIdx + i)
 
   return (
     <div className="zone-tooltip">
-      <span className="zone-tooltip-name" style={{ color: ZONE_COLORS[zoneId] }}>{name}</span>
-      <span className="zone-tooltip-stat zone-tooltip-stat-drain">HP Drain: {drain}/tick</span>
-      <span className="zone-tooltip-stat">Zone {zoneId + 1} of 5</span>
-      {canSend && <span className="zone-tooltip-stat" style={{ color: 'var(--accent-gold)' }}>Click to explore</span>}
+      <div className="zone-tooltip-header">
+        <span className="zone-tooltip-name" style={{ color: ZONE_COLORS[zoneId] }}>
+          {ZONE_NAMES[zoneId]}
+        </span>
+        <span className="zone-tooltip-risk" style={{ color: riskColor }}>
+          {'●'.repeat(zoneId + 1)}{'○'.repeat(4 - zoneId)} {riskLabel}
+        </span>
+      </div>
+      <div className="zone-tooltip-stats">
+        <span className="zone-tooltip-gold">{goldMin}–{goldMax}g</span>
+        <span className="zone-tooltip-drain">{drain} HP/tick</span>
+      </div>
+      <div className="zone-tooltip-ingredients">
+        {ingredientIds.map(id => (
+          <img
+            key={id}
+            className="zone-tooltip-ingredient"
+            src={ingredientAssetUrl(id)}
+            alt={INGREDIENT_NAMES[id]}
+            title={INGREDIENT_NAMES[id]}
+          />
+        ))}
+      </div>
     </div>
   )
 }
@@ -160,10 +171,12 @@ function ZoneNode({
 }) {
   const color = ZONE_COLORS[zoneId]
   const portalKey = ZONE_PORTAL_KEYS[zoneId]
+  const floatDuration = 4 + zoneId * 0.7
+  const floatDelay = zoneId * -1.3
 
   return (
     <div
-      className={`zone-node${isActive ? ' zone-node-active' : ''}${canSendHero ? ' zone-node-clickable' : ''}${isHovered ? ' zone-node-hovered' : ''}`}
+      className={`zone-node${isActive ? ' zone-node-active' : ''}${isHovered ? ' zone-node-hovered' : ''}`}
       style={{
         left: `${x}%`,
         top: `${y}%`,
@@ -171,7 +184,6 @@ function ZoneNode({
       }}
       onMouseEnter={onHover}
       onMouseLeave={onLeave}
-      onClick={canSendHero ? onClick : undefined}
     >
       <div className="zone-node-glow" />
       {canSendHero && <div className="zone-node-ring" />}
@@ -179,8 +191,11 @@ function ZoneNode({
         className="zone-node-icon"
         src={`/assets/zones/${portalKey}.webp`}
         alt={ZONE_NAMES[zoneId]}
+        style={{
+          animationDuration: `${floatDuration}s`,
+          animationDelay: `${floatDelay}s`,
+        }}
       />
-      <span className="zone-node-label">{ZONE_NAMES[zoneId]}</span>
 
       {heroes.length > 0 && (
         <div className="zone-node-heroes">
@@ -190,13 +205,19 @@ function ZoneNode({
         </div>
       )}
 
+      {canSendHero && (
+        <button className="zone-explore-btn" onClick={onClick}>
+          Explore
+        </button>
+      )}
+
       <AnimatePresence>
         {floatingTexts.map(ft => (
           <FloatingText key={ft.id} text={ft.text} color={ft.color} icon={ft.icon} onComplete={() => onFloatingTextComplete(ft.id)} />
         ))}
       </AnimatePresence>
 
-      {isHovered && <ZoneTooltip zoneId={zoneId} canSend={canSendHero} />}
+      {isHovered && <ZoneTooltip zoneId={zoneId} />}
     </div>
   )
 }
@@ -223,6 +244,7 @@ function AthanorNode({
         className="zone-node-icon athanor-icon"
         src="/assets/zones/portal-athanor.webp"
         alt="Athanor"
+        style={{ animationDuration: '5s', animationDelay: '-2s' }}
       />
       <span className="zone-node-label athanor-label">Athanor</span>
 
@@ -298,11 +320,13 @@ export function JourneyMap({
   const canSendSelected = selectedHero != null
     && !isGameOver
     && selectedHero.health > 0
-    && !heroPositions.get(selectedHeroId)?.returning
     && (() => {
       const pos = heroPositions.get(selectedHeroId)
-      return !pos || pos.zoneIndex === -1
+      return !pos || (pos.zoneIndex === -1 && !pos.returning)
     })()
+
+  const ath = NODE_POSITIONS.athanor
+  const zones = NODE_POSITIONS.zones
 
   return (
     <div className="journey-map">
@@ -313,34 +337,36 @@ export function JourneyMap({
       />
       <div className="constellation-overlay" />
 
-      <svg className="constellation-lines" viewBox="0 0 100 100" preserveAspectRatio="none">
-        <ConstellationLine
-          x1={NODE_POSITIONS.athanor.x}
-          y1={NODE_POSITIONS.athanor.y}
-          x2={NODE_POSITIONS.zones[0].x}
-          y2={NODE_POSITIONS.zones[0].y}
-          color={ZONE_COLORS[0]}
-          active={activeZones.has(0)}
+      <svg className="constellation-lines">
+        <line
+          x1={`${ath.x}%`} y1={`${ath.y}%`}
+          x2={`${zones[0].x}%`} y2={`${zones[0].y}%`}
+          stroke={ZONE_COLORS[0]}
+          strokeWidth="2"
+          strokeDasharray="8 10"
+          strokeLinecap="round"
+          strokeOpacity={activeZones.has(0) ? '0.9' : '0.45'}
         />
-        {NODE_POSITIONS.zones.map((pos, i) => {
+        {zones.map((pos, i) => {
           if (i === 0) return null
-          const prev = NODE_POSITIONS.zones[i - 1]
+          const prev = zones[i - 1]
           return (
-            <ConstellationLine
+            <line
               key={i}
-              x1={prev.x}
-              y1={prev.y}
-              x2={pos.x}
-              y2={pos.y}
-              color={ZONE_COLORS[i]}
-              active={activeZones.has(i)}
+              x1={`${prev.x}%`} y1={`${prev.y}%`}
+              x2={`${pos.x}%`} y2={`${pos.y}%`}
+              stroke={ZONE_COLORS[i]}
+              strokeWidth="2"
+              strokeDasharray="8 10"
+              strokeLinecap="round"
+              strokeOpacity={activeZones.has(i) ? '0.9' : '0.45'}
             />
           )
         })}
       </svg>
 
       <LayoutGroup>
-        {NODE_POSITIONS.zones.map((pos, zoneId) => (
+        {zones.map((pos, zoneId) => (
           <ZoneNode
             key={zoneId}
             zoneId={zoneId}

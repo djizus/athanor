@@ -714,11 +714,9 @@ export function PlayScreen() {
                   heroPositions={heroPositions}
                   onSelectHero={(id) => setSelectedHeroId(id)}
                   onRecruit={() => void handleRecruit()}
-                  onExplore={(id) => setSelectedHeroId(id)}
                   onClaim={(id) => void handleClaim(id)}
                   hasPotions={hasPotions}
                   isRecruitPending={isRecruitPending}
-                  isExplorePending={isHeroActionPending(slot, 'explore')}
                   isClaimPending={isHeroActionPending(slot, 'claim')}
                   isBuffPending={isBuffPending}
                   onApplyPotion={(id) => setPotionTargetHeroId(id)}
@@ -1087,11 +1085,9 @@ interface HeroSlotProps {
   heroPositions: Map<number, HeroPosition>
   onSelectHero: (heroId: number) => void
   onRecruit: () => void
-  onExplore: (characterId: number) => void
   onClaim: (characterId: number) => void
   hasPotions: boolean
   isRecruitPending: boolean
-  isExplorePending: boolean
   isClaimPending: boolean
   isBuffPending: boolean
   onApplyPotion: (heroId: number) => void
@@ -1109,11 +1105,9 @@ function HeroSlot({
   heroPositions,
   onSelectHero,
   onRecruit,
-  onExplore,
   onClaim,
   hasPotions,
   isRecruitPending,
-  isExplorePending,
   isClaimPending,
   isBuffPending,
   onApplyPotion,
@@ -1268,13 +1262,6 @@ function HeroSlot({
         ) : null
       })()}
       <div className="hero-card-btn-row">
-        <button
-          className="btn-primary btn-sm"
-          onClick={(e) => { e.stopPropagation(); onExplore(hero.id) }}
-          disabled={isGameOver || isExploring || displayHpVal <= 0 || isExplorePending}
-        >
-          {isExplorePending && !isGameOver ? 'Exploring...' : 'Explore'}
-        </button>
         <button
           className="btn-primary btn-sm btn-loot"
           onClick={(e) => { e.stopPropagation(); onClaim(hero.id) }}
