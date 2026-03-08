@@ -684,7 +684,20 @@ export function PlayScreen() {
   }
 
   const gold = game?.gold ?? 0
-  const hasPotions = effectQuantities.some((q) => q > 0)
+  const availablePotionTypes = useMemo(() => {
+    const types: string[] = []
+    const categoryTotals: Record<string, number> = {}
+    for (let i = 0; i < effectQuantities.length; i++) {
+      if (effectQuantities[i] > 0) {
+        const cat = EFFECT_CATEGORIES[i]
+        categoryTotals[cat] = (categoryTotals[cat] ?? 0) + effectQuantities[i]
+      }
+    }
+    for (const cat of ['health', 'power', 'regen'] as const) {
+      if ((categoryTotals[cat] ?? 0) > 0) types.push(cat)
+    }
+    return types
+  }, [effectQuantities])
   const heroCount = game ? bitmapPopcount(game.heroes) : Math.max(1, heroes.length)
   const hintCost = game?.hint_price ?? 4
   const startedAt = game ? Number(game.started_at) : now
@@ -787,7 +800,7 @@ export function PlayScreen() {
                   heroPositions={heroPositions}
                   onSelectHero={(id) => setSelectedHeroId(id)}
                   onRecruit={() => void handleRecruit()}
-                  hasPotions={hasPotions}
+                  availablePotionTypes={availablePotionTypes}
                   isRecruitPending={isRecruitPending}
                   isBuffPending={isBuffPending}
                   onApplyPotion={(id) => setPotionTargetHeroId(id)}
@@ -1177,7 +1190,7 @@ interface HeroSlotProps {
   heroPositions: Map<number, HeroPosition>
   onSelectHero: (heroId: number) => void
   onRecruit: () => void
-  hasPotions: boolean
+  availablePotionTypes: string[]
   isRecruitPending: boolean
   isBuffPending: boolean
   onApplyPotion: (heroId: number) => void
@@ -1195,7 +1208,7 @@ function HeroSlot({
   heroPositions,
   onSelectHero,
   onRecruit,
-  hasPotions,
+  availablePotionTypes,
   isRecruitPending,
   isBuffPending,
   onApplyPotion,
@@ -1287,13 +1300,22 @@ function HeroSlot({
       <div className="hero-card-name-row">
         <span className="hero-card-name">{roleName}</span>
         <span className={`hero-card-status ${statusClass}`}>{statusText}</span>
-        {hasPotions && isIdle && !isGameOver && (
+        {isIdle && !isGameOver && (
           <button
             className="btn-sm btn-apply-inline"
             onClick={(e) => { e.stopPropagation(); onApplyPotion(hero.id) }}
-            disabled={isBuffPending}
+            disabled={isBuffPending || availablePotionTypes.length === 0}
           >
-            <img className="btn-apply-icon" src="/assets/potions/potion-health.webp" alt="" /> Apply
+            {availablePotionTypes.length > 0 ? (
+              <>
+                Apply
+                {availablePotionTypes.map(type => (
+                  <img key={type} className="btn-apply-icon" src={`/assets/potions/potion-${type}.webp`} alt={type} />
+                ))}
+              </>
+            ) : (
+              <span className="btn-apply-no-potions">No potions</span>
+            )}
           </button>
         )}
       </div>

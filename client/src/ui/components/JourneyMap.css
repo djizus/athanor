@@ -109,6 +109,11 @@
   70% { transform: translateY(2px) scale(0.985); }
 }
 
+.zone-node-icon-clickable {
+  cursor: pointer;
+  pointer-events: auto;
+}
+
 .zone-node-hovered .zone-node-icon {
   box-shadow:
     0 0 24px rgba(0, 0, 0, 0.4),
@@ -361,94 +366,93 @@
   }
 }
 
-/* ── Loot Panel ──── */
+/* ── Orbit Loot ──── */
 
-.hero-token-loot {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  background: linear-gradient(
-    180deg,
-    rgba(40, 28, 12, 0.92) 0%,
-    rgba(24, 16, 6, 0.95) 100%
-  );
-  border: 1px solid rgba(160, 120, 40, 0.45);
-  border-radius: 8px;
-  padding: 5px 10px;
-  min-width: 60px;
-  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
-  position: relative;
-  box-shadow: inset 0 1px 0 rgba(200, 160, 64, 0.08), 0 2px 8px rgba(0, 0, 0, 0.6);
-}
-
-.hero-token-loot-items {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  flex-wrap: nowrap;
-}
-
-.hero-token-loot-coin {
-  border-color: rgba(240, 192, 64, 0.4);
-}
-
-.hero-token-loot-ing-wrap {
-  position: relative;
-  display: inline-flex;
-}
-
-.hero-token-loot-ing {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  object-fit: cover;
-  flex-shrink: 0;
-  border: 1px solid rgba(200, 160, 64, 0.25);
-  background: rgba(0, 0, 0, 0.3);
-}
-
-.hero-token-loot-ing-qty {
+.hero-token-orbit {
   position: absolute;
-  bottom: -3px;
-  right: -5px;
-  font-size: 0.5rem;
-  font-weight: 700;
-  color: var(--accent-gold);
-  background: rgba(20, 12, 4, 0.9);
-  border: 1px solid rgba(160, 120, 40, 0.4);
-  border-radius: 4px;
-  padding: 0 3px;
-  line-height: 1.2;
+  inset: 0;
+  pointer-events: none;
+  animation: orbit-rotate 60s linear infinite;
+  z-index: 5;
 }
 
-.hero-token-loot-ready {
+.hero-token-orbit-ready {
+  pointer-events: auto;
   cursor: pointer;
-  border-color: var(--accent-gold);
-  animation: loot-panel-glow 1.5s ease-in-out infinite;
 }
 
-.hero-token-loot-ready:hover {
-  background: linear-gradient(180deg, rgba(60, 42, 14, 0.95) 0%, rgba(36, 24, 8, 0.98) 100%);
-  transform: scale(1.06);
-  box-shadow: 0 0 14px rgba(240, 192, 64, 0.35), inset 0 1px 0 rgba(200, 160, 64, 0.15);
+.hero-token-orbit-ready .hero-token-orbit-item {
+  animation: orbit-item-glow 1.5s ease-in-out infinite;
 }
 
-.hero-token-loot-ready:active {
-  transform: scale(0.95);
+.hero-token-orbit-ready:hover .hero-token-orbit-item {
+  filter: drop-shadow(0 0 6px rgba(240, 192, 64, 0.5));
 }
 
-.hero-token-loot-pending {
+.hero-token-orbit-ready:active .hero-token-orbit-item {
+  transform: translate(-50%, -50%) scale(0.9);
+}
+
+.hero-token-orbit-pending {
   opacity: 0.5;
   pointer-events: none;
 }
 
-@keyframes loot-panel-glow {
+@keyframes orbit-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.hero-token-orbit-item {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid rgba(200, 160, 64, 0.35);
+  background: rgba(10, 8, 4, 0.85);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+  animation: orbit-counter-rotate 60s linear infinite;
+  transition: filter 0.2s ease;
+}
+
+@keyframes orbit-counter-rotate {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(-360deg); }
+}
+
+@keyframes orbit-item-glow {
   0%, 100% {
-    box-shadow: inset 0 1px 0 rgba(200, 160, 64, 0.08), 0 2px 8px rgba(0, 0, 0, 0.6);
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+    border-color: rgba(200, 160, 64, 0.35);
   }
   50% {
-    box-shadow: inset 0 1px 0 rgba(200, 160, 64, 0.15), 0 0 14px rgba(240, 192, 64, 0.35);
+    box-shadow: 0 0 10px rgba(240, 192, 64, 0.35);
+    border-color: var(--accent-gold);
   }
+}
+
+.hero-token-orbit-icon {
+  width: 80%;
+  height: 80%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.hero-token-orbit-qty {
+  position: absolute;
+  bottom: -3px;
+  right: -5px;
+  font-size: 0.48rem;
+  font-weight: 700;
+  color: var(--accent-gold);
+  background: rgba(20, 12, 4, 0.92);
+  border: 1px solid rgba(160, 120, 40, 0.45);
+  border-radius: 4px;
+  padding: 0 3px;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 /* ── Zone Tooltip ──── */
@@ -709,15 +713,12 @@
     height: 42px;
   }
 
-  .hero-token-loot {
-    min-width: 48px;
-    padding: 3px 6px;
-    gap: 3px;
+  .hero-token-orbit-item {
+    border-width: 1px;
   }
 
-  .hero-token-loot-ing {
-    width: 20px;
-    height: 20px;
+  .hero-token-orbit-qty {
+    font-size: 0.42rem;
   }
 
   .athanor-label {

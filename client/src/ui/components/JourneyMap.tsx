@@ -159,20 +159,38 @@ function HeroToken({ hero, small, selected, onClick, onClaim }: {
   onClick?: () => void; onClaim?: () => void
 }) {
   const [claimBurst, setClaimBurst] = useState(false)
-  const satchelRef = useRef<HTMLDivElement>(null)
+  const frameRef = useRef<HTMLDivElement>(null)
   const roleIdx = hero.role > 0 ? hero.role - 1 : hero.hero_id
   const hpPct = hero.max_health > 0 ? Math.min(100, (hero.health / hero.max_health) * 100) : 0
   const hpColor = hpPct > 50 ? 'var(--accent-green)' : hpPct > 25 ? '#ff9800' : 'var(--accent-red)'
-  const hasLoot = hero.gold > 0 || (hero.ingredients && hero.ingredients.some(q => q > 0))
   const ringCfg = small ? RING_SMALL : RING_NORMAL
+
+  const orbitItems = useMemo(() => {
+    const items: { key: string; src: string; qty: number; alt: string }[] = []
+    if (hero.gold > 0) {
+      items.push({ key: 'gold', src: '/assets/ui/gold-coin.webp', qty: hero.gold, alt: 'Gold' })
+    }
+    if (hero.ingredients) {
+      hero.ingredients.forEach((qty, idx) => {
+        if (qty > 0) {
+          items.push({ key: `ing-${idx}`, src: ingredientAssetUrl(idx), qty, alt: INGREDIENT_NAMES[idx] })
+        }
+      })
+    }
+    return items.slice(0, 6)
+  }, [hero.gold, hero.ingredients])
+
+  const hasLoot = orbitItems.length > 0
+  const orbitRadius = small ? 42 : 56
+  const itemSize = small ? 24 : 30
 
   const handleClaim = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
     if (!hero.lootReady || hero.isClaimPending) return
     setClaimBurst(true)
     setTimeout(() => setClaimBurst(false), 600)
-    if (satchelRef.current) {
-      spawnClaimParticles(satchelRef.current, hero)
+    if (frameRef.current) {
+      spawnClaimParticles(frameRef.current, hero)
     }
     onClaim?.()
   }, [hero, onClaim])
@@ -185,7 +203,11 @@ function HeroToken({ hero, small, selected, onClick, onClaim }: {
       transition={{ type: 'spring', stiffness: 200, damping: 25 }}
       onClick={(e) => { e.stopPropagation(); onClick?.() }}
     >
-      <div className="hero-token-frame-wrap">
+      <div
+        ref={frameRef}
+        className="hero-token-frame-wrap"
+        style={hasLoot ? { ['--orbit-radius' as string]: `${orbitRadius}px`, ['--orbit-item-size' as string]: `${itemSize}px` } : undefined}
+      >
         <HpRing pct={hpPct} color={hpColor} cfg={ringCfg} selected={selected} />
         <img
           className="hero-token-frame"
@@ -199,33 +221,47 @@ function HeroToken({ hero, small, selected, onClick, onClaim }: {
           alt={ROLE_NAMES[roleIdx] ?? 'Hero'}
         />
         {claimBurst && <div className="hero-token-claim-burst" />}
-      </div>
 
-      {hasLoot && (
-        <div
-          ref={satchelRef}
-          className={`hero-token-loot${hero.lootReady ? ' hero-token-loot-ready' : ''}${hero.isClaimPending ? ' hero-token-loot-pending' : ''}`}
-          onClick={hero.lootReady ? handleClaim : undefined}
-          role={hero.lootReady ? 'button' : undefined}
-        >
-          <div className="hero-token-loot-items">
-            {hero.gold > 0 && (
-              <span className="hero-token-loot-ing-wrap">
-                <img className="hero-token-loot-ing hero-token-loot-coin" src="/assets/ui/gold-coin.webp" alt="Gold" />
-                <span className="hero-token-loot-ing-qty">{displayGold(hero.gold)}</span>
-              </span>
-            )}
-            {hero.ingredients && hero.ingredients.map((qty, idx) =>
-              qty > 0 ? (
-                <span key={idx} className="hero-token-loot-ing-wrap">
-                  <img className="hero-token-loot-ing" src={ingredientAssetUrl(idx)} alt={INGREDIENT_NAMES[idx]} title={`${INGREDIENT_NAMES[idx]} x${qty}`} />
-                  {qty > 1 && <span className="hero-token-loot-ing-qty">{qty}</span>}
+        {hasLoot && (
+          <div
+            className={`hero-token-orbit${hero.lootReady ? ' hero-token-orbit-ready' : ''}${hero.isClaimPending ? ' hero-token-orbit-pending' : ''}`}
+            onClick={hero.lootReady ? handleClaim : undefined}
+            role={hero.lootReady ? 'button' : undefined}
+          >
+            {orbitItems.map((item, i) => {
+              const angle = (2 * Math.PI * i) / orbitItems.length - Math.PI / 2
+              const x = Math.cos(angle) * orbitRadius
+              const y = Math.sin(angle) * orbitRadius
+              return (
+                <span
+                  key={item.key}
+                  className="hero-token-orbit-item"
+                  style={{
+                    width: `${itemSize}px`,
+                    height: `${itemSize}px`,
+                    left: `calc(50% + ${x}px)`,
+                    top: `calc(50% + ${y}px)`,
+                    ['--orbit-angle' as string]: `${(360 * i) / orbitItems.length}deg`,
+                  }}
+                  title={item.alt + (item.qty > 1 ? ` x${item.qty}` : '')}
+                >
+                  <img
+                    className="hero-token-orbit-icon"
+                    src={item.src}
+                    alt={item.alt}
+                  />
+                  {item.qty > 1 && (
+                    <span className="hero-token-orbit-qty">{item.key === 'gold' ? displayGold(item.qty) : item.qty}</span>
+                  )}
+                  {item.key === 'gold' && item.qty === 1 && (
+                    <span className="hero-token-orbit-qty">{displayGold(item.qty)}</span>
+                  )}
                 </span>
-              ) : null,
-            )}
+              )
+            })}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </motion.div>
   )
 }
@@ -364,19 +400,20 @@ function ZoneNode({
     >
       <div className="zone-node-glow" />
       <img
-        className="zone-node-icon"
+        className={`zone-node-icon${canSendHero ? ' zone-node-icon-clickable' : ''}`}
         src={`/assets/zones/${portalKey}.webp`}
         alt={ZONE_NAMES[zoneId]}
         style={{
           animationDuration: `${FLOAT_DURATIONS[zoneId]}s`,
           animationDelay: `${FLOAT_DELAYS[zoneId]}s`,
         }}
+        onClick={canSendHero ? onClick : undefined}
       />
 
       {heroes.length > 0 && (
         <div className="zone-node-heroes">
           {heroes.map(hero => (
-            <HeroToken key={hero.hero_id} hero={hero} small selected={hero.hero_id === selectedHeroId} onClick={() => onSelectHero(hero.hero_id)} onClaim={() => onClaim(hero.hero_id)} />
+            <HeroToken key={hero.hero_id} hero={hero} selected={hero.hero_id === selectedHeroId} onClick={() => onSelectHero(hero.hero_id)} onClaim={() => onClaim(hero.hero_id)} />
           ))}
         </div>
       )}
@@ -434,7 +471,7 @@ function AthanorNode({
       {heroes.length > 0 && (
         <div className="athanor-heroes">
           {heroes.map(hero => (
-            <HeroToken key={hero.hero_id} hero={hero} small selected={hero.hero_id === selectedHeroId} onClick={() => onSelectHero(hero.hero_id)} onClaim={() => onClaim(hero.hero_id)} />
+            <HeroToken key={hero.hero_id} hero={hero} selected={hero.hero_id === selectedHeroId} onClick={() => onSelectHero(hero.hero_id)} onClaim={() => onClaim(hero.hero_id)} />
           ))}
         </div>
       )}
