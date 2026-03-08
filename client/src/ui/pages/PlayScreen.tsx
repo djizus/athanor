@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAccount } from '@starknet-react/core'
+import { Has, getComponentValue } from '@dojoengine/recs'
+import { useEntityQuery } from '@dojoengine/react'
 import { useDojo } from '@/dojo/useDojo'
 import { useGame } from '@/hooks/useGame'
 import { useHeroes } from '@/hooks/useHeroes'
@@ -33,6 +35,15 @@ import { StatusHUD } from '@/ui/components/StatusHUD'
 import { BrewContent, IngredientsContent, GrimoireContent } from '@/ui/components/RightPanel'
 import type { PanelMode } from '@/ui/components/RightPanel'
 import { SettingsOverlay } from '@/ui/components/SettingsOverlay'
+
+function formatGameDuration(seconds: number): string {
+  if (seconds <= 0) return '-'
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const s = seconds % 60
+  if (h > 0) return `${h}h ${m}m ${s}s`
+  return `${m}m ${s}s`
+}
 
 function computeUntriedPairs(
   inventory: { ingredient_id: number; quantity: number }[],
@@ -96,7 +107,7 @@ async function fetchFreshRecipes(
 }
 
 export function PlayScreen() {
-  const { client, toriiClient } = useDojo()
+  const { client, toriiClient, contractComponents } = useDojo()
   const { gameId, navigate } = useNavigationStore()
   const { account } = useAccount()
   const { game } = useGame(gameId)
@@ -370,6 +381,20 @@ export function PlayScreen() {
   const endedAt = game && Number(game.ended_at) > 0 ? Number(game.ended_at) : now
   const elapsedSeconds = Math.max(0, endedAt - startedAt)
 
+  const allGameEntities = useEntityQuery([Has(contractComponents.Game)])
+  const leaderboardRank = useMemo(() => {
+    if (!isGameOver || !gameId) return null
+    const entries: { id: number; discovered: number; duration: number }[] = []
+    for (const entity of allGameEntities) {
+      const g = getComponentValue(contractComponents.Game, entity)
+      if (!g || g.ended_at <= 0) continue
+      entries.push({ id: g.id, discovered: bitmapPopcount(g.grimoire), duration: g.ended_at - g.started_at })
+    }
+    entries.sort((a, b) => b.discovered !== a.discovered ? b.discovered - a.discovered : a.duration - b.duration)
+    const idx = entries.findIndex(e => e.id === gameId)
+    return idx >= 0 ? idx + 1 : null
+  }, [allGameEntities, contractComponents.Game, isGameOver, gameId])
+
   const journeyHeroes = useMemo(() =>
     heroes.map(h => {
       const override = heroOverrides.get(h.id)
@@ -531,7 +556,26 @@ export function PlayScreen() {
         <div className="game-over-overlay">
           <div className={`game-over-card floating-panel ${discoveredCount >= 30 ? 'won' : 'lost'}`}>
             <h2>{discoveredCount >= 30 ? 'Grimoire Complete!' : surrendered ? 'Surrendered' : 'Game Over'}</h2>
+            {discoveredCount >= 30 && (
+              <p className="game-over-flavor">The Athanor blazes with primordial fire. All secrets are yours.</p>
+            )}
             {surrendered && <p className="game-over-flavor">The Athanor grows cold. Your ambition fades to ash.</p>}
+            <div className="game-over-stats">
+              <div className="game-over-stat">
+                <span className="game-over-stat-label">Time</span>
+                <span className="game-over-stat-value">{formatGameDuration(elapsedSeconds)}</span>
+              </div>
+              <div className="game-over-stat">
+                <span className="game-over-stat-label">Recipes</span>
+                <span className="game-over-stat-value">{discoveredCount}/30</span>
+              </div>
+              {leaderboardRank != null && (
+                <div className="game-over-stat">
+                  <span className="game-over-stat-label">Rank</span>
+                  <span className="game-over-stat-value">#{leaderboardRank}</span>
+                </div>
+              )}
+            </div>
             <button onClick={() => navigate('home')} style={{ marginTop: '1rem' }}>
               Return to Menu
             </button>
