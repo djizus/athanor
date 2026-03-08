@@ -2489,10 +2489,12 @@ button:disabled, .btn:disabled {
     width: 100%;
     max-width: 100%;
     top: auto;
-    bottom: 52px;
-    max-height: 55vh;
+    bottom: 0;
+    padding-bottom: 52px;
+    max-height: 65vh;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     display: none;
+    zoom: 1;
   }
 
   .play-left-panels.mobile-open,
@@ -2525,6 +2527,16 @@ button:disabled, .btn:disabled {
   .hero-card-portrait { width: 44px; height: 44px; }
 
   .side-panel-header {
+    padding: 0.5rem 0.75rem;
+    pointer-events: none;
+    cursor: default;
+  }
+
+  .side-panel-header:hover {
+    background: transparent;
+  }
+
+  .side-panel-chevron {
     display: none;
   }
 
