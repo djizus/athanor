@@ -717,7 +717,7 @@ export function PlayScreen() {
       />
 
       <div className={`play-left-panels${mobilePanel && mobilePanel !== 'heroes' && mobilePanel !== 'logs' ? ' mobile-hidden' : ''}${mobilePanel === 'heroes' || mobilePanel === 'logs' ? ' mobile-open' : ''}`}>
-        <div className={`side-panel floating-panel panel-heroes${mobilePanel === 'logs' ? ' mobile-panel-hidden' : ''}`}>
+        <div className={`side-panel floating-panel panel-heroes${mobilePanel === 'logs' ? ' mobile-panel-hidden' : ''}`} data-claim-target="inventory">
 
           <button className="side-panel-header" onClick={() => setHeroesCollapsed((v) => !v)}>
             <span className="side-panel-title">Heroes</span>

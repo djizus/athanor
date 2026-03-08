@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion'
 import {
   ZONE_NAMES,
@@ -8,6 +8,7 @@ import {
   roleAssetUrl,
   ROLE_NAMES,
   ingredientAssetUrl,
+  displayGold,
 } from '@/game/constants'
 import type { HeroPosition } from '@/hooks/useExpeditionTracker'
 import type { HeroOverride } from '@/hooks/useExplorationLog'
@@ -61,8 +62,61 @@ interface JourneyMapProps {
   onClaim: (heroId: number) => void
 }
 
-const RING_NORMAL = { size: 66, radius: 28, stroke: 3.5 }
-const RING_SMALL = { size: 48, radius: 20, stroke: 3 }
+const RING_NORMAL = { size: 90, radius: 40, stroke: 4 }
+const RING_SMALL = { size: 66, radius: 28, stroke: 3.5 }
+
+function spawnClaimParticles(
+  sourceEl: HTMLElement,
+  hero: HeroData,
+) {
+  const sourceRect = sourceEl.getBoundingClientRect()
+  const sx = sourceRect.left + sourceRect.width / 2
+  const sy = sourceRect.top + sourceRect.height / 2
+
+  const goldTarget = document.querySelector('[data-claim-target="gold"]')
+  const invTarget = document.querySelector('[data-claim-target="inventory"]')
+
+  if (hero.gold > 0 && goldTarget) {
+    const tr = goldTarget.getBoundingClientRect()
+    spawnFlyingOrb(sx, sy, tr.left + tr.width / 2, tr.top + tr.height / 2, '/assets/ui/gold-coin.webp')
+  }
+
+  if (hero.ingredients && invTarget) {
+    const tr = invTarget.getBoundingClientRect()
+    hero.ingredients.forEach((qty, idx) => {
+      if (qty > 0) {
+        setTimeout(() => {
+          spawnFlyingOrb(
+            sx + (Math.random() - 0.5) * 20,
+            sy + (Math.random() - 0.5) * 10,
+            tr.left + 40,
+            tr.top + tr.height / 2,
+            ingredientAssetUrl(idx),
+          )
+        }, idx * 80)
+      }
+    })
+  }
+}
+
+function spawnFlyingOrb(
+  fromX: number, fromY: number,
+  toX: number, toY: number,
+  iconSrc: string,
+) {
+  const el = document.createElement('div')
+  el.className = 'claim-fly-particle'
+  const img = document.createElement('img')
+  img.src = iconSrc
+  img.className = 'claim-fly-particle-icon'
+  el.appendChild(img)
+  el.style.left = `${fromX}px`
+  el.style.top = `${fromY}px`
+  el.style.setProperty('--fly-dx', `${toX - fromX}px`)
+  el.style.setProperty('--fly-dy', `${toY - fromY}px`)
+  document.body.appendChild(el)
+  el.addEventListener('animationend', () => el.remove())
+}
 
 function HpRing({ pct, color, cfg, selected }: { pct: number; color: string; cfg: typeof RING_NORMAL; selected?: boolean }) {
   const circ = 2 * Math.PI * cfg.radius
@@ -105,19 +159,23 @@ function HeroToken({ hero, small, selected, onClick, onClaim }: {
   onClick?: () => void; onClaim?: () => void
 }) {
   const [claimBurst, setClaimBurst] = useState(false)
+  const satchelRef = useRef<HTMLDivElement>(null)
   const roleIdx = hero.role > 0 ? hero.role - 1 : hero.hero_id
   const hpPct = hero.max_health > 0 ? Math.min(100, (hero.health / hero.max_health) * 100) : 0
   const hpColor = hpPct > 50 ? 'var(--accent-green)' : hpPct > 25 ? '#ff9800' : 'var(--accent-red)'
   const hasLoot = hero.gold > 0 || (hero.ingredients && hero.ingredients.some(q => q > 0))
   const ringCfg = small ? RING_SMALL : RING_NORMAL
-  const lootCount = (hero.gold > 0 ? 1 : 0) + (hero.ingredients ? hero.ingredients.filter(q => q > 0).length : 0)
 
-  const handleClaim = (e: React.MouseEvent) => {
+  const handleClaim = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
+    if (!hero.lootReady || hero.isClaimPending) return
     setClaimBurst(true)
     setTimeout(() => setClaimBurst(false), 600)
+    if (satchelRef.current) {
+      spawnClaimParticles(satchelRef.current, hero)
+    }
     onClaim?.()
-  }
+  }, [hero, onClaim])
 
   return (
     <motion.div
@@ -143,20 +201,32 @@ function HeroToken({ hero, small, selected, onClick, onClaim }: {
       </div>
 
       {hasLoot && (
-        <div className={`hero-token-satchel${hero.lootReady ? ' hero-token-satchel-ready' : ''}`}>
-          <img className="hero-token-satchel-icon" src="/assets/ui/satchel.webp" alt="" draggable={false} />
-          {lootCount > 0 && <span className="hero-token-satchel-badge">{lootCount}</span>}
-        </div>
-      )}
-
-      {hero.lootReady && onClaim && (
-        <button
-          className="hero-token-claim"
-          onClick={handleClaim}
-          disabled={hero.isClaimPending}
+        <div
+          ref={satchelRef}
+          className={`hero-token-satchel${hero.lootReady ? ' hero-token-satchel-ready' : ''}${hero.isClaimPending ? ' hero-token-satchel-pending' : ''}`}
+          onClick={hero.lootReady ? handleClaim : undefined}
+          role={hero.lootReady ? 'button' : undefined}
         >
-          {hero.isClaimPending ? '...' : 'Claim'}
-        </button>
+          <img className="hero-token-satchel-icon" src="/assets/ui/satchel.webp" alt="" draggable={false} />
+          <div className="hero-token-satchel-contents">
+            {hero.gold > 0 && (
+              <span className="hero-token-satchel-gold">
+                <img className="hero-token-satchel-coin" src="/assets/ui/gold-coin.webp" alt="" />
+                {displayGold(hero.gold)}
+              </span>
+            )}
+            {hero.ingredients && hero.ingredients.map((qty, idx) =>
+              qty > 0 ? (
+                <img key={idx} className="hero-token-satchel-ing" src={ingredientAssetUrl(idx)} alt={INGREDIENT_NAMES[idx]} title={`${INGREDIENT_NAMES[idx]} x${qty}`} />
+              ) : null,
+            )}
+          </div>
+          {hero.lootReady && (
+            <span className="hero-token-satchel-claim-hint">
+              {hero.isClaimPending ? '...' : 'Claim'}
+            </span>
+          )}
+        </div>
       )}
     </motion.div>
   )

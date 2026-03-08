@@ -28,7 +28,7 @@ export function StatusHUD({ gold, discoveredCount, elapsedSeconds, goldFloats, o
       <span className="status-hud-divider" />
       <span className="status-hud-time">Time {formatTime(elapsedSeconds)}</span>
       <span className="status-hud-sep">·</span>
-      <span className={`status-hud-gold${isCounting ? ' counting' : ''}`}>
+      <span className={`status-hud-gold${isCounting ? ' counting' : ''}`} data-claim-target="gold">
         Gold {displayGold(animatedGold)}
         {goldFloats?.map(f => (
           <span key={f.id} className="gold-float-anim">{f.text}</span>
