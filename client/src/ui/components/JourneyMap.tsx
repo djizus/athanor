@@ -78,13 +78,13 @@ function FloatingText({ text, color, icon, onComplete }: { text: string; color: 
 }
 
 const NODE_POSITIONS = {
-  athanor: { x: 50, y: 80 },
+  athanor: { x: 50, y: 85 },
   zones: [
-    { x: 30, y: 55 },
-    { x: 35, y: 30 },
-    { x: 55, y: 18 },
-    { x: 68, y: 35 },
-    { x: 65, y: 58 },
+    { x: 42, y: 68 },
+    { x: 58, y: 53 },
+    { x: 42, y: 38 },
+    { x: 58, y: 23 },
+    { x: 50, y: 8 },
   ],
 } as const
 
@@ -92,14 +92,29 @@ function ConstellationLine({ x1, y1, x2, y2, color, active }: {
   x1: number; y1: number; x2: number; y2: number; color: string; active: boolean
 }) {
   return (
-    <line
-      x1={`${x1}%`} y1={`${y1}%`}
-      x2={`${x2}%`} y2={`${y2}%`}
-      stroke={active ? color : '#a0802040'}
-      strokeWidth={active ? 2 : 1}
-      strokeDasharray={active ? 'none' : '6 4'}
-      className={active ? 'constellation-line-active' : 'constellation-line'}
-    />
+    <>
+      <line
+        x1={`${x1}%`} y1={`${y1}%`}
+        x2={`${x2}%`} y2={`${y2}%`}
+        stroke={active ? color : '#c8a040'}
+        strokeWidth={active ? 3 : 1.5}
+        strokeDasharray={active ? 'none' : '4 6'}
+        strokeLinecap="round"
+        strokeOpacity={active ? 0.9 : 0.5}
+        className={active ? 'constellation-line-active' : 'constellation-line'}
+      />
+      {active && (
+        <line
+          x1={`${x1}%`} y1={`${y1}%`}
+          x2={`${x2}%`} y2={`${y2}%`}
+          stroke={color}
+          strokeWidth={6}
+          strokeLinecap="round"
+          strokeOpacity={0.15}
+          className="constellation-line-glow"
+        />
+      )}
+    </>
   )
 }
 
@@ -299,17 +314,29 @@ export function JourneyMap({
       <div className="constellation-overlay" />
 
       <svg className="constellation-lines" viewBox="0 0 100 100" preserveAspectRatio="none">
-        {NODE_POSITIONS.zones.map((pos, i) => (
-          <ConstellationLine
-            key={i}
-            x1={NODE_POSITIONS.athanor.x}
-            y1={NODE_POSITIONS.athanor.y}
-            x2={pos.x}
-            y2={pos.y}
-            color={ZONE_COLORS[i]}
-            active={activeZones.has(i)}
-          />
-        ))}
+        <ConstellationLine
+          x1={NODE_POSITIONS.athanor.x}
+          y1={NODE_POSITIONS.athanor.y}
+          x2={NODE_POSITIONS.zones[0].x}
+          y2={NODE_POSITIONS.zones[0].y}
+          color={ZONE_COLORS[0]}
+          active={activeZones.has(0)}
+        />
+        {NODE_POSITIONS.zones.map((pos, i) => {
+          if (i === 0) return null
+          const prev = NODE_POSITIONS.zones[i - 1]
+          return (
+            <ConstellationLine
+              key={i}
+              x1={prev.x}
+              y1={prev.y}
+              x2={pos.x}
+              y2={pos.y}
+              color={ZONE_COLORS[i]}
+              active={activeZones.has(i)}
+            />
+          )
+        })}
       </svg>
 
       <LayoutGroup>
