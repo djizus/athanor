@@ -257,7 +257,7 @@ export function PlayScreen() {
     }
   }, [addFloatingText, onExplorationZoneUpdate])
 
-  const { logs, pushInfo, heroOverrides, completeReturn, snapshotHeroHp } = useExplorationLog(gameId ?? null, heroes, onExplorationEvent)
+  const { logs, pushInfo, heroOverrides, completeReturn, startExploration } = useExplorationLog(gameId ?? null, heroes, onExplorationEvent)
   const logsEndRef = useRef<HTMLDivElement>(null)
 
   const syncFingerprint = useMemo(() => {
@@ -427,7 +427,7 @@ export function PlayScreen() {
       }
     }
 
-    if (hero) snapshotHeroHp(characterId, computeOptimisticHp(hero, Math.floor(Date.now() / 1000), undefined))
+    if (hero) startExploration(characterId, zoneId, computeOptimisticHp(hero, Math.floor(Date.now() / 1000), undefined))
     pushInfo(`${name} sent to ${ZONE_NAMES[zoneId] ?? `Zone ${zoneId}`}...`)
     onExpeditionStart(characterId, zoneId)
     soundManager.playSfx('expedition-start', 0.5)
@@ -735,12 +735,13 @@ export function PlayScreen() {
       const isExploring = availableAt > now
       const override = heroOverrides.get(h.id)
       const isIdle = !isExploring && !override
-      const heroGold = override ? override.bagGold : h.gold
+      const heroGold = override ? override.bagGold : (isExploring ? 0 : h.gold)
       const heroIngs = override
         ? override.bagIngredients
-        : (h.ingredients != null && h.ingredients !== 0n
-          ? unpackCharacterIngredients(BigInt(h.ingredients))
-          : null)
+        : (isExploring ? null
+          : (h.ingredients != null && h.ingredients !== 0n
+            ? unpackCharacterIngredients(BigInt(h.ingredients))
+            : null))
       const lootReady = isIdle && (heroGold > 0 || (heroIngs != null && heroIngs.some(q => q > 0)))
       return {
         hero_id: h.id,

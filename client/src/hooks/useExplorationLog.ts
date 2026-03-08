@@ -191,9 +191,14 @@ export function useExplorationLog(
     heroMapRef.current = map
   }, [heroes])
 
-  const snapshotHeroHp = useCallback((heroId: number, hp: number) => {
-    console.log(`[SnapshotHP] hero=${heroId} hp=${hp}`)
+  const startExploration = useCallback((heroId: number, zoneId: number, hp: number) => {
+    console.log(`[StartExploration] hero=${heroId} zone=${zoneId} hp=${hp}`)
     heroStartHpRef.current.set(heroId, hp)
+    setHeroOverrides((prev) => {
+      const next = new Map(prev)
+      next.set(heroId, { health: hp, zoneIndex: zoneId, bagGold: 0, bagIngredients: new Array(25).fill(0) })
+      return next
+    })
   }, [])
 
   const append = useCallback((entry: LogEntry) => {
@@ -309,12 +314,11 @@ export function useExplorationLog(
       heroDepthRef.current.set(heroId, -1)
 
       if (event.rawEvent) {
-        const startHp = heroStartHpRef.current.get(heroId) ?? event.rawEvent.hpAfter
         heroStartHpRef.current.delete(heroId)
-        console.log(`[Enqueue] hero=${heroId} NEW_QUEUE startHp=${startHp} snapshotHad=${heroStartHpRef.current.has(heroId)} fallback=${event.rawEvent.hpAfter}`)
         setHeroOverrides((prev) => {
+          if (prev.has(heroId)) return prev
           const next = new Map(prev)
-          next.set(heroId, { health: startHp, zoneIndex: event.rawEvent!.zoneId, bagGold: 0, bagIngredients: new Array(25).fill(0) })
+          next.set(heroId, { health: event.rawEvent!.hpAfter, zoneIndex: event.rawEvent!.zoneId, bagGold: 0, bagIngredients: new Array(25).fill(0) })
           return next
         })
       }
@@ -446,5 +450,5 @@ export function useExplorationLog(
     returnTimersRef.current.set(heroId, cleanupTimer)
   }, [append])
 
-  return { logs, pushInfo, heroOverrides, completeReturn, snapshotHeroHp }
+  return { logs, pushInfo, heroOverrides, completeReturn, startExploration }
 }

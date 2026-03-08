@@ -40,7 +40,7 @@ export function useExpeditionTracker(
       if (isExploring) {
         activeHeroes.add(hero.id)
         if (!expeditions.current.has(hero.id)) {
-          expeditions.current.set(hero.id, { lastKnownZone: 0 })
+          expeditions.current.set(hero.id, { lastKnownZone: -1 })
         }
       }
 
