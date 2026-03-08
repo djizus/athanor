@@ -78,13 +78,13 @@ function FloatingText({ text, color, icon, onComplete }: { text: string; color: 
 }
 
 const NODE_POSITIONS = {
-  athanor: { x: 50, y: 82 },
+  athanor: { x: 50, y: 80 },
   zones: [
-    { x: 20, y: 52 },
-    { x: 38, y: 22 },
-    { x: 58, y: 12 },
-    { x: 78, y: 28 },
-    { x: 88, y: 56 },
+    { x: 30, y: 55 },
+    { x: 35, y: 30 },
+    { x: 55, y: 18 },
+    { x: 68, y: 35 },
+    { x: 65, y: 58 },
   ],
 } as const
 
