@@ -163,7 +163,7 @@ const MAX_LOG = 200
 
 export function useExplorationLog(
   gameId: bigint | null,
-  heroes: Array<{ id: number; role: number; health: number }> = [],
+  heroes: Array<{ id: number; role: number }> = [],
   onExplorationEvent?: (event: RawExplorationEvent) => void,
 ) {
   const { toriiClient } = useDojo()
@@ -180,19 +180,20 @@ export function useExplorationLog(
   const onEventRef = useRef(onExplorationEvent)
   onEventRef.current = onExplorationEvent
 
-  const heroHealthRef = useRef<Map<number, number>>(new Map())
+  const heroStartHpRef = useRef<Map<number, number>>(new Map())
 
   useEffect(() => {
     const map = new Map<number, string>()
-    const healthMap = new Map<number, number>()
     for (const hero of heroes) {
       const roleIdx = hero.role > 0 ? hero.role - 1 : hero.id
       map.set(hero.id, ROLE_NAMES[roleIdx] ?? `Hero ${hero.id}`)
-      healthMap.set(hero.id, hero.health)
     }
     heroMapRef.current = map
-    heroHealthRef.current = healthMap
   }, [heroes])
+
+  const snapshotHeroHp = useCallback((heroId: number, hp: number) => {
+    heroStartHpRef.current.set(heroId, hp)
+  }, [])
 
   const append = useCallback((entry: LogEntry) => {
     setLogs((prev) => [...prev.slice(-(MAX_LOG - 1)), entry])
@@ -303,8 +304,8 @@ export function useExplorationLog(
       heroDepthRef.current.set(heroId, -1)
 
       if (event.rawEvent) {
-        const startHp = heroHealthRef.current.get(heroId) ?? event.rawEvent.hpAfter
-        console.log(`[InitHP] hero=${heroId} startHp=${startHp} fromRef=${heroHealthRef.current.get(heroId)} fallbackHpAfter=${event.rawEvent.hpAfter} refSize=${heroHealthRef.current.size} refKeys=[${[...heroHealthRef.current.keys()]}]`)
+        const startHp = heroStartHpRef.current.get(heroId) ?? event.rawEvent.hpAfter
+        heroStartHpRef.current.delete(heroId)
         setHeroOverrides((prev) => {
           const next = new Map(prev)
           next.set(heroId, { health: startHp, zoneIndex: event.rawEvent!.zoneId, bagGold: 0, bagIngredients: new Array(25).fill(0) })
@@ -437,5 +438,5 @@ export function useExplorationLog(
     returnTimersRef.current.set(heroId, cleanupTimer)
   }, [append])
 
-  return { logs, pushInfo, heroOverrides, completeReturn }
+  return { logs, pushInfo, heroOverrides, completeReturn, snapshotHeroHp }
 }
