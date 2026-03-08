@@ -77,32 +77,6 @@
   50% { opacity: 0.45; transform: scale(1.12); }
 }
 
-/* ── Difficulty Ring ──── */
-
-.zone-difficulty-ring {
-  position: absolute;
-  width: 104px;
-  height: 104px;
-  border-radius: 50%;
-  border: 2px solid var(--ring-color, #5a5a7a);
-  z-index: 0;
-  pointer-events: none;
-  animation: difficulty-ring-breathe var(--ring-speed, 2.8s) ease-in-out infinite;
-}
-
-.zone-difficulty-0 { opacity: 0.3; }
-.zone-difficulty-1 { opacity: 0.35; border-width: 2px; }
-.zone-difficulty-2 { opacity: 0.4; border-width: 2.5px; }
-.zone-difficulty-3 { opacity: 0.5; border-width: 3px; }
-.zone-difficulty-4 { opacity: 0.6; border-width: 3px; }
-
-@keyframes difficulty-ring-breathe {
-  0%, 100% { opacity: inherit; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.06); }
-}
-
-/* Selection ring (hero selected) */
-
 .zone-node-ring {
   position: absolute;
   width: 116px;
@@ -400,24 +374,23 @@
 
 .map-particle {
   position: absolute;
-  width: 3px;
-  height: 3px;
+  width: 4px;
+  height: 4px;
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, rgba(255, 222, 160, 0.9), rgba(255, 180, 90, 0.15));
+  background: radial-gradient(circle at 35% 35%, rgba(255, 230, 170, 1), rgba(255, 190, 100, 0.4));
   opacity: 0;
-  filter: blur(0.3px);
   animation: map-particle-drift 14s linear infinite;
 }
 
 .map-particle:nth-child(odd) {
-  width: 2px;
-  height: 2px;
-  background: radial-gradient(circle at 35% 35%, rgba(200, 210, 255, 0.8), rgba(130, 140, 220, 0.12));
+  width: 3px;
+  height: 3px;
+  background: radial-gradient(circle at 35% 35%, rgba(210, 220, 255, 1), rgba(150, 160, 240, 0.35));
 }
 
 .map-particle:nth-child(3n) {
-  width: 4px;
-  height: 4px;
+  width: 5px;
+  height: 5px;
 }
 
 .map-particle:nth-child(1)  { left:  5%; top: 90%; animation-delay: 0s;    animation-duration: 13.2s; }
@@ -443,17 +416,20 @@
 
 @keyframes map-particle-drift {
   0% {
-    transform: translate3d(0, 0, 0) scale(0.6);
+    transform: translate3d(0, 0, 0) scale(0.7);
     opacity: 0;
   }
   8% {
-    opacity: 0.5;
+    opacity: 0.85;
   }
-  50% {
-    opacity: 0.35;
+  40% {
+    opacity: 0.7;
+  }
+  80% {
+    opacity: 0.4;
   }
   100% {
-    transform: translate3d(calc(-6px + 12px * var(--drift, 0)), -70vh, 0) scale(1.1);
+    transform: translate3d(-8px, -65vh, 0) scale(1.2);
     opacity: 0;
   }
 }
@@ -505,11 +481,6 @@
   .athanor-glow {
     width: 130px;
     height: 130px;
-  }
-
-  .zone-difficulty-ring {
-    width: 76px;
-    height: 76px;
   }
 
   .zone-node-ring {

@@ -15,11 +15,11 @@ import './JourneyMap.css'
 
 const ZONE_DRAIN = [1, 2, 3, 4, 5]
 const ZONE_GOLD_RANGE: [number, number][] = [
-  [600, 1500],
-  [500, 1200],
-  [400, 900],
-  [300, 600],
   [200, 500],
+  [300, 600],
+  [400, 900],
+  [500, 1200],
+  [600, 1500],
 ]
 const ZONE_RISK_LABEL = ['Low', 'Moderate', 'High', 'Extreme', 'Deadly'] as const
 const ZONE_RISK_COLOR = ['#40c060', '#a0c040', '#f0c040', '#e07030', '#d04050'] as const
@@ -98,10 +98,10 @@ function FloatingText({ text, color, icon, onComplete }: { text: string; color: 
 const NODE_POSITIONS = {
   athanor: { x: 50, y: 80 },
   zones: [
-    { x: 36, y: 62 },
-    { x: 64, y: 58 },
-    { x: 32, y: 38 },
-    { x: 68, y: 34 },
+    { x: 38, y: 62 },
+    { x: 62, y: 56 },
+    { x: 36, y: 38 },
+    { x: 64, y: 32 },
     { x: 50, y: 18 },
   ],
 } as const
@@ -186,13 +186,6 @@ function ZoneNode({
       onMouseLeave={onLeave}
     >
       <div className="zone-node-glow" />
-      <div
-        className={`zone-difficulty-ring zone-difficulty-${zoneId}`}
-        style={{
-          ['--ring-color' as string]: ZONE_RISK_COLOR[zoneId],
-          ['--ring-speed' as string]: `${2.8 - zoneId * 0.35}s`,
-        }}
-      />
       {canSendHero && <div className="zone-node-ring" />}
       <img
         className="zone-node-icon"
@@ -365,16 +358,25 @@ export function JourneyMap({
 
       <svg className="constellation-lines">
         {zones.map((pos, i) => (
-          <line
-            key={i}
-            x1={`${ath.x}%`} y1={`${ath.y}%`}
-            x2={`${pos.x}%`} y2={`${pos.y}%`}
-            stroke={ZONE_COLORS[i]}
-            strokeWidth="1.5"
-            strokeDasharray="6 8"
-            strokeLinecap="round"
-            strokeOpacity={activeZones.has(i) ? '0.8' : '0.3'}
-          />
+          <g key={i}>
+            <line
+              x1={`${ath.x}%`} y1={`${ath.y}%`}
+              x2={`${pos.x}%`} y2={`${pos.y}%`}
+              stroke="rgba(0,0,0,0.8)"
+              strokeWidth="5"
+              strokeDasharray="6 8"
+              strokeLinecap="round"
+            />
+            <line
+              x1={`${ath.x}%`} y1={`${ath.y}%`}
+              x2={`${pos.x}%`} y2={`${pos.y}%`}
+              stroke={ZONE_COLORS[i]}
+              strokeWidth="2"
+              strokeDasharray="6 8"
+              strokeLinecap="round"
+              strokeOpacity={activeZones.has(i) ? '0.9' : '0.5'}
+            />
+          </g>
         ))}
       </svg>
 
