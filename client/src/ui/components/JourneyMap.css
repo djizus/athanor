@@ -157,6 +157,18 @@
   color: var(--accent-gold);
 }
 
+.athanor-heroes {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  z-index: 3;
+  margin-top: 4px;
+}
+
 /* ── Zone Skulls + Explore ──── */
 
 .zone-skulls {

@@ -266,8 +266,8 @@ function FloatingText({ text, color, icon, onComplete }: { text: string; color: 
 }
 
 const NODE_POSITIONS = {
-  athanor: { x: 50, y: 80 },
-  lineOrigin: { x: 50, y: 76 },
+  athanor: { x: 50, y: 75 },
+  lineOrigin: { x: 50, y: 75 },
   zones: [
     { x: 38, y: 62 },
     { x: 62, y: 56 },
@@ -432,9 +432,9 @@ function AthanorNode({
       <span className="zone-node-label athanor-label">Athanor</span>
 
       {heroes.length > 0 && (
-        <div className="zone-node-heroes">
+        <div className="athanor-heroes">
           {heroes.map(hero => (
-            <HeroToken key={hero.hero_id} hero={hero} selected={hero.hero_id === selectedHeroId} onClick={() => onSelectHero(hero.hero_id)} onClaim={() => onClaim(hero.hero_id)} />
+            <HeroToken key={hero.hero_id} hero={hero} small selected={hero.hero_id === selectedHeroId} onClick={() => onSelectHero(hero.hero_id)} onClaim={() => onClaim(hero.hero_id)} />
           ))}
         </div>
       )}
