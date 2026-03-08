@@ -85,6 +85,8 @@ export function BrewContent({
   recipes,
   brewAllCount,
   isGameOver,
+  isBrewing,
+  isBrewingAll,
   onSetSlotA,
   onSetSlotB,
   onCraft,
@@ -96,6 +98,8 @@ export function BrewContent({
   recipes: DiscoveryData[]
   brewAllCount: number
   isGameOver: boolean
+  isBrewing: boolean
+  isBrewingAll: boolean
   onSetSlotA: (v: number | null) => void
   onSetSlotB: (v: number | null) => void
   onCraft: (a: number, b: number) => void
@@ -164,9 +168,9 @@ export function BrewContent({
           <button
             className="btn-primary btn-sm craft-brew-btn"
             onClick={handleBrew}
-            disabled={isGameOver || slotA == null || slotB == null || qtyA <= 0 || qtyB <= 0}
+            disabled={isGameOver || slotA == null || slotB == null || qtyA <= 0 || qtyB <= 0 || isBrewing}
           >
-            Brew
+            {isBrewing && !isGameOver ? 'Brewing...' : 'Brew'}
           </button>
           <button
             className="btn-sm craft-brew-btn"
@@ -174,7 +178,7 @@ export function BrewContent({
               if (slotA == null || slotB == null) return
               for (let i = 0; i < maxBatchQty; i++) onCraft(slotA, slotB)
             }}
-            disabled={isGameOver || slotA == null || slotB == null || maxBatchQty <= 0}
+            disabled={isGameOver || slotA == null || slotB == null || maxBatchQty <= 0 || isBrewing}
           >
             ×{maxBatchQty}
           </button>
@@ -183,9 +187,9 @@ export function BrewContent({
       <button
         className="btn-sm craft-brew-btn craft-brew-all-btn"
         onClick={onBrewAll}
-        disabled={isGameOver || brewAllCount === 0}
+        disabled={isGameOver || brewAllCount === 0 || isBrewing}
       >
-        Brew All ({brewAllCount})
+        {isBrewingAll && !isGameOver ? 'Brewing...' : `Brew All (${brewAllCount})`}
       </button>
     </>
   )
@@ -287,6 +291,7 @@ export function GrimoireContent({
   gold,
   hintCost,
   isGameOver,
+  isHintPending,
   inventory,
   newlyDiscovered,
   onBuyHint,
@@ -300,6 +305,7 @@ export function GrimoireContent({
   gold: number
   hintCost: number
   isGameOver: boolean
+  isHintPending: boolean
   inventory: InventoryItem[]
   newlyDiscovered?: Set<number>
   onBuyHint: () => void
@@ -442,8 +448,8 @@ export function GrimoireContent({
       </div>
 
       <div className="grimoire-btn-row">
-        <button onClick={onBuyHint} disabled={isGameOver || gold < hintCost}>
-          Hint ({displayGold(hintCost)}g)
+        <button onClick={onBuyHint} disabled={isGameOver || gold < hintCost || isHintPending}>
+          {isHintPending && !isGameOver ? '...' : `Hint (${displayGold(hintCost)}g)`}
         </button>
       </div>
     </>
