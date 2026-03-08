@@ -286,19 +286,6 @@
   box-shadow: 0 0 10px rgba(240, 192, 64, 0.5), inset 0 0 6px rgba(240, 192, 64, 0.15);
 }
 
-.hero-token-name {
-  font-family: var(--font-title);
-  font-size: 0.6rem;
-  color: var(--accent-gold);
-  letter-spacing: 0.04em;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
-  white-space: nowrap;
-}
-
-.hero-token-sm .hero-token-name {
-  font-size: 0.5rem;
-}
-
 /* ── HP Ring (SVG) ──── */
 
 .hero-token-ring {
@@ -389,21 +376,8 @@
   flex-wrap: nowrap;
 }
 
-.hero-token-loot-gold {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: var(--accent-gold);
-  white-space: nowrap;
-}
-
 .hero-token-loot-coin {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  flex-shrink: 0;
+  border-color: rgba(240, 192, 64, 0.4);
 }
 
 .hero-token-loot-ing-wrap {
@@ -727,15 +701,6 @@
     min-width: 48px;
     padding: 3px 6px;
     gap: 3px;
-  }
-
-  .hero-token-loot-gold {
-    font-size: 0.55rem;
-  }
-
-  .hero-token-loot-coin {
-    width: 14px;
-    height: 14px;
   }
 
   .hero-token-loot-ing {

@@ -200,9 +200,6 @@ function HeroToken({ hero, small, selected, onClick, onClaim }: {
         />
         {claimBurst && <div className="hero-token-claim-burst" />}
       </div>
-      {selected && (
-        <span className="hero-token-name">{ROLE_NAMES[roleIdx] ?? 'Hero'}</span>
-      )}
 
       {hasLoot && (
         <div
@@ -213,9 +210,9 @@ function HeroToken({ hero, small, selected, onClick, onClaim }: {
         >
           <div className="hero-token-loot-items">
             {hero.gold > 0 && (
-              <span className="hero-token-loot-gold">
-                <img className="hero-token-loot-coin" src="/assets/ui/gold-coin.webp" alt="" />
-                {displayGold(hero.gold)}
+              <span className="hero-token-loot-ing-wrap">
+                <img className="hero-token-loot-ing hero-token-loot-coin" src="/assets/ui/gold-coin.webp" alt="Gold" />
+                <span className="hero-token-loot-ing-qty">{displayGold(hero.gold)}</span>
               </span>
             )}
             {hero.ingredients && hero.ingredients.map((qty, idx) =>

@@ -714,8 +714,8 @@ export function PlayScreen() {
     heroes.map(h => {
       const availableAt = Number(h.available_at)
       const isExploring = availableAt > now
-      const override = isExploring ? heroOverrides.get(h.id) : undefined
-      const isIdle = !isExploring
+      const override = heroOverrides.get(h.id)
+      const isIdle = !isExploring && !override
       const heroGold = override ? override.bagGold : h.gold
       const heroIngs = override
         ? override.bagIngredients
