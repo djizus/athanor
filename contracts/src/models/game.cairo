@@ -52,6 +52,15 @@ pub impl GameImpl of GameTrait {
     }
 
     #[inline]
+    fn seed(self: @Game, ref salts: Array<felt252>) -> felt252 {
+        salts.append(*self.id);
+        salts.append(*self.ingredients);
+        salts.append(*self.effects);
+        salts.append((*self.tries).into());
+        core::poseidon::poseidon_hash_span(salts.span())
+    }
+
+    #[inline]
     fn is_over(self: @Game) -> bool {
         self.ended_at != @0
     }

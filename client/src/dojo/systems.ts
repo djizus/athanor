@@ -175,7 +175,6 @@ export function createSystemCalls(manifest: Manifest) {
     },
 
     explore: (game_id: BigNumberish, character_id: BigNumberish, zone_id: BigNumberish): Call[] => [
-      ...vrfCalls(),
       { contractAddress: playAddress, entrypoint: 'claim', calldata: [game_id, character_id] },
       { contractAddress: playAddress, entrypoint: 'explore', calldata: [game_id, character_id, zone_id] },
     ],

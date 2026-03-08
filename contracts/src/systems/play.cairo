@@ -239,13 +239,9 @@ pub mod Play {
         fn explore(ref self: ContractState, game_id: felt252, character_id: u8, zone_id: u8) {
             // [Setup] World
             let world = self.world(@NAMESPACE());
-            // [Compute] Seed
-            let store = StoreTrait::new(world);
-            let vrf_addr = store.vrf_address();
-            let random = RandomTrait::new(vrf_addr, game_id);
             // [Effect] Explore
             self.before(world, game_id);
-            self.playable.explore(world, game_id, character_id, zone_id, random.seed);
+            self.playable.explore(world, game_id, character_id, zone_id);
             self.after(world, game_id);
         }
 

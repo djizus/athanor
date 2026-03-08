@@ -196,7 +196,6 @@ pub mod PlayableComponent {
             game_id: felt252,
             character_id: u8,
             zone_id: u8,
-            seed: felt252,
         ) {
             // [Setup] Store
             let store = StoreTrait::new(world);
@@ -208,6 +207,10 @@ pub mod PlayableComponent {
             let mut character = store.character(game_id, character_id);
             character.assert_has_spawned();
             // [Effect] Explore
+            let mut salts: Array<felt252> = array![
+                character_id.into(), zone_id.into(), character.available_at.into(),
+            ];
+            let seed = game.seed(ref salts);
             let mut logs = character.explore(zone_id, seed);
             store.set_character(@character);
             // [Event] Emit logs
