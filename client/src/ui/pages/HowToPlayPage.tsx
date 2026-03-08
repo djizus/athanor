@@ -19,18 +19,14 @@ export function HowToPlayPage() {
               Discover all <strong>30 potions</strong> as fast as possible. Explore zones, gather
               ingredients, brew recipes. Your time is tracked on the leaderboard.
             </p>
-            {!tutorialEnabled && (
+            {!tutorialEnabled ? (
               <button
-                className="home-menu-button"
-                onClick={() => {
-                  setTutorialEnabled(true)
-                  navigate('home')
-                }}
+                className="htp-tutorial-btn"
+                onClick={() => setTutorialEnabled(true)}
               >
                 Replay In-Game Tutorial
               </button>
-            )}
-            {tutorialEnabled && (
+            ) : (
               <p className="htp-text htp-tutorial-note">
                 The in-game tutorial is active &mdash; it will guide you through the interface
                 when you start a game.

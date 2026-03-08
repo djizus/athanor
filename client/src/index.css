@@ -2590,6 +2590,24 @@ button:disabled, .btn:disabled {
 .htp-cat-power  { color: #4080d0; }
 .htp-cat-regen  { color: #40c060; }
 
+.htp-tutorial-btn {
+  font-family: var(--font-title);
+  font-size: 0.85rem;
+  padding: 0.5rem 1.2rem;
+  background: transparent;
+  color: var(--accent-gold);
+  border: 1px solid var(--accent-gold-dim);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.htp-tutorial-btn:hover {
+  background: rgba(240, 192, 64, 0.1);
+  border-color: var(--accent-gold);
+}
+
 .htp-tutorial-note {
   font-style: italic;
   color: var(--accent-gold-dim);
@@ -3011,7 +3029,8 @@ button:disabled, .btn:disabled {
 
 .tutorial-btn-next:hover {
   background: #f5d060;
-  box-shadow: 0 0 10px rgba(240, 192, 64, 0.3);
+  color: var(--bg-primary);
+  box-shadow: 0 0 12px rgba(240, 192, 64, 0.4);
 }
 
 .tutorial-btn-back {
