@@ -1299,7 +1299,6 @@ function HeroSlot({
     >
       <div className="hero-card-name-row">
         <span className="hero-card-name">{roleName}</span>
-        <span className={`hero-card-status ${statusClass}`}>{statusText}</span>
         {isIdle && !isGameOver && (
           <button
             className="btn-sm btn-apply-inline"
@@ -1314,10 +1313,11 @@ function HeroSlot({
                 ))}
               </>
             ) : (
-              <span className="btn-apply-no-potions">No potions</span>
+              <>No potions</>
             )}
           </button>
         )}
+        <span className={`hero-card-status ${statusClass}`}>{statusText}</span>
       </div>
       <div className="hero-card-top">
         <img

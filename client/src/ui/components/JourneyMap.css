@@ -381,16 +381,12 @@
   cursor: pointer;
 }
 
-.hero-token-orbit-ready .hero-token-orbit-item {
-  animation: orbit-item-glow 1.5s ease-in-out infinite;
+.hero-token-orbit-ready .hero-token-orbit-inner {
+  animation: orbit-counter-rotate 60s linear infinite, orbit-item-glow 1.5s ease-in-out infinite;
 }
 
-.hero-token-orbit-ready:hover .hero-token-orbit-item {
+.hero-token-orbit-ready:hover .hero-token-orbit-inner {
   filter: drop-shadow(0 0 6px rgba(240, 192, 64, 0.5));
-}
-
-.hero-token-orbit-ready:active .hero-token-orbit-item {
-  transform: translate(-50%, -50%) scale(0.9);
 }
 
 .hero-token-orbit-pending {
@@ -406,6 +402,11 @@
 .hero-token-orbit-item {
   position: absolute;
   transform: translate(-50%, -50%);
+}
+
+.hero-token-orbit-inner {
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -415,11 +416,12 @@
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
   animation: orbit-counter-rotate 60s linear infinite;
   transition: filter 0.2s ease;
+  position: relative;
 }
 
 @keyframes orbit-counter-rotate {
-  from { transform: translate(-50%, -50%) rotate(0deg); }
-  to { transform: translate(-50%, -50%) rotate(-360deg); }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(-360deg); }
 }
 
 @keyframes orbit-item-glow {

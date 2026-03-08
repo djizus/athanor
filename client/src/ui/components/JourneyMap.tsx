@@ -187,13 +187,14 @@ function HeroToken({ hero, small, selected, onClick, onClaim }: {
   const handleClaim = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
     if (!hero.lootReady || hero.isClaimPending) return
+    onClick?.()
     setClaimBurst(true)
     setTimeout(() => setClaimBurst(false), 600)
     if (frameRef.current) {
       spawnClaimParticles(frameRef.current, hero)
     }
     onClaim?.()
-  }, [hero, onClaim])
+  }, [hero, onClick, onClaim])
 
   return (
     <motion.div
@@ -241,17 +242,18 @@ function HeroToken({ hero, small, selected, onClick, onClaim }: {
                     height: `${itemSize}px`,
                     left: `calc(50% + ${x}px)`,
                     top: `calc(50% + ${y}px)`,
-                    ['--orbit-angle' as string]: `${(360 * i) / orbitItems.length}deg`,
                   }}
                   title={item.alt + (item.qty > 1 ? ` x${item.qty}` : '')}
                 >
-                  <img
-                    className="hero-token-orbit-icon"
-                    src={item.src}
-                    alt={item.alt}
-                  />
-                  <span className="hero-token-orbit-qty">
-                    {item.key === 'gold' ? displayGold(item.qty) : item.qty}
+                  <span className="hero-token-orbit-inner">
+                    <img
+                      className="hero-token-orbit-icon"
+                      src={item.src}
+                      alt={item.alt}
+                    />
+                    <span className="hero-token-orbit-qty">
+                      {item.key === 'gold' ? displayGold(item.qty) : item.qty}
+                    </span>
                   </span>
                 </span>
               )

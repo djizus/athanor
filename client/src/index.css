@@ -1528,12 +1528,6 @@ button:disabled, .btn:disabled {
   cursor: default;
 }
 
-.btn-apply-no-potions {
-  font-size: 0.58rem;
-  color: var(--text-muted);
-  font-style: italic;
-}
-
 .hero-bag {
   display: flex;
   align-items: center;
