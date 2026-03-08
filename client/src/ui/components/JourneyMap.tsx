@@ -241,17 +241,18 @@ function HeroToken({ hero, small, selected, onClick, onClaim }: {
                     height: `${itemSize}px`,
                     left: `calc(50% + ${x}px)`,
                     top: `calc(50% + ${y}px)`,
-                    ['--orbit-angle' as string]: `${(360 * i) / orbitItems.length}deg`,
                   }}
                   title={item.alt + (item.qty > 1 ? ` x${item.qty}` : '')}
                 >
-                  <img
-                    className="hero-token-orbit-icon"
-                    src={item.src}
-                    alt={item.alt}
-                  />
-                  <span className="hero-token-orbit-qty">
-                    {item.key === 'gold' ? displayGold(item.qty) : item.qty}
+                  <span className="hero-token-orbit-inner">
+                    <img
+                      className="hero-token-orbit-icon"
+                      src={item.src}
+                      alt={item.alt}
+                    />
+                    <span className="hero-token-orbit-qty">
+                      {item.key === 'gold' ? displayGold(item.qty) : item.qty}
+                    </span>
                   </span>
                 </span>
               )
