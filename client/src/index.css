@@ -2460,15 +2460,19 @@ button:disabled, .btn:disabled {
   .mobile-tab {
     flex: 1;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
-    gap: 0.15rem;
-    padding: 0.35rem 0;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0.5rem 0;
     background: none;
     border: none;
+    border-radius: 0;
+    box-shadow: none;
     color: var(--text-muted);
-    font-family: var(--font-body);
-    font-size: 0.6rem;
+    font-family: var(--font-title);
+    font-size: 0.8rem;
+    letter-spacing: 0.04em;
     cursor: pointer;
     transition: color var(--transition-fast);
   }
@@ -2501,10 +2505,18 @@ button:disabled, .btn:disabled {
   }
 
   .status-hud {
-    top: 8px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    transform: none;
+    width: 100%;
+    border-radius: 0;
     font-size: 0.72rem;
     gap: 0.35rem;
-    padding: 0.25rem 0.4rem;
+    padding: 0.35rem 0.5rem;
+    justify-content: center;
+    zoom: 1;
   }
 
   .status-hud-btn { font-size: 0.72rem; padding: 0.15rem 0.3rem; }
@@ -2513,7 +2525,7 @@ button:disabled, .btn:disabled {
   .hero-card-portrait { width: 44px; height: 44px; }
 
   .side-panel-header {
-    padding: 0.5rem 0.75rem;
+    display: none;
   }
 
   .side-panel-body {

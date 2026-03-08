@@ -528,7 +528,12 @@ export function PlayScreen() {
           <button
             key={tab}
             className={`mobile-tab${mobilePanel === tab ? ' active' : ''}`}
-            onClick={() => setMobilePanel(prev => prev === tab ? null : tab)}
+            onClick={() => {
+              setMobilePanel(prev => prev === tab ? null : tab)
+              if (tab === 'heroes') setHeroesCollapsed(false)
+              else if (tab === 'brew') setBrewCollapsed(false)
+              else if (tab === 'logs') setLogsCollapsed(false)
+            }}
           >
             {tab === 'heroes' ? '⚔' : tab === 'brew' ? '⚗' : '📜'}
             <span>{tab.charAt(0).toUpperCase() + tab.slice(1)}</span>
