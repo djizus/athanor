@@ -21,12 +21,8 @@ pub mod Play {
     use game_components_minigame::interface::IMinigameTokenData;
     use game_components_minigame::libs::{assert_token_ownership, post_action, pre_action};
     use game_components_minigame::minigame::MinigameComponent;
-    use game_components_token::core::interface::{
-        IMinigameTokenDispatcher, IMinigameTokenDispatcherTrait,
-    };
-    use game_components_token::libs::LifecycleTrait;
     use openzeppelin::introspection::src5::SRC5Component;
-    use starknet::{ContractAddress, get_block_timestamp};
+    use starknet::ContractAddress;
     use crate::components::playable::PlayableComponent;
     use crate::constants::NAMESPACE;
     use crate::helpers::random::{RandomImpl, RandomTrait};
@@ -231,12 +227,6 @@ pub mod Play {
             let mut store = StoreTrait::new(world);
             let token_address = store.token_address();
             pre_action(token_address, game_id);
-            let token_dispatcher = IMinigameTokenDispatcher { contract_address: token_address };
-            let now = get_block_timestamp();
-            assert!(
-                token_dispatcher.token_metadata(game_id).lifecycle.is_playable(now),
-                "Game not playable",
-            );
             assert_token_ownership(token_address, game_id);
         }
 
