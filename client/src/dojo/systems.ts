@@ -143,14 +143,13 @@ export function createSystemCalls(manifest: Manifest) {
         },
       ]),
 
-    craftBatch: (
+    crafts: (
       account: AccountInterface,
       game_id: BigNumberish,
       pairs: [number, number][],
-    ) =>
-      account.execute(
-        pairs.flatMap(([a, b]) => ([
-          
+    ) => {
+      const ingredients = pairs.flatMap(([a, b]) => [a + 1, b + 1])
+      return account.execute([
         {
           contractAddress: getVrfAddress(),
           entrypoint: "request_random",
@@ -161,11 +160,11 @@ export function createSystemCalls(manifest: Manifest) {
         },
         {
           contractAddress: playAddress,
-          entrypoint: 'craft',
-          calldata: [game_id, a + 1, b + 1, 1],
-        }
-      ])),
-      ),
+          entrypoint: 'crafts',
+          calldata: CallData.compile({ game_id, ingredients }),
+        },
+      ])
+    },
 
     recruit: (account: AccountInterface, game_id: BigNumberish) =>
       account.execute([
@@ -198,6 +197,22 @@ export function createSystemCalls(manifest: Manifest) {
           calldata: [game_id, character_id, Number(effect) + 1, quantity],
         },
       ]),
+
+    buffs: (
+      account: AccountInterface,
+      game_id: BigNumberish,
+      character_id: BigNumberish,
+      effects: number[],
+    ) => {
+      const effectIds = effects.map(e => e + 1)
+      return account.execute([
+        {
+          contractAddress: playAddress,
+          entrypoint: 'buffs',
+          calldata: CallData.compile({ game_id, character_id, effects: effectIds }),
+        },
+      ])
+    },
 
     explore: (account: AccountInterface, game_id: BigNumberish, character_id: BigNumberish, zone_id: BigNumberish) =>
       account.execute([
