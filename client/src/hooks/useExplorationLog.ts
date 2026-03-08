@@ -198,16 +198,23 @@ export function useExplorationLog(
   }, [])
 
   const drainTick = useCallback(() => {
+    const tickTime = Date.now()
     let anyRemaining = false
+    console.debug(`[DrainTick] t=${tickTime} heroes=${heroQueuesRef.current.size}`, [...heroQueuesRef.current.keys()])
     for (const [heroId, queue] of heroQueuesRef.current) {
-      const depth = (heroDepthRef.current.get(heroId) ?? -1) + 1
+      const prevDepth = heroDepthRef.current.get(heroId) ?? -1
+      const depth = prevDepth + 1
       heroDepthRef.current.set(heroId, depth)
 
       queue.sort((a, b) => (a.rawEvent?.depth ?? 0) - (b.rawEvent?.depth ?? 0))
 
+      const nextEventDepth = queue[0]?.rawEvent?.depth ?? '(none)'
+      console.debug(`[DrainTick] hero=${heroId} depth=${depth} queueLen=${queue.length} nextEventDepth=${nextEventDepth}`)
+
       let processedEvent = false
       while (queue.length > 0 && (queue[0].rawEvent?.depth ?? 0) <= depth) {
         const event = queue.shift()!
+        console.debug(`[DrainTick] hero=${heroId} PROCESS depth=${event.rawEvent?.depth} kind=${event.rawEvent?.kind} value=${event.rawEvent?.value}`)
         append(event.entry)
 
         if (event.rawEvent) {
@@ -234,6 +241,7 @@ export function useExplorationLog(
       }
 
       if (!processedEvent) {
+        console.debug(`[DrainTick] hero=${heroId} depth=${depth} NO_EVENT → drain`)
         setHeroOverrides((prev) => {
           const next = new Map(prev)
           const prevOv = prev.get(heroId)
@@ -256,6 +264,7 @@ export function useExplorationLog(
         const walkDurationMs = expedition
           ? Math.max(TICK_INTERVAL_MS, expedition.deathDepth * WALK_RATIO / WALK_BASE * TICK_INTERVAL_MS)
           : 2000
+        console.debug(`[DrainTick] hero=${heroId} QUEUE_EMPTY → returning walkMs=${walkDurationMs} deathDepth=${expedition?.deathDepth}`)
 
         setHeroOverrides((prev) => {
           const next = new Map(prev)
@@ -267,6 +276,7 @@ export function useExplorationLog(
         })
 
         const timer = window.setTimeout(() => {
+          console.debug(`[DrainTick] hero=${heroId} RETURN_COMPLETE → clearing override`)
           setHeroOverrides((prev) => {
             const next = new Map(prev)
             next.delete(heroId)
@@ -280,6 +290,7 @@ export function useExplorationLog(
     }
 
     if (!anyRemaining) {
+      console.debug(`[DrainTick] ALL_QUEUES_EMPTY → clearing interval`)
       window.clearInterval(drainTimerRef.current!)
       drainTimerRef.current = null
     }
@@ -288,6 +299,7 @@ export function useExplorationLog(
   const enqueue = useCallback((event: QueuedEvent) => {
     const heroId = event.rawEvent?.heroId ?? 0
     let queue = heroQueuesRef.current.get(heroId)
+    const isNew = !queue
     if (!queue) {
       queue = []
       heroQueuesRef.current.set(heroId, queue)
@@ -295,6 +307,7 @@ export function useExplorationLog(
       if (event.rawEvent) {
         const firstDepth = event.rawEvent.depth
         heroDepthRef.current.set(heroId, firstDepth - 1)
+        console.debug(`[Enqueue] hero=${heroId} NEW_QUEUE firstDepth=${firstDepth} initDepthCounter=${firstDepth - 1}`)
         const preHp = computePreEventHp(
           event.rawEvent.kind === 'trap' ? CATEGORY_TRAP
             : event.rawEvent.kind === 'beastLose' ? CATEGORY_BEAST_LOSE
@@ -312,8 +325,10 @@ export function useExplorationLog(
     }
 
     queue.push(event)
+    console.debug(`[Enqueue] hero=${heroId} depth=${event.rawEvent?.depth} kind=${event.rawEvent?.kind} queueLen=${queue.length} isNew=${isNew} timerActive=${drainTimerRef.current != null}`)
 
     if (drainTimerRef.current == null) {
+      console.debug(`[Enqueue] STARTING drain timer`)
       drainTimerRef.current = window.setInterval(drainTick, TICK_INTERVAL_MS)
     }
   }, [drainTick])
@@ -371,11 +386,12 @@ export function useExplorationLog(
           const result = formatEvent(shortName, values, heroName)
           if (result) {
             if (shortName === 'ExplorationEvent' && !result.rawEvent) continue
-            console.debug('[ExplorationLog]', shortName, values, '->', result.entry.text)
+            console.debug(`[EventArrival] t=${Date.now()} model=${shortName} hero=${values.hero_id} depth=${values.depth ?? '-'} kind=${values.event_kind ?? '-'} value=${values.value ?? '-'}`)
             if (shortName === 'ExplorationEvent') {
               enqueue({ entry: result.entry, rawEvent: result.rawEvent })
             } else {
               if (shortName === 'ExpeditionStarted' && values.hero_id && values.death_depth) {
+                console.debug(`[EventArrival] ExpeditionStarted hero=${values.hero_id} deathDepth=${values.death_depth} returnAt=${values.return_at}`)
                 heroExpeditionRef.current.set(values.hero_id, {
                   deathDepth: values.death_depth,
                   returnAt: values.return_at,
