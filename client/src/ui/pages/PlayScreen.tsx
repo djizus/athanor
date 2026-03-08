@@ -161,7 +161,7 @@ export function PlayScreen() {
   const optimisticGold = useOptimisticGold(game)
   const effectQuantities = useOptimisticEffects(game)
   const addPendingTx = usePendingTxStore((s) => s.addTx)
-  const removePendingTx = usePendingTxStore((s) => s.removeTx)
+  const finalizePendingTx = usePendingTxStore((s) => s.finalizeTx)
   const isActionPending = usePendingTxStore((s) => s.isActionPending)
   const isHeroActionPending = usePendingTxStore((s) => s.isHeroActionPending)
 
@@ -358,15 +358,17 @@ export function PlayScreen() {
       effectsDelta: new Map(),
     })
     const t = txToast('Sending expedition')
+    let success = false
     try {
       await client.explore(account, gameId, characterId)
+      success = true
       t.success()
     } catch (e) {
       t.error()
       pushInfo(`${name} expedition failed`)
       console.error('Explore failed:', e)
     } finally {
-      removePendingTx(pendingId)
+      finalizePendingTx(pendingId, success)
     }
   }
 
@@ -396,8 +398,10 @@ export function PlayScreen() {
       effectsDelta: new Map(),
     })
     const t = txToast('Claiming loot')
+    let success = false
     try {
       await client.claim(account, gameId, characterId)
+      success = true
       t.success()
       setBrewRefreshKey(k => k + 1)
     } catch (e) {
@@ -405,7 +409,7 @@ export function PlayScreen() {
       pushInfo(`${name} claim failed`)
       console.error('Claim failed:', e)
     } finally {
-      removePendingTx(pendingId)
+      finalizePendingTx(pendingId, success)
     }
   }
 
@@ -427,8 +431,10 @@ export function PlayScreen() {
       effectsDelta: new Map(),
     })
     const t = txToast('Brewing potion')
+    let success = false
     try {
       await client.craft(account, gameId, lo, hi)
+      success = true
       t.success()
       soundManager.playSfx('brew-success', 0.4)
       setBrewRefreshKey(k => k + 1)
@@ -443,7 +449,7 @@ export function PlayScreen() {
       pushInfo('Brew failed')
       console.error('Craft failed:', e)
     } finally {
-      removePendingTx(pendingId)
+      finalizePendingTx(pendingId, success)
     }
   }
 
@@ -474,8 +480,10 @@ export function PlayScreen() {
       effectsDelta: new Map(),
     })
     const t = txToast(`Brewing ${pairs.length} potions`)
+    let success = false
     try {
       await client.craftBatch(account, gameId, pairs)
+      success = true
       t.success()
       soundManager.playSfx('brew-success', 0.4)
       setBrewRefreshKey(k => k + 1)
@@ -484,7 +492,7 @@ export function PlayScreen() {
       pushInfo('Batch brew failed')
       console.error('Batch craft failed:', e)
     } finally {
-      removePendingTx(pendingId)
+      finalizePendingTx(pendingId, success)
     }
   }
 
@@ -501,8 +509,10 @@ export function PlayScreen() {
       effectsDelta: new Map(),
     })
     const t = txToast('Buying hint')
+    let success = false
     try {
       await client.clue(account, gameId)
+      success = true
       t.success()
       soundManager.playSfx('notification', 0.4)
     } catch (e) {
@@ -510,7 +520,7 @@ export function PlayScreen() {
       pushInfo('Hint purchase failed')
       console.error('Clue failed:', e)
     } finally {
-      removePendingTx(pendingId)
+      finalizePendingTx(pendingId, success)
     }
   }
 
@@ -528,8 +538,10 @@ export function PlayScreen() {
       effectsDelta: new Map(),
     })
     const t = txToast('Recruiting hero')
+    let success = false
     try {
       await client.recruit(account, gameId)
+      success = true
       t.success()
       soundManager.playSfx('recruit', 0.6)
     } catch (e) {
@@ -537,7 +549,7 @@ export function PlayScreen() {
       pushInfo('Recruitment failed')
       console.error('Recruit failed:', e)
     } finally {
-      removePendingTx(pendingId)
+      finalizePendingTx(pendingId, success)
     }
   }
 
@@ -554,8 +566,10 @@ export function PlayScreen() {
       effectsDelta: new Map<number, number>([[effect, -quantity]]),
     })
     const t = txToast('Applying potion')
+    let success = false
     try {
       await client.buff(account, gameId, heroId, effect, quantity)
+      success = true
       t.success()
       soundManager.playSfx('potion-apply', 0.5)
     } catch (e) {
@@ -563,7 +577,7 @@ export function PlayScreen() {
       pushInfo('Potion application failed')
       console.error('Buff failed:', e)
     } finally {
-      removePendingTx(pendingId)
+      finalizePendingTx(pendingId, success)
     }
   }
 
@@ -826,14 +840,16 @@ export function PlayScreen() {
               goldDelta: 0,
               effectsDelta: new Map(),
             })
+            let success = false
             try {
               await client.surrender(account, gameId)
+              success = true
               setSurrendered(true)
               setSettingsOpen(false)
             } catch (e) {
               console.error('Surrender failed:', e)
             } finally {
-              removePendingTx(pendingId)
+              finalizePendingTx(pendingId, success)
             }
           }}
         />

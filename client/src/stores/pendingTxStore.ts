@@ -13,8 +13,9 @@ export type PendingTx = {
 
 interface PendingTxState {
   pending: Map<string, PendingTx>
+  settled: Map<string, PendingTx>
   addTx: (tx: PendingTx) => void
-  removeTx: (id: string) => void
+  finalizeTx: (id: string, success: boolean) => void
   clearAll: () => void
   isActionPending: (action: PendingTxAction | PendingTxAction[]) => boolean
   isHeroActionPending: (heroId: number, action: PendingTxAction | PendingTxAction[]) => boolean
@@ -22,6 +23,8 @@ interface PendingTxState {
   getGoldDelta: () => number
   getEffectsDeltas: () => Map<number, number>
 }
+
+const SETTLED_TX_TTL_MS = 4000
 
 function sumMapDeltas(maps: Map<number, number>[]): Map<number, number> {
   const result = new Map<number, number>()
@@ -39,6 +42,7 @@ function sumMapDeltas(maps: Map<number, number>[]): Map<number, number> {
 
 export const usePendingTxStore = create<PendingTxState>((set, get) => ({
   pending: new Map(),
+  settled: new Map(),
 
   addTx: (tx) => set((state) => {
     const next = new Map(state.pending)
@@ -46,14 +50,33 @@ export const usePendingTxStore = create<PendingTxState>((set, get) => ({
     return { pending: next }
   }),
 
-  removeTx: (id) => set((state) => {
-    if (!state.pending.has(id)) return state
-    const next = new Map(state.pending)
-    next.delete(id)
-    return { pending: next }
-  }),
+  finalizeTx: (id, success) => {
+    const tx = get().pending.get(id)
+    if (!tx) return
 
-  clearAll: () => set({ pending: new Map() }),
+    set((state) => {
+      const nextPending = new Map(state.pending)
+      nextPending.delete(id)
+      if (!success) return { pending: nextPending }
+
+      const nextSettled = new Map(state.settled)
+      nextSettled.set(id, tx)
+      return { pending: nextPending, settled: nextSettled }
+    })
+
+    if (!success) return
+
+    setTimeout(() => {
+      set((state) => {
+        if (!state.settled.has(id)) return state
+        const nextSettled = new Map(state.settled)
+        nextSettled.delete(id)
+        return { settled: nextSettled }
+      })
+    }, SETTLED_TX_TTL_MS)
+  },
+
+  clearAll: () => set({ pending: new Map(), settled: new Map() }),
 
   isActionPending: (action) => {
     const actions = Array.isArray(action) ? action : [action]
@@ -73,15 +96,24 @@ export const usePendingTxStore = create<PendingTxState>((set, get) => ({
     return false
   },
 
-  getInventoryDeltas: () => sumMapDeltas(Array.from(get().pending.values(), (tx) => tx.inventoryDelta)),
+  getInventoryDeltas: () => sumMapDeltas([
+    ...Array.from(get().pending.values(), (tx) => tx.inventoryDelta),
+    ...Array.from(get().settled.values(), (tx) => tx.inventoryDelta),
+  ]),
 
   getGoldDelta: () => {
     let total = 0
     for (const tx of get().pending.values()) {
       total += tx.goldDelta
     }
+    for (const tx of get().settled.values()) {
+      total += tx.goldDelta
+    }
     return total
   },
 
-  getEffectsDeltas: () => sumMapDeltas(Array.from(get().pending.values(), (tx) => tx.effectsDelta)),
+  getEffectsDeltas: () => sumMapDeltas([
+    ...Array.from(get().pending.values(), (tx) => tx.effectsDelta),
+    ...Array.from(get().settled.values(), (tx) => tx.effectsDelta),
+  ]),
 }))

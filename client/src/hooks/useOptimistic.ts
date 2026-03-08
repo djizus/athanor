@@ -30,10 +30,11 @@ function aggregateMapDeltas(
 export function useOptimisticInventory(gameId: number | null) {
   const baseInventory = useInventory(gameId)
   const pending = usePendingTxStore((s) => s.pending)
+  const settled = usePendingTxStore((s) => s.settled)
 
   const deltas = useMemo(
-    () => aggregateMapDeltas(pending, (tx) => tx.inventoryDelta),
-    [pending],
+    () => aggregateMapDeltas(new Map([...pending, ...settled]), (tx) => tx.inventoryDelta),
+    [pending, settled],
   )
 
   return useMemo(
@@ -48,20 +49,25 @@ export function useOptimisticInventory(gameId: number | null) {
 export function useOptimisticGold(game: GameType | undefined) {
   const baseGold = game?.gold ?? 0
   const pending = usePendingTxStore((s) => s.pending)
+  const settled = usePendingTxStore((s) => s.settled)
 
   const delta = useMemo(() => {
     let total = 0
     for (const tx of pending.values()) {
       total += tx.goldDelta
     }
+    for (const tx of settled.values()) {
+      total += tx.goldDelta
+    }
     return total
-  }, [pending])
+  }, [pending, settled])
 
   return Math.max(0, baseGold + delta)
 }
 
 export function useOptimisticEffects(game: GameType | undefined) {
   const pending = usePendingTxStore((s) => s.pending)
+  const settled = usePendingTxStore((s) => s.settled)
 
   const base = useMemo(
     () => (game ? unpackEffects(BigInt(game.effects)) : Array(30).fill(0) as number[]),
@@ -69,8 +75,8 @@ export function useOptimisticEffects(game: GameType | undefined) {
   )
 
   const deltas = useMemo(
-    () => aggregateMapDeltas(pending, (tx) => tx.effectsDelta),
-    [pending],
+    () => aggregateMapDeltas(new Map([...pending, ...settled]), (tx) => tx.effectsDelta),
+    [pending, settled],
   )
 
   return useMemo(

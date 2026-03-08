@@ -111,9 +111,7 @@ export function BrewContent({
   const selectedCount = Number(slotA != null) + Number(slotB != null)
   const selectedIngredient = slotA ?? slotB
   const selectedIngredientName = selectedIngredient == null ? '' : INGREDIENT_NAMES[selectedIngredient]
-  const selectedIngredientShortName = selectedIngredientName.length > 10
-    ? `${selectedIngredientName.slice(0, 10)}...`
-    : selectedIngredientName
+  const selectedIngredientShortName = selectedIngredientName.trim().split(/\s+/)[0] ?? ''
 
   const handleBrew = () => {
     if (slotA != null && slotB != null) onCraft(slotA, slotB)
@@ -201,7 +199,7 @@ export function BrewContent({
               ? 'Brewing...'
               : selectedIngredient == null
                 ? `Discover All (${brewAllCount})`
-                : `Discover All + ${selectedIngredientShortName} (${brewAllCount})`}
+                : `Discover with ${selectedIngredientShortName}... (${brewAllCount})`}
           </button>
         )}
       </div>
