@@ -602,20 +602,25 @@ export function JourneyMap({
   const activeZones = useMemo(() => {
     const set = new Set<number>()
     for (const [, pos] of heroPositions) {
-      if (pos.zoneIndex >= 0) {
-        set.add(pos.zoneIndex)
+      if (pos.zoneIndex >= 0) set.add(pos.zoneIndex)
+    }
+    if (heroOverrides) {
+      for (const [, ov] of heroOverrides) {
+        if (ov.zoneIndex != null && ov.zoneIndex >= 0 && !ov.returning) set.add(ov.zoneIndex)
       }
     }
     return set
-  }, [heroPositions])
+  }, [heroPositions, heroOverrides])
 
   const selectedHero = heroes.find(h => h.hero_id === selectedHeroId)
   const selectedPos = heroPositions.get(selectedHeroId)
   const selectedOverride = heroOverrides?.get(selectedHeroId)
+  const selectedOverrideZone = selectedOverride?.zoneIndex ?? -1
   const canSendSelected = selectedHero != null
     && !isGameOver
     && selectedHero.health > 0
     && !selectedOverride?.returning
+    && selectedOverrideZone < 0
     && (!selectedPos || selectedPos.zoneIndex === -1)
 
   const origin = NODE_POSITIONS.lineOrigin
