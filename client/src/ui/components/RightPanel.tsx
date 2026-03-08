@@ -108,6 +108,12 @@ export function BrewContent({
   const qtyA = slotA != null ? (inventory.find(i => i.ingredient_id === slotA)?.quantity ?? 0) : 0
   const qtyB = slotB != null ? (inventory.find(i => i.ingredient_id === slotB)?.quantity ?? 0) : 0
   const maxBatchQty = slotA != null && slotB != null ? Math.min(qtyA, qtyB) : 0
+  const selectedCount = Number(slotA != null) + Number(slotB != null)
+  const selectedIngredient = slotA ?? slotB
+  const selectedIngredientName = selectedIngredient == null ? '' : INGREDIENT_NAMES[selectedIngredient]
+  const selectedIngredientShortName = selectedIngredientName.length > 10
+    ? `${selectedIngredientName.slice(0, 10)}...`
+    : selectedIngredientName
 
   const handleBrew = () => {
     if (slotA != null && slotB != null) onCraft(slotA, slotB)
@@ -164,33 +170,41 @@ export function BrewContent({
             <span className="craft-result-unknown">?</span>
           )}
         </div>
-        <div className="craft-brew-btns">
+        {selectedCount === 2 ? (
+          <div className="craft-brew-btns">
+            <button
+              className="btn-primary btn-sm craft-brew-btn"
+              onClick={handleBrew}
+              disabled={isGameOver || slotA == null || slotB == null || qtyA <= 0 || qtyB <= 0 || isBrewing}
+            >
+              {isBrewing && !isGameOver ? 'Brewing...' : 'Brew'}
+            </button>
+            <button
+              className="btn-sm craft-brew-btn"
+              onClick={() => {
+                if (slotA == null || slotB == null) return
+                for (let i = 0; i < maxBatchQty; i++) onCraft(slotA, slotB)
+              }}
+              disabled={isGameOver || slotA == null || slotB == null || maxBatchQty <= 0 || isBrewing}
+            >
+              ×{maxBatchQty}
+            </button>
+          </div>
+        ) : (
           <button
-            className="btn-primary btn-sm craft-brew-btn"
-            onClick={handleBrew}
-            disabled={isGameOver || slotA == null || slotB == null || qtyA <= 0 || qtyB <= 0 || isBrewing}
+            className="btn-sm craft-brew-btn craft-brew-all-btn"
+            onClick={onBrewAll}
+            disabled={isGameOver || brewAllCount === 0 || isBrewing}
+            title={selectedIngredient == null ? 'Discover all untried recipes' : `Discover untried recipes with ${selectedIngredientName}`}
           >
-            {isBrewing && !isGameOver ? 'Brewing...' : 'Brew'}
+            {isBrewingAll && !isGameOver
+              ? 'Brewing...'
+              : selectedIngredient == null
+                ? `Discover All (${brewAllCount})`
+                : `Discover All + ${selectedIngredientShortName} (${brewAllCount})`}
           </button>
-          <button
-            className="btn-sm craft-brew-btn"
-            onClick={() => {
-              if (slotA == null || slotB == null) return
-              for (let i = 0; i < maxBatchQty; i++) onCraft(slotA, slotB)
-            }}
-            disabled={isGameOver || slotA == null || slotB == null || maxBatchQty <= 0 || isBrewing}
-          >
-            ×{maxBatchQty}
-          </button>
-        </div>
+        )}
       </div>
-      <button
-        className="btn-sm craft-brew-btn craft-brew-all-btn"
-        onClick={onBrewAll}
-        disabled={isGameOver || brewAllCount === 0 || isBrewing}
-      >
-        {isBrewingAll && !isGameOver ? 'Brewing...' : `Brew All (${brewAllCount})`}
-      </button>
     </>
   )
 }

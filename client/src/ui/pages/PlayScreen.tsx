@@ -81,6 +81,44 @@ function computeUntriedPairs(
   return pairs
 }
 
+function computeUntriedPairsForFirstIngredient(
+  inventory: { ingredient_id: number; quantity: number }[],
+  recipes: DiscoveryData[],
+  firstIngredient: number,
+): [number, number][] {
+  const tried = new Set<string>()
+  for (const r of recipes) {
+    tried.add(`${r.ingredient_a}-${r.ingredient_b}`)
+    tried.add(`${r.ingredient_b}-${r.ingredient_a}`)
+  }
+
+  const inv = new Map<number, number>()
+  for (const item of inventory) {
+    if (item.quantity > 0) inv.set(item.ingredient_id, item.quantity)
+  }
+
+  const firstQty = inv.get(firstIngredient) ?? 0
+  if (firstQty <= 0) return []
+
+  const ids = [...inv.keys()].filter(id => id !== firstIngredient).sort((a, b) => a - b)
+  const pairs: [number, number][] = []
+  let remainingFirst = firstQty
+
+  for (const id of ids) {
+    if (remainingFirst <= 0) break
+    if (tried.has(`${firstIngredient}-${id}`)) continue
+    const q = inv.get(id) ?? 0
+    if (q <= 0) continue
+    const lo = Math.min(firstIngredient, id)
+    const hi = Math.max(firstIngredient, id)
+    pairs.push([lo, hi])
+    remainingFirst -= 1
+    inv.set(id, q - 1)
+  }
+
+  return pairs
+}
+
 const NAMESPACE = import.meta.env.VITE_PUBLIC_NAMESPACE || 'ATHANOR'
 const DISCOVERY_MODEL = `${NAMESPACE}-Discovery`
 
@@ -285,10 +323,23 @@ export function PlayScreen() {
     if (gameId == null) return
     let stale = false
     fetchFreshRecipes(toriiClient, gameId)
-      .then(fresh => { if (!stale) setBrewAllCount(computeUntriedPairs(inventory, fresh).length) })
+      .then((fresh) => {
+        if (stale) return
+        const selectedIngredient = slotA ?? slotB
+        const selectedCount = Number(slotA != null) + Number(slotB != null)
+        if (selectedCount >= 2) {
+          setBrewAllCount(0)
+          return
+        }
+        if (selectedCount === 1 && selectedIngredient != null) {
+          setBrewAllCount(computeUntriedPairsForFirstIngredient(inventory, fresh, selectedIngredient).length)
+          return
+        }
+        setBrewAllCount(computeUntriedPairs(inventory, fresh).length)
+      })
       .catch(() => {})
     return () => { stale = true }
-  }, [toriiClient, gameId, inventory, recipes, brewRefreshKey])
+  }, [toriiClient, gameId, inventory, recipes, brewRefreshKey, slotA, slotB])
 
   const handleExplore = async (characterId: number) => {
     if (!account || gameId == null) return
@@ -399,9 +450,16 @@ export function PlayScreen() {
   const handleBrewAll = async () => {
     if (!account || gameId == null) return
     const freshRecipes = await fetchFreshRecipes(toriiClient, gameId)
-    const pairs = computeUntriedPairs(inventory, freshRecipes)
+    const selectedIngredient = slotA ?? slotB
+    const selectedCount = Number(slotA != null) + Number(slotB != null)
+    if (selectedCount >= 2) return
+    const pairs = selectedCount === 1 && selectedIngredient != null
+      ? computeUntriedPairsForFirstIngredient(inventory, freshRecipes, selectedIngredient)
+      : computeUntriedPairs(inventory, freshRecipes)
     if (pairs.length === 0) { pushInfo('No new combinations available'); return }
-    pushInfo(`Brewing ${pairs.length} new combinations...`)
+    pushInfo(selectedCount === 1
+      ? `Brewing ${pairs.length} new combinations for selected ingredient...`
+      : `Brewing ${pairs.length} new combinations...`)
     const pendingId = createPendingTxId()
     const inventoryDelta = new Map<number, number>()
     for (const [a, b] of pairs) {
