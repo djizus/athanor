@@ -576,9 +576,22 @@ export function PlayScreen() {
                 </div>
               )}
             </div>
-            <button onClick={() => navigate('home')} style={{ marginTop: '1rem' }}>
-              Return to Menu
-            </button>
+            <div className="game-over-actions">
+              <button onClick={() => {
+                const time = formatGameDuration(elapsedSeconds)
+                const won = discoveredCount >= 30
+                const text = won
+                  ? `I completed the Grimoire in ${time}${leaderboardRank ? `, rank #${leaderboardRank}` : ''} on Athanor! Think you can beat that?\n\nPlay now:`
+                  : `I discovered ${discoveredCount}/30 recipes in ${time} on Athanor. Can you complete the Grimoire?\n\nPlay now:`
+                const url = window.location.origin
+                window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank')
+              }}>
+                Share on X
+              </button>
+              <button onClick={() => navigate('home')}>
+                Return to Menu
+              </button>
+            </div>
           </div>
         </div>
       )}
