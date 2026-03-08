@@ -188,7 +188,6 @@ function ZoneNode({
       onMouseLeave={onLeave}
     >
       <div className="zone-node-glow" />
-      <div className={`zone-node-ring${canSendHero ? ' zone-node-ring-active' : ''}`} />
       <img
         className="zone-node-icon"
         src={`/assets/zones/${portalKey}.webp`}
@@ -232,10 +231,12 @@ function AthanorNode({
   heroes,
   floatingTexts,
   onFloatingTextComplete,
+  hintText,
 }: {
   heroes: HeroData[]
   floatingTexts: FloatingTextAnim[]
   onFloatingTextComplete: (id: string) => void
+  hintText: string | null
 }) {
   return (
     <div
@@ -259,6 +260,10 @@ function AthanorNode({
             <HeroToken key={hero.hero_id} hero={hero} />
           ))}
         </div>
+      )}
+
+      {hintText && (
+        <div className="constellation-hint">{hintText}</div>
       )}
 
       <AnimatePresence>
@@ -396,14 +401,9 @@ export function JourneyMap({
           heroes={heroesByZone.get(-1) ?? []}
           floatingTexts={textsByZone.get(-1) ?? []}
           onFloatingTextComplete={onFloatingTextComplete}
+          hintText={canSendSelected ? `Select a zone to send ${ROLE_NAMES[selectedHero!.role > 0 ? selectedHero!.role - 1 : selectedHeroId] ?? 'hero'}` : null}
         />
       </LayoutGroup>
-
-      {canSendSelected && (
-        <div className="constellation-hint">
-          Select a zone to send {ROLE_NAMES[selectedHero!.role > 0 ? selectedHero!.role - 1 : selectedHeroId] ?? 'hero'}
-        </div>
-      )}
     </div>
   )
 }

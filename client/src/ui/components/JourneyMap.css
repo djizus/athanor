@@ -64,39 +64,27 @@
 }
 
 .zone-node-active .zone-node-glow {
-  opacity: 0.35;
-  animation: zone-glow-pulse 2.5s ease-in-out infinite;
+  opacity: 0.5;
+  width: 170px;
+  height: 170px;
+  animation: zone-glow-pulse 2s ease-in-out infinite;
+}
+
+.zone-node-active .zone-node-icon {
+  border-color: var(--zone-color, #f0c040);
+  box-shadow:
+    0 0 20px rgba(0, 0, 0, 0.4),
+    0 0 18px var(--zone-color, #f0c040),
+    0 0 36px var(--zone-color, #f0c040);
 }
 
 .zone-node-hovered .zone-node-glow {
-  opacity: 0.4;
+  opacity: 0.35;
 }
 
 @keyframes zone-glow-pulse {
-  0%, 100% { opacity: 0.25; transform: scale(1); }
-  50% { opacity: 0.45; transform: scale(1.12); }
-}
-
-.zone-node-ring {
-  position: absolute;
-  width: 104px;
-  height: 104px;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.12);
-  z-index: 0;
-  pointer-events: none;
-  transition: border-color 0.4s ease, box-shadow 0.4s ease;
-}
-
-.zone-node-ring-active {
-  border-color: var(--accent-gold);
-  box-shadow: 0 0 10px rgba(240, 192, 64, 0.25);
-  animation: zone-ring-pulse 1.8s ease-in-out infinite;
-}
-
-@keyframes zone-ring-pulse {
-  0%, 100% { opacity: 0.5; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.08); }
+  0%, 100% { opacity: 0.35; transform: scale(1); }
+  50% { opacity: 0.65; transform: scale(1.15); }
 }
 
 .zone-node-icon {
@@ -119,13 +107,6 @@
   0%, 100% { transform: translateY(0) scale(1); }
   35% { transform: translateY(-4px) scale(1.025); }
   70% { transform: translateY(2px) scale(0.985); }
-}
-
-.zone-node-active .zone-node-icon {
-  border-color: var(--zone-color, #f0c040);
-  box-shadow:
-    0 0 20px rgba(0, 0, 0, 0.5),
-    0 0 16px var(--zone-color, #f0c040);
 }
 
 .zone-node-hovered .zone-node-icon {
@@ -443,22 +424,20 @@
 /* ── Hint Bar ──── */
 
 .constellation-hint {
-  position: absolute;
-  bottom: 14%;
-  left: 50%;
-  transform: translateX(-50%);
+  position: relative;
   background: rgba(10, 10, 20, 0.75);
   border: 1px solid var(--accent-gold-dim);
   border-radius: 8px;
-  padding: 6px 16px;
+  padding: 5px 14px;
   font-family: var(--font-title);
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   color: var(--accent-gold);
   letter-spacing: 0.04em;
   white-space: nowrap;
   z-index: 5;
   pointer-events: none;
   animation: hint-fade 2s ease-in-out infinite;
+  margin-top: 2px;
 }
 
 @keyframes hint-fade {
@@ -487,11 +466,6 @@
   .athanor-glow {
     width: 130px;
     height: 130px;
-  }
-
-  .zone-node-ring {
-    width: 76px;
-    height: 76px;
   }
 
   .hero-token-portrait {
