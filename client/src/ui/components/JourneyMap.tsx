@@ -186,7 +186,6 @@ function HeroToken({ hero, small, selected, onClick, onClaim }: {
       onClick={(e) => { e.stopPropagation(); onClick?.() }}
     >
       <div className="hero-token-frame-wrap">
-        {selected && <div className="hero-token-select-glow" />}
         <HpRing pct={hpPct} color={hpColor} cfg={ringCfg} selected={selected} />
         <img
           className="hero-token-frame"
@@ -228,11 +227,6 @@ function HeroToken({ hero, small, selected, onClick, onClaim }: {
               ) : null,
             )}
           </div>
-          {hero.lootReady && (
-            <span className="hero-token-loot-claim">
-              {hero.isClaimPending ? '...' : 'Claim'}
-            </span>
-          )}
         </div>
       )}
     </motion.div>

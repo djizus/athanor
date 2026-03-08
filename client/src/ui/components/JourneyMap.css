@@ -267,7 +267,8 @@
   border-radius: 50%;
   pointer-events: none;
   z-index: 3;
-  opacity: 0.35;
+  opacity: 0.7;
+  mix-blend-mode: screen;
 }
 
 .hero-token-sm .hero-token-frame {
@@ -276,28 +277,13 @@
 }
 
 .hero-token-selected .hero-token-frame {
-  opacity: 0.5;
+  opacity: 0.9;
+  filter: drop-shadow(0 0 6px rgba(240, 192, 64, 0.5));
 }
 
-/* ── Selection Glow ──── */
-
-.hero-token-select-glow {
-  position: absolute;
-  inset: -10px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(240, 192, 64, 0.35) 0%, rgba(240, 192, 64, 0.08) 50%, transparent 70%);
-  z-index: 0;
-  pointer-events: none;
-  animation: hero-select-pulse 2s ease-in-out infinite;
-}
-
-.hero-token-sm .hero-token-select-glow {
-  inset: -8px;
-}
-
-@keyframes hero-select-pulse {
-  0%, 100% { opacity: 0.7; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.12); }
+.hero-token-selected .hero-token-portrait {
+  border: 2px solid var(--accent-gold);
+  box-shadow: 0 0 10px rgba(240, 192, 64, 0.5), inset 0 0 6px rgba(240, 192, 64, 0.15);
 }
 
 .hero-token-name {
@@ -380,67 +366,42 @@
 
 .hero-token-loot {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 3px;
-  background: rgba(8, 8, 16, 0.88);
-  border: 1px solid rgba(160, 128, 32, 0.3);
-  border-image: linear-gradient(
+  gap: 5px;
+  background: linear-gradient(
     180deg,
-    rgba(240, 192, 64, 0.4) 0%,
-    rgba(160, 128, 32, 0.2) 50%,
-    rgba(240, 192, 64, 0.4) 100%
-  ) 1;
-  padding: 4px 8px;
+    rgba(40, 28, 12, 0.92) 0%,
+    rgba(24, 16, 6, 0.95) 100%
+  );
+  border: 1px solid rgba(160, 120, 40, 0.45);
+  border-radius: 8px;
+  padding: 5px 10px;
   min-width: 60px;
   transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
   position: relative;
-}
-
-.hero-token-loot::before,
-.hero-token-loot::after {
-  content: '';
-  position: absolute;
-  width: 6px;
-  height: 6px;
-  border: 1px solid rgba(240, 192, 64, 0.5);
-  pointer-events: none;
-}
-
-.hero-token-loot::before {
-  top: -3px;
-  left: -3px;
-  border-right: none;
-  border-bottom: none;
-}
-
-.hero-token-loot::after {
-  bottom: -3px;
-  right: -3px;
-  border-left: none;
-  border-top: none;
+  box-shadow: inset 0 1px 0 rgba(200, 160, 64, 0.08), 0 2px 8px rgba(0, 0, 0, 0.6);
 }
 
 .hero-token-loot-items {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   flex-wrap: nowrap;
 }
 
 .hero-token-loot-gold {
   display: flex;
   align-items: center;
-  gap: 2px;
-  font-size: 0.6rem;
+  gap: 3px;
+  font-size: 0.7rem;
   font-weight: 600;
   color: var(--accent-gold);
   white-space: nowrap;
 }
 
 .hero-token-loot-coin {
-  width: 14px;
-  height: 14px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   flex-shrink: 0;
 }
@@ -451,38 +412,39 @@
 }
 
 .hero-token-loot-ing {
-  width: 18px;
-  height: 18px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(200, 160, 64, 0.25);
+  background: rgba(0, 0, 0, 0.3);
 }
 
 .hero-token-loot-ing-qty {
   position: absolute;
-  bottom: -2px;
-  right: -4px;
-  font-size: 0.45rem;
+  bottom: -3px;
+  right: -5px;
+  font-size: 0.5rem;
   font-weight: 700;
-  color: #fff;
-  background: rgba(0, 0, 0, 0.75);
-  border-radius: 3px;
-  padding: 0 2px;
-  line-height: 1.1;
+  color: var(--accent-gold);
+  background: rgba(20, 12, 4, 0.9);
+  border: 1px solid rgba(160, 120, 40, 0.4);
+  border-radius: 4px;
+  padding: 0 3px;
+  line-height: 1.2;
 }
 
 .hero-token-loot-ready {
   cursor: pointer;
-  border-image: none;
   border-color: var(--accent-gold);
   animation: loot-panel-glow 1.5s ease-in-out infinite;
 }
 
 .hero-token-loot-ready:hover {
-  background: rgba(240, 192, 64, 0.15);
+  background: linear-gradient(180deg, rgba(60, 42, 14, 0.95) 0%, rgba(36, 24, 8, 0.98) 100%);
   transform: scale(1.06);
-  box-shadow: 0 0 14px rgba(240, 192, 64, 0.35);
+  box-shadow: 0 0 14px rgba(240, 192, 64, 0.35), inset 0 1px 0 rgba(200, 160, 64, 0.15);
 }
 
 .hero-token-loot-ready:active {
@@ -494,20 +456,12 @@
   pointer-events: none;
 }
 
-.hero-token-loot-claim {
-  font-family: var(--font-title);
-  font-size: 0.55rem;
-  color: var(--accent-gold);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
 @keyframes loot-panel-glow {
   0%, 100% {
-    box-shadow: 0 0 4px rgba(240, 192, 64, 0.1);
+    box-shadow: inset 0 1px 0 rgba(200, 160, 64, 0.08), 0 2px 8px rgba(0, 0, 0, 0.6);
   }
   50% {
-    box-shadow: 0 0 14px rgba(240, 192, 64, 0.4);
+    box-shadow: inset 0 1px 0 rgba(200, 160, 64, 0.15), 0 0 14px rgba(240, 192, 64, 0.35);
   }
 }
 
@@ -769,18 +723,24 @@
     height: 42px;
   }
 
-  .hero-token-loot-gold {
-    font-size: 0.5rem;
+  .hero-token-loot {
+    min-width: 48px;
+    padding: 3px 6px;
+    gap: 3px;
   }
 
-  .hero-token-loot-ing {
+  .hero-token-loot-gold {
+    font-size: 0.55rem;
+  }
+
+  .hero-token-loot-coin {
     width: 14px;
     height: 14px;
   }
 
-  .hero-token-loot {
-    min-width: 48px;
-    padding: 3px 6px;
+  .hero-token-loot-ing {
+    width: 20px;
+    height: 20px;
   }
 
   .athanor-label {
