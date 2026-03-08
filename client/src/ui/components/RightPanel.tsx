@@ -103,6 +103,7 @@ export function BrewContent({
 }) {
   const qtyA = slotA != null ? (inventory.find(i => i.ingredient_id === slotA)?.quantity ?? 0) : 0
   const qtyB = slotB != null ? (inventory.find(i => i.ingredient_id === slotB)?.quantity ?? 0) : 0
+  const maxBatchQty = slotA != null && slotB != null ? Math.min(qtyA, qtyB) : 0
 
   const handleBrew = () => {
     if (slotA != null && slotB != null) onCraft(slotA, slotB)
@@ -167,15 +168,16 @@ export function BrewContent({
           >
             Brew
           </button>
-          {slotA != null && slotB != null && (
-            <button
-              className="btn-sm craft-brew-btn"
-              onClick={() => { for (let i = 0; i < Math.min(qtyA, qtyB); i++) onCraft(slotA, slotB) }}
-              disabled={isGameOver || Math.min(qtyA, qtyB) <= 0}
-            >
-              ×{Math.min(qtyA, qtyB)}
-            </button>
-          )}
+          <button
+            className="btn-sm craft-brew-btn"
+            onClick={() => {
+              if (slotA == null || slotB == null) return
+              for (let i = 0; i < maxBatchQty; i++) onCraft(slotA, slotB)
+            }}
+            disabled={isGameOver || slotA == null || slotB == null || maxBatchQty <= 0}
+          >
+            ×{maxBatchQty}
+          </button>
           <button
             className="btn-sm craft-brew-btn craft-brew-all-btn"
             onClick={onBrewAll}

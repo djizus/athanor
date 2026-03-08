@@ -1806,14 +1806,13 @@ button:disabled, .btn:disabled {
   gap: 0.25rem;
   margin-left: 0.35rem;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
-.craft-brew-btn {
-}
+.craft-brew-btn { white-space: nowrap; }
 
 .craft-brew-all-btn {
-  min-width: 7.5rem;
+  min-width: 6.75rem;
 }
 
 .craft-brew-btn:not(:disabled) {
