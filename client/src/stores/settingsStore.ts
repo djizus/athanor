@@ -5,11 +5,15 @@ const STORAGE_KEY = 'athanor-settings'
 type SettingsState = {
   sfxVolume: number
   musicVolume: number
+  tutorialEnabled: boolean
   setSfxVolume: (v: number) => void
   setMusicVolume: (v: number) => void
+  setTutorialEnabled: (v: boolean) => void
 }
 
-function loadPersistedSettings(): { sfxVolume: number; musicVolume: number } {
+type PersistedSettings = { sfxVolume: number; musicVolume: number; tutorialEnabled: boolean }
+
+function loadPersistedSettings(): PersistedSettings {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
@@ -17,15 +21,16 @@ function loadPersistedSettings(): { sfxVolume: number; musicVolume: number } {
       return {
         sfxVolume: typeof parsed.sfxVolume === 'number' ? parsed.sfxVolume : 0.3,
         musicVolume: typeof parsed.musicVolume === 'number' ? parsed.musicVolume : 0.3,
+        tutorialEnabled: typeof parsed.tutorialEnabled === 'boolean' ? parsed.tutorialEnabled : true,
       }
     }
   } catch {
     // ignore corrupt storage
   }
-  return { sfxVolume: 0.3, musicVolume: 0.3 }
+  return { sfxVolume: 0.3, musicVolume: 0.3, tutorialEnabled: true }
 }
 
-function persist(state: { sfxVolume: number; musicVolume: number }): void {
+function persist(state: PersistedSettings): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
   } catch {
@@ -40,17 +45,24 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
     ...initial,
     setSfxVolume: (v) => {
       set({ sfxVolume: v })
-      persist({ sfxVolume: v, musicVolume: get().musicVolume })
+      const s = get()
+      persist({ sfxVolume: v, musicVolume: s.musicVolume, tutorialEnabled: s.tutorialEnabled })
     },
     setMusicVolume: (v) => {
       set({ musicVolume: v })
-      persist({ sfxVolume: get().sfxVolume, musicVolume: v })
+      const s = get()
+      persist({ sfxVolume: s.sfxVolume, musicVolume: v, tutorialEnabled: s.tutorialEnabled })
+    },
+    setTutorialEnabled: (v) => {
+      set({ tutorialEnabled: v })
+      const s = get()
+      persist({ sfxVolume: s.sfxVolume, musicVolume: s.musicVolume, tutorialEnabled: v })
     },
   }
 })
 
 /** Plain getter for use outside React (e.g. Phaser scenes) */
-export function getSettingsSnapshot(): { sfxVolume: number; musicVolume: number } {
-  const { sfxVolume, musicVolume } = useSettingsStore.getState()
-  return { sfxVolume, musicVolume }
+export function getSettingsSnapshot(): { sfxVolume: number; musicVolume: number; tutorialEnabled: boolean } {
+  const { sfxVolume, musicVolume, tutorialEnabled } = useSettingsStore.getState()
+  return { sfxVolume, musicVolume, tutorialEnabled }
 }
