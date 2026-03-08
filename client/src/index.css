@@ -1492,8 +1492,12 @@ button:disabled, .btn:disabled {
 .hero-card-status.returning { color: var(--accent-gold); }
 .hero-card-status.loot-ready { color: var(--accent-green); font-weight: 600; }
 
+.hero-card-apply-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .btn-apply-inline {
-  margin-left: auto;
   display: inline-flex;
   align-items: center;
   gap: 4px;

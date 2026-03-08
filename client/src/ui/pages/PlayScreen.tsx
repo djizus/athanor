@@ -1299,24 +1299,6 @@ function HeroSlot({
     >
       <div className="hero-card-name-row">
         <span className="hero-card-name">{roleName}</span>
-        {isIdle && !isGameOver && (
-          <button
-            className="btn-sm btn-apply-inline"
-            onClick={(e) => { e.stopPropagation(); onApplyPotion(hero.id) }}
-            disabled={isBuffPending || availablePotionTypes.length === 0}
-          >
-            {availablePotionTypes.length > 0 ? (
-              <>
-                Apply
-                {availablePotionTypes.map(type => (
-                  <img key={type} className="btn-apply-icon" src={`/assets/potions/potion-${type}.webp`} alt={type} />
-                ))}
-              </>
-            ) : (
-              <>No potions</>
-            )}
-          </button>
-        )}
         <span className={`hero-card-status ${statusClass}`}>{statusText}</span>
       </div>
       <div className="hero-card-top">
@@ -1326,6 +1308,26 @@ function HeroSlot({
           alt={roleName}
         />
         <div className="hero-card-info">
+          {isIdle && !isGameOver && (
+            <div className="hero-card-apply-row">
+              <button
+                className="btn-sm btn-apply-inline"
+                onClick={(e) => { e.stopPropagation(); onApplyPotion(hero.id) }}
+                disabled={isBuffPending || availablePotionTypes.length === 0}
+              >
+                {availablePotionTypes.length > 0 ? (
+                  <>
+                    Apply
+                    {availablePotionTypes.map(type => (
+                      <img key={type} className="btn-apply-icon" src={`/assets/potions/potion-${type}.webp`} alt={type} />
+                    ))}
+                  </>
+                ) : (
+                  <>No potions</>
+                )}
+              </button>
+            </div>
+          )}
           <div className="hero-card-hp">
             <div className="hero-card-hp-fill" style={{ width: `${hpPct}%`, background: hpColor }} />
             {regenPreviewPct > 0 && (
