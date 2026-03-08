@@ -13,7 +13,6 @@ import type { RawExplorationEvent, HeroOverride } from '@/hooks/useExplorationLo
 import { useExpeditionTracker } from '@/hooks/useExpeditionTracker'
 import { useNavigationStore } from '@/stores/navigationStore'
 import { usePendingTxStore } from '@/stores/pendingTxStore'
-import { txToast } from '@/stores/toastStore'
 import { soundManager } from '@/sound/SoundManager'
 import { JourneyMap, spawnFlyingOrb } from '@/ui/components/JourneyMap'
 import type { FloatingTextAnim } from '@/ui/components/JourneyMap'
@@ -447,14 +446,11 @@ export function PlayScreen() {
       goldDelta: 0,
       effectsDelta: new Map(),
     })
-    const t = txToast('Sending expedition')
     let success = false
     try {
-      await enqueueTx(client.explore(gameId, characterId, zoneId))
+      await enqueueTx(client.explore(gameId, characterId, zoneId), `Explore ${name}`)
       success = true
-      t.success()
     } catch (e) {
-      t.error()
       pushInfo(`${name} expedition failed`)
       console.error('Explore failed:', e)
     } finally {
@@ -487,15 +483,12 @@ export function PlayScreen() {
       goldDelta: hero?.gold ?? 0,
       effectsDelta: new Map(),
     })
-    const t = txToast('Claiming loot')
     let success = false
     try {
-      await enqueueTx(client.claim(gameId, characterId))
+      await enqueueTx(client.claim(gameId, characterId), `Claim ${name}`)
       success = true
-      t.success()
       setBrewRefreshKey(k => k + 1)
     } catch (e) {
-      t.error()
       pushInfo(`${name} claim failed`)
       console.error('Claim failed:', e)
     } finally {
@@ -520,12 +513,10 @@ export function PlayScreen() {
       goldDelta: 0,
       effectsDelta: new Map(),
     })
-    const t = txToast('Brewing potion')
     let success = false
     try {
-      await enqueueTx(client.craft(gameId, lo, hi))
+      await enqueueTx(client.craft(gameId, lo, hi), 'Brew')
       success = true
-      t.success()
       soundManager.playSfx('brew-success', 0.4)
       setBrewRefreshKey(k => k + 1)
       if (isSoup) {
@@ -535,7 +526,6 @@ export function PlayScreen() {
       if (slotA != null && qty(slotA) <= 0) setSlotA(null)
       if (slotB != null && qty(slotB) <= 0) setSlotB(null)
     } catch (e) {
-      t.error()
       pushInfo('Brew failed')
       console.error('Craft failed:', e)
     } finally {
@@ -569,16 +559,13 @@ export function PlayScreen() {
       goldDelta: 0,
       effectsDelta: new Map(),
     })
-    const t = txToast(`Brewing ${pairs.length} potions`)
     let success = false
     try {
-      await enqueueTx(client.crafts(gameId, pairs))
+      await enqueueTx(client.crafts(gameId, pairs), `Brew ${pairs.length} potions`)
       success = true
-      t.success()
       soundManager.playSfx('brew-success', 0.4)
       setBrewRefreshKey(k => k + 1)
     } catch (e) {
-      t.error()
       pushInfo('Batch brew failed')
       console.error('Batch craft failed:', e)
     } finally {
@@ -598,15 +585,12 @@ export function PlayScreen() {
       goldDelta: -currentHintCost,
       effectsDelta: new Map(),
     })
-    const t = txToast('Buying hint')
     let success = false
     try {
-      await enqueueTx(client.clue(gameId))
+      await enqueueTx(client.clue(gameId), 'Buy hint')
       success = true
-      t.success()
       soundManager.playSfx('notification', 0.4)
     } catch (e) {
-      t.error()
       pushInfo('Hint purchase failed')
       console.error('Clue failed:', e)
     } finally {
@@ -627,15 +611,12 @@ export function PlayScreen() {
       goldDelta: -recruitCost,
       effectsDelta: new Map(),
     })
-    const t = txToast('Recruiting hero')
     let success = false
     try {
-      await enqueueTx(client.recruit(gameId))
+      await enqueueTx(client.recruit(gameId), 'Recruit hero')
       success = true
-      t.success()
       soundManager.playSfx('recruit', 0.6)
     } catch (e) {
-      t.error()
       pushInfo('Recruitment failed')
       console.error('Recruit failed:', e)
     } finally {
@@ -983,7 +964,7 @@ export function PlayScreen() {
             })
             let success = false
             try {
-              await enqueueTx(client.surrender(gameId))
+              await enqueueTx(client.surrender(gameId), 'Surrender')
               success = true
               setSurrendered(true)
               setSettingsOpen(false)
@@ -1071,15 +1052,12 @@ export function PlayScreen() {
               goldDelta: 0,
               effectsDelta,
             })
-            const t = txToast(`Applying ${allEffects.length} potions`)
             let success = false
             try {
-              await enqueueTx(client.buffs(gameId, potionTargetHeroId, allEffects))
+              await enqueueTx(client.buffs(gameId, potionTargetHeroId, allEffects), `Apply ${allEffects.length} potions`)
               success = true
-              t.success()
               soundManager.playSfx('potion-apply', 0.5)
             } catch (e) {
-              t.error()
               pushInfo('Potion application failed')
               console.error('Buffs failed:', e)
             } finally {
