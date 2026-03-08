@@ -187,13 +187,14 @@ function HeroToken({ hero, small, selected, onClick, onClaim }: {
   const handleClaim = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
     if (!hero.lootReady || hero.isClaimPending) return
+    onClick?.()
     setClaimBurst(true)
     setTimeout(() => setClaimBurst(false), 600)
     if (frameRef.current) {
       spawnClaimParticles(frameRef.current, hero)
     }
     onClaim?.()
-  }, [hero, onClaim])
+  }, [hero, onClick, onClaim])
 
   return (
     <motion.div
