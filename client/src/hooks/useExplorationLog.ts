@@ -304,10 +304,10 @@ export function useExplorationLog(
       queue = []
       heroQueuesRef.current.set(heroId, queue)
 
+      heroDepthRef.current.set(heroId, -1)
+
       if (event.rawEvent) {
-        const firstDepth = event.rawEvent.depth
-        heroDepthRef.current.set(heroId, firstDepth - 1)
-        console.log(`[Enqueue] hero=${heroId} NEW_QUEUE firstDepth=${firstDepth} initDepthCounter=${firstDepth - 1}`)
+        console.log(`[Enqueue] hero=${heroId} NEW_QUEUE initDepthCounter=-1`)
         const preHp = computePreEventHp(
           event.rawEvent.kind === 'trap' ? CATEGORY_TRAP
             : event.rawEvent.kind === 'beastLose' ? CATEGORY_BEAST_LOSE
@@ -390,7 +390,7 @@ export function useExplorationLog(
             if (shortName === 'ExplorationEvent') {
               enqueue({ entry: result.entry, rawEvent: result.rawEvent })
             } else {
-              if (shortName === 'ExpeditionStarted' && values.hero_id && values.death_depth) {
+              if (shortName === 'ExpeditionStarted' && values.hero_id != null && values.death_depth > 0) {
                 console.log(`[EventArrival] ExpeditionStarted hero=${values.hero_id} deathDepth=${values.death_depth} returnAt=${values.return_at}`)
                 heroExpeditionRef.current.set(values.hero_id, {
                   deathDepth: values.death_depth,
