@@ -17,10 +17,10 @@ export function useExpeditionTracker(
   const expeditions = useRef(new Map<number, HeroExpedition>())
   const [version, setVersion] = useState(0)
 
-  const onExpeditionStart = useCallback((heroId: number) => {
+  const onExpeditionStart = useCallback((heroId: number, zoneId: number = 0) => {
     expeditions.current.set(heroId, {
       startTime: Math.floor(Date.now() / 1000),
-      lastKnownZone: 0,
+      lastKnownZone: zoneId,
     })
     setVersion(v => v + 1)
   }, [])

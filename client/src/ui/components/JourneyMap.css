@@ -1,84 +1,183 @@
+/* ── Constellation Map ──── */
+
 .journey-map {
   position: fixed;
   inset: 0;
   z-index: 0;
-  display: flex;
-  flex-direction: column;
-  background: var(--bg-primary);
   overflow: hidden;
+}
+
+.constellation-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
   pointer-events: none;
 }
 
-/* ── Zone Band ── */
-
-.jm-zone-band {
-  flex: 1;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  overflow: hidden;
-  background-size: cover;
-  background-position: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-}
-
-.jm-zone-overlay {
+.constellation-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(8, 8, 16, 0.72);
-  transition: background 0.6s ease;
+  background: radial-gradient(ellipse at 50% 80%, transparent 30%, rgba(6, 6, 18, 0.6) 100%);
+  pointer-events: none;
 }
 
-.jm-zone-active .jm-zone-overlay {
-  background: rgba(8, 8, 16, 0.42);
-}
+/* ── Constellation Lines ──── */
 
-.jm-zone-label {
+.constellation-lines {
   position: absolute;
-  top: 6px;
-  left: 12px;
-  z-index: 2;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.constellation-line {
+  opacity: 0.35;
+  transition: opacity 0.4s ease;
+}
+
+.constellation-line-active {
+  opacity: 0.8;
+  filter: drop-shadow(0 0 4px currentColor);
+  animation: constellation-shimmer 3s ease-in-out infinite;
+}
+
+@keyframes constellation-shimmer {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+/* ── Zone Node ──── */
+
+.zone-node {
+  position: absolute;
+  transform: translate(-50%, -50%);
   display: flex;
   flex-direction: column;
-  gap: 1px;
-}
-
-.jm-zone-name {
-  font-family: var(--font-title);
-  font-size: 0.72rem;
-  letter-spacing: 0.06em;
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9);
-}
-
-.jm-zone-depth {
-  font-size: 0.58rem;
-  color: var(--text-muted);
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
-}
-
-.jm-zone-heroes {
-  position: relative;
-  z-index: 2;
-  display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 4px;
+  z-index: 2;
+  pointer-events: auto;
+  transition: transform 0.3s ease;
 }
 
-.jm-zone-glow {
+.zone-node-clickable {
+  cursor: pointer;
+}
+
+.zone-node-clickable:hover {
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+.zone-node-glow {
   position: absolute;
-  inset: 0;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--zone-color, #c8a040) 0%, transparent 70%);
+  opacity: 0.12;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+
+.zone-node-active .zone-node-glow {
+  opacity: 0.35;
+  animation: zone-pulse 2.5s ease-in-out infinite;
+}
+
+.zone-node-hovered .zone-node-glow {
+  opacity: 0.4;
+}
+
+@keyframes zone-pulse {
+  0%, 100% { opacity: 0.25; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(1.12); }
+}
+
+.zone-node-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 2px solid var(--zone-color, #a08020);
+  object-fit: cover;
+  background: var(--bg-card);
+  box-shadow:
+    0 0 16px rgba(0, 0, 0, 0.7),
+    0 0 8px var(--zone-color, #a08020);
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+  position: relative;
   z-index: 1;
-  animation: jm-glow-pulse 2.5s ease-in-out infinite;
 }
 
-@keyframes jm-glow-pulse {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 0.7; }
+.zone-node-active .zone-node-icon {
+  border-color: var(--zone-color, #f0c040);
+  box-shadow:
+    0 0 20px rgba(0, 0, 0, 0.5),
+    0 0 16px var(--zone-color, #f0c040);
 }
 
-/* ── Hero Token ── */
+.zone-node-hovered .zone-node-icon {
+  box-shadow:
+    0 0 24px rgba(0, 0, 0, 0.4),
+    0 0 20px var(--zone-color, #f0c040);
+}
+
+.zone-node-label {
+  font-family: var(--font-title);
+  font-size: 0.65rem;
+  color: var(--zone-color, #a08020);
+  letter-spacing: 0.05em;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9), 0 0 12px rgba(0, 0, 0, 0.7);
+  white-space: nowrap;
+  text-align: center;
+}
+
+/* ── Athanor Node ──── */
+
+.zone-node-athanor {
+  --zone-color: #f0c040;
+}
+
+.athanor-icon {
+  width: 88px;
+  height: 88px;
+  border-color: var(--accent-gold-dim);
+  box-shadow:
+    0 0 24px rgba(240, 192, 64, 0.2),
+    0 0 12px rgba(240, 192, 64, 0.15);
+}
+
+.athanor-glow {
+  width: 160px;
+  height: 160px;
+  opacity: 0.2;
+  animation: athanor-pulse 3.5s ease-in-out infinite;
+}
+
+@keyframes athanor-pulse {
+  0%, 100% { opacity: 0.15; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(1.15); }
+}
+
+.athanor-label {
+  font-size: 0.75rem;
+  color: var(--accent-gold);
+}
+
+/* ── Zone Heroes at Node ──── */
+
+.zone-node-heroes {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  position: relative;
+  z-index: 3;
+}
+
+/* ── Hero Token ──── */
 
 .hero-token {
   display: flex;
@@ -86,6 +185,15 @@
   align-items: center;
   gap: 3px;
   filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.7));
+}
+
+.hero-token-sm .hero-token-portrait {
+  width: 36px;
+  height: 36px;
+}
+
+.hero-token-sm .hero-token-hp {
+  width: 30px;
 }
 
 .hero-token-portrait {
@@ -112,75 +220,38 @@
   transition: width 0.4s ease;
 }
 
-/* ── Home Band ── */
+/* ── Zone Tooltip ──── */
 
-.jm-home-band {
-  flex: 1.4;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1.5rem;
-  overflow: hidden;
-  background: linear-gradient(0deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
-}
-
-.jm-home-bg {
+.zone-tooltip {
   position: absolute;
-  inset: 0;
-  background-image: url('/assets/backgrounds/zone-athanor.webp');
-  background-size: cover;
-  background-position: center;
-  opacity: 0.12;
-}
-
-.jm-cauldron {
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10, 10, 20, 0.92);
+  border: 1px solid var(--zone-color, #a08020);
+  border-radius: 6px;
+  padding: 6px 10px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  position: relative;
+  gap: 2px;
+  min-width: 120px;
+  z-index: 20;
+  pointer-events: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.8);
 }
 
-.jm-cauldron-glow {
-  position: absolute;
-  width: 90px;
-  height: 90px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(240, 192, 64, 0.18) 0%, transparent 70%);
-  animation: jm-cauldron-pulse 3s ease-in-out infinite;
-}
-
-@keyframes jm-cauldron-pulse {
-  0%, 100% { transform: scale(1); opacity: 0.5; }
-  50% { transform: scale(1.35); opacity: 0.85; }
-}
-
-.jm-cauldron-body {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 38% 32%, #3a2a18, #1a1008);
-  border: 2px solid var(--accent-gold-dim);
-  box-shadow:
-    0 0 24px rgba(240, 192, 64, 0.15),
-    inset 0 -10px 18px rgba(240, 192, 64, 0.08);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  z-index: 1;
-}
-
-.jm-cauldron-label {
+.zone-tooltip-name {
   font-family: var(--font-title);
-  font-size: 0.55rem;
-  color: var(--accent-gold);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
 }
 
-/* ── Floating Text ── */
+.zone-tooltip-stat {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+}
+
+/* ── Floating Text ──── */
 
 .journey-floating-text {
   position: absolute;
@@ -204,25 +275,84 @@
   object-fit: cover;
 }
 
-/* ── Responsive ── */
+/* ── Hint Bar ──── */
+
+.constellation-hint {
+  position: absolute;
+  bottom: 12%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10, 10, 20, 0.75);
+  border: 1px solid var(--accent-gold-dim);
+  border-radius: 8px;
+  padding: 6px 16px;
+  font-family: var(--font-title);
+  font-size: 0.72rem;
+  color: var(--accent-gold);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  z-index: 5;
+  pointer-events: none;
+  animation: hint-fade 2s ease-in-out infinite;
+}
+
+@keyframes hint-fade {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+/* ── Responsive ──── */
 
 @media (max-width: 767px) {
+  .zone-node-icon {
+    width: 52px;
+    height: 52px;
+  }
+
+  .athanor-icon {
+    width: 64px;
+    height: 64px;
+  }
+
+  .zone-node-glow {
+    width: 80px;
+    height: 80px;
+  }
+
+  .athanor-glow {
+    width: 110px;
+    height: 110px;
+  }
+
   .hero-token-portrait {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
   }
 
   .hero-token-hp {
-    width: 34px;
+    width: 30px;
   }
 
-  .jm-cauldron-body {
-    width: 48px;
-    height: 48px;
+  .hero-token-sm .hero-token-portrait {
+    width: 28px;
+    height: 28px;
   }
 
-  .jm-zone-name {
+  .hero-token-sm .hero-token-hp {
+    width: 22px;
+  }
+
+  .zone-node-label {
+    font-size: 0.55rem;
+  }
+
+  .athanor-label {
     font-size: 0.62rem;
+  }
+
+  .constellation-hint {
+    font-size: 0.6rem;
+    bottom: 8%;
   }
 
   .journey-floating-text {

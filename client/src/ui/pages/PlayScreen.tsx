@@ -23,6 +23,7 @@ import {
   EFFECT_COLORS,
   HERO_RECRUIT_COSTS,
   ROLE_NAMES,
+  ZONE_NAMES,
   displayGold,
   displayHp,
   effectAssetUrl,
@@ -376,12 +377,12 @@ export function PlayScreen() {
     return () => { stale = true }
   }, [toriiClient, gameId, inventory, recipes, brewRefreshKey, slotA, slotB])
 
-  const handleExplore = async (characterId: number) => {
+  const handleExplore = async (characterId: number, zoneId: number) => {
     if (!account || gameId == null) return
     const hero = heroes.find((h) => h.id === characterId)
     const name = hero ? ROLE_NAMES[hero.role > 0 ? hero.role - 1 : characterId] : `Hero ${characterId}`
-    pushInfo(`${name} sent on expedition...`)
-    onExpeditionStart(characterId)
+    pushInfo(`${name} sent to ${ZONE_NAMES[zoneId] ?? `Zone ${zoneId}`}...`)
+    onExpeditionStart(characterId, zoneId)
     soundManager.playSfx('expedition-start', 0.5)
     const pendingId = createPendingTxId()
     addPendingTx({
@@ -395,7 +396,7 @@ export function PlayScreen() {
     const t = txToast('Sending expedition')
     let success = false
     try {
-      await client.explore(account, gameId, characterId)
+      await client.explore(account, gameId, characterId, zoneId)
       success = true
       t.success()
     } catch (e) {
@@ -673,6 +674,9 @@ export function PlayScreen() {
         heroOverrides={heroOverrides}
         floatingTexts={floatingTexts}
         onFloatingTextComplete={removeFloatingText}
+        selectedHeroId={selectedHeroId}
+        isGameOver={isGameOver}
+        onExplore={(heroId: number, zoneId: number) => void handleExplore(heroId, zoneId)}
       />
 
       <StatusHUD
@@ -710,7 +714,7 @@ export function PlayScreen() {
                   heroPositions={heroPositions}
                   onSelectHero={(id) => setSelectedHeroId(id)}
                   onRecruit={() => void handleRecruit()}
-                  onExplore={(id) => void handleExplore(id)}
+                  onExplore={(id) => void handleExplore(id, 0)}
                   onClaim={(id) => void handleClaim(id)}
                   hasPotions={hasPotions}
                   isRecruitPending={isRecruitPending}

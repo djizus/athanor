@@ -145,5 +145,14 @@
   "branding": [
     { "id": "logo", "filename": "logo.png", "category": "branding", "width": 1024, "height": 1024, "description": "ATHANOR game logo — alchemical serif text in molten gold on black" },
     { "id": "loading-bg", "filename": "loading-bg.webp", "category": "branding", "width": 2048, "height": 2048, "description": "Loading screen background — dark alchemist sanctum with glowing athanor furnace" }
+  ],
+  "zones": [
+    { "id": "constellation-bg", "filename": "constellation-bg.webp", "category": "zones", "width": 2048, "height": 2048, "description": "Vast cosmic night sky — deep indigo-to-navy gradient, thousands of tiny twinkling white and amber stars, subtle nebula wisps in warm amber gold and faded purple, faint cosmic dust trails, dark atmospheric mystical" },
+    { "id": "portal-athanor", "filename": "portal-athanor.webp", "category": "zones", "width": 512, "height": 512, "description": "Glowing alchemical furnace portal — golden amber fire at center, concentric arcane stone rings with rune inscriptions, warm golden glow", "zoneColor": "#c8a040" },
+    { "id": "portal-hollows", "filename": "portal-hollows.webp", "category": "zones", "width": 512, "height": 512, "description": "Amber cavern portal — glowing amber crystals and molten gold veins, warm honey-gold glow emanating outward", "zoneColor": "#c8a040" },
+    { "id": "portal-cavern", "filename": "portal-cavern.webp", "category": "zones", "width": 512, "height": 512, "description": "Volcanic cave portal — magma flows and ember sparks swirling, deep crimson and orange glow", "zoneColor": "#b85030" },
+    { "id": "portal-spire", "filename": "portal-spire.webp", "category": "zones", "width": 512, "height": 512, "description": "Arcane tower portal — swirling violet energy and floating arcane runes, ethereal purple glow", "zoneColor": "#9e4a9e" },
+    { "id": "portal-abyss", "filename": "portal-abyss.webp", "category": "zones", "width": 512, "height": 512, "description": "Deep underwater portal — bioluminescent blue coral and dark abyssal water, cold blue glow", "zoneColor": "#4a90d9" },
+    { "id": "portal-crystalveil", "filename": "portal-crystalveil.webp", "category": "zones", "width": 512, "height": 512, "description": "Frozen crystal portal — emerald and teal crystals, ice formations and prismatic light, cool teal glow", "zoneColor": "#2a8a6a" }
   ]
 }

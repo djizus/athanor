@@ -175,6 +175,28 @@ export function buildLoadingBgPrompt(): string {
   ].join(' ');
 }
 
+export function buildConstellationBgPrompt(): string {
+  return [
+    `A vast cosmic night sky for a dark fantasy alchemy game. Deep indigo-to-navy gradient filling the entire canvas. Thousands of tiny twinkling white and amber stars scattered densely across the sky.`,
+    `Subtle nebula wisps in warm amber gold (#f0c040) and faded purple (#9e4a9e), softly swirling through the darkness. Faint cosmic dust trails weaving between star clusters.`,
+    `Dark atmospheric, mystical, hand-painted digital art style. Dark vignette corners fading to near-black #060612.`,
+    GLOBAL_ART_STYLE,
+    `No objects, no text, no characters, no planets, no moons — only sky and stars. Full-bleed seamless scene extending edge-to-edge.`,
+  ].join(' ');
+}
+
+export function buildZonePortalPrompt(asset: ImageAssetDef): string {
+  const zone = asset.zoneColor ?? '#c8a040';
+  return [
+    `A circular glowing portal icon: ${asset.description}.`,
+    `The portal is a perfect circle occupying 75% of the frame, with energy and light radiating outward from its center.`,
+    `Outer ring has an ornate stone or crystal border with subtle arcane etchings. Inner glow color: ${zone}.`,
+    `Solid black background #000000. The portal floats in void.`,
+    GLOBAL_ART_STYLE,
+    `Game icon style, centered square composition. No text, no people, no UI elements.`,
+  ].join(' ');
+}
+
 export function buildPrompt(asset: ImageAssetDef): string {
   switch (asset.category) {
     case 'backgrounds': return buildBackgroundPrompt(asset);
@@ -185,6 +207,10 @@ export function buildPrompt(asset: ImageAssetDef): string {
       if (asset.id === 'logo') return buildLogoPrompt();
       if (asset.id === 'loading-bg') return buildLoadingBgPrompt();
       return buildBackgroundPrompt(asset);
+    }
+    case 'zones': {
+      if (asset.id === 'constellation-bg') return buildConstellationBgPrompt();
+      return buildZonePortalPrompt(asset);
     }
   }
 }
