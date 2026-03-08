@@ -266,8 +266,9 @@ function HeroToken({ hero, small, selected, disabled, onClick, onClaim }: {
           >
             <AnimatePresence>
               {orbitItems.map((item, i) => {
-                const x = orbitRadius
-                const y = (i - (orbitItems.length - 1) / 2) * (itemSize + 4)
+                const angle = (2 * Math.PI * i) / orbitItems.length - Math.PI / 2
+                const x = Math.cos(angle) * orbitRadius
+                const y = Math.sin(angle) * orbitRadius
                 return (
                   <motion.span
                     key={item.key}
@@ -285,7 +286,8 @@ function HeroToken({ hero, small, selected, disabled, onClick, onClaim }: {
                       width: `${itemSize}px`,
                       height: `${itemSize}px`,
                       position: 'absolute',
-                      transform: 'translate(-50%, -50%)',
+                      marginLeft: `${-itemSize / 2}px`,
+                      marginTop: `${-itemSize / 2}px`,
                     }}
                     title={item.alt + (item.qty > 1 ? ` x${item.qty}` : '')}
                   >

@@ -372,7 +372,13 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
+  animation: orbit-rotate 60s linear infinite;
   z-index: 5;
+}
+
+@keyframes orbit-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .hero-token-orbit-ready {
@@ -381,7 +387,7 @@
 }
 
 .hero-token-orbit-ready .hero-token-orbit-inner {
-  animation: orbit-item-glow 1.5s ease-in-out infinite;
+  animation: orbit-counter-rotate 60s linear infinite, orbit-item-glow 1.5s ease-in-out infinite;
 }
 
 .hero-token-orbit-ready:hover .hero-token-orbit-inner {
@@ -407,8 +413,14 @@
   border: 1px solid color-mix(in srgb, var(--orbit-color, #c8a040) 35%, transparent);
   background: rgba(10, 8, 4, 0.85);
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+  animation: orbit-counter-rotate 60s linear infinite;
   transition: filter 0.2s ease, border-color 0.3s ease;
   position: relative;
+}
+
+@keyframes orbit-counter-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(-360deg); }
 }
 
 @keyframes orbit-item-glow {
