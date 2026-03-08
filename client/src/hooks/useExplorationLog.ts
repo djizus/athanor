@@ -98,12 +98,6 @@ function parseModelValues(model: Record<string, unknown>): Record<string, number
   return out
 }
 
-function computePreEventHp(eventKind: number, value: number, hpAfter: number): number {
-  if (eventKind === CATEGORY_TRAP || eventKind === CATEGORY_BEAST_LOSE) return hpAfter + value
-  if (eventKind === CATEGORY_HEAL) return Math.max(0, hpAfter - value)
-  return hpAfter
-}
-
 function formatExplorationDetail(eventKind: number, value: number, hpAfter: number): string {
   switch (eventKind) {
     case CATEGORY_NONE: return `collapsed from exhaustion (HP: ${hpAfter})`
@@ -169,7 +163,7 @@ const MAX_LOG = 200
 
 export function useExplorationLog(
   gameId: bigint | null,
-  heroes: Array<{ id: number; role: number }> = [],
+  heroes: Array<{ id: number; role: number; health: number }> = [],
   onExplorationEvent?: (event: RawExplorationEvent) => void,
 ) {
   const { toriiClient } = useDojo()
@@ -186,13 +180,18 @@ export function useExplorationLog(
   const onEventRef = useRef(onExplorationEvent)
   onEventRef.current = onExplorationEvent
 
+  const heroHealthRef = useRef<Map<number, number>>(new Map())
+
   useEffect(() => {
     const map = new Map<number, string>()
+    const healthMap = new Map<number, number>()
     for (const hero of heroes) {
       const roleIdx = hero.role > 0 ? hero.role - 1 : hero.id
       map.set(hero.id, ROLE_NAMES[roleIdx] ?? `Hero ${hero.id}`)
+      healthMap.set(hero.id, hero.health)
     }
     heroMapRef.current = map
+    heroHealthRef.current = healthMap
   }, [heroes])
 
   const append = useCallback((entry: LogEntry) => {
@@ -200,9 +199,7 @@ export function useExplorationLog(
   }, [])
 
   const drainTick = useCallback(() => {
-    const tickTime = Date.now()
     let anyRemaining = false
-    console.log(`[DrainTick] t=${tickTime} heroes=${heroQueuesRef.current.size}`, [...heroQueuesRef.current.keys()])
     for (const [heroId, queue] of heroQueuesRef.current) {
       const prevDepth = heroDepthRef.current.get(heroId) ?? -1
       const depth = prevDepth + 1
@@ -210,13 +207,9 @@ export function useExplorationLog(
 
       queue.sort((a, b) => (a.rawEvent?.depth ?? 0) - (b.rawEvent?.depth ?? 0))
 
-      const nextEventDepth = queue[0]?.rawEvent?.depth ?? '(none)'
-      console.log(`[DrainTick] hero=${heroId} depth=${depth} queueLen=${queue.length} nextEventDepth=${nextEventDepth}`)
-
       let processedEvent = false
       while (queue.length > 0 && (queue[0].rawEvent?.depth ?? 0) <= depth) {
         const event = queue.shift()!
-        console.log(`[DrainTick] hero=${heroId} PROCESS depth=${event.rawEvent?.depth} kind=${event.rawEvent?.kind} value=${event.rawEvent?.value} hp=${event.rawEvent?.hpAfter}`)
         append(event.entry)
 
         if (event.rawEvent) {
@@ -247,7 +240,6 @@ export function useExplorationLog(
       }
 
       if (!processedEvent) {
-        console.log(`[DrainTick] hero=${heroId} depth=${depth} NO_EVENT → drain`)
         setHeroOverrides((prev) => {
           const next = new Map(prev)
           const prevOv = prev.get(heroId)
@@ -276,7 +268,6 @@ export function useExplorationLog(
 
         const heroName = heroMapRef.current.get(heroId) ?? `Hero ${heroId}`
         const walkSeconds = (walkDurationMs / 1000).toFixed(1)
-        console.log(`[DrainTick] hero=${heroId} QUEUE_EMPTY deathDepth=${deathDepth} (expedition=${expedition?.deathDepth} maxEvent=${maxDepth}) walkMs=${walkDurationMs}`)
 
         append({ ts: Date.now(), text: `${heroName} returning to Athanor (${walkSeconds}s walk, depth ${deathDepth})`, kind: 'exploration' })
 
@@ -297,7 +288,6 @@ export function useExplorationLog(
     }
 
     if (!anyRemaining) {
-      console.log(`[DrainTick] ALL_QUEUES_EMPTY → clearing interval`)
       window.clearInterval(drainTimerRef.current!)
       drainTimerRef.current = null
     }
@@ -306,7 +296,6 @@ export function useExplorationLog(
   const enqueue = useCallback((event: QueuedEvent) => {
     const heroId = event.rawEvent?.heroId ?? 0
     let queue = heroQueuesRef.current.get(heroId)
-    const isNew = !queue
     if (!queue) {
       queue = []
       heroQueuesRef.current.set(heroId, queue)
@@ -314,28 +303,18 @@ export function useExplorationLog(
       heroDepthRef.current.set(heroId, -1)
 
       if (event.rawEvent) {
-        console.log(`[Enqueue] hero=${heroId} NEW_QUEUE initDepthCounter=-1`)
-        const preHp = computePreEventHp(
-          event.rawEvent.kind === 'trap' ? CATEGORY_TRAP
-            : event.rawEvent.kind === 'beastLose' ? CATEGORY_BEAST_LOSE
-              : event.rawEvent.kind === 'heal' ? CATEGORY_HEAL
-                : 0,
-          event.rawEvent.value,
-          event.rawEvent.hpAfter,
-        )
+        const startHp = heroHealthRef.current.get(heroId) ?? event.rawEvent.hpAfter
         setHeroOverrides((prev) => {
           const next = new Map(prev)
-          next.set(heroId, { health: preHp, zoneIndex: event.rawEvent!.zoneId, bagGold: 0, bagIngredients: new Array(25).fill(0) })
+          next.set(heroId, { health: startHp, zoneIndex: event.rawEvent!.zoneId, bagGold: 0, bagIngredients: new Array(25).fill(0) })
           return next
         })
       }
     }
 
     queue.push(event)
-    console.log(`[Enqueue] hero=${heroId} depth=${event.rawEvent?.depth} kind=${event.rawEvent?.kind} queueLen=${queue.length} isNew=${isNew} timerActive=${drainTimerRef.current != null}`)
 
     if (drainTimerRef.current == null) {
-      console.log(`[Enqueue] STARTING drain timer`)
       drainTimerRef.current = window.setInterval(drainTick, TICK_INTERVAL_MS)
     }
   }, [drainTick])
@@ -393,12 +372,10 @@ export function useExplorationLog(
           const result = formatEvent(shortName, values, heroName)
           if (result) {
             if (shortName === 'ExplorationEvent' && !result.rawEvent) continue
-            console.log(`[EventArrival] t=${Date.now()} model=${shortName} hero=${values.hero_id} depth=${values.depth ?? '-'} kind=${values.event_kind ?? '-'} value=${values.value ?? '-'}`)
             if (shortName === 'ExplorationEvent') {
               enqueue({ entry: result.entry, rawEvent: result.rawEvent })
             } else {
               if (shortName === 'ExpeditionStarted' && values.hero_id != null && values.death_depth > 0) {
-                console.log(`[EventArrival] ExpeditionStarted hero=${values.hero_id} deathDepth=${values.death_depth} returnAt=${values.return_at}`)
                 heroExpeditionRef.current.set(values.hero_id, {
                   deathDepth: values.death_depth,
                   returnAt: values.return_at,
@@ -412,7 +389,6 @@ export function useExplorationLog(
     ).then((sub) => {
       if (cancelled) { sub.cancel(); return }
       subRef.current = sub
-      console.log('[ExplorationLog] Subscription active for game', gameId, 'key:', hexGameId)
       append({ ts: Date.now(), text: 'Event log connected', kind: 'info' })
     }).catch((err) => {
       if (!cancelled) {
@@ -442,7 +418,6 @@ export function useExplorationLog(
 
   const completeReturn = useCallback((heroId: number) => {
     const heroName = heroMapRef.current.get(heroId) ?? `Hero ${heroId}`
-    console.log(`[ReturnComplete] hero=${heroId}`)
     append({ ts: Date.now(), text: `${heroName} arrived at Athanor`, kind: 'exploration' })
 
     setHeroOverrides((prev) => {
@@ -454,7 +429,6 @@ export function useExplorationLog(
     })
 
     const cleanupTimer = window.setTimeout(() => {
-      console.log(`[ReturnComplete] hero=${heroId} CLEANUP → deleting override`)
       setHeroOverrides((p) => { const n = new Map(p); n.delete(heroId); return n })
       returnTimersRef.current.delete(heroId)
       heroExpeditionRef.current.delete(heroId)
