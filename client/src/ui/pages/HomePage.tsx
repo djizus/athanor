@@ -78,18 +78,7 @@ export function HomePage() {
     if (h > 0) return `${h}h ${m}m ${s}s`
     return `${m}m ${s}s`
   }, [games])
-  const totalGames = games.length
   const particles = Array.from({ length: 12 }, (_, idx) => idx)
-
-  function getRankIcon(r: number | null): string {
-    if (r === null) return '🔮'
-    if (r === 1) return '👑'
-    if (r === 2) return '🥈'
-    if (r === 3) return '🥉'
-    if (r <= 10) return '⚔️'
-    return '🔮'
-  }
-  const rankIcon = getRankIcon(rank)
 
   if (!address) {
     return (
@@ -163,8 +152,7 @@ export function HomePage() {
             className="home-menu-logo"
           />
           <div className="home-menu-rank-panel">
-            <span className="home-menu-rank-icon">{rankIcon}</span>
-            <span className="home-menu-rank-text">Rank {rank != null ? `#${rank}` : '—'} · Time: {bestTime ?? '—'} · Runs: {totalGames}</span>
+            <span className="home-menu-rank-text">Rank {rank != null ? `#${rank}` : '—'} · Time: {bestTime ?? '—'}</span>
           </div>
           <div className="home-menu-actions">
             {activeGame ? (
