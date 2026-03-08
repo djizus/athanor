@@ -666,6 +666,16 @@ export function PlayScreen() {
     [heroes, heroOverrides],
   )
 
+  console.log('[PlayScreen] render:', {
+    selectedHeroId,
+    heroCount: heroes.length,
+    heroIds: heroes.map(h => h.id),
+    journeyHeroIds: journeyHeroes.map(h => h.hero_id),
+    isGameOver,
+    heroPositionsSize: heroPositions.size,
+    heroPositionsEntries: Array.from(heroPositions.entries()),
+  })
+
   return (
     <div className="play-screen">
       <JourneyMap
@@ -712,7 +722,7 @@ export function PlayScreen() {
                   now={now}
                   heroOverrides={heroOverrides}
                   heroPositions={heroPositions}
-                  onSelectHero={(id) => setSelectedHeroId(id)}
+                  onSelectHero={(id) => { console.log('[PlayScreen] hero selected:', id); setSelectedHeroId(id) }}
                   onRecruit={() => void handleRecruit()}
                   onClaim={(id) => void handleClaim(id)}
                   hasPotions={hasPotions}

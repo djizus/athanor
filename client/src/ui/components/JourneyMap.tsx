@@ -96,13 +96,13 @@ function FloatingText({ text, color, icon, onComplete }: { text: string; color: 
 }
 
 const NODE_POSITIONS = {
-  athanor: { x: 50, y: 82 },
+  athanor: { x: 50, y: 80 },
   zones: [
-    { x: 25, y: 60 },
-    { x: 72, y: 56 },
-    { x: 18, y: 34 },
-    { x: 78, y: 30 },
-    { x: 50, y: 16 },
+    { x: 36, y: 62 },
+    { x: 64, y: 58 },
+    { x: 32, y: 38 },
+    { x: 68, y: 34 },
+    { x: 50, y: 18 },
   ],
 } as const
 
@@ -171,8 +171,8 @@ function ZoneNode({
 }) {
   const color = ZONE_COLORS[zoneId]
   const portalKey = ZONE_PORTAL_KEYS[zoneId]
-  const floatDuration = 4 + zoneId * 0.7
-  const floatDelay = zoneId * -1.3
+  const FLOAT_DURATIONS = [3.8, 5.2, 4.4, 6.0, 4.9] as const
+  const FLOAT_DELAYS = [-0.5, -3.1, -1.7, -4.8, -2.3] as const
 
   return (
     <div
@@ -199,10 +199,14 @@ function ZoneNode({
         src={`/assets/zones/${portalKey}.webp`}
         alt={ZONE_NAMES[zoneId]}
         style={{
-          animationDuration: `${floatDuration}s`,
-          animationDelay: `${floatDelay}s`,
+          animationDuration: `${FLOAT_DURATIONS[zoneId]}s`,
+          animationDelay: `${FLOAT_DELAYS[zoneId]}s`,
         }}
       />
+
+      <span className="zone-difficulty-label" style={{ color: ZONE_RISK_COLOR[zoneId] }}>
+        {ZONE_RISK_LABEL[zoneId]}
+      </span>
 
       {heroes.length > 0 && (
         <div className="zone-node-heroes">
@@ -251,7 +255,6 @@ function AthanorNode({
         className="zone-node-icon athanor-icon"
         src="/assets/zones/portal-athanor.webp"
         alt="Athanor"
-        style={{ animationDuration: '5s', animationDelay: '-2s' }}
       />
       <span className="zone-node-label athanor-label">Athanor</span>
 
@@ -325,13 +328,22 @@ export function JourneyMap({
   }, [heroPositions])
 
   const selectedHero = heroes.find(h => h.hero_id === selectedHeroId)
+  const selectedPos = heroPositions.get(selectedHeroId)
   const canSendSelected = selectedHero != null
     && !isGameOver
     && selectedHero.health > 0
-    && (() => {
-      const pos = heroPositions.get(selectedHeroId)
-      return !pos || (pos.zoneIndex === -1 && !pos.returning)
-    })()
+    && (!selectedPos || (selectedPos.zoneIndex === -1 && !selectedPos.returning))
+
+  console.log('[JourneyMap] selection debug:', {
+    selectedHeroId,
+    heroCount: heroes.length,
+    heroIds: heroes.map(h => h.hero_id),
+    selectedHeroFound: selectedHero != null,
+    selectedHeroHealth: selectedHero?.health,
+    isGameOver,
+    selectedPos,
+    canSendSelected,
+  })
 
   const ath = NODE_POSITIONS.athanor
   const zones = NODE_POSITIONS.zones

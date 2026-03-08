@@ -87,19 +87,18 @@
   border: 2px solid var(--ring-color, #5a5a7a);
   z-index: 0;
   pointer-events: none;
-  opacity: 0.5;
   animation: difficulty-ring-breathe var(--ring-speed, 2.8s) ease-in-out infinite;
-  box-shadow: 0 0 8px var(--ring-color, #5a5a7a);
 }
 
-.zone-difficulty-1 { border-width: 2px; }
-.zone-difficulty-2 { border-width: 2.5px; }
-.zone-difficulty-3 { border-width: 3px; box-shadow: 0 0 12px var(--ring-color); }
-.zone-difficulty-4 { border-width: 3.5px; box-shadow: 0 0 16px var(--ring-color); }
+.zone-difficulty-0 { opacity: 0.3; }
+.zone-difficulty-1 { opacity: 0.35; border-width: 2px; }
+.zone-difficulty-2 { opacity: 0.4; border-width: 2.5px; }
+.zone-difficulty-3 { opacity: 0.5; border-width: 3px; }
+.zone-difficulty-4 { opacity: 0.6; border-width: 3px; }
 
 @keyframes difficulty-ring-breathe {
-  0%, 100% { opacity: 0.35; transform: scale(1); }
-  50% { opacity: 0.75; transform: scale(1.08); }
+  0%, 100% { opacity: inherit; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.06); }
 }
 
 /* Selection ring (hero selected) */
@@ -168,6 +167,7 @@
   box-shadow:
     0 0 24px rgba(240, 192, 64, 0.2),
     0 0 12px rgba(240, 192, 64, 0.15);
+  animation: none;
 }
 
 .athanor-glow {
@@ -194,6 +194,16 @@
 .athanor-label {
   font-size: 0.8rem;
   color: var(--accent-gold);
+}
+
+.zone-difficulty-label {
+  font-family: var(--font-title);
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9), 0 0 10px rgba(0, 0, 0, 0.7);
+  white-space: nowrap;
+  text-align: center;
+  opacity: 0.8;
 }
 
 /* ── Explore Button Below Zone ──── */
@@ -527,6 +537,10 @@
 
   .athanor-label {
     font-size: 0.65rem;
+  }
+
+  .zone-difficulty-label {
+    font-size: 0.55rem;
   }
 
   .constellation-hint {
