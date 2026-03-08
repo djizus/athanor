@@ -923,7 +923,7 @@ button:disabled, .btn:disabled {
   -webkit-appearance: none;
   appearance: none;
   height: 6px;
-  background: var(--bg-secondary);
+  background: rgba(144, 144, 176, 0.25);
   border-radius: 3px;
   outline: none;
   border: none;
