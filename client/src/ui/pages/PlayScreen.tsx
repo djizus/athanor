@@ -6,7 +6,6 @@ import { useDojo } from '@/dojo/useDojo'
 import { useGame } from '@/hooks/useGame'
 import { useHeroes } from '@/hooks/useHeroes'
 import { useInventory } from '@/hooks/useInventory'
-import { useOptimisticEffects, useOptimisticGold, useOptimisticInventory } from '@/hooks/useOptimistic'
 import { useRecipes } from '@/hooks/useRecipes'
 import { useHints } from '@/hooks/useHints'
 import { useExplorationLog } from '@/hooks/useExplorationLog'
@@ -31,7 +30,7 @@ import {
   ingredientAssetUrl,
   roleAssetUrl,
 } from '@/game/constants'
-import { bitmapGet, bitmapPopcount, unpackCharacterIngredients } from '@/game/packer'
+import { bitmapGet, bitmapPopcount, unpackCharacterIngredients, unpackEffects } from '@/game/packer'
 import type { DiscoveryData } from '@/hooks/useRecipes'
 import { StatusHUD } from '@/ui/components/StatusHUD'
 import { BrewContent, IngredientsContent, GrimoireContent } from '@/ui/components/RightPanel'
@@ -156,12 +155,13 @@ export function PlayScreen() {
   const { account } = useAccount()
   const { game } = useGame(gameId)
   const heroes = useHeroes(gameId)
-  const baseInventory = useInventory(gameId)
-  const inventory = useOptimisticInventory(gameId)
+  const inventory = useInventory(gameId)
   const recipes = useRecipes(gameId)
   const hintIngredients = useHints(gameId)
-  const optimisticGold = useOptimisticGold(game)
-  const effectQuantities = useOptimisticEffects(game)
+  const effectQuantities = useMemo(
+    () => (game ? unpackEffects(BigInt(game.effects)) : Array(30).fill(0) as number[]),
+    [game],
+  )
   const addPendingTx = usePendingTxStore((s) => s.addTx)
   const finalizePendingTx = usePendingTxStore((s) => s.finalizeTx)
   const notifySyncTick = usePendingTxStore((s) => s.notifySyncTick)
@@ -258,14 +258,14 @@ export function PlayScreen() {
         game.ended_at,
       ].join(':')
       : 'no-game'
-    const inventoryPart = baseInventory
+    const inventoryPart = inventory
       .map(item => `${item.ingredient_id}:${item.quantity}`)
       .join('|')
     const heroesPart = heroes
       .map(hero => `${hero.id}:${hero.health}:${hero.max_health}:${hero.available_at}:${hero.gold}:${hero.ingredients}`)
       .join('|')
     return `${gamePart}#${inventoryPart}#${heroesPart}`
-  }, [game, baseInventory, heroes])
+  }, [game, inventory, heroes])
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000)
@@ -625,7 +625,7 @@ export function PlayScreen() {
     )
   }
 
-  const gold = optimisticGold
+  const gold = game?.gold ?? 0
   const hasPotions = effectQuantities.some((q) => q > 0)
   const heroCount = game ? bitmapPopcount(game.heroes) : Math.max(1, heroes.length)
   const hintCost = game?.hint_price ?? 4
