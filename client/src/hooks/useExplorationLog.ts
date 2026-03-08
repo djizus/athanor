@@ -192,6 +192,7 @@ export function useExplorationLog(
   }, [heroes])
 
   const snapshotHeroHp = useCallback((heroId: number, hp: number) => {
+    console.log(`[SnapshotHP] hero=${heroId} hp=${hp}`)
     heroStartHpRef.current.set(heroId, hp)
   }, [])
 
@@ -215,19 +216,20 @@ export function useExplorationLog(
 
         if (event.rawEvent) {
           processedEvent = true
-          // Track max depth for walk-back fallback
           const curMax = heroMaxDepthRef.current.get(heroId) ?? 0
           if (event.rawEvent.depth > curMax) heroMaxDepthRef.current.set(heroId, event.rawEvent.depth)
 
           setHeroOverrides((prev) => {
             const next = new Map(prev)
             const prevOv = prev.get(heroId)
+            const prevHealth = prevOv?.health ?? 0
             const bagGold = (prevOv?.bagGold ?? 0)
               + (event.rawEvent!.kind === 'gold' || event.rawEvent!.kind === 'beastWin' ? event.rawEvent!.value : 0)
             const bagIngredients = [...(prevOv?.bagIngredients ?? new Array(25).fill(0))]
             if (event.rawEvent!.kind === 'ingredient') {
               bagIngredients[event.rawEvent!.value] = (bagIngredients[event.rawEvent!.value] ?? 0) + 1
             }
+            console.log(`[DrainTick] hero=${heroId} depth=${depth} EVENT kind=${event.rawEvent!.kind} value=${event.rawEvent!.value} hpAfter=${event.rawEvent!.hpAfter} prevHealth=${prevHealth}`)
             next.set(heroId, {
               health: event.rawEvent!.hpAfter,
               zoneIndex: event.rawEvent!.zoneId,
@@ -247,7 +249,9 @@ export function useExplorationLog(
           if (prevOv && prevOv.health > 0) {
             const zone = prevOv.zoneIndex ?? 0
             const drain = ZONE_DRAIN[zone] ?? 1
-            next.set(heroId, { ...prevOv, health: Math.max(0, prevOv.health - drain) })
+            const newHp = Math.max(0, prevOv.health - drain)
+            console.log(`[DrainTick] hero=${heroId} depth=${depth} DRAIN zone=${zone} drain=${drain} ${prevOv.health} → ${newHp}`)
+            next.set(heroId, { ...prevOv, health: newHp })
           }
           return next
         })
@@ -269,6 +273,7 @@ export function useExplorationLog(
 
         const heroName = heroMapRef.current.get(heroId) ?? `Hero ${heroId}`
         const walkSeconds = (walkDurationMs / 1000).toFixed(1)
+        console.log(`[DrainTick] hero=${heroId} RETURNING deathDepth=${deathDepth} walkMs=${walkDurationMs}`)
 
         append({ ts: Date.now(), text: `${heroName} returning to Athanor (${walkSeconds}s walk, depth ${deathDepth})`, kind: 'exploration' })
 
@@ -306,6 +311,7 @@ export function useExplorationLog(
       if (event.rawEvent) {
         const startHp = heroStartHpRef.current.get(heroId) ?? event.rawEvent.hpAfter
         heroStartHpRef.current.delete(heroId)
+        console.log(`[Enqueue] hero=${heroId} NEW_QUEUE startHp=${startHp} snapshotHad=${heroStartHpRef.current.has(heroId)} fallback=${event.rawEvent.hpAfter}`)
         setHeroOverrides((prev) => {
           const next = new Map(prev)
           next.set(heroId, { health: startHp, zoneIndex: event.rawEvent!.zoneId, bagGold: 0, bagIngredients: new Array(25).fill(0) })
@@ -315,6 +321,7 @@ export function useExplorationLog(
     }
 
     queue.push(event)
+    console.log(`[Enqueue] hero=${heroId} depth=${event.rawEvent?.depth} kind=${event.rawEvent?.kind} hp=${event.rawEvent?.hpAfter} queueLen=${queue.length}`)
 
     if (drainTimerRef.current == null) {
       drainTimerRef.current = window.setInterval(drainTick, TICK_INTERVAL_MS)
@@ -374,6 +381,7 @@ export function useExplorationLog(
           const result = formatEvent(shortName, values, heroName)
           if (result) {
             if (shortName === 'ExplorationEvent' && !result.rawEvent) continue
+            console.log(`[EventArrival] model=${shortName} hero=${values.hero_id} depth=${values.depth ?? '-'} kind=${values.event_kind ?? '-'} hp=${values.hp_after ?? '-'}`)
             if (shortName === 'ExplorationEvent') {
               enqueue({ entry: result.entry, rawEvent: result.rawEvent })
             } else {
