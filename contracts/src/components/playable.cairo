@@ -168,6 +168,7 @@ pub mod PlayableComponent {
             world: WorldStorage,
             game_id: u64,
             character_id: u8,
+            zone_id: u8,
             seed: felt252,
         ) {
             // [Setup] Store
@@ -180,7 +181,7 @@ pub mod PlayableComponent {
             let mut character = store.character(game_id, character_id);
             character.assert_has_spawned();
             // [Effect] Explore
-            let mut logs = character.explore(seed);
+            let mut logs = character.explore(zone_id, seed);
             store.set_character(@character);
             // [Event] Emit logs
             let mut index: u16 = 0;

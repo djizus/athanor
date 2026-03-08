@@ -13,6 +13,8 @@ pub const DEFAULT_MAX_HEROES: u8 = 3;
 pub const DEFAULT_RECIPE_COUNT: u8 = 30;
 pub const DEFAULT_INGREDIENT_COUNT: u8 = 10;
 pub const DEFAULT_HERO_COSTS: [u32; 3] = [0, 80, 200];
+pub const DEFAULT_WALK_RATIO: u64 = 25;
+pub const WALK_BASE_MULTIPLIER: u64 = 100;
 pub const TIME_TOLERANCE: u64 = 5;
 
 // --- Zone configuration ---
@@ -43,6 +45,9 @@ pub const ZONE_3_DRAIN: u16 = 400; // 4.00 HP/s (x100)
 // Zone 4: Crystalveil Reach
 pub const ZONE_4_DEPTH: u16 = 90;
 pub const ZONE_4_DRAIN: u16 = 500; // 5.00 HP/s (x100)
+
+// Maximum exploration depth (was 300, scaled down 7× to match new game speed)
+pub const MAX_DEPTH: u16 = 60;
 
 // --- Hero configuration ---
 

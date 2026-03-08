@@ -10,7 +10,7 @@ pub trait IPlay<T> {
     fn craft(ref self: T, game_id: u64, ingredient_a: u8, ingredient_b: u8, quantity: u16);
     fn recruit(ref self: T, game_id: u64);
     fn buff(ref self: T, game_id: u64, character_id: u8, effect: u8, quantity: u16);
-    fn explore(ref self: T, game_id: u64, character_id: u8);
+    fn explore(ref self: T, game_id: u64, character_id: u8, zone_id: u8);
     fn claim(ref self: T, game_id: u64, character_id: u8);
     fn surrender(ref self: T, game_id: u64);
 }
@@ -192,7 +192,7 @@ pub mod Play {
             self.after(world, game_id);
         }
 
-        fn explore(ref self: ContractState, game_id: u64, character_id: u8) {
+        fn explore(ref self: ContractState, game_id: u64, character_id: u8, zone_id: u8) {
             // [Setup] World
             let world = self.world(@NAMESPACE());
             // [Compute] Seed
@@ -201,7 +201,7 @@ pub mod Play {
             let random = RandomTrait::new(vrf_addr, game_id.into());
             // [Effect] Explore
             self.before(world, game_id);
-            self.playable.explore(world, game_id, character_id, random.seed);
+            self.playable.explore(world, game_id, character_id, zone_id, random.seed);
             self.after(world, game_id);
         }
 

@@ -61,7 +61,7 @@ pub impl CharacterImpl of CharacterTrait {
     }
 
     #[inline]
-    fn explore(ref self: Character, rng: felt252) -> Array<TickEvent> {
+    fn explore(ref self: Character, zone_id: u8, rng: felt252) -> Array<TickEvent> {
         // [Check] Character is spawned
         self.assert_has_spawned();
         // [Check] Character is available
@@ -72,7 +72,11 @@ pub impl CharacterImpl of CharacterTrait {
         self.health = self.health();
         // [Effect] Apply expedition results
         let mut result = simulate_expedition(
-            hp: self.health, max_hp: self.max_health, power: self.power, seed: rng,
+            hp: self.health,
+            max_hp: self.max_health,
+            power: self.power,
+            zone_id: zone_id,
+            seed: rng,
         );
         self.available_at = now
             + (DEFAULT_WALK_RATIO + WALK_BASE_MULTIPLIER)
@@ -147,23 +151,23 @@ mod tests {
         let mut character = CharacterTrait::new(GAME_ID, CHARACTER_ID, Role::Mage);
         let max_health = character.max_health;
         character.buff(Effect::Blue, 10);
-        assert_eq!(character.max_health, max_health + 50);
+        assert_eq!(character.max_health, max_health + 100);
     }
 
     #[test]
     fn test_character_explore() {
         let mut character = CharacterTrait::new(GAME_ID, CHARACTER_ID, Role::Mage);
         starknet::testing::set_block_timestamp(1);
-        let first_logs = character.explore(0);
+        let first_logs = character.explore(0, 0);
         assert_eq!(character.health, 0);
         let resterored_at = character.available_at
             + (character.max_health / character.regen).into();
         starknet::testing::set_block_timestamp(resterored_at);
         assert_eq!(character.health(), character.max_health);
         let (ingredients, gold) = character.claim();
-        assert_eq!(ingredients, 1208928125459838486447105);
-        assert_eq!(gold, 6);
-        let second_logs = character.explore(0);
+        assert_eq!(ingredients, 5499707722753);
+        assert_eq!(gold, 15);
+        let second_logs = character.explore(0, 0);
         assert_eq!(first_logs.len(), second_logs.len());
     }
 }

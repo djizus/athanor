@@ -2,7 +2,7 @@ use core::dict::{Felt252Dict, Felt252DictTrait};
 use crate::constants;
 use crate::constants::INGREDIENTS_PER_ZONE;
 use crate::helpers::random::{Random, RandomTrait};
-use crate::typess::category::Category;
+use crate::types::category::Category;
 
 const MULTIPLIER: u32 = 100;
 
@@ -22,20 +22,6 @@ pub struct ExpeditionResult {
     pub events: Array<TickEvent>,
     pub bag: Felt252Dict<u16>,
     pub remaining_hp: u16,
-}
-
-fn get_zone(depth: u16) -> u8 {
-    if depth < constants::ZONE_1_DEPTH {
-        0
-    } else if depth < constants::ZONE_2_DEPTH {
-        1
-    } else if depth < constants::ZONE_3_DEPTH {
-        2
-    } else if depth < constants::ZONE_4_DEPTH {
-        3
-    } else {
-        4
-    }
 }
 
 fn get_drain(zone_id: u8) -> u32 {
@@ -185,7 +171,9 @@ fn clamp_u16(val: u32) -> u16 {
     }
 }
 
-pub fn simulate_expedition(hp: u16, max_hp: u16, power: u16, seed: felt252) -> ExpeditionResult {
+pub fn simulate_expedition(
+    hp: u16, max_hp: u16, power: u16, zone_id: u8, seed: felt252,
+) -> ExpeditionResult {
     let mut rng = Random { seed, nonce: 0 };
     let mut current_hp: u32 = MULTIPLIER * hp.into();
     let hero_max_hp: u32 = MULTIPLIER * max_hp.into();
@@ -195,11 +183,9 @@ pub fn simulate_expedition(hp: u16, max_hp: u16, power: u16, seed: felt252) -> E
     let mut events: Array<TickEvent> = array![];
     let mut bag: Felt252Dict<u16> = Default::default();
 
-    let max_depth: u16 = 300;
+    let max_depth: u16 = constants::MAX_DEPTH;
 
     while depth < max_depth {
-        let zone_id = get_zone(depth);
-
         let drain = get_drain(zone_id);
 
         if current_hp <= drain {
@@ -225,7 +211,12 @@ pub fn simulate_expedition(hp: u16, max_hp: u16, power: u16, seed: felt252) -> E
 
         if event_roll < trap_t {
             let (tmin, tmax) = trap_damage_range(zone_id);
-            let dmg = roll_range(ref rng, tmin, tmax);
+            let base = roll_range(ref rng, tmin, tmax);
+            let dmg = if base > hero_power {
+                base - hero_power
+            } else {
+                0
+            };
             if current_hp <= dmg {
                 current_hp = 0;
             } else {
@@ -256,16 +247,26 @@ pub fn simulate_expedition(hp: u16, max_hp: u16, power: u16, seed: felt252) -> E
                 let (lmin, lmax) = beast_loot_range(zone_id);
                 let loot = roll_range(ref rng, lmin, lmax);
                 gold += loot;
-                let combat_dmg = loot / 5;
-                if current_hp <= combat_dmg {
+                let base = loot / 5;
+                let dmg = if base > hero_power {
+                    base - hero_power
+                } else {
+                    0
+                };
+                if current_hp <= dmg {
                     current_hp = 0;
                 } else {
-                    current_hp -= combat_dmg;
+                    current_hp -= dmg;
                 }
                 event_kind = Category::BeastWin.into();
                 event_value = clamp_u16(loot / MULTIPLIER);
             } else {
-                let dmg = beast_pow - hero_power;
+                let base = beast_pow - hero_power;
+                let dmg = if base > hero_power {
+                    base - hero_power
+                } else {
+                    0
+                };
                 if current_hp <= dmg {
                     current_hp = 0;
                 } else {
