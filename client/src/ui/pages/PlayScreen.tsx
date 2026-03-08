@@ -352,6 +352,17 @@ export function PlayScreen() {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return
+      if (e.key === 'Tab') {
+        e.preventDefault()
+        if (heroes.length === 0) return
+        const heroIds = heroes.map(h => h.id)
+        setSelectedHeroId(prev => {
+          const currentIdx = heroIds.indexOf(prev)
+          const nextIdx = (currentIdx + 1) % heroIds.length
+          return heroIds[nextIdx]
+        })
+        return
+      }
       switch (e.key.toLowerCase()) {
         case 'c': scrollPanelIntoView('panel-brew', setBrewCollapsed); break
         case 'g': { setCollectionTab('grimoire'); scrollPanelIntoView('panel-brew', setBrewCollapsed); break }
@@ -361,7 +372,7 @@ export function PlayScreen() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [scrollPanelIntoView])
+  }, [scrollPanelIntoView, heroes])
 
   useEffect(() => {
     if (logs.length > 0) {
@@ -577,7 +588,7 @@ export function PlayScreen() {
     const t = txToast(`Brewing ${pairs.length} potions`)
     let success = false
     try {
-      await client.craftBatch(account, gameId, pairs)
+      await client.crafts(account, gameId, pairs)
       success = true
       t.success()
       soundManager.playSfx('brew-success', 0.4)
@@ -1042,8 +1053,36 @@ export function PlayScreen() {
                 }, i * 100)
               })
             }
+            if (!account || gameId == null) { setPotionTargetHeroId(null); return }
+            const allEffects = selections.flatMap(({ effect, quantity }) =>
+              Array.from({ length: quantity }, () => effect),
+            )
+            const effectsDelta = new Map<number, number>()
             for (const { effect, quantity } of selections) {
-              await handleBuff(effect, potionTargetHeroId, quantity)
+              effectsDelta.set(effect, (effectsDelta.get(effect) ?? 0) - quantity)
+            }
+            const pendingId = createPendingTxId()
+            addPendingTx({
+              id: pendingId,
+              action: 'buff',
+              heroId: potionTargetHeroId,
+              inventoryDelta: new Map(),
+              goldDelta: 0,
+              effectsDelta,
+            })
+            const t = txToast(`Applying ${allEffects.length} potions`)
+            let success = false
+            try {
+              await client.buffs(account, gameId, potionTargetHeroId, allEffects)
+              success = true
+              t.success()
+              soundManager.playSfx('potion-apply', 0.5)
+            } catch (e) {
+              t.error()
+              pushInfo('Potion application failed')
+              console.error('Buffs failed:', e)
+            } finally {
+              finalizePendingTx(pendingId, success)
             }
             setPotionTargetHeroId(null)
           }}

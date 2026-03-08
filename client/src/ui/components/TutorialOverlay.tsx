@@ -31,7 +31,7 @@ const STEPS: TutorialStep[] = [
   {
     target: 'heroes',
     title: 'Your Heroes',
-    body: 'You begin with <strong>one hero</strong> and can recruit up to <strong>3</strong>. Each hero has three stats:<br/><br/><strong>HP</strong> — how much damage they can take while exploring<br/><strong>Power</strong> — increases gold earned and combat strength<br/><strong>Regen</strong> — HP recovered per second while idle',
+    body: 'You begin with <strong>one hero</strong> and can recruit up to <strong>3</strong>. Each hero has three stats:<br/><br/><strong>HP</strong> — how much damage they can take while exploring<br/><strong>Power</strong> — increases gold earned and combat strength<br/><strong>Regen</strong> — HP recovered per second while idle<br/><br/>Press <strong>Tab</strong> to quickly cycle between your heroes.',
     buttonLabel: 'Next',
     placement: 'right',
   },
@@ -94,7 +94,7 @@ const STEPS: TutorialStep[] = [
   {
     target: 'collection-tabs',
     title: 'Ingredients & Grimoire Tabs',
-    body: 'Switch between <strong>Ingredients</strong> (your inventory) and <strong>Grimoire</strong> (your discovered potions) using these tabs.<br/><br/>Keyboard shortcuts: <strong>I</strong> for Ingredients, <strong>G</strong> for Grimoire.',
+    body: 'Switch between <strong>Ingredients</strong> (your inventory) and <strong>Grimoire</strong> (your discovered potions) using these tabs.<br/><br/>Keyboard shortcuts: <strong>Tab</strong> to cycle heroes, <strong>I</strong> for Ingredients, <strong>G</strong> for Grimoire.',
     buttonLabel: 'Next',
     placement: 'left',
   },
