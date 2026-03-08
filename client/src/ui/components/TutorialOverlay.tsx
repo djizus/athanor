@@ -87,14 +87,14 @@ const STEPS: TutorialStep[] = [
   {
     target: 'craft-slots',
     title: 'Discover All — Your Best Friend',
-    body: 'The <strong>Discover All</strong> button automatically tries <strong>every untested combination</strong> in your inventory at once.<br/><br/>After each exploration haul, hit Discover All to quickly test all new ingredient pairs. You can also select one ingredient first to discover combos <strong>with that ingredient only</strong>.',
+    body: 'The <strong>Discover All</strong> button automatically tries <strong>every untested combination</strong> in your inventory at once. You can also press <strong>D</strong> as a shortcut.<br/><br/>After each exploration haul, hit Discover All to quickly test all new ingredient pairs. You can also select one ingredient first to discover combos <strong>with that ingredient only</strong>.',
     buttonLabel: 'Next',
     placement: 'left',
   },
   {
     target: 'collection-tabs',
     title: 'Ingredients & Grimoire Tabs',
-    body: 'Switch between <strong>Ingredients</strong> (your inventory) and <strong>Grimoire</strong> (your discovered potions) using these tabs.<br/><br/>Keyboard shortcuts: <strong>Tab</strong> to cycle heroes, <strong>1–5</strong> to explore zones, <strong>I</strong> for Ingredients, <strong>G</strong> for Grimoire.',
+    body: 'Switch between <strong>Ingredients</strong> (your inventory) and <strong>Grimoire</strong> (your discovered potions) using these tabs.<br/><br/>Keyboard shortcuts: <strong>Tab</strong> to cycle heroes, <strong>1–5</strong> (or numpad) to explore zones, <strong>D</strong> to Discover All, <strong>I</strong> for Ingredients, <strong>G</strong> for Grimoire.',
     buttonLabel: 'Next',
     placement: 'left',
   },

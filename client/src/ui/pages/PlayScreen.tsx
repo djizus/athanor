@@ -645,6 +645,8 @@ export function PlayScreen() {
 
   const handleExploreRef = useRef(handleExplore)
   handleExploreRef.current = handleExplore
+  const handleBrewAllRef = useRef(handleBrewAll)
+  handleBrewAllRef.current = handleBrewAll
   const nowRef = useRef(now)
   nowRef.current = now
 
@@ -662,9 +664,10 @@ export function PlayScreen() {
         })
         return
       }
-      if (e.code >= 'Digit1' && e.code <= 'Digit5') {
+      if ((e.code >= 'Digit1' && e.code <= 'Digit5') || (e.code >= 'Numpad1' && e.code <= 'Numpad5')) {
         e.preventDefault()
-        const zoneId = parseInt(e.code[5]) - 1
+        const digit = e.code.replace(/\D/g, '')
+        const zoneId = parseInt(digit) - 1
         if (selectedHeroId < 0 || isGameOver) return
         const hero = heroes.find(h => h.id === selectedHeroId)
         if (!hero) return
@@ -673,6 +676,7 @@ export function PlayScreen() {
         return
       }
       switch (e.key.toLowerCase()) {
+        case 'd': { e.preventDefault(); void handleBrewAllRef.current(); break }
         case 'c': scrollPanelIntoView('panel-brew', setBrewCollapsed); break
         case 'g': { setCollectionTab('grimoire'); scrollPanelIntoView('panel-brew', setBrewCollapsed); break }
         case 'i': { setCollectionTab('ingredients'); scrollPanelIntoView('panel-brew', setBrewCollapsed); break }
