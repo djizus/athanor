@@ -1,12 +1,12 @@
 use core::num::traits::Bounded;
-use crate::constants::TIME_TOLERANCE;
+use crate::constants::{DEFAULT_WALK_RATIO, TIME_TOLERANCE, WALK_BASE_MULTIPLIER};
 use crate::helpers::exploration::{TickEvent, simulate_expedition};
 use crate::helpers::packer::Packer;
 use crate::models::game::INGREDIENT_SIZE;
 pub use crate::models::index::Character;
-use crate::typess::effect::{Effect, EffectTrait};
-use crate::typess::ingredient::INGREDIENT_COUNT;
-use crate::typess::role::{Role, RoleTrait};
+use crate::types::effect::{Effect, EffectTrait};
+use crate::types::ingredient::INGREDIENT_COUNT;
+use crate::types::role::{Role, RoleTrait};
 
 pub mod Errors {
     pub const CHARACTER_NOT_SPAWNED: felt252 = 'Character: not spawned';
@@ -74,7 +74,10 @@ pub impl CharacterImpl of CharacterTrait {
         let mut result = simulate_expedition(
             hp: self.health, max_hp: self.max_health, power: self.power, seed: rng,
         );
-        self.available_at = now + 3 * result.death_depth.into() / 2;
+        self.available_at = now
+            + (DEFAULT_WALK_RATIO + WALK_BASE_MULTIPLIER)
+                * result.death_depth.into()
+                / WALK_BASE_MULTIPLIER;
         self.health = result.remaining_hp;
         self.gold = result.gold;
         let mut ingredients: Array<u16> = array![];

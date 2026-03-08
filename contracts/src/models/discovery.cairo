@@ -1,6 +1,6 @@
 use crate::helpers::bitmap::Bitmap;
 pub use crate::models::index::Discovery;
-use crate::typess::effect::Effect;
+use crate::types::effect::Effect;
 
 pub mod Errors {
     pub const DISCOVERY_IS_DISCOVERED: felt252 = 'Discovery: already found';

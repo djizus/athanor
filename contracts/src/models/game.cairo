@@ -7,9 +7,9 @@ use crate::helpers::bitmap::Bitmap;
 use crate::helpers::crafter::Crafter;
 use crate::helpers::packer::Packer;
 pub use crate::models::index::Game;
-use crate::typess::effect::{ALL_EFFECTS, EFFECT_COUNT, Effect, EffectTrait};
-use crate::typess::ingredient::{INGREDIENT_COUNT, Ingredient, IngredientTrait};
-use crate::typess::role::{Role, RoleTrait};
+use crate::types::effect::{ALL_EFFECTS, EFFECT_COUNT, Effect, EffectTrait};
+use crate::types::ingredient::{INGREDIENT_COUNT, Ingredient, IngredientTrait};
+use crate::types::role::{Role, RoleTrait};
 
 pub const TRY_SIZE: u16 = 2_u16.pow(5);
 pub const INGREDIENT_SIZE: u16 = 2_u16.pow(10);

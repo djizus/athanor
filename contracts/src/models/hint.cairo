@@ -1,7 +1,7 @@
 use crate::helpers::bitmap::Bitmap;
 pub use crate::models::index::Hint;
-use crate::typess::effect::{Effect, EffectTrait};
-use crate::typess::ingredient::Ingredient;
+use crate::types::effect::{Effect, EffectTrait};
+use crate::types::ingredient::Ingredient;
 
 pub mod Errors {
     pub const RECIPE_ALREADY_IN_HINT: felt252 = 'Recipe already in hint';

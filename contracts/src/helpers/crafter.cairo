@@ -1,5 +1,5 @@
 use crate::helpers::bitmap::Bitmap;
-use crate::typess::effect::Effect;
+use crate::types::effect::Effect;
 
 const TOTAL_PROBABILITY: u32 = 100;
 const MULTIPLIER: u32 = 10_000;

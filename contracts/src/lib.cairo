@@ -1,6 +1,5 @@
 pub mod constants;
 pub mod store;
-pub mod types;
 
 pub mod elements {
     pub mod effects {
@@ -19,7 +18,7 @@ pub mod elements {
     }
 }
 
-pub mod typess {
+pub mod types {
     pub mod category;
     pub mod effect;
     pub mod ingredient;

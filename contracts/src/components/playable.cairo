@@ -9,8 +9,8 @@ pub mod PlayableComponent {
     use crate::models::game::{GameAssert, GameTrait};
     use crate::models::hint::HintTrait;
     use crate::store::StoreTrait;
-    use crate::typess::effect::Effect;
-    use crate::typess::ingredient::Ingredient;
+    use crate::types::effect::Effect;
+    use crate::types::ingredient::Ingredient;
 
     // Storage
 
