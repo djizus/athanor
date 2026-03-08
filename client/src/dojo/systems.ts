@@ -5,6 +5,8 @@ import {
   CairoOption,
   CairoOptionVariant,
   shortString,
+  uint256,
+  type Uint256,
 } from 'starknet'
 
 type ManifestContract = {
@@ -40,7 +42,7 @@ function getContractAddress(manifest: Manifest, tag: string) {
   return contract.address
 }
 
-export function extractGameId(receipt: { events?: { keys?: string[]; data?: string[] }[] }): number {
+export function extractGameId(receipt: { events?: { keys?: string[]; data?: string[] }[] }): bigint {
   const events = receipt.events ?? []
   const transferEvent = events.find(
     (event) => event.keys != null && event.keys.length === 5 && (!event.data || event.data.length === 0),
@@ -49,10 +51,11 @@ export function extractGameId(receipt: { events?: { keys?: string[]; data?: stri
   if (transferEvent?.keys) {
     const tokenIdLow = BigInt(transferEvent.keys[3] ?? '0')
     const tokenIdHigh = BigInt(transferEvent.keys[4] ?? '0')
-    return Number(tokenIdLow + (tokenIdHigh << 128n))
+    const uint256Value: Uint256 = {low: tokenIdLow, high: tokenIdHigh};
+    return uint256.uint256ToBN(uint256Value);
   }
 
-  return 0
+  return 0n
 }
 
 export function createSystemCalls(manifest: Manifest) {

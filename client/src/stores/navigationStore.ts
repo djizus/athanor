@@ -4,8 +4,8 @@ export type PageId = 'home' | 'play' | 'mygames' | 'leaderboard' | 'howtoplay'
 
 type NavigationState = {
   currentPage: PageId
-  gameId: number | null
-  navigate: (page: PageId, gameId?: number) => void
+  gameId: bigint | null
+  navigate: (page: PageId, gameId?: bigint) => void
   goBack: () => void
 }
 

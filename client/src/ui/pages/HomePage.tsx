@@ -18,7 +18,7 @@ export function HomePage() {
   const { connect, connectors } = useConnect()
   const { games } = useGameTokens(address)
   const { displayName } = usePlayerName(address)
-  const playerGameIds = useMemo(() => games.map(g => g.game_id), [games])
+  const playerGameIds = useMemo(() => games.map(g => Number(g.game_id)), [games])
   const rank = usePlayerRank(playerGameIds)
   const [isCreatingGame, setIsCreatingGame] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -51,6 +51,7 @@ export function HomePage() {
       const mintResult = await client.mintGame(account, displayName)
       const mintReceipt = await provider.waitForTransaction(mintResult.transaction_hash)
       const gameId = extractGameId(mintReceipt as { events?: { keys?: string[]; data?: string[] }[] })
+      console.log(gameId)
 
       if (gameId <= 0) {
         throw new Error('Failed to extract game id from mint transaction receipt')

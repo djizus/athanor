@@ -35,7 +35,7 @@ interface TokenBalanceNode {
 }
 
 export type GameToken = {
-  game_id: number
+  game_id: bigint
   discovered_count: number
   game_over: boolean
   started_at: number
@@ -114,7 +114,7 @@ export function useGameTokens(playerAddress: string | undefined) {
           seen.add(game.id)
 
           gameList.push({
-            game_id: Number(game.id),
+            game_id: game.id,
             discovered_count: bitmapPopcount(game.grimoire),
             game_over: game.ended_at > 0,
             started_at: game.started_at,
@@ -124,7 +124,7 @@ export function useGameTokens(playerAddress: string | undefined) {
           })
         }
 
-        gameList.sort((a, b) => b.game_id - a.game_id)
+        gameList.sort((a, b) => Number(b.game_id) - Number(a.game_id))
         setGames(gameList)
       } catch (error) {
         console.error('[useGameTokens] Error:', error)
