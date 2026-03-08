@@ -520,7 +520,7 @@ export function PlayScreen() {
 
   const gold = optimisticGold
   const hasPotions = effectQuantities.some((q) => q > 0)
-  const heroCount = game ? bitmapPopcount(game.heroes) : heroes.length
+  const heroCount = game ? bitmapPopcount(game.heroes) : Math.max(1, heroes.length)
   const hintCost = game?.hint_price ?? 4
   const startedAt = game ? Number(game.started_at) : now
   const endedAt = game && Number(game.ended_at) > 0 ? Number(game.ended_at) : now
@@ -1030,7 +1030,12 @@ function HeroSlot({
   }, [hero?.max_health, hero?.power, hero?.regen])
 
   if (!hero) {
-    if (slot < heroCount) return null
+    // Hero data not yet synced from chain — show loading placeholder for known hero slots
+    if (slot < heroCount) return (
+      <div className="hero-card hero-card-loading">
+        <span className="hero-card-loading-text">Loading...</span>
+      </div>
+    )
     if (slot === heroCount && heroCount < 3) {
       const cost = HERO_RECRUIT_COSTS[Math.min(heroCount, 2)]
       const canAfford = gold >= cost && !isGameOver && !isRecruitPending

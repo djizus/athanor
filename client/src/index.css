@@ -1584,6 +1584,20 @@ button:disabled, .btn:disabled {
   50% { box-shadow: 0 0 20px rgba(64, 192, 96, 0.4); }
 }
 
+.hero-card-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.2rem 0.45rem;
+  border-style: dashed;
+  background: var(--bg-secondary);
+  opacity: 0.5;
+}
+.hero-card-loading-text {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
 .hero-card-locked {
   display: flex;
   flex-direction: column;
