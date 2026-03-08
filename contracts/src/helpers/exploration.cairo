@@ -283,9 +283,9 @@ pub fn simulate_expedition(
             events.append(TickEvent { depth, zone_id, event_kind, value: event_value, hp_after });
         }
 
-        let drop_roll: u16 = rng.next_bounded(10000).try_into().unwrap();
+        let drop_roll: u32 = rng.next_bounded(10000);
 
-        let drop_chance = get_drop_chance(zone_id);
+        let drop_chance: u32 = get_drop_chance(zone_id).into() * constants::LUCK_MULTIPLIER / 100;
 
         if drop_roll < drop_chance {
             let zone_base: u8 = zone_id * INGREDIENTS_PER_ZONE;

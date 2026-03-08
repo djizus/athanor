@@ -16,6 +16,7 @@ pub const DEFAULT_HERO_COSTS: [u32; 3] = [0, 80, 200];
 pub const DEFAULT_WALK_RATIO: u64 = 25;
 pub const WALK_BASE_MULTIPLIER: u64 = 100;
 pub const TIME_TOLERANCE: u64 = 5;
+pub const LUCK_MULTIPLIER: u32 = 200;
 
 // --- Zone configuration ---
 
