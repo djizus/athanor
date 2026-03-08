@@ -3,6 +3,7 @@ import ControllerConnector from '@cartridge/connector/controller'
 import type { ControllerOptions, SessionPolicies } from '@cartridge/controller'
 import { shortString } from 'starknet'
 import { dojoConfig } from '../dojo.config'
+import { getVrfAddress } from './dojo/systems'
 
 const NAMESPACE = import.meta.env.VITE_PUBLIC_NAMESPACE ?? 'ATHANOR'
 const RPC_URL = dojoConfig().rpcUrl
@@ -65,10 +66,20 @@ function buildPolicies(): SessionPolicies {
     return contract?.address ?? '0x0'
   }
 
+  const vrf = getVrfAddress()
   const play = findAddress('ATHANOR-Play')
 
   return {
     contracts: {
+      [vrf]: {
+        methods: [
+          {
+            name: "Request Random",
+            entrypoint: "request_random",
+            description: "Requests a random number from the VRF contract"
+          },
+        ],
+      },
       [play]: {
         methods: [
           { name: 'Mint Game', entrypoint: 'mint_game' },

@@ -4,6 +4,7 @@ import {
   CallData,
   CairoOption,
   CairoOptionVariant,
+  shortString,
 } from 'starknet'
 
 type ManifestContract = {
@@ -14,6 +15,20 @@ type ManifestContract = {
 type Manifest = {
   contracts: ManifestContract[]
 }
+
+const SN_SEPOLIA_VRF = "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f";
+
+export const getVrfAddress = (chainId?: bigint) => {
+  if (!chainId) {
+    return SN_SEPOLIA_VRF;
+  }
+  const decodedChainId = shortString.decodeShortString(
+    `0x${chainId.toString(16)}`,
+  );
+  const fromEnv = import.meta.env[`VITE_${decodedChainId}_VRF`];
+  if (fromEnv && BigInt(fromEnv) !== 0n) return fromEnv;
+  return SN_SEPOLIA_VRF;
+};
 
 function getContractAddress(manifest: Manifest, tag: string) {
   const contract = manifest.contracts.find((item) => item.tag === tag)
@@ -67,6 +82,14 @@ export function createSystemCalls(manifest: Manifest) {
     create: (account: AccountInterface, game_id: BigNumberish) =>
       account.execute([
         {
+          contractAddress: getVrfAddress(),
+          entrypoint: "request_random",
+          calldata: CallData.compile({
+            caller: playAddress,
+            source: { type: 0, address: playAddress },
+          }),
+        },
+        {
           contractAddress: playAddress,
           entrypoint: 'create',
           calldata: [game_id],
@@ -75,6 +98,14 @@ export function createSystemCalls(manifest: Manifest) {
 
     clue: (account: AccountInterface, game_id: BigNumberish) =>
       account.execute([
+        {
+          contractAddress: getVrfAddress(),
+          entrypoint: "request_random",
+          calldata: CallData.compile({
+            caller: playAddress,
+            source: { type: 0, address: playAddress },
+          }),
+        },
         {
           contractAddress: playAddress,
           entrypoint: 'clue',
@@ -91,6 +122,14 @@ export function createSystemCalls(manifest: Manifest) {
     ) =>
       account.execute([
         {
+          contractAddress: getVrfAddress(),
+          entrypoint: "request_random",
+          calldata: CallData.compile({
+            caller: playAddress,
+            source: { type: 0, address: playAddress },
+          }),
+        },
+        {
           contractAddress: playAddress,
           entrypoint: 'craft',
           calldata: [game_id, Number(ingredient_a) + 1, Number(ingredient_b) + 1, quantity],
@@ -103,15 +142,34 @@ export function createSystemCalls(manifest: Manifest) {
       pairs: [number, number][],
     ) =>
       account.execute(
-        pairs.map(([a, b]) => ({
+        pairs.flatMap(([a, b]) => ([
+          
+        {
+          contractAddress: getVrfAddress(),
+          entrypoint: "request_random",
+          calldata: CallData.compile({
+            caller: playAddress,
+            source: { type: 0, address: playAddress },
+          }),
+        },
+        {
           contractAddress: playAddress,
           entrypoint: 'craft',
           calldata: [game_id, a + 1, b + 1, 1],
-        })),
+        }
+      ])),
       ),
 
     recruit: (account: AccountInterface, game_id: BigNumberish) =>
       account.execute([
+        {
+          contractAddress: getVrfAddress(),
+          entrypoint: "request_random",
+          calldata: CallData.compile({
+            caller: playAddress,
+            source: { type: 0, address: playAddress },
+          }),
+        },
         {
           contractAddress: playAddress,
           entrypoint: 'recruit',
@@ -136,6 +194,14 @@ export function createSystemCalls(manifest: Manifest) {
 
     explore: (account: AccountInterface, game_id: BigNumberish, character_id: BigNumberish, zone_id: BigNumberish) =>
       account.execute([
+        {
+          contractAddress: getVrfAddress(),
+          entrypoint: "request_random",
+          calldata: CallData.compile({
+            caller: playAddress,
+            source: { type: 0, address: playAddress },
+          }),
+        },
         {
           contractAddress: playAddress,
           entrypoint: 'claim',

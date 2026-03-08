@@ -1,7 +1,7 @@
 use athanor::interfaces::vrf::{IVrfProviderDispatcher, IVrfProviderDispatcherTrait, Source};
 use core::num::traits::Zero;
 use core::poseidon::poseidon_hash_span;
-use starknet::{ContractAddress, get_tx_info};
+use starknet::{ContractAddress, get_contract_address, get_tx_info};
 
 #[derive(Copy, Drop, Serde)]
 pub struct Random {
@@ -17,7 +17,7 @@ pub impl RandomImpl of RandomTrait {
             Self::gen()
         } else {
             let vrf_provider = IVrfProviderDispatcher { contract_address: vrf_address };
-            let seed = vrf_provider.consume_random(Source::Salt(salt));
+            let seed = vrf_provider.consume_random(Source::Nonce(get_contract_address()));
             Random { seed, nonce: 0 }
         }
     }
