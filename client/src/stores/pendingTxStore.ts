@@ -11,11 +11,18 @@ export type PendingTx = {
   effectsDelta: Map<number, number>
 }
 
+type SettledTx = {
+  tx: PendingTx
+  clearAfterSyncVersion: number
+}
+
 interface PendingTxState {
   pending: Map<string, PendingTx>
-  settled: Map<string, PendingTx>
+  settled: Map<string, SettledTx>
+  syncVersion: number
   addTx: (tx: PendingTx) => void
   finalizeTx: (id: string, success: boolean) => void
+  notifySyncTick: () => void
   clearAll: () => void
   isActionPending: (action: PendingTxAction | PendingTxAction[]) => boolean
   isHeroActionPending: (heroId: number, action: PendingTxAction | PendingTxAction[]) => boolean
@@ -23,8 +30,6 @@ interface PendingTxState {
   getGoldDelta: () => number
   getEffectsDeltas: () => Map<number, number>
 }
-
-const SETTLED_TX_TTL_MS = 4000
 
 function sumMapDeltas(maps: Map<number, number>[]): Map<number, number> {
   const result = new Map<number, number>()
@@ -43,6 +48,7 @@ function sumMapDeltas(maps: Map<number, number>[]): Map<number, number> {
 export const usePendingTxStore = create<PendingTxState>((set, get) => ({
   pending: new Map(),
   settled: new Map(),
+  syncVersion: 0,
 
   addTx: (tx) => set((state) => {
     const next = new Map(state.pending)
@@ -60,29 +66,36 @@ export const usePendingTxStore = create<PendingTxState>((set, get) => ({
       if (!success) return { pending: nextPending }
 
       const nextSettled = new Map(state.settled)
-      nextSettled.set(id, tx)
+      nextSettled.set(id, {
+        tx,
+        clearAfterSyncVersion: state.syncVersion + 1,
+      })
       return { pending: nextPending, settled: nextSettled }
     })
-
-    if (!success) return
-
-    setTimeout(() => {
-      set((state) => {
-        if (!state.settled.has(id)) return state
-        const nextSettled = new Map(state.settled)
-        nextSettled.delete(id)
-        return { settled: nextSettled }
-      })
-    }, SETTLED_TX_TTL_MS)
   },
 
-  clearAll: () => set({ pending: new Map(), settled: new Map() }),
+  notifySyncTick: () => set((state) => {
+    const nextSyncVersion = state.syncVersion + 1
+    if (state.settled.size === 0) return { syncVersion: nextSyncVersion }
+    const nextSettled = new Map(state.settled)
+    for (const [id, settled] of nextSettled) {
+      if (settled.clearAfterSyncVersion <= nextSyncVersion) {
+        nextSettled.delete(id)
+      }
+    }
+    return { syncVersion: nextSyncVersion, settled: nextSettled }
+  }),
+
+  clearAll: () => set({ pending: new Map(), settled: new Map(), syncVersion: 0 }),
 
   isActionPending: (action) => {
     const actions = Array.isArray(action) ? action : [action]
     const actionSet = new Set(actions)
     for (const tx of get().pending.values()) {
       if (actionSet.has(tx.action)) return true
+    }
+    for (const settled of get().settled.values()) {
+      if (actionSet.has(settled.tx.action)) return true
     }
     return false
   },
@@ -93,12 +106,15 @@ export const usePendingTxStore = create<PendingTxState>((set, get) => ({
     for (const tx of get().pending.values()) {
       if (tx.heroId === heroId && actionSet.has(tx.action)) return true
     }
+    for (const settled of get().settled.values()) {
+      if (settled.tx.heroId === heroId && actionSet.has(settled.tx.action)) return true
+    }
     return false
   },
 
   getInventoryDeltas: () => sumMapDeltas([
     ...Array.from(get().pending.values(), (tx) => tx.inventoryDelta),
-    ...Array.from(get().settled.values(), (tx) => tx.inventoryDelta),
+    ...Array.from(get().settled.values(), (settled) => settled.tx.inventoryDelta),
   ]),
 
   getGoldDelta: () => {
@@ -106,14 +122,14 @@ export const usePendingTxStore = create<PendingTxState>((set, get) => ({
     for (const tx of get().pending.values()) {
       total += tx.goldDelta
     }
-    for (const tx of get().settled.values()) {
-      total += tx.goldDelta
+    for (const settled of get().settled.values()) {
+      total += settled.tx.goldDelta
     }
     return total
   },
 
   getEffectsDeltas: () => sumMapDeltas([
     ...Array.from(get().pending.values(), (tx) => tx.effectsDelta),
-    ...Array.from(get().settled.values(), (tx) => tx.effectsDelta),
+    ...Array.from(get().settled.values(), (settled) => settled.tx.effectsDelta),
   ]),
 }))

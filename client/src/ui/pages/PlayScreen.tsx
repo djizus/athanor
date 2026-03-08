@@ -5,6 +5,7 @@ import { useEntityQuery } from '@dojoengine/react'
 import { useDojo } from '@/dojo/useDojo'
 import { useGame } from '@/hooks/useGame'
 import { useHeroes } from '@/hooks/useHeroes'
+import { useInventory } from '@/hooks/useInventory'
 import { useOptimisticEffects, useOptimisticGold, useOptimisticInventory } from '@/hooks/useOptimistic'
 import { useRecipes } from '@/hooks/useRecipes'
 import { useHints } from '@/hooks/useHints'
@@ -155,6 +156,7 @@ export function PlayScreen() {
   const { account } = useAccount()
   const { game } = useGame(gameId)
   const heroes = useHeroes(gameId)
+  const baseInventory = useInventory(gameId)
   const inventory = useOptimisticInventory(gameId)
   const recipes = useRecipes(gameId)
   const hintIngredients = useHints(gameId)
@@ -162,6 +164,7 @@ export function PlayScreen() {
   const effectQuantities = useOptimisticEffects(game)
   const addPendingTx = usePendingTxStore((s) => s.addTx)
   const finalizePendingTx = usePendingTxStore((s) => s.finalizeTx)
+  const notifySyncTick = usePendingTxStore((s) => s.notifySyncTick)
   const isActionPending = usePendingTxStore((s) => s.isActionPending)
   const isHeroActionPending = usePendingTxStore((s) => s.isHeroActionPending)
 
@@ -184,6 +187,7 @@ export function PlayScreen() {
   const [floatingTexts, setFloatingTexts] = useState<FloatingTextAnim[]>([])
   const [goldFloats, setGoldFloats] = useState<{ id: string; text: string }[]>([])
   const floatingIdRef = useRef(0)
+  const lastSyncFingerprintRef = useRef<string | null>(null)
 
   const { heroPositions, onExpeditionStart, onExplorationZoneUpdate } = useExpeditionTracker(heroes, now)
 
@@ -240,10 +244,41 @@ export function PlayScreen() {
   const { logs, pushInfo, heroOverrides } = useExplorationLog(gameId ?? null, heroes, onExplorationEvent)
   const logsEndRef = useRef<HTMLDivElement>(null)
 
+  const syncFingerprint = useMemo(() => {
+    const gamePart = game
+      ? [
+        game.id,
+        game.gold,
+        String(game.effects),
+        game.remaining_tries,
+        game.grimoire,
+        game.heroes,
+        game.hint_price,
+        game.started_at,
+        game.ended_at,
+      ].join(':')
+      : 'no-game'
+    const inventoryPart = baseInventory
+      .map(item => `${item.ingredient_id}:${item.quantity}`)
+      .join('|')
+    const heroesPart = heroes
+      .map(hero => `${hero.id}:${hero.health}:${hero.max_health}:${hero.available_at}:${hero.gold}:${hero.ingredients}`)
+      .join('|')
+    return `${gamePart}#${inventoryPart}#${heroesPart}`
+  }, [game, baseInventory, heroes])
+
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000)
     return () => window.clearInterval(timer)
   }, [])
+
+  useEffect(() => {
+    const prev = lastSyncFingerprintRef.current
+    if (prev !== null && prev !== syncFingerprint) {
+      notifySyncTick()
+    }
+    lastSyncFingerprintRef.current = syncFingerprint
+  }, [syncFingerprint, notifySyncTick])
 
   const prevDiscoveredRef = useRef(0)
   const prevGameOverRef = useRef(false)
