@@ -72,8 +72,6 @@ export function createSystemCalls(manifest: Manifest) {
   }]
 
   return {
-    // --- Direct-execute (used in HomePage, need receipt / account.address) ---
-
     mintGame: (account: AccountInterface, username: string, settingsId: number = 0) =>
       account.execute([
         {
@@ -108,70 +106,75 @@ export function createSystemCalls(manifest: Manifest) {
         },
       ]),
 
-    // --- Call builders (return Call[] for tx batcher) ---
-
-    clue: (game_id: BigNumberish): Call[] => [
-      ...vrfCalls(),
-      { contractAddress: playAddress, entrypoint: 'clue', calldata: [game_id] },
-    ],
+    clue: (account: AccountInterface, game_id: BigNumberish) =>
+      account.execute([
+        ...vrfCalls(),
+        { contractAddress: playAddress, entrypoint: 'clue', calldata: [game_id] },
+      ]),
 
     craft: (
+      account: AccountInterface,
       game_id: BigNumberish,
       ingredient_a: BigNumberish,
       ingredient_b: BigNumberish,
       quantity: BigNumberish = 1,
-    ): Call[] => [
-      ...vrfCalls(),
-      {
-        contractAddress: playAddress,
-        entrypoint: 'craft',
-        calldata: [game_id, Number(ingredient_a) + 1, Number(ingredient_b) + 1, quantity],
-      },
-    ],
+    ) =>
+      account.execute([
+        ...vrfCalls(),
+        {
+          contractAddress: playAddress,
+          entrypoint: 'craft',
+          calldata: [game_id, Number(ingredient_a) + 1, Number(ingredient_b) + 1, quantity],
+        },
+      ]),
 
-    crafts: (game_id: BigNumberish, pairs: [number, number][]): Call[] => {
+    crafts: (account: AccountInterface, game_id: BigNumberish, pairs: [number, number][]) => {
       const ingredients = pairs.flatMap(([a, b]) => [a + 1, b + 1])
-      return [
+      return account.execute([
         ...vrfCalls(),
         {
           contractAddress: playAddress,
           entrypoint: 'crafts',
           calldata: CallData.compile({ game_id, ingredients }),
         },
-      ]
+      ])
     },
 
-    recruit: (game_id: BigNumberish): Call[] => [
-      ...vrfCalls(),
-      { contractAddress: playAddress, entrypoint: 'recruit', calldata: [game_id] },
-    ],
+    recruit: (account: AccountInterface, game_id: BigNumberish) =>
+      account.execute([
+        ...vrfCalls(),
+        { contractAddress: playAddress, entrypoint: 'recruit', calldata: [game_id] },
+      ]),
 
     buff: (
+      account: AccountInterface,
       game_id: BigNumberish,
       character_id: BigNumberish,
       effect: BigNumberish,
       quantity: BigNumberish = 1,
-    ): Call[] => [
-      {
-        contractAddress: playAddress,
-        entrypoint: 'buff',
-        calldata: [game_id, character_id, Number(effect) + 1, quantity],
-      },
-    ],
+    ) =>
+      account.execute([
+        {
+          contractAddress: playAddress,
+          entrypoint: 'buff',
+          calldata: [game_id, character_id, Number(effect) + 1, quantity],
+        },
+      ]),
 
     buffs: (
+      account: AccountInterface,
       game_id: BigNumberish,
       character_id: BigNumberish,
       effects: number[],
-    ): Call[] => {
+    ) => {
       const effectIds = effects.map(e => e + 1)
-      return [
+      return account.execute([
         {
           contractAddress: playAddress,
           entrypoint: 'buffs',
           calldata: CallData.compile({ game_id, character_id, effects: effectIds }),
         },
-      ]
+      ])
     },
 
     explore: (game_id: BigNumberish, character_id: BigNumberish, zone_id: BigNumberish): Call[] => [
@@ -179,12 +182,14 @@ export function createSystemCalls(manifest: Manifest) {
       { contractAddress: playAddress, entrypoint: 'explore', calldata: [game_id, character_id, zone_id] },
     ],
 
-    claim: (game_id: BigNumberish, character_id: BigNumberish): Call[] => [
-      { contractAddress: playAddress, entrypoint: 'claim', calldata: [game_id, character_id] },
-    ],
+    claim: (account: AccountInterface, game_id: BigNumberish, character_id: BigNumberish) =>
+      account.execute([
+        { contractAddress: playAddress, entrypoint: 'claim', calldata: [game_id, character_id] },
+      ]),
 
-    surrender: (game_id: BigNumberish): Call[] => [
-      { contractAddress: playAddress, entrypoint: 'surrender', calldata: [game_id] },
-    ],
+    surrender: (account: AccountInterface, game_id: BigNumberish) =>
+      account.execute([
+        { contractAddress: playAddress, entrypoint: 'surrender', calldata: [game_id] },
+      ]),
   }
 }
