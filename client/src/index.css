@@ -1106,7 +1106,6 @@ button:disabled, .btn:disabled {
   letter-spacing: 0.04em;
   white-space: nowrap;
   z-index: 12;
-  zoom: 1.15;
 }
 
 .status-hud-btn {
@@ -1201,7 +1200,7 @@ button:disabled, .btn:disabled {
   left: 12px;
   top: 52px;
   bottom: 12px;
-  width: 420px;
+  width: clamp(280px, 23vw, 420px);
   z-index: 10;
   display: flex;
   flex-direction: column;
@@ -1209,7 +1208,6 @@ button:disabled, .btn:disabled {
   overflow-y: auto;
   pointer-events: auto;
   scrollbar-width: thin;
-  zoom: 1.15;
 }
 
 .play-right-panels {
@@ -1217,7 +1215,7 @@ button:disabled, .btn:disabled {
   right: 12px;
   top: 52px;
   bottom: 52px;
-  width: 420px;
+  width: clamp(280px, 23vw, 420px);
   z-index: 10;
   display: flex;
   flex-direction: column;
@@ -1225,7 +1223,6 @@ button:disabled, .btn:disabled {
   overflow-y: auto;
   pointer-events: auto;
   scrollbar-width: thin;
-  zoom: 1.15;
 }
 
 .side-panel {
@@ -2469,11 +2466,20 @@ button:disabled, .btn:disabled {
 
 /* ── Responsive — Play Screen ─────────────────────────────── */
 
-@media (max-width: 1023px) {
+@media (min-width: 1400px) {
   .play-left-panels,
   .play-right-panels {
-    width: 300px;
+    zoom: 1.05;
   }
+  .status-hud { zoom: 1.05; }
+}
+
+@media (min-width: 1700px) {
+  .play-left-panels,
+  .play-right-panels {
+    zoom: 1.15;
+  }
+  .status-hud { zoom: 1.15; }
 }
 
 .mobile-tab-bar {
@@ -2533,7 +2539,6 @@ button:disabled, .btn:disabled {
     max-height: 65vh;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     display: none;
-    zoom: 1;
   }
 
   .play-left-panels.mobile-open,
@@ -2557,7 +2562,6 @@ button:disabled, .btn:disabled {
     gap: 0.35rem;
     padding: 0.35rem 0.5rem;
     justify-content: center;
-    zoom: 1;
   }
 
   .status-hud-btn { font-size: 0.72rem; padding: 0.15rem 0.3rem; }
