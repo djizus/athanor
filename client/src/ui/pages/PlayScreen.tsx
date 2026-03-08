@@ -555,7 +555,7 @@ export function PlayScreen() {
       {(isGameOver || surrendered) && (
         <div className="game-over-overlay">
           <div className={`game-over-card floating-panel ${discoveredCount >= 30 ? 'won' : 'lost'}`}>
-            <h2>{discoveredCount >= 30 ? 'Grimoire Complete!' : surrendered ? 'Surrendered' : 'Game Over'}</h2>
+            <h2>{discoveredCount >= 30 ? 'Grimoire Complete' : surrendered ? 'Surrendered' : 'Game Over'}</h2>
             {discoveredCount >= 30 && (
               <p className="game-over-flavor">The Athanor blazes with primordial fire. All secrets are yours.</p>
             )}
