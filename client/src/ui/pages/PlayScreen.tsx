@@ -349,46 +349,6 @@ export function PlayScreen() {
     else { setSlotB(id) }
   }, [slotA, slotB])
 
-  const handleExploreRef = useRef(handleExplore)
-  handleExploreRef.current = handleExplore
-  const nowRef = useRef(now)
-  nowRef.current = now
-
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return
-      if (e.key === 'Tab') {
-        e.preventDefault()
-        if (heroes.length === 0) return
-        const heroIds = heroes.map(h => h.id)
-        setSelectedHeroId(prev => {
-          const currentIdx = heroIds.indexOf(prev)
-          const nextIdx = (currentIdx + 1) % heroIds.length
-          return heroIds[nextIdx]
-        })
-        return
-      }
-      if (e.code >= 'Digit1' && e.code <= 'Digit5') {
-        e.preventDefault()
-        const zoneId = parseInt(e.code[5]) - 1
-        if (selectedHeroId < 0 || isGameOver) return
-        const hero = heroes.find(h => h.id === selectedHeroId)
-        if (!hero) return
-        if (Number(hero.available_at) > nowRef.current) return
-        void handleExploreRef.current(selectedHeroId, zoneId)
-        return
-      }
-      switch (e.key.toLowerCase()) {
-        case 'c': scrollPanelIntoView('panel-brew', setBrewCollapsed); break
-        case 'g': { setCollectionTab('grimoire'); scrollPanelIntoView('panel-brew', setBrewCollapsed); break }
-        case 'i': { setCollectionTab('ingredients'); scrollPanelIntoView('panel-brew', setBrewCollapsed); break }
-        case 'escape': setSelectedHeroId(-1); break
-      }
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [scrollPanelIntoView, heroes, selectedHeroId, isGameOver])
-
   useEffect(() => {
     if (logs.length > 0) {
       requestAnimationFrame(() => logsEndRef.current?.scrollIntoView({ behavior: 'smooth' }))
@@ -701,6 +661,46 @@ export function PlayScreen() {
       finalizePendingTx(pendingId, success)
     }
   }
+
+  const handleExploreRef = useRef(handleExplore)
+  handleExploreRef.current = handleExplore
+  const nowRef = useRef(now)
+  nowRef.current = now
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return
+      if (e.key === 'Tab') {
+        e.preventDefault()
+        if (heroes.length === 0) return
+        const heroIds = heroes.map(h => h.id)
+        setSelectedHeroId(prev => {
+          const currentIdx = heroIds.indexOf(prev)
+          const nextIdx = (currentIdx + 1) % heroIds.length
+          return heroIds[nextIdx]
+        })
+        return
+      }
+      if (e.code >= 'Digit1' && e.code <= 'Digit5') {
+        e.preventDefault()
+        const zoneId = parseInt(e.code[5]) - 1
+        if (selectedHeroId < 0 || isGameOver) return
+        const hero = heroes.find(h => h.id === selectedHeroId)
+        if (!hero) return
+        if (Number(hero.available_at) > nowRef.current) return
+        void handleExploreRef.current(selectedHeroId, zoneId)
+        return
+      }
+      switch (e.key.toLowerCase()) {
+        case 'c': scrollPanelIntoView('panel-brew', setBrewCollapsed); break
+        case 'g': { setCollectionTab('grimoire'); scrollPanelIntoView('panel-brew', setBrewCollapsed); break }
+        case 'i': { setCollectionTab('ingredients'); scrollPanelIntoView('panel-brew', setBrewCollapsed); break }
+        case 'escape': setSelectedHeroId(-1); break
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [scrollPanelIntoView, heroes, selectedHeroId, isGameOver])
 
   if (gameId == null) {
     return (
