@@ -3028,9 +3028,10 @@ button:disabled, .btn:disabled {
 }
 
 .tutorial-btn-next:hover {
-  background: #f5d060;
-  color: var(--bg-primary);
-  box-shadow: 0 0 12px rgba(240, 192, 64, 0.4);
+  background: transparent;
+  color: var(--accent-gold);
+  box-shadow: 0 0 12px rgba(240, 192, 64, 0.3);
+  border: 1px solid var(--accent-gold);
 }
 
 .tutorial-btn-back {
