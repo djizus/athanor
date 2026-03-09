@@ -280,12 +280,27 @@ export function TutorialOverlay({ onComplete, onStepChange }: TutorialOverlayPro
   )
 }
 
+const MOBILE_BREAKPOINT = 768
+const EDGE_MARGIN = 12
+
 function computeTooltipStyle(
   rect: Rect | null,
   placement: TutorialStep['placement'],
   isCentered: boolean,
 ): React.CSSProperties {
   if (isCentered || !rect) return {}
+
+  const isMobile = window.innerWidth < MOBILE_BREAKPOINT
+
+  if (isMobile) {
+    return {
+      position: 'fixed',
+      bottom: EDGE_MARGIN,
+      left: EDGE_MARGIN,
+      right: EDGE_MARGIN,
+      transform: 'none',
+    }
+  }
 
   const gap = 16
   const style: React.CSSProperties = { position: 'fixed' }
