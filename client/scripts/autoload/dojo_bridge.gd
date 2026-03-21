@@ -124,26 +124,28 @@ func _build_session_url() -> String:
 	if not ClassDB.class_exists("ControllerHelper"):
 		return ""
 	var helper: Variant = ClassDB.instantiate("ControllerHelper")
-	var public_key := String(helper.call("get_public_key", _session_priv_key))
-	if public_key.is_empty():
-		return ""
 
-	# Start local redirect server if HttpTools is available
-	var redirect_uri := ""
-	var redirect_query_name := ""
-	if http_tools != null and http_tools.has_method("start_server"):
-		if bool(http_tools.call("start_server")):
-			var port: int = int(http_tools.get("port"))
-			redirect_uri = "http://localhost:%d" % port
-			redirect_query_name = "startapp"
+	# Build policies in ControllerHelper format: {policies: [{target, method}]}
+	var policy_list: Array = []
+	for contract_address in full_policies.keys():
+		var contract: Dictionary = full_policies[contract_address]
+		var methods: Array = contract.get("methods", [])
+		for method in methods:
+			policy_list.append({
+				"target": contract_address,
+				"method": method.get("entrypoint", "")
+			})
+	var policies := {"policies": policy_list}
 
-	return String(session_account.call("generate_session_request_url",
-		session_base_url,
-		public_key,
+	# Use the preferred API (ControllerHelper) instead of deprecated DojoSessionAccount method.
+	# NOTE: rpc_url MUST be publicly reachable (Slot deployment, not localhost).
+	# The Controller keychain page resolves chain_id by calling starknet_chainId on rpc_url.
+	# localhost:5050 is unreachable from x.cartridge.gg → "No chainId" error.
+	return String(helper.call("create_session_registration_url",
+		_session_priv_key,
+		policies,
 		rpc_url,
-		session_account.call("get_register_session_policy"),
-		redirect_uri,
-		redirect_query_name
+		""  # preset (optional, for verified session branding)
 	))
 
 # --- Entity sync ---
