@@ -43,22 +43,21 @@ slot deployments create "$SLOT_NAME" katana --config "$KATANA_TOML" 2>&1 || warn
 
 # --- Step 2: Get Slot account credentials ---
 info "Waiting for Katana to be ready..."
-for i in $(seq 1 12); do
-    ACCOUNTS_JSON=$(slot deployments accounts "$SLOT_NAME" katana 2>&1) && break
-    warn "Katana not ready yet, retrying in 10s... ($i/12)"
+ACCOUNT_ADDRESS=""
+PRIVATE_KEY=""
+for i in $(seq 1 18); do
+    ACCOUNTS_JSON=$(slot deployments accounts "$SLOT_NAME" katana 2>&1) || true
+    ACCOUNT_ADDRESS=$(echo "$ACCOUNTS_JSON" | jq -r '.[0].address // empty' 2>/dev/null)
+    PRIVATE_KEY=$(echo "$ACCOUNTS_JSON" | jq -r '.[0].privateKey // empty' 2>/dev/null)
+    if [ -n "$ACCOUNT_ADDRESS" ] && [ -n "$PRIVATE_KEY" ]; then
+        break
+    fi
+    warn "Katana not ready yet (attempt $i/18), retrying in 10s..."
     sleep 10
 done
 
-if [ -z "${ACCOUNTS_JSON:-}" ]; then
-    err "Katana never became ready after 2 minutes"
-    exit 1
-fi
-
-ACCOUNT_ADDRESS=$(echo "$ACCOUNTS_JSON" | jq -r '.[0].address // empty' 2>/dev/null)
-PRIVATE_KEY=$(echo "$ACCOUNTS_JSON" | jq -r '.[0].privateKey // empty' 2>/dev/null)
-
 if [ -z "$ACCOUNT_ADDRESS" ] || [ -z "$PRIVATE_KEY" ]; then
-    err "Could not parse Slot accounts. Output:"
+    err "Could not get Slot accounts after 3 minutes. Raw output:"
     echo "$ACCOUNTS_JSON"
     exit 1
 fi
