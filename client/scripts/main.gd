@@ -18,6 +18,9 @@ var current_scene: Node
 @onready var scene_container: Control = $SceneContainer
 
 func _ready() -> void:
+	# Read addresses from project.godot if @export values are still default
+	_apply_project_settings()
+
 	torii_client = _create_or_fallback("ToriiClient", $ToriiClient)
 	session_account = _create_or_fallback("DojoSessionAccount", $DojoSessionAccount)
 	http_tools = _create_or_fallback("HttpTools", $HttpTools)
@@ -32,6 +35,21 @@ func _ready() -> void:
 		_switch_scene(lobby_scene)
 	else:
 		_switch_scene(connection_scene)
+
+func _apply_project_settings() -> void:
+	# Use project.godot [dojo] settings as fallback when @export values are default
+	var cfg_torii := String(ProjectSettings.get_setting("dojo/config/torii/torii_url", ""))
+	var cfg_rpc := String(ProjectSettings.get_setting("dojo/config/katana_url", ""))
+	var cfg_world := String(ProjectSettings.get_setting("dojo/config/world_address", ""))
+	var cfg_actions := String(ProjectSettings.get_setting("dojo/config/actions_address", ""))
+	if not cfg_torii.is_empty() and cfg_torii != "0x0":
+		torii_url = cfg_torii
+	if not cfg_rpc.is_empty() and cfg_rpc != "0x0":
+		rpc_url = cfg_rpc
+	if not cfg_world.is_empty() and cfg_world != "0x0":
+		world_address = cfg_world
+	if not cfg_actions.is_empty() and cfg_actions != "0x0":
+		actions_address = cfg_actions
 
 func _create_or_fallback(type_name: String, placeholder: Node) -> Node:
 	if ClassDB.class_exists(type_name):

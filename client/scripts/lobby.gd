@@ -10,9 +10,12 @@ signal disconnected
 @onready var status_label: Label = %StatusLabel
 
 func _ready() -> void:
+	# Show player info — burner mode won't have username, use address
 	var info := dojo_bridge.get_player_info()
 	var username: String = info.get("username", "")
 	var address: String = info.get("address", "")
+	if address.is_empty():
+		address = dojo_bridge.current_player
 	if not username.is_empty():
 		player_info.text = "Connected as: %s" % username
 	else:
@@ -22,7 +25,9 @@ func _ready() -> void:
 	else:
 		address_label.text = ""
 	status_label.text = ""
+
 	game_state.character_updated.connect(_on_character_updated)
+	dojo_bridge.tx_failed.connect(_on_tx_failed)
 
 func _on_enter_dungeon_pressed() -> void:
 	enter_button.disabled = true
@@ -32,6 +37,10 @@ func _on_enter_dungeon_pressed() -> void:
 func _on_character_updated(_character: Dictionary) -> void:
 	if not _character.is_empty():
 		dungeon_entered.emit()
+
+func _on_tx_failed(action: String, reason: String) -> void:
+	status_label.text = "Error: %s — %s" % [action, reason]
+	enter_button.disabled = false
 
 func _on_disconnect_pressed() -> void:
 	game_state.reset()

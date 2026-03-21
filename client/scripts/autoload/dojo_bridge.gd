@@ -24,6 +24,9 @@ var http_tools: Node
 var current_player := ""
 var entity_subscription_id := -1
 
+# Burner mode: uses DojoController.new_headless() for plain Katana dev accounts
+var _burner_controller: Variant = null
+
 # Ephemeral session key — generated internally, NEVER user-provided
 var _session_priv_key := ""
 
@@ -63,31 +66,38 @@ func configure_network(next_torii_url: String, next_rpc_url: String, next_world_
 const KATANA_CHAIN_ID := "0x4b4154414e41"  # felt("KATANA")
 
 func setup_burner(private_key: String, address: String) -> bool:
-	if session_account == null:
-		tx_failed.emit("auth", "DojoSessionAccount node is missing")
+	# DojoController.new_headless() works with plain Katana dev accounts.
+	# DojoSessionAccount.create() does NOT — it requires a Controller account on-chain.
+	if not ClassDB.class_exists("DojoController") or not ClassDB.class_exists("DojoOwner"):
+		push_error("[dojo_bridge] DojoController/DojoOwner not available (install godot-dojo SDK)")
+		tx_failed.emit("auth", "godot-dojo SDK not installed")
 		return false
 	if not ClassDB.class_exists("ControllerHelper"):
-		tx_failed.emit("auth", "ControllerHelper not available (install godot-dojo SDK)")
+		push_error("[dojo_bridge] ControllerHelper not available")
+		tx_failed.emit("auth", "godot-dojo SDK not installed")
 		return false
 
+	var owner: Variant = ClassDB.instantiate("DojoOwner").call("init", private_key)
 	var helper: Variant = ClassDB.instantiate("ControllerHelper")
-	var owner_guid := String(helper.call("signer_to_guid", private_key))
+	var class_hash: String = String(helper.call("get_controller_class_hash", 7))
 
-	session_account.call("create",
+	_burner_controller = ClassDB.instantiate("DojoController").call("new_headless",
+		rpc_url,         # app_id (use rpc for local)
+		"burner",        # username
+		class_hash,
 		rpc_url,
-		private_key,
-		address,
-		owner_guid,
-		KATANA_CHAIN_ID,
-		0  # no expiry
+		owner,
+		KATANA_CHAIN_ID
 	)
 
-	if bool(session_account.call("is_valid")):
+	if _burner_controller != null:
 		current_player = address.to_lower()
 		session_ready.emit(current_player)
+		push_warning("[dojo_bridge] Burner controller created for %s" % address)
 		return true
 
-	tx_failed.emit("auth", "Burner session creation failed")
+	push_error("[dojo_bridge] Failed to create burner controller")
+	tx_failed.emit("auth", "Burner controller creation failed")
 	return false
 
 # --- Auth: Controller session flow (no private key input) ---
@@ -257,19 +267,40 @@ func _matches_current_player(model: Dictionary) -> bool:
 	return String(model.get("player", "")).to_lower() == current_player
 
 func _execute_action(entrypoint: String, calldata: Array) -> void:
-	if session_account == null or not bool(session_account.call("is_valid")):
-		tx_failed.emit(entrypoint, "No active session")
-		return
 	if actions_address == "0x0":
-		tx_failed.emit(entrypoint, "Set actions_address in Main scene inspector")
+		push_error("[dojo_bridge] actions_address is 0x0 — set it in project.godot or Main scene inspector")
+		tx_failed.emit(entrypoint, "actions_address not configured")
 		return
+
 	var call := {
 		"contract_address": actions_address,
 		"entrypoint": entrypoint,
 		"calldata": calldata,
 	}
-	session_account.call("execute", [call])
-	tx_submitted.emit(entrypoint)
+
+	# Burner mode: use DojoController (plain Katana accounts)
+	if _burner_controller != null:
+		var result: String = String(_burner_controller.call("execute", [call]))
+		if result.begins_with("0x"):
+			push_warning("[dojo_bridge] tx %s submitted: %s" % [entrypoint, result])
+			tx_submitted.emit(entrypoint)
+		else:
+			push_error("[dojo_bridge] tx %s failed: %s" % [entrypoint, result])
+			tx_failed.emit(entrypoint, result)
+		return
+
+	# Controller mode: use DojoSessionAccount
+	if session_account == null or not bool(session_account.call("is_valid")):
+		push_error("[dojo_bridge] No active session for %s" % entrypoint)
+		tx_failed.emit(entrypoint, "No active session")
+		return
+	var result: String = String(session_account.call("execute", [call]))
+	if result.begins_with("0x"):
+		push_warning("[dojo_bridge] tx %s submitted: %s" % [entrypoint, result])
+		tx_submitted.emit(entrypoint)
+	else:
+		push_error("[dojo_bridge] tx %s failed: %s" % [entrypoint, result])
+		tx_failed.emit(entrypoint, result)
 
 func _resolve_game_id(game_id: int) -> int:
 	if game_id >= 0:
