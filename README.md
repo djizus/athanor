@@ -70,7 +70,7 @@ Combat ends when all mobs in the zone are dead (zone cleared) or player HP hits 
 | Layer | Technology |
 |-------|-----------|
 | Contracts | [Cairo](https://www.cairo-lang.org/) 2.15 + [Dojo](https://www.dojoengine.org/) 1.8 |
-| Client | [Godot 4.3+](https://godotengine.org/) (GDScript, 3D isometric) |
+| Client | [Godot 4.5+](https://godotengine.org/) (GDScript, 3D isometric) |
 | Dojo SDK | [godot-dojo](https://github.com/lonewolftechnology/godot-dojo) v0.7.4 (gRPC streaming) |
 | Wallet | [Cartridge Controller](https://docs.cartridge.gg/controller/overview) (session keys, passkey auth) |
 | Indexer | [Torii](https://book.dojoengine.org/toolchain/torii) (real-time entity sync) |
@@ -130,7 +130,7 @@ athanor/
 ## Prerequisites
 
 - [Dojo](https://book.dojoengine.org/getting-started) 1.8.0+ (installs `sozo`, `katana`, `torii`)
-- [Godot 4.3+](https://godotengine.org/download/) (editor for GUI, or headless for CI)
+- [Godot 4.5+](https://godotengine.org/download/) (editor for GUI, or headless for CI)
 - [Scarb](https://docs.swmansion.com/scarb/) 2.15+ (Cairo package manager, included with Dojo)
 
 Verify installation:
@@ -140,7 +140,7 @@ sozo --version     # sozo 1.8.x
 katana --version   # katana 1.8.x
 torii --version    # torii 1.8.x
 scarb --version    # scarb 2.15.x
-godot --version    # 4.3.x
+godot --version    # 4.5.x
 ```
 
 ---
