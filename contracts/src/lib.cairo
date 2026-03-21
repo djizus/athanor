@@ -26,3 +26,6 @@ pub mod helpers {
 pub mod systems {
     pub mod actions;
 }
+
+#[cfg(test)]
+pub mod tests;
