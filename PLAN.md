@@ -1,1114 +1,417 @@
-# Athanor v0.1 — Implementation Plan
+# Athanor v2 — Tactical Dungeon Crawler
 
-> Fully on-chain competitive grimoire race on Starknet. Port of Alchemist PoC using the Dojo engine, Cartridge Controller, and Torii indexer. Uses the Provable Games embeddable game standard (game-components). Reference implementations: `references/alchemist/` (game logic) and `references/zkube/` (Dojo architecture).
+## Overview
 
----
+Athanor pivots from a grimoire-race idle game to an **onchain tactical dungeon crawler**. Players spawn a hero, navigate a branching diamond-shaped dungeon graph, and fight mobs in turn-based combat. Built with Dojo (Cairo contracts) and Godot 4 (3D client with fixed isometric camera). Solo dungeons for PoC — async MMO features (shared world, trading, PvP) come later.
 
-## 1. Game Summary (MVP Scope)
+The alchemy fantasy theme carries forward: the dungeon is the Athanor furnace, zones are alchemical chambers, and the hero descends deeper into the Great Work.
 
-Players send heroes on expeditions through dangerous zones, gather ingredients, craft potions by trial-and-error, and race to discover all recipes in their grimoire.
+## Goals
 
-**Core loop**: Explore → Gather → Craft → Buff heroes → Explore deeper → Discover all 10 recipes.
+- Prove the core gameplay loop: spawn → navigate → fight → clear dungeon
+- Validate Dojo + Godot 4 integration via `godot-dojo` SDK (gRPC streaming, session accounts)
+- Establish contract architecture for turn-based tactical combat onchain
+- Ship a playable PoC on Slot (Katana + Torii)
 
-### MVP Simplifications (v0.1)
+## Non-Goals
 
-| Aspect | Full Game (PoC) | MVP (v0.1) |
-|--------|----------------|------------|
-| Zones | 5 (D→S) | **3** (Verdant Meadow, Crystal Cavern, Aether Spire) |
-| Ingredients per zone | 5 | **3** |
-| Total ingredients | 25 | **9** |
-| Possible combinations | 325 (25C2) | **36** (9C2) |
-| Recipes to discover | 30 | **10** |
-| Heroes | 3 | 3 (unchanged) |
+- MMO features (multiplayer interaction, shared world, trading, PvP) — deferred to v2.1+
+- Multiple hero classes — PoC uses 1 class only
+- Skills beyond auto-attack — skill tree comes later
+- Loot/progression system — PoC just proves the combat loop
+- Leaderboard / competitive ranking
+- Mobile/web export (desktop-first for PoC)
+- AI asset generation pipeline (use placeholder assets, integrate godogen later)
 
-### What Changes Going On-Chain
+## Assumptions and Constraints
 
-| Aspect | Browser PoC | On-Chain (Athanor) |
-|--------|-------------|-------------------|
-| State | React useReducer + localStorage | Dojo models on Starknet |
-| Exploration | 100ms client tick | **Computed at send_expedition, events emitted** |
-| Claim | Instant | **Timer-locked until hero returns** |
-| RNG | Mulberry32 (seeded PRNG) | Cartridge VRF (verifiable) |
-| Multiplayer | Solo only | Solo with leaderboard ranking (fastest completion) |
-| Wallet | None | Cartridge Controller (session keys) |
-| Persistence | localStorage | Starknet L2 state |
-| Events | In-memory notifications | Dojo events (indexed by Torii) |
-| Floats | f64 everywhere | u32 fixed-point (x100) |
-| Strings | JavaScript strings | u8 IDs (0-8 for ingredients) |
+- Dojo 1.8.0, Cairo 2.15.x, Scarb workspace
+- Godot 4.3+ (required by godot-dojo v0.7.4)
+- `lonewolftechnology/godot-dojo` v0.7.4 for Torii gRPC + Cartridge Controller integration
+- Cartridge Controller for wallet (session keys, passkey auth)
+- Torii for indexing (gRPC streaming subscriptions, not polling)
+- No typed GDScript bindings from Dojo — raw Dictionary API; plan a wrapper layer
+- Game-components (Provable Games) integration optional for PoC — can add later
+- VRF optional for PoC — can use pseudo-random fallback (vrf_address = zero)
 
 ---
 
-## 2. Exploration Architecture: Compute-at-Send
+## Game Design (PoC)
 
-The browser PoC ticks 10x/sec and simulates exploration in real-time. On-chain, we compute the FULL expedition outcome at `send_expedition` time and emit events for each second of exploration.
+### Player Stats
 
-### Why Compute at Send (not at Claim)
+| Stat | Value | Notes |
+|------|-------|-------|
+| Health | 100 | Regens partially after clearing a zone |
+| Power | 10 | Damage dealt per auto-attack |
+| Stamina | 100 | Spent on actions, regens on `finish()` |
+| Auto-Attack Cost | 30 stamina | Only skill in PoC |
 
-**The problem**: If we compute at claim time, a player who knows the seed could predict outcomes and choose an optimal claim moment.
-
-**The solution**: Compute everything when the expedition starts. The outcome is committed to chain immediately and can't be manipulated.
-
-### Flow
+### Dungeon Graph (Diamond / Branching)
 
 ```
-1. Player calls send_expedition(hero_id)
-   ├─ Contract generates expedition sub-seed (VRF)
-   ├─ Runs FULL simulation: second-by-second events until hero HP = 0
-   ├─ Stores result on-chain: death_depth, gold, ingredients, return_at
-   ├─ Emits events for every exploration event (trap, gold, heal, beast, drop)
-   ├─ Sets hero.status = Exploring
-   └─ Sets hero.return_at = now + death_depth + (death_depth / 2)
-
-2. Client reads events from Torii
-   ├─ Replays them as animations (zone progress, HP bar, event popups)
-   └─ Shows countdown timer until hero returns
-
-3. Player calls claim_loot(hero_id)
-   ├─ Contract checks: get_block_timestamp() >= hero.return_at
-   ├─ If too early → REVERT ("Hero hasn't returned yet")
-   ├─ If ready → Transfer pre-computed loot to player inventory
-   └─ Set hero.status = Idle, apply idle regen
+        [Zone 1: Spawn]
+           /        \
+    [Zone 2a]    [Zone 2b]      ← 1 mob each
+           \        /
+        [Zone 3]                ← 2 mobs
+           |
+        [Zone 4]                ← 4 mobs (final)
 ```
 
-### Timer Security
+- 4 zones in a diamond DAG — player picks path via `choose(direction)`
+- Zone 1 is spawn (no combat)
+- Zone 2a/2b each have 1 mob — player picks one branch
+- Zone 3 has 2 mobs — convergence point
+- Zone 4 has 4 mobs — final room, clearing = dungeon complete
+- Hardcoded graph for PoC (procedural generation later)
 
-| Attack Vector | Defense |
-|---------------|---------|
-| Call claim_loot early | `assert!(timestamp >= hero.return_at)` — block timestamp set by sequencer, not caller |
-| Call contract directly (bypass UI) | Same contract logic applies — timer check is on-chain |
-| Predict seed to game expeditions | Outcome committed at send time — can't change it after |
-| Manipulate block timestamp | Starknet sequencer sets timestamps — not manipulable by tx submitter |
-| Replay/double claim | `hero.status` guard — must be `Idle` to send, `Returning` to claim |
+### Mob Stats
 
-### Gas Considerations
+| Stat | Value |
+|------|-------|
+| Health | 20 |
+| Power | 5 (damage per turn to player) |
 
-Worst case expedition: hero survives to zone 3 (Aether Spire) = ~90 seconds of simulation. That's 90 loop iterations of simple arithmetic (add, compare, modulo). Well within Starknet's step limit.
+### Combat Flow (Turn-Based)
+
+```
+1. Player enters zone → calls start()
+   └─ Contract creates Fight entity, spawns N mobs with packed HP
+
+2. Player's turn:
+   └─ cast(mob_id, skill_id=AA) → spend 30 stamina, deal 10 damage to mob
+   └─ Can cast multiple times per turn if stamina allows (3 attacks max at 100 stamina)
+
+3. Player calls finish() → ends player turn
+   └─ All surviving mobs attack player (5 damage each)
+   └─ Player regens stamina (full reset? partial?)
+   └─ If all mobs dead → combat ends, player regens some health
+
+4. If player HP ≤ 0 → dungeon failed
+   If all mobs in zone dead → zone cleared, can choose(direction) to next zone
+   If zone 4 cleared → dungeon complete
+```
+
+### Contract Actions
+
+| Action | Params | Logic |
+|--------|--------|-------|
+| `spawn(class_id)` | u8 | Create Character + Dungeon models. Hardcoded dungeon graph. Place player in Zone 1. |
+| `choose(direction)` | u8 (0=left, 1=right) | Move player to next zone. Assert current zone's combat is resolved. Validate edge exists in graph. |
+| `start()` | — | Begin combat in current zone. Create Fight entity with packed mob HP. |
+| `cast(mob_id, skill_id)` | u8, u8 | Spend stamina, deal damage to target mob. Assert fight is active, mob alive, enough stamina. |
+| `finish()` | — | End player turn. Mobs attack. Regen stamina. If all mobs dead, end fight + regen health. Check dungeon completion. |
 
 ---
 
-## 3. Tech Stack
+## Technical Design
 
-| Layer | Technology | Version | Notes |
-|-------|-----------|---------|-------|
-| Smart Contracts | Cairo | 2.13.1 | Same as zkube |
-| Framework | Dojo | 1.8.0 | ECS: models, systems, events |
-| Game Standard | game-components | v2.13.1 | NFT-gated sessions (Provable Games) |
-| Frontend | React 19 + TypeScript + Vite | Latest | Same as zkube client |
-| Wallet | Cartridge Controller | ^0.13.9 | Session keys for gasless play |
-| Indexer | Torii | ^1.8.2 | Real-time state sync via RECS |
-| RNG | Cartridge VRF | - | Verifiable randomness |
-| Deployment | Slot (dev) → Sepolia → Mainnet | - | Progressive rollout |
-
-### Key Dependencies
-
-**Contracts (Scarb.toml)**:
-```toml
-dojo = "1.8.0"
-starknet = "2.13.1"
-origami_random = { git = "dojoengine/origami", tag = "v1.7.0" }
-game_components_minigame = { git = "Provable-Games/game-components", tag = "v2.13.1" }
-game_components_token = { git = "Provable-Games/game-components", tag = "v2.13.1" }
-```
-
-**Client (package.json)**:
-```json
-"@dojoengine/sdk": "^1.9.0",
-"@dojoengine/core": "^1.8.8",
-"@dojoengine/react": "^1.8.11",
-"@dojoengine/recs": "2.0.13",
-"@cartridge/connector": "^0.13.9",
-"@cartridge/controller": "^0.13.9",
-"@starknet-react/core": "^5.0.1",
-"starknet": "8.5.2"
-```
-
----
-
-## 4. User Flow
-
-Following zkube's pattern: landing page → play/resume → leaderboard → profile.
-
-### Page Map
-
-```
-home            → Landing page (connect, new game, my games, leaderboard)
-play            → Active game screen (heroes, crafting, grimoire, inventory)
-mygames         → Resume / game history
-leaderboard     → Rankings (fastest grimoire completion)
-settings        → Audio, theme, account
-profile         → Player stats, best runs
-```
-
-### Navigation (Zustand store, zkube pattern)
-
-```typescript
-navigationStore: {
-  currentPage: "home" | "play" | "mygames" | "leaderboard" | "settings" | "profile",
-  gameId: number | null,
-  navigate(page, gameId?),
-  goBack(),
-}
-```
-
-### Complete User Journey
-
-```
-1. LANDING PAGE (home)
-   ├─ If not connected → "Connect" button (Cartridge Controller)
-   ├─ If connected:
-   │  ├─ "NEW GAME" → freeMint() → create(game_id) → navigate("play", game_id)
-   │  ├─ "MY GAMES" → shows active game count badge → navigate("mygames")
-   │  ├─ "LEADERBOARD" → navigate("leaderboard")
-   │  └─ "SETTINGS" → navigate("settings")
-   └─ Top bar: profile, settings, CUBE/gold balance
-
-2. MY GAMES PAGE (mygames)
-   ├─ List of owned game NFTs
-   ├─ Active games: show heroes status, recipes discovered, "Resume" button
-   ├─ Finished games: show final stats, grimoire completion
-   └─ Click "Resume" → navigate("play", gameId)
-
-3. GAME SCREEN (play) — Main gameplay
-   ├─ LEFT PANEL: Hero cards (HP bar, stats, status, Explore/Claim buttons)
-   ├─ CENTER: Exploration feed (events from Torii, animated)
-   ├─ RIGHT PANEL: Craft panel + Grimoire + Inventory
-   └─ Win: all 10 recipes discovered → Victory overlay
-
-4. LEADERBOARD PAGE
-   ├─ Ranked by: fastest grimoire completion time
-   ├─ Shows: player name, time, recipes found, heroes used
-   └─ Filters: all time / this week / today
-```
-
-### Game Creation Flow (matches zkube exactly)
-
-```
-User clicks "NEW GAME"
-  ↓
-freeMint(settingsId=0) on FullTokenContract → ERC721 minted → game_id = token_id
-  ↓
-create(game_id) on game_system
-  ├─ pre_action(token_address, game_id)  // game-components: lock token
-  ├─ assert_token_ownership + is_playable check
-  ├─ VRF seed generation
-  ├─ Generate 10 recipes from seed (deterministic)
-  ├─ Spawn Hero #0 (Alaric)
-  ├─ Write GameSession, GameSeed, Recipe[0..9], Hero models
-  ├─ Emit GameCreated event
-  └─ post_action(token_address, game_id)  // game-components: release token
-  ↓
-Client navigates to play screen
-```
-
----
-
-## 5. Game-Components Integration (Embeddable Game Standard)
-
-Following zkube's exact pattern with Provable Games' game-components library.
-
-### What game-components provides
-
-| Component | Purpose | Used By |
-|-----------|---------|---------|
-| `MinigameComponent` | Core framework: token registration, metadata | game_system |
-| `FullTokenContract` | Soulbound ERC721 NFT for game sessions | External deploy |
-| `MinigameRegistryContract` | Registry for minigame tokens | External deploy |
-| `SettingsComponent` | Game settings management | config_system |
-| `pre_action / post_action` | Token lifecycle hooks (lock/release) | All systems |
-| `assert_token_ownership` | Verify caller owns the game NFT | All systems |
-| `LifecycleTrait` | Check if token is in playable state | All systems |
-
-### Required Trait Implementations (in our game_system)
-
-```cairo
-// 1. Embed MinigameComponent
-component!(path: MinigameComponent, storage: minigame, event: MinigameEvent);
-
-// 2. Implement IMinigameTokenData (score + game_over for NFT metadata)
-impl GameTokenDataImpl of IMinigameTokenData<ContractState> {
-    fn score(self: @ContractState, token_id: u64) -> u32 { ... }
-    fn game_over(self: @ContractState, token_id: u64) -> bool { ... }
-}
-
-// 3. Initialize in dojo_init
-self.minigame.initializer(
-    creator_address, "Athanor", "On-chain grimoire race",
-    "djizus", "djizus", "Strategy",
-    "icon_url", Option::Some("#color"),
-    Option::None, Option::Some(renderer_address),
-    Option::Some(config_system_address), Option::None,
-    denshokan_address,  // FullTokenContract address
-);
-```
-
-### Every Game Action Wraps with Token Lifecycle
-
-```cairo
-fn send_expedition(ref self: ContractState, game_id: u64, hero_id: u8) {
-    let token_address = self.token_address();
-    pre_action(token_address, game_id);               // Lock token
-
-    let token_metadata = token_dispatcher.token_metadata(game_id);
-    assert!(token_metadata.lifecycle.is_playable(get_block_timestamp()));
-    assert_token_ownership(token_address, game_id);
-
-    // ... game logic ...
-
-    post_action(token_address, game_id);              // Release token
-}
-```
-
----
-
-## 6. Settings System
-
-### Settings Presets (0-5)
-
-| ID | Name | Description | Active |
-|----|------|-------------|:------:|
-| 0 | Default | Standard balancing, official games | ✅ |
-| 1-5 | Reserved | For future game modes / daily challenges | ❌ (v0.2+) |
-
-### GameSettings Model (Athanor-specific)
+### Data Model (Dojo ECS)
 
 ```cairo
 #[dojo::model]
-struct GameSettings {
+struct Character {
     #[key]
-    settings_id: u32,
-
-    // Zone configuration
-    zone_count: u8,                    // 3 (MVP)
-    ingredients_per_zone: u8,          // 3 (MVP)
-    recipes_to_discover: u8,           // 10 (MVP)
-
-    // Hero configuration
-    max_heroes: u8,                    // 3
-    hero_base_hp: u16,                 // 10000 (x100 fixed-point = 100.00 HP)
-    hero_base_power: u16,              // 500 (x100 = 5.00)
-    hero_base_regen: u16,              // 100 (x100 = 1.00 HP/s)
-    hero_costs: felt252,               // Packed: [0, 8000, 20000] (x100)
-
-    // Crafting
-    hint_base_cost: u16,               // 1000 (10 gold)
-    hint_cost_multiplier: u8,          // 3
-    soup_gold_value: u8,               // 1
-
-    // Progressive discovery
-    progressive_cap: u16,              // 8000 (x10000 = 0.80)
+    id: felt252,              // = player address or game ID
+    class_id: u8,             // Hero class (0 for PoC)
+    health: u16,
+    max_health: u16,
+    power: u16,
+    stamina: u16,
+    max_stamina: u16,
+    current_zone: u8,         // Which zone the player is in (0-3)
+    dungeon_id: felt252,      // Link to dungeon
 }
-```
 
-### Initialization (dojo_init)
-
-```cairo
-fn dojo_init(ref self: ContractState, creator_address: ContractAddress, ...) {
-    // Create only preset 0 (official default)
-    world.write_model(@get_default_settings());
-    world.write_model(@get_default_settings_metadata(timestamp, creator_address));
-    self.settings_counter.write(0);
-}
-```
-
-Only games using `settings_id = 0` are considered "official" for leaderboard ranking.
-
----
-
-## 7. Contract Architecture
-
-### 7.1 Project Structure
-
-```
-athanor/
-├── contracts/
-│   ├── Scarb.toml
-│   ├── src/
-│   │   ├── lib.cairo
-│   │   ├── constants.cairo         # Zones, ingredients, probabilities, namespace
-│   │   ├── types.cairo             # Enums (HeroStatus, EventKind, EffectType, Zone)
-│   │   ├── models/
-│   │   │   ├── game.cairo          # GameSession, GameSeed
-│   │   │   ├── hero.cairo          # Hero, HeroPendingIngredient
-│   │   │   ├── recipe.cairo        # Recipe (10 per session)
-│   │   │   ├── inventory.cairo     # Inventory (packed ingredients), PotionItem
-│   │   │   ├── crafting.cairo      # FailedCombo, HintedRecipe
-│   │   │   ├── config.cairo        # GameSettings, GameSettingsMetadata
-│   │   │   └── player.cairo        # PlayerMeta (persistent across games)
-│   │   ├── systems/
-│   │   │   ├── game.cairo          # create, surrender + MinigameComponent
-│   │   │   ├── exploration.cairo   # send_expedition (VRF + compute + emit), claim_loot (timer + transfer)
-│   │   │   ├── crafting.cairo      # craft, craft_recipe, buy_hint (VRF)
-│   │   │   ├── hero.cairo          # recruit_hero, apply_potion
-│   │   │   ├── config.cairo        # GameSettings + IMinigameSettings
-│   │   │   └── renderer.cairo      # IMinigameDetails, IMinigameDetailsSVG
-│   │   ├── helpers/
-│   │   │   ├── random.cairo        # VRF wrapper (from zkube)
-│   │   │   ├── recipes.cairo       # Deterministic 10-recipe generation
-│   │   │   ├── exploration.cairo   # Full expedition simulation engine
-│   │   │   └── math.cairo          # Fixed-point helpers
-│   │   ├── events.cairo            # All Dojo events
-│   │   └── tests/
-│   └── Scarb.toml
-├── client/
-│   ├── package.json
-│   ├── vite.config.ts
-│   ├── dojo.config.ts
-│   ├── src/
-│   │   ├── main.tsx                # Provider hierarchy (StarknetConfig → DojoProvider)
-│   │   ├── App.tsx                 # Page router
-│   │   ├── cartridgeConnector.tsx  # Controller + session policies from manifest
-│   │   ├── stores/
-│   │   │   └── navigationStore.ts  # Page navigation (zustand)
-│   │   ├── dojo/
-│   │   │   ├── setup.ts            # Dojo SDK init + Torii sync
-│   │   │   ├── context.tsx         # DojoProvider
-│   │   │   ├── useDojo.tsx
-│   │   │   ├── contractModels.ts   # RECS definitions
-│   │   │   ├── systems.ts          # System call wrappers
-│   │   │   └── world.ts            # RECS world instance
-│   │   ├── hooks/
-│   │   │   ├── useGame.tsx         # Fetch game state + entity ID normalization
-│   │   │   ├── useGameTokens.tsx   # Owned game NFTs (active/finished)
-│   │   │   └── useSettings.tsx     # GameSettings from RECS
-│   │   ├── ui/
-│   │   │   ├── pages/
-│   │   │   │   ├── HomePage.tsx
-│   │   │   │   ├── PlayScreen.tsx
-│   │   │   │   ├── MyGamesPage.tsx
-│   │   │   │   ├── LeaderboardPage.tsx
-│   │   │   │   └── SettingsPage.tsx
-│   │   │   ├── components/         # Reusable UI components
-│   │   │   └── navigation/
-│   │   │       ├── TopBar.tsx
-│   │   │       └── PageNavigator.tsx  # Slide transitions
-│   │   └── styles/
-│   └── index.html
-├── Scarb.toml                      # Workspace root
-├── dojo_dev.toml                   # Local Katana config
-├── dojo_slot.toml                  # Slot deployment config
-├── .gitignore
-├── PLAN.md
-└── references/                     # (gitignored)
-```
-
-### 7.2 Models
-
-#### GameSession
-```cairo
 #[dojo::model]
-struct GameSession {
+struct Dungeon {
     #[key]
-    game_id: u64,                     // = NFT token_id (game-components pattern)
-    player: ContractAddress,
-    seed: felt252,                    // VRF seed (set once)
-    settings_id: u32,                 // Always 0 for v0.1
-    discovered_count: u8,             // 0-10
-    craft_attempts: u16,
-    hints_used: u8,
-    gold: u32,
-    hero_count: u8,                   // 1-3
-    potion_count: u16,                // Auto-incrementing potion index
-    game_over: bool,
+    id: felt252,
+    owner: ContractAddress,
+    // Zone adjacency — hardcoded for PoC
+    // Packed zone data: mob counts per zone
+    zones: felt252,           // Packed: [0 mobs, 1 mob, 1 mob, 2 mobs, 4 mobs]
+    zones_cleared: u8,        // Bitmap of cleared zones
+    completed: bool,
     started_at: u64,
 }
-```
 
-#### Hero
-```cairo
 #[dojo::model]
-struct Hero {
+struct Fight {
     #[key]
-    game_id: u64,
+    dungeon_id: felt252,
     #[key]
-    hero_id: u8,                      // 0, 1, 2
-    hp: u16,                          // x100 fixed-point (10000 = 100.00 HP)
-    max_hp: u16,
-    power: u16,                       // x100
-    regen_per_sec: u16,               // x100
-    status: u8,                       // 0=Idle, 1=Exploring, 2=Returning
-    // Expedition result (computed at send_expedition)
-    expedition_seed: felt252,
-    expedition_start: u64,            // Timestamp
-    return_at: u64,                   // Timestamp when hero is back with loot
-    death_depth: u16,                 // Seconds explored (max 300)
-    // Pre-computed loot
-    pending_gold: u32,
+    zone_id: u8,
+    mob_count: u8,
+    mob_healths: felt252,     // Packed: N mob HPs (20 each, 8 bits per mob)
+    mob_power: u16,           // Same for all mobs in zone
+    active: bool,
+    turn: u8,                 // Turn counter
 }
 ```
 
-#### HeroPendingIngredient — Loot from expedition
-```cairo
-#[dojo::model]
-struct HeroPendingIngredient {
-    #[key]
-    game_id: u64,
-    #[key]
-    hero_id: u8,
-    #[key]
-    ingredient_id: u8,                // 0-8
-    quantity: u16,
-}
-```
+### Dungeon Graph Representation
 
-#### Recipe — 10 per game, generated from seed
-```cairo
-#[dojo::model]
-struct Recipe {
-    #[key]
-    game_id: u64,
-    #[key]
-    recipe_id: u8,                    // 0-9
-    ingredient_a: u8,                 // 0-8 (sorted: a < b)
-    ingredient_b: u8,
-    effect_type: u8,                  // 0=max_hp, 1=power, 2=regen
-    effect_value: u8,
-    discovered: bool,
-}
-```
-
-#### IngredientBalance — Player's inventory (could pack all 9 into one felt252)
-```cairo
-#[dojo::model]
-struct IngredientBalance {
-    #[key]
-    game_id: u64,
-    #[key]
-    ingredient_id: u8,                // 0-8
-    quantity: u16,
-}
-```
-
-#### PotionItem — Crafted potions in inventory
-```cairo
-#[dojo::model]
-struct PotionItem {
-    #[key]
-    game_id: u64,
-    #[key]
-    potion_index: u16,
-    recipe_id: u8,
-    effect_type: u8,
-    effect_value: u8,
-}
-```
-
-#### FailedCombo — Tried and failed combos
-```cairo
-#[dojo::model]
-struct FailedCombo {
-    #[key]
-    game_id: u64,
-    #[key]
-    combo_key: u16,                   // ingredient_a * 9 + ingredient_b (unique per pair)
-    attempted: bool,                  // Dojo requires at least one non-key member
-}
-```
-
-#### PlayerMeta — Persistent across games
-```cairo
-#[dojo::model]
-struct PlayerMeta {
-    #[key]
-    player: ContractAddress,
-    total_games: u32,
-    best_time: u64,                   // Fastest grimoire completion (seconds)
-    total_recipes_discovered: u32,
-}
-```
-
-### 7.3 Systems
-
-#### game_system — Lifecycle (embeds MinigameComponent)
-
-```
-create(game_id)     → pre_action, VRF seed, generate 10 recipes, spawn hero #0, post_action
-surrender(game_id)  → pre_action, set game_over, update PlayerMeta, post_action
-```
-
-#### exploration_system — Expedition compute + claim
-
-```
-send_expedition(game_id, hero_id)
-  → pre_action
-  → Validate: hero idle, HP > 0
-  → Generate expedition seed via VRF (unique salt = poseidon(game_id, hero_id, timestamp))
-  → Run full simulation (loop until HP=0 or max_depth=300):
-      for each second:
-        zone = get_zone(depth)
-        hp -= zone.drain
-        roll event (trap/gold/heal/beast/nothing)
-        roll ingredient drop
-        emit ExplorationEvent for each event
-  → Store: death_depth, pending_gold, pending ingredients, return_at, remaining_hp
-  → Set hero.status = Exploring, hero.hp = remaining_hp (0 if died, >0 if survived)
-  → post_action
-
-claim_loot(game_id, hero_id)
-  → pre_action
-  → Validate: get_block_timestamp() >= hero.return_at (allowed even if game_over)
-  → If too early → REVERT ("Hero hasn't returned yet")
-  → If ready → Transfer pre-computed loot to player inventory
-  → Apply idle regen: (rest_time * regen_per_sec) + existing_hp, capped at max_hp
-  → Set hero.status = Idle
-  → post_action
-```
-send_expedition(game_id, hero_id)
-  → pre_action
-  → Validate: hero idle, no pending loot, HP > 0
-  → Generate expedition sub-seed
-  → Run full simulation (loop until HP=0):
-      for each second:
-        zone = get_zone(depth)
-        hp -= zone.drain
-        roll event (trap/gold/heal/beast/nothing)
-        roll ingredient drop
-        emit ExplorationEvent for each event
-  → Store: death_depth, pending_gold, pending ingredients, return_at
-  → Set hero.status = Exploring
-  → post_action
-
-claim_loot(game_id, hero_id)
-  → pre_action
-  → Validate: get_block_timestamp() >= hero.return_at
-  → Transfer pending_gold → session.gold
-  → Transfer pending ingredients → IngredientBalance
-  → Apply idle regen: elapsed_since_return * regen_per_sec
-  → Set hero.status = Idle
-  → post_action
-```
-
-#### crafting_system
-
-```
-craft(game_id, ingredient_a, ingredient_b)
-  → Consume ingredients, check recipe match
-  → If match: mark discovered, create PotionItem, emit RecipeDiscovered
-  → If no match: record FailedCombo, roll progressive luck, or +1 gold soup
-
-craft_recipe(game_id, recipe_id)
-  → Re-brew known recipe (max possible from inventory)
-
-buy_hint(game_id)
-  → Spend gold (10 * 3^n), VRF-seeded selection of random undiscovered recipe, reveal one ingredient
-```
-
-#### hero_system
-
-```
-recruit_hero(game_id)    → Spend gold [0, 80, 200], add hero
-apply_potion(game_id, potion_index, hero_id)  → Consume potion, permanent stat buff
-```
-
-#### config_system — Settings (embeds SettingsComponent)
-
-```
-dojo_init()              → Create preset 0 (default)
-add_game_settings()      → Create custom preset (future)
-get_game_settings()      → Read settings by ID
-```
-
-### 7.4 Events (emitted, indexed by Torii)
+For PoC, hardcode the diamond:
 
 ```cairo
-// Exploration events (emitted per-second during send_expedition)
-#[dojo::event]
-struct ExplorationEvent {
-    #[key] game_id: u64,
-    #[key] event_index: u16,         // Sequential within expedition
-    hero_id: u8,
-    depth: u16,                       // Second of exploration
-    zone_id: u8,                      // 0, 1, 2
-    event_kind: u8,                   // 0=nothing, 1=trap, 2=gold, 3=heal, 4=beast_win, 5=beast_lose, 6=ingredient
-    value: u16,                       // Damage, gold, heal amount, ingredient_id, etc.
-    hp_after: u16,                    // Hero HP after event (x100)
-}
+// Zone adjacency as a simple lookup
+// zone_id => (left_child, right_child) where 0xFF = no child
+const GRAPH: [(u8, u8); 5] = [
+    (1, 2),     // Zone 0 (spawn) → Zone 1, Zone 2
+    (3, 3),     // Zone 1 → Zone 3 (converge)
+    (3, 3),     // Zone 2 → Zone 3 (converge)
+    (4, 4),     // Zone 3 → Zone 4 (final)
+    (0xFF, 0xFF), // Zone 4 → end
+];
 
-// Lifecycle events
-#[dojo::event]
-struct GameCreated { ... }
-
-#[dojo::event]
-struct ExpeditionStarted {
-    #[key] game_id: u64,
-    hero_id: u8,
-    death_depth: u16,
-    return_at: u64,
-}
-
-#[dojo::event]
-struct LootClaimed { ... }
-
-#[dojo::event]
-struct RecipeDiscovered { ... }
-
-#[dojo::event]
-struct PotionApplied { ... }
-
-#[dojo::event]
-struct HeroRecruited { ... }
-
-#[dojo::event]
-struct GrimoireCompleted {
-    #[key] game_id: u64,
-    player: ContractAddress,
-    completion_time: u64,             // Seconds from game start
-}
+const ZONE_MOB_COUNTS: [u8; 5] = [0, 1, 1, 2, 4];
 ```
 
-### 7.5 MVP Constants
+### Events
 
-```cairo
-// Zones (3 for MVP)
-const ZONE_COUNT: u8 = 3;
-const INGREDIENTS_PER_ZONE: u8 = 3;
-const TOTAL_INGREDIENTS: u8 = 9;    // 3 * 3
+| Event | Fields |
+|-------|--------|
+| `CharacterSpawned` | id, class_id, health, power, stamina |
+| `ZoneEntered` | dungeon_id, zone_id |
+| `FightStarted` | dungeon_id, zone_id, mob_count |
+| `MobDamaged` | dungeon_id, zone_id, mob_id, damage, hp_after |
+| `PlayerDamaged` | dungeon_id, zone_id, damage, hp_after |
+| `FightEnded` | dungeon_id, zone_id, player_hp_after |
+| `DungeonCompleted` | dungeon_id, owner |
+| `DungeonFailed` | dungeon_id, owner |
 
-// Zone 0: Verdant Meadow — depth 0s, drain 1 HP/s
-//   Ingredients: Moonpetal (0), Dewmoss (1), River Clay (2)
-// Zone 1: Crystal Cavern — depth 20s, drain 2 HP/s
-//   Ingredients: Crystal Shard (3), Drake Moss (4), Sulfur Bloom (5)
-// Zone 2: Aether Spire — depth 45s, drain 3 HP/s
-//   Ingredients: Dragon Scale (6), Aether Core (7), Titan Blood (8)
+### Architecture (Godot Client)
 
-// Recipes
-const RECIPES_TO_DISCOVER: u8 = 10;
+```
+Godot 4.3+ Project
+├── addons/godot-dojo/            # SDK (from releases)
+├── scenes/
+│   ├── main.tscn                 # Entry point, ToriiClient + DojoSessionAccount nodes
+│   ├── dungeon.tscn              # 3D dungeon view (isometric camera, zone nodes)
+│   ├── combat.tscn               # Combat UI overlay (mob HP bars, action buttons)
+│   └── hud.tscn                  # CanvasLayer HUD (player stats, stamina bar)
+├── scripts/
+│   ├── connection.gd             # Cartridge Controller auth flow
+│   ├── torii_sync.gd             # Entity subscription + state management
+│   ├── dungeon_controller.gd     # Dungeon navigation, zone transitions
+│   ├── combat_controller.gd      # Combat flow, cast/finish actions
+│   ├── dojo_wrapper.gd           # Typed wrapper over Dictionary API
+│   └── camera_rig.gd             # Fixed isometric camera
+└── project.godot
+```
 
-// Heroes
-const MAX_HEROES: u8 = 3;
-const HERO_BASE_HP: u16 = 10000;     // 100.00 HP (x100)
-const HERO_BASE_POWER: u16 = 500;    // 5.00 (x100)
-const HERO_BASE_REGEN: u16 = 100;    // 1.00 HP/s (x100)
+**Torii state sync flow:**
+1. `ToriiClient` subscribes to Character, Dungeon, Fight entities filtered by player address
+2. On entity update callback → parse Dictionary → update local game state
+3. GDScript wrapper layer converts raw Dictionaries to typed classes
+4. Scene nodes react to state changes (health bars, zone highlights, mob sprites)
 
-// Event probabilities (x10000)
-//                     Zone 0    Zone 1    Zone 2
-// Trap:               500       1000      1400
-// Gold:               1000      700       500
-// Heal:               800       500       300
-// Beast:              300       700       1200
-// Nothing:            7400      7100      6600
-// Ingredient drop:    2500      1800      1200
+---
+
+## Implementation Plan
+
+### Phase 0: Repository Migration (Serial — Must Complete First)
+
+**Prerequisite for:** All subsequent phases
+
+| Task | Description | Output |
+|------|-------------|--------|
+| 0.1 | Tag current main as `game-jam-viii` and create branch | `git tag game-jam-viii && git branch game-jam-viii` |
+| 0.2 | Create fresh `main` branch (orphan) with clean history | New empty main branch |
+| 0.3 | Initialize Scarb workspace + Dojo config (Scarb.toml, dojo_dev.toml) | Compiling empty project |
+| 0.4 | Initialize Godot 4 project in `client/` | `project.godot`, Godot opens clean |
+| 0.5 | Install `godot-dojo` v0.7.4 SDK into `client/addons/godot-dojo/` | SDK available in editor |
+| 0.6 | Install godogen + godot-task skills into `.claude/skills/` (or `.agents/skills/`) | Skills loadable by AI agents |
+| 0.7 | Write README.md with new scope, setup instructions, skill install commands | Contributors can onboard |
+
+#### Migration Commands
+
+```bash
+# --- Shelve current work ---
+cd /home/djizus/projects/athanor
+git tag game-jam-viii          # Permanent tag for the grimoire-race version
+git push origin game-jam-viii  # Push tag to remote
+
+git checkout -b game-jam-viii  # Branch too (for easy checkout)
+git push origin game-jam-viii  # Push branch
+
+# --- Clean main for new direction ---
+git checkout --orphan main-v2  # Orphan branch = no history
+git rm -rf .                   # Remove all tracked files
+git clean -fd                  # Remove untracked files
+
+# (Re-add foundation files — Scarb.toml, dojo configs, .gitignore, README, PLAN.md)
+git add .
+git commit -m "Athanor v2: tactical dungeon crawler — fresh start"
+
+git branch -D main             # Delete old local main
+git branch -m main-v2 main     # Rename to main
+git push origin main --force   # Force-push new main (⚠️ destructive to old main)
+```
+
+#### Skill Installation Commands (for contributors)
+
+```bash
+# --- Clone godogen skills ---
+git clone --depth 1 https://github.com/htdt/godogen /tmp/godogen
+
+# --- Install into project ---
+mkdir -p .agents/skills/godogen .agents/skills/godot-task
+
+# Copy godogen orchestrator skill
+cp -r /tmp/godogen/skills/godogen/* .agents/skills/godogen/
+
+# Copy godot-task executor skill (includes 862 Godot API docs)
+cp -r /tmp/godogen/skills/godot-task/* .agents/skills/godot-task/
+
+# --- Bootstrap API docs (if not already present) ---
+bash .agents/skills/godot-task/tools/ensure_doc_api.sh
+
+# --- Install godot-dojo SDK ---
+# Download from: https://github.com/lonewolftechnology/godot-dojo/releases/tag/v0.7.4
+# Extract addons/godot-dojo/ into client/addons/godot-dojo/
+
+# --- Verify ---
+ls .agents/skills/godogen/SKILL.md   # Should exist
+ls .agents/skills/godot-task/SKILL.md # Should exist
+ls client/addons/godot-dojo/          # Should contain plugin files
 ```
 
 ---
 
-## 8. Implementation Phases
+### Phase 1: Contracts — Core Models & Systems (Serial Foundation)
 
-### Phase 0: Project Scaffolding ✅
-- [x] Scarb workspace with game-components v2.13.1, dojo 1.8.0, origami_random
-- [x] All models defined (GameSession, GameSeed, Hero, HeroPendingIngredient, Recipe, IngredientBalance, PotionItem, FailedCombo, GameSettings, GameSettingsMetadata, PlayerMeta)
-- [x] All events defined (8 Dojo events)
-- [x] dojo_dev.toml for local Katana
-- [ ] Set up client with Vite + React 19 + TypeScript
-- [ ] Wire Dojo SDK, Torii, Controller connector
-- [ ] Deploy empty world to local Katana
-- [ ] Verify round-trip: client → Katana → Torii → client
+**Prerequisite for:** Phase 2 (client), Phase 3 (integration)
 
-### Phase 1: Game Lifecycle + MinigameComponent ✅
-- [x] Integrate MinigameComponent into game_system (dojo_init, IMinigameTokenData)
-- [x] Config system with preset 0 (GameSettings defaults in dojo_init)
-- [x] VRF random helper (from_vrf_address + pseudo-random fallback)
-- [x] Recipe generation (Phase 1: 3 pinned per zone, Phase 2: 7 random cross-zone biased)
-- [x] Full create() flow: pre_action → seed → recipes → hero #0 → PlayerMeta → post_action
-- [x] Full surrender() flow: pre_action → game_over → post_action
-- [ ] Tests: recipe determinism, game creation, config init
-
-### Phase 2: Exploration System ✅
-- [x] Expedition simulation engine (helpers/exploration.cairo) — tick-by-tick, 3 zones, events + drops
-- [x] send_expedition: full compute + event emission + pending loot storage
-- [x] claim_loot: timer check + gold/ingredient transfer + idle regen
-- [x] Idle regen calculation (rest_time * regen_per_sec, capped at max_hp)
-- [ ] Tests: known seed → known outcome, timer enforcement, gas profiling
-
-### Phase 3: Crafting System ✅
-- [x] craft: recipe lookup, discovery, PotionItem creation, FailedCombo recording, soup gold
-- [x] craft_recipe: batch re-brew (max possible from inventory)
-- [x] buy_hint: exponential cost (10 * 3^n gold), random undiscovered recipe, partial reveal
-- [x] Win condition: discovered_count >= 10 → game_over + GrimoireCompleted event
-- [ ] Tests: all crafting paths
-
-### Phase 4: Hero System ✅
-- [x] recruit_hero: gold cost [0, 80, 200], base stats spawn
-- [x] apply_potion: permanent stat buff (max_hp +val×100, power +val×100, regen +val×10)
-- [ ] Tests
-
-### Phase 4.5: Architecture Refactor (nums patterns) ✅
-
-Adopt Store pattern, centralized Config, model assertions, and event constructors from the
-`references/nums/` codebase. **NOT adopting** full component architecture — Athanor's systems
-are independent enough that thin components add complexity without payoff.
-
-**Goal**: Eliminate raw `world.read_model()`/`world.write_model()` calls from systems, centralize
-external addresses, DRY up validation, and make events self-constructing.
-
-#### Step 1: Config model (foundation)
-
-Add a singleton `Config` model to store external addresses. Currently `token_address` and
-`vrf_address` are duplicated across 4 systems' Storage + dojo_init.
-
-**File: `models/config.cairo`** — Add:
-```cairo
-#[derive(Copy, Drop, Serde)]
-#[dojo::model]
-pub struct Config {
-    #[key]
-    pub key: felt252,                   // singleton, always 0
-    pub token_address: ContractAddress,
-    pub vrf_address: ContractAddress,
-}
-```
-
-**File: `systems/game.cairo`** — In `dojo_init`, write Config:
-```cairo
-world.write_model(@Config { key: 0, token_address: denshokan_address, vrf_address });
-```
-
-**Other systems** — Remove `token_address` / `vrf_address` from Storage and dojo_init.
-Read via Store instead.
-
-- [x] Add Config model to models/config.cairo
-- [x] Write Config in game_system.dojo_init
-- [x] Remove token_address/vrf_address from exploration_system, crafting_system, hero_system Storage
-- [x] Remove their dojo_init functions (no longer needed)
-
-#### Step 2: Store abstraction
-
-**New file: `store.cairo`** — Wraps WorldStorage with typed accessors.
-
-```cairo
-#[derive(Copy, Drop)]
-pub struct Store {
-    world: WorldStorage,
-}
-
-#[generate_trait]
-pub impl StoreImpl of StoreTrait {
-    fn new(world: WorldStorage) -> Store { Store { world } }
-
-    // --- Config ---
-    fn config(self: @Store) -> Config { self.world.read_model(0) }
-
-    // --- Dispatchers (from Config) ---
-    fn token_disp(self: @Store) -> IMinigameTokenDispatcher { ... }
-    fn vrf_disp(self: @Store) -> IVrfProviderDispatcher { ... }
-
-    // --- Model getters ---
-    fn session(self: @Store, game_id: u64) -> GameSession { ... }
-    fn hero(self: @Store, game_id: u64, hero_id: u8) -> Hero { ... }
-    fn recipe(self: @Store, game_id: u64, recipe_id: u8) -> Recipe { ... }
-    fn ingredient(self: @Store, game_id: u64, ingredient_id: u8) -> IngredientBalance { ... }
-    fn potion(self: @Store, game_id: u64, potion_index: u16) -> PotionItem { ... }
-    fn failed_combo(self: @Store, game_id: u64, combo_key: u16) -> FailedCombo { ... }
-    fn pending_ingredient(self: @Store, game_id: u64, hero_id: u8, ing_id: u8) -> HeroPendingIngredient { ... }
-    fn player(self: @Store, addr: ContractAddress) -> PlayerMeta { ... }
-    fn settings(self: @Store, settings_id: u32) -> GameSettings { ... }
-
-    // --- Model setters ---
-    fn set_session(mut self: Store, model: @GameSession) { ... }
-    fn set_hero(mut self: Store, model: @Hero) { ... }
-    fn set_recipe(mut self: Store, model: @Recipe) { ... }
-    // ... etc for all models
-
-    // --- Event emitters ---
-    fn emit_game_created(mut self: Store, game_id: u64, player: ContractAddress, ...) { ... }
-    fn emit_expedition_started(mut self: Store, ...) { ... }
-    fn emit_exploration_event(mut self: Store, ...) { ... }
-    fn emit_loot_claimed(mut self: Store, ...) { ... }
-    fn emit_recipe_discovered(mut self: Store, ...) { ... }
-    fn emit_potion_applied(mut self: Store, ...) { ... }
-    fn emit_hero_recruited(mut self: Store, ...) { ... }
-    fn emit_grimoire_completed(mut self: Store, ...) { ... }
-}
-```
-
-- [x] Create store.cairo with Store struct
-- [x] Add typed getters for all 11 models
-- [x] Add typed setters for all 11 models
-- [x] Add dispatcher getters (token, vrf) reading from Config
-- [x] Add event emission methods for all 8 events
-- [x] Export from lib.cairo
-
-#### Step 3: Event constructors
-
-Split `events.cairo` into individual files with `new()` constructors that auto-populate
-`time` fields where applicable.
-
-**New structure:**
-```
-events/
-├── index.cairo        # All event struct definitions (#[dojo::event])
-├── exploration.cairo  # ExplorationEvent + ExpeditionStarted constructors
-├── game.cairo         # GameCreated + GrimoireCompleted constructors
-├── crafting.cairo      # RecipeDiscovered constructors
-├── hero.cairo         # HeroRecruited + PotionApplied constructors
-└── loot.cairo         # LootClaimed constructor
-```
-
-Each constructor file follows the pattern:
-```cairo
-pub use crate::events::index::GameCreated;
-
-#[generate_trait]
-pub impl GameCreatedImpl of GameCreatedTrait {
-    fn new(game_id: u64, player: ContractAddress, settings_id: u32, seed: felt252) -> GameCreated {
-        GameCreated { game_id, player, settings_id, seed }
-    }
-}
-```
-
-- [x] Create events/index.cairo (move struct definitions from events.cairo)
-- [x] Create constructor files for each event group
-- [x] Delete old events.cairo
-- [x] Update lib.cairo module tree
-- [x] Update Store event methods to use constructors
-
-#### Step 4: Model assertions
-
-Add `AssertTrait` implementations to key models. Extracts repeated inline assertions
-into reusable, self-documenting methods.
-
-**File: `models/game.cairo`** — Add:
-```cairo
-pub mod errors {
-    pub const GAME_OVER: felt252 = 'Game is over';
-    pub const GAME_NOT_OVER: felt252 = 'Game not over';
-}
-
-#[generate_trait]
-pub impl GameSessionAssert of GameSessionAssertTrait {
-    fn assert_not_over(self: @GameSession) { assert!(!*self.game_over, "Game is over"); }
-    fn assert_is_playing(self: @GameSession) { assert!(!*self.game_over, "Game is over"); }
-}
-```
-
-**File: `models/hero.cairo`** — Add:
-```cairo
-#[generate_trait]
-pub impl HeroAssert of HeroAssertTrait {
-    fn assert_idle(self: @Hero) { assert!(*self.status == types::HERO_STATUS_IDLE, "Hero not idle"); }
-    fn assert_exploring(self: @Hero) { assert!(*self.status == types::HERO_STATUS_EXPLORING, "Hero not on expedition"); }
-    fn assert_alive(self: @Hero) { assert!(*self.hp > 0, "Hero has no HP"); }
-    fn assert_recruited(self: @Hero, session: @GameSession) {
-        assert!(*self.hero_id < *session.hero_count, "Hero not recruited");
-    }
-}
-```
-
-- [x] Add GameSessionAssert to models/game.cairo
-- [x] Add HeroAssert to models/hero.cairo
-- [x] Replace inline assertions in systems with trait method calls
-
-#### Step 5: Model logic traits
-
-Move repeated logic from systems into model trait methods. Makes models "smart" and
-systems thin.
-
-**File: `models/hero.cairo`** — Add `HeroTrait`:
-```cairo
-#[generate_trait]
-pub impl HeroImpl of HeroTrait {
-    fn new(game_id: u64, hero_id: u8) -> Hero { ... }  // Base stats from constants
-    fn apply_buff(ref self: Hero, effect_type: u8, effect_value: u8) { ... }
-    fn idle_regen(ref self: Hero, rest_time: u64) { ... }  // Regen + cap
-    fn start_expedition(ref self: Hero, seed: felt252, timestamp: u64, result: @ExpeditionResult) { ... }
-    fn complete_expedition(ref self: Hero) { ... }  // Reset expedition fields
-}
-```
-
-**File: `models/game.cairo`** — Add `GameSessionTrait`:
-```cairo
-#[generate_trait]
-pub impl GameSessionImpl of GameSessionTrait {
-    fn new(game_id: u64, player: ContractAddress, seed: felt252, timestamp: u64) -> GameSession { ... }
-}
-```
-
-- [x] Add HeroTrait to models/hero.cairo (new, apply_buff, idle_regen, complete_expedition)
-- [x] Add GameSessionTrait to models/game.cairo (new)
-- [x] Update systems to use model methods
-
-#### Step 6: System migration
-
-Rewrite each system to use Store. This is the largest step but mechanical — replace
-`world.read_model()` → `store.session()`, `world.write_model()` → `store.set_session()`,
-`world.emit_event()` → `store.emit_*()`.
-
-**For each system:**
-1. Replace `let mut world = self.world(@DEFAULT_NS())` → `let mut store = StoreImpl::new(self.world(@DEFAULT_NS()))`
-2. Replace model reads → store getters
-3. Replace model writes → store setters
-4. Replace event emissions → store event methods
-5. Replace inline assertions → model assert trait calls
-6. Replace inline logic → model trait method calls
-7. Read token_address/vrf_address from Store config instead of self.storage
-
-**Systems to migrate (in order):**
-- [x] game_system (MinigameComponent kept, Storage reduced to component-only, reads Config via Store)
-- [x] exploration_system (Storage removed entirely, reads Config via Store)
-- [x] crafting_system (Storage removed entirely, reads Config via Store)
-- [x] hero_system (Storage removed entirely, reads Config via Store)
-- [x] config_system (SettingsComponent kept, uses Store for model access)
-
-#### Step 7: Module tree + cleanup
-
-**Update `lib.cairo`:**
-```cairo
-pub mod constants;
-pub mod types;
-pub mod store;
-
-pub mod events {
-    pub mod index;
-    pub mod exploration;
-    pub mod game;
-    pub mod crafting;
-    pub mod hero;
-    pub mod loot;
-}
-
-pub mod models { ... }  // unchanged
-pub mod helpers { ... }  // unchanged
-pub mod interfaces { ... }  // unchanged
-pub mod systems { ... }  // unchanged
-```
-
-- [x] Update lib.cairo (events/ module tree, store module)
-- [x] Remove dead imports (zero warnings from our code)
-- [x] `sozo build` passes clean
-- [x] Update PLAN.md decision 9.4 + 9.5 (architecture decisions documented)
-
-#### Verification
-
-After each step, run `sozo build` to verify. The refactor is purely structural —
-no behavioral changes. Every system call produces identical state transitions.
-
-### Phase 5: Client MVP (in progress)
-
-#### 5.1 Foundation ✅
-- [x] Dojo setup, Torii sync, Controller connector (from initial scaffold)
-- [x] Navigation store (zustand) + page routing
-- [x] Session policies for Controller
-- [x] System call wrappers (dojo/systems.ts)
-- [x] All game hooks: useGame, useHeroes, useRecipes, useInventory, useGameTokens, usePlayerMeta
-
-#### 5.2 Asset Pipeline ✅
-- [x] Copy alchemist assets → client/public/assets/ (backgrounds, heroes, ingredients, potions, sounds)
-- [x] Copy asset generation pipeline → scripts/generate-assets/ (fal.ai Flux 2 Pro integration)
-- [x] Aligned game constants with contract names (Moonpetal, Dewmoss, etc.)
-- [x] Asset URL helpers (heroAssetUrl, ingredientAssetUrl)
-
-#### 5.3 Phaser 3 Integration ✅
-- [x] Install Phaser 3.90.0
-- [x] PhaserBridge (EventEmitter linking React ↔ Phaser): hero updates, session state, zone changes, effects
-- [x] createPhaserGame(parent, bridge) entry point
-- [x] BootScene: fallback texture generation + real asset loading with HEAD checks
-- [x] MainScene: manages ZoneBackground, HeroSprite[], EventEffect; listens to bridge events
-- [x] ZoneBackground: crossfade between zones + 4 ambient particle layers (meadow sparkles, cavern sparks, spire arcane, lab dust)
-- [x] HeroSprite: circle-masked portrait, HP bar, name label, aura glow, bob/move tweens, trail emitter
-- [x] EventEffect: particle effects for trap, gold, heal, beastWin, beastLose, ingredientDrop, craftSuccess, craftFail, discovery, gameOver
-- [x] Color/layout utility modules
-
-#### 5.4 Dark Glass HUD Theme ✅
-- [x] Full CSS theme (~520 lines): CSS variables, Google Fonts (Cinzel + Crimson Text), glassmorphism panels
-- [x] Component classes: .panel, .tab-bar/.tab, .hero-card, .recipe-card, .stat-bar, .craft-panel, .leaderboard-table, .game-card, .game-over-banner
-- [x] Layout classes: .page, .page-center, .page-title, .page-scroll, .status-bar, .nav-bar
-- [x] Button variants: .btn-primary (gold glow), .btn-danger (red)
-- [x] Scrollbar styling, select inputs
-
-#### 5.5 UI Pages ✅
-- [x] App.tsx: Phaser canvas (#game-container z:0) + React overlay (.app z:1, pointer-events:none) + PageRouter
-- [x] PlayScreen (Draft C tabbed layout): status bar (gold, progress, seed) + tab bar (Heroes/Craft/Grimoire/Bag) + full tab content with hero cards, craft selects, recipe grid, ingredient inventory by zone
-- [x] HomePage: connect wallet, new game, my games, leaderboard (CSS class migration)
-- [x] MyGamesPage: sorted game list with status badges (CSS class migration)
-- [x] LeaderboardPage: ranked table with gold-highlighted top 3 (CSS class migration)
-
-#### 5.6 Remaining
-- [ ] Wire remaining Phaser interactions (craft effect trigger, sound on actions, zone change on hero focus)
-- [ ] Visual smoke test with pnpm dev
-- [ ] Restyle SettingsPage (if it exists)
-- [ ] Error states & loading skeletons
-
-### Phase 6: Polish + Deploy
-- [ ] Deploy to Slot for testing
-- [ ] VRF integration on Sepolia
-- [ ] Balancing pass
-- [ ] Error handling + edge cases
-- [ ] Deploy to Sepolia testnet
+| Task | Description | Output |
+|------|-------------|--------|
+| 1.1 | Define all models: Character, Dungeon, Fight in `contracts/src/models/` | Models compile |
+| 1.2 | Define types: ClassType, Direction, SkillType enums | Types compile |
+| 1.3 | Define events: all 8 combat/dungeon events in `contracts/src/events/` | Events compile |
+| 1.4 | Implement Store pattern (typed accessors for all models, event emitters) | Store compiles |
+| 1.5 | Implement `spawn(class_id)` — create Character + Dungeon, hardcoded graph | `sozo build` passes |
+| 1.6 | Implement `choose(direction)` — zone navigation with graph validation | `sozo build` passes |
+| 1.7 | Implement `start()` — create Fight with packed mob HPs | `sozo build` passes |
+| 1.8 | Implement `cast(mob_id, skill_id)` — damage mob, spend stamina, assertions | `sozo build` passes |
+| 1.9 | Implement `finish()` — mob attacks, stamina regen, fight/dungeon completion | `sozo build` passes |
+| 1.10 | Deploy to local Katana, verify full loop via `sozo execute` | All 5 actions work E2E |
 
 ---
 
-## 9. Resolved Decisions
+### Parallel Workstreams
 
-### 9.1 Session Identity — NFT-based (soulbound)
+#### Workstream A: Godot Client — Scene & Camera Setup
 
-Each game session mints a soulbound NFT via `FullTokenContract.free_mint()`. `game_id = token_id`. The NFT is non-transferable — it represents a player's game history on-chain, not a tradeable asset. Follows the zkube pattern exactly.
+**Dependencies:** Phase 0
+**Can parallelize with:** Workstream B (starts after Phase 0, before contracts are done)
 
-### 9.2 Competitive Mode — Leaderboard
+| Task | Description | Output |
+|------|-------------|--------|
+| A.1 | Set up Godot project: project.godot, window config, input actions, physics | Project opens in editor |
+| A.2 | Create isometric camera rig (fixed 45° angle, orthographic or perspective) | Camera renders 3D scene |
+| A.3 | Build dungeon scene: 4 zone platforms in diamond layout, path connections | Visual dungeon structure |
+| A.4 | Player character placeholder (capsule/cube with health bar) | Character visible in scene |
+| A.5 | Zone transition animations (player moves between zones on `choose`) | Smooth movement between zones |
+| A.6 | Combat UI overlay: mob HP bars, action buttons (Attack, End Turn), stamina bar | UI renders correctly |
 
-Solo play only. Each player races to complete their grimoire independently. Ranked by:
-1. **Time to completion** — fastest grimoire completion wins
-2. **Tiebreaker** — on-chain timestamp (first submission stays first)
+#### Workstream B: Godot Client — Dojo Integration Layer
 
-Leaderboard periods: all-time / weekly / daily. Only games using `settings_id = 0` are leaderboard-eligible.
+**Dependencies:** Phase 0, godot-dojo SDK installed
+**Can parallelize with:** Workstream A
 
-For full game (v1.0+): 30 recipes to discover. For MVP (v0.1): 10 recipes, same ranking logic.
-
-### 9.3 Exploration Timing — Real-time (block-based)
-
-Expeditions use actual wall-clock time via Starknet block timestamps. Hero explores while the player crafts, manages other heroes, or goes AFK. This gives the intended idle-game feel. The `return_at` timestamp is enforced on-chain; `claim_loot` reverts until the hero has returned.
-
-### 9.4 VRF Per Action — Expedition + Hint
-
-Cartridge VRF is called per expedition start and per hint purchase (not just at game creation). This prevents players from predicting expedition outcomes or hint targets by reading the on-chain game seed.
-
-**Pattern** (matches zkube's per-level-transition VRF):
-- Salt = `poseidon(game_id, hero_id, timestamp)` for expeditions
-- Salt = `poseidon(game_id, hints_used, timestamp)` for hints
-- `from_vrf_address(vrf_addr, salt)` abstracts VRF vs pseudo-random fallback (zero address = dev mode)
-- `vrf_address` stored in centralized Config model, read via Store (not per-system Storage)
-
-### 9.5 Architecture — Store Pattern (not Components)
-
-Adopting the nums Store pattern: a `Store` struct wraps `WorldStorage` and provides typed
-accessors for all models, dispatcher getters from centralized Config, and event emission helpers.
-
-**NOT** adopting nums' full component architecture (`#[starknet::component]`). Reasons:
-- Athanor's systems are independent (no cross-system quest/achievement dependencies)
-- Component architecture adds indirection without payoff at this codebase size (~1200 LOC)
-- The Store pattern alone gives 80% of the cleanup for 20% of the effort
-- Can migrate to components later if cross-cutting concerns emerge (e.g., achievements)
-
-The key architectural changes:
-1. **Store** — All world access goes through `Store` (reads, writes, events)
-2. **Config model** — Single source of truth for `token_address` + `vrf_address`
-3. **Model assertions** — `GameSessionAssert`, `HeroAssert` traits on model files
-4. **Model logic** — `HeroTrait`, `GameSessionTrait` for repeated operations
-5. **Event constructors** — Each event gets a `new()` constructor in its own file
-
-### 9.6 Token Economy — None
-
-No ATHANOR token for v0.1. No entry fees, no ingredient/potion trading. Gold is an in-game-only resource scoped to each game session. Revisit for v0.2+ if competitive modes need staking or prize pools.
+| Task | Description | Output |
+|------|-------------|--------|
+| B.1 | Connection scene: ToriiClient + DojoSessionAccount nodes, auth flow | Connects to Katana |
+| B.2 | Typed GDScript wrapper: Character, Dungeon, Fight classes over Dictionary | Wrapper parses entities |
+| B.3 | Entity subscription: subscribe to Character/Dungeon/Fight updates | State syncs on changes |
+| B.4 | Transaction helpers: calldata encoding for spawn, choose, start, cast, finish | Transactions execute |
+| B.5 | Event subscription: combat events (MobDamaged, PlayerDamaged, etc.) | Events trigger UI updates |
 
 ---
 
-## 10. Reference Map
+### Phase 3: Integration & Polish
 
-| Athanor Component | Reference File |
-|-------------------|---------------|
-| MinigameComponent setup | `references/zkube/contracts/src/systems/game.cairo` |
-| pre_action/post_action | `references/zkube/contracts/src/systems/moves.cairo` |
-| VRF/Random | `references/zkube/contracts/src/helpers/random.cairo` |
-| Config system + settings | `references/zkube/contracts/src/systems/config.cairo` |
-| Default settings init | `references/zkube/contracts/src/constants.cairo` |
-| Settings model | `references/zkube/contracts/src/models/config.cairo` |
-| Client Dojo setup | `references/zkube/client-budokan/src/dojo/setup.ts` |
-| Controller config | `references/zkube/client-budokan/src/cartridgeConnector.tsx` |
-| Navigation store | `references/zkube/client-budokan/src/stores/navigationStore.ts` |
-| System calls | `references/zkube/client-budokan/src/dojo/systems.ts` |
-| Entity ID normalization | `references/zkube/client-budokan/src/hooks/useGame.tsx` |
-| Page structure | `references/zkube/client-budokan/src/App.tsx` |
-| Landing page | `references/zkube/client-budokan/src/ui/pages/HomePage.tsx` |
-| Game logic (TypeScript) | `references/alchemist/src/game/engine.ts` |
-| Recipe generation | `references/alchemist/src/game/recipes.ts` |
-| RNG system | `references/alchemist/src/game/rng.ts` |
-| Game constants | `references/alchemist/src/game/constants.ts` |
-| Full game spec | `references/alchemist/Alchemist_POC.md` |
+**Dependencies:** Phase 1, Workstreams A + B
+
+| Task | Description | Output |
+|------|-------------|--------|
+| 3.1 | Wire contract actions to Godot UI buttons (spawn → choose → start → cast → finish) | Full loop playable |
+| 3.2 | React to Torii entity updates: health bars, mob death, zone clear visual feedback | State reflected in 3D |
+| 3.3 | Dungeon completion screen (simple "You Win" / "You Died" overlay) | End state handled |
+| 3.4 | Deploy to Slot (Katana + Torii) | Playable on Slot |
+| 3.5 | Smoke test: full dungeon run from spawn to completion | PoC validated |
+
+---
+
+## Testing and Validation
+
+### Contract Tests
+- `spawn` creates Character with correct stats + Dungeon with graph
+- `choose(0)` moves to left child, `choose(1)` to right child
+- `choose` reverts if zone combat not resolved
+- `start` creates Fight with correct mob count and HP
+- `cast` deals correct damage, spends stamina, reverts if dead mob or no stamina
+- `finish` applies mob damage, regens stamina, ends fight when mobs dead
+- Full loop: spawn → choose(0) → start → cast×N → finish → choose → ... → clear zone 4
+
+### Client Tests
+- Godot opens project without errors: `timeout 60 godot --headless --quit 2>&1`
+- ToriiClient connects to local Torii
+- Session account authenticates with Controller
+- Entity subscription fires on state change
+- UI updates reflect entity state
+
+---
+
+## Verification Checklist
+
+```bash
+# Contracts
+sozo build                                          # Clean compilation
+sozo test                                           # Unit tests pass
+sozo migrate --dev                                  # Deploys to Katana
+sozo execute <contract> spawn -c 0                  # Creates character
+
+# Client
+cd client && timeout 60 godot --headless --quit     # No parse errors
+# Manual: open Godot, connect wallet, play through dungeon
+```
+
+---
+
+## Risk Assessment
+
+| Risk | Likelihood | Impact | Mitigation |
+|------|------------|--------|------------|
+| godot-dojo SDK immaturity (no typed bindings, basic error handling) | High | Medium | Build typed GDScript wrapper early (Workstream B.2). Keep contract interface simple. |
+| gRPC streaming latency too high for turn-based UX | Low | Medium | Turn-based is forgiving. Can fall back to polling via `entities()` query. |
+| Godot 4.3 compatibility issues with SDK | Medium | High | Pin SDK version, test early. SDK tested against 4.3. |
+| Diamond graph too simple for engagement | Low | Low | Hardcoded graph is intentionally simple for PoC. Procedural generation is v2.1. |
+| Force-pushing main loses contributor work | Medium | High | Coordinate with team before push. Tag preserves all history. |
+
+---
+
+## Open Questions
+
+- [ ] Stamina regen on `finish()`: full reset to 100, or partial (e.g., +50)?
+- [ ] Health regen between zones: how much? Fixed amount or percentage?
+- [ ] Do mobs attack in a specific order or all simultaneously on `finish()`?
+- [ ] Should `cast` be callable multiple times before `finish`, or strictly one action per turn?
+- [ ] Mob power scaling: all mobs identical (power=5) or varied per zone?
+- [ ] Will game-components (Provable Games) be integrated for PoC, or deferred?
+
+---
+
+## Decision Log
+
+| Decision | Rationale | Alternatives Considered |
+|----------|-----------|------------------------|
+| Completely fresh contracts | Grimoire-race models are fundamentally different from tactical combat. No reusable logic. | Fork and evolve — rejected because every model needs replacement |
+| Godot 4 + fixed isometric camera | Matches tactical RPG genre. godot-dojo SDK requires 4.3+. Fixed camera simpler than free. | 2D top-down (simpler but less visual impact), Full 3D (too much effort for PoC) |
+| Hardcoded diamond graph | Simplest possible branching structure. Proves `choose(direction)` works. | Linear (no branching to test), Procedural (too complex for PoC) |
+| 1 class, 1 skill (AA) | Minimal viable combat. Proves the turn loop. Classes/skills are additive later. | 2-3 classes (too much contract surface for PoC) |
+| Solo dungeons, no MMO | Reduces scope to pure gameplay validation. Async MMO is layered on top. | Shared leaderboard (adds complexity without validating combat) |
+| godot-dojo SDK (not custom) | Official community SDK, actively maintained, handles Torii gRPC + Controller auth. | Raw HTTP/gRPC from GDScript (massive effort), Rust native (wrong stack) |
+| godogen skills for AI-assisted dev | 862 Godot API docs + scene generation patterns + GDScript reference. Major productivity boost for agents. | No skills (agents hallucinate GDScript), Custom docs (duplicate effort) |
