@@ -1,8 +1,0 @@
-google-genai
-requests
-numpy
-pillow
-scipy
-rembg
-pymatting
-onnxruntime
