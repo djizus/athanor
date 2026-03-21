@@ -47,8 +47,24 @@ ACCOUNT_ADDRESS=""
 PRIVATE_KEY=""
 for i in $(seq 1 18); do
     ACCOUNTS_JSON=$(slot deployments accounts "$SLOT_NAME" katana 2>&1) || true
-    ACCOUNT_ADDRESS=$(printf "%s" "$ACCOUNTS_JSON" | jq -r 'if type=="array" and length>0 then .[0].address // "" else "" end' 2>/dev/null || true)
-    PRIVATE_KEY=$(printf "%s" "$ACCOUNTS_JSON" | jq -r 'if type=="array" and length>0 then .[0].privateKey // "" else "" end' 2>/dev/null || true)
+    ACCOUNT_ADDRESS=$(printf "%s" "$ACCOUNTS_JSON" | jq -r '
+        if type=="array" and length>0 then .[0].address // ""
+        elif type=="object" and has("accounts") and (.accounts | type)=="array" and (.accounts | length)>0 then .accounts[0].address // ""
+        elif type=="object" then .address // ""
+        else "" end' 2>/dev/null || true)
+    PRIVATE_KEY=$(printf "%s" "$ACCOUNTS_JSON" | jq -r '
+        if type=="array" and length>0 then (.[] | .privateKey // .private_key // .secretKey // empty) | first
+        elif type=="object" and has("accounts") and (.accounts | type)=="array" and (.accounts | length)>0 then (.accounts[] | .privateKey // .private_key // .secretKey // empty) | first
+        elif type=="object" then .privateKey // .private_key // .secretKey // ""
+        else "" end' 2>/dev/null || true)
+
+    # Fallback for non-JSON/table output variants
+    if [ -z "$ACCOUNT_ADDRESS" ] || [ "$ACCOUNT_ADDRESS" = "null" ]; then
+        ACCOUNT_ADDRESS=$(printf "%s" "$ACCOUNTS_JSON" | grep -Ei 'address' | grep -Eo '0x[0-9a-fA-F]+' | head -1 || true)
+    fi
+    if [ -z "$PRIVATE_KEY" ] || [ "$PRIVATE_KEY" = "null" ]; then
+        PRIVATE_KEY=$(printf "%s" "$ACCOUNTS_JSON" | grep -Ei 'private|secret' | grep -Eo '0x[0-9a-fA-F]+' | head -1 || true)
+    fi
     if [ "$ACCOUNT_ADDRESS" = "null" ]; then ACCOUNT_ADDRESS=""; fi
     if [ "$PRIVATE_KEY" = "null" ]; then PRIVATE_KEY=""; fi
     if [ -n "$ACCOUNT_ADDRESS" ] && [ -n "$PRIVATE_KEY" ]; then
