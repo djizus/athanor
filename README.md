@@ -291,22 +291,6 @@ client/addons/godot-dojo/
 
 The `bin/` directory contains platform-specific binaries (Linux, macOS, Windows). These are gitignored -- each developer downloads for their platform.
 
-### WSL users (Windows Subsystem for Linux)
-
-Godot Windows cannot load GDExtension `.dll` files from WSL network paths (`\\wsl$\...`). Use Godot **Linux** inside WSL instead:
-
-```bash
-# Install Godot Linux
-wget https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_linux.x86_64.zip
-unzip Godot_v4.6-stable_linux.x86_64.zip
-mkdir -p ~/bin && mv Godot_v4.6-stable_linux.x86_64 ~/bin/godot
-chmod +x ~/bin/godot
-echo 'export PATH="$HOME/bin:$PATH"' >> ~/.bashrc
-source ~/.bashrc
-```
-
-WSLg (Windows 11) handles the display automatically. The extension will load the Linux `.so` binaries.
-
 ### 2. Start the backend (3 terminals)
 
 **Terminal 1 -- Katana** (local sequencer):
