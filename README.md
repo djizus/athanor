@@ -70,7 +70,7 @@ Combat ends when all mobs in the zone are dead (zone cleared) or player HP hits 
 | Layer | Technology |
 |-------|-----------|
 | Contracts | [Cairo](https://www.cairo-lang.org/) 2.15 + [Dojo](https://www.dojoengine.org/) 1.8 |
-| Client | [Godot 4.5+](https://godotengine.org/) (GDScript, 3D isometric) |
+| Client | [Godot 4.6+](https://godotengine.org/) (GDScript, 3D isometric) |
 | Dojo SDK | [godot-dojo](https://github.com/lonewolftechnology/godot-dojo) v0.7.4 (gRPC streaming) |
 | Wallet | [Cartridge Controller](https://docs.cartridge.gg/controller/overview) (session keys, passkey auth) |
 | Indexer | [Torii](https://book.dojoengine.org/toolchain/torii) (real-time entity sync) |
@@ -130,7 +130,7 @@ athanor/
 ## Prerequisites
 
 - [Dojo](https://book.dojoengine.org/getting-started) 1.8.0+ (installs `sozo`, `katana`, `torii`)
-- [Godot 4.5+](https://godotengine.org/download/) (editor for GUI, or headless for CI)
+- [Godot 4.6+](https://godotengine.org/download/) (editor for GUI, or headless for CI)
 - [Scarb](https://docs.swmansion.com/scarb/) 2.15+ (Cairo package manager, included with Dojo)
 
 Verify installation:
@@ -140,7 +140,7 @@ sozo --version     # sozo 1.8.x
 katana --version   # katana 1.8.x
 torii --version    # torii 1.8.x
 scarb --version    # scarb 2.15.x
-godot --version    # 4.5.x
+godot --version    # 4.6.x
 ```
 
 ---
@@ -268,12 +268,44 @@ Download the SDK binary for your platform from [godot-dojo releases](https://git
 # Download the starter project (contains the SDK addon)
 wget https://github.com/lonewolftechnology/godot-dojo/releases/download/v0.7.4/dojo-starter-godot-project.zip
 
-# Extract the addon into the client
+# Extract and copy the addon into the client
 unzip dojo-starter-godot-project.zip
 cp -r dojo-starter-godot-project/addons/godot-dojo client/addons/godot-dojo
 ```
 
-The `client/addons/godot-dojo/bin/` directory contains platform-specific binaries (Linux, macOS, Windows). These are gitignored -- each developer downloads for their platform.
+Verify the structure -- `godot-dojo.gdextension` must be next to `bin/`:
+
+```
+client/addons/godot-dojo/
+├── bin/                          # Platform binaries (.so, .dll, .dylib)
+├── assets/
+├── godot-dojo.gdextension        # Extension descriptor
+└── godot-dojo.gdextension.uid
+```
+
+> **Warning**: If you end up with a nested `client/addons/godot-dojo/godot-dojo/` directory containing the `bin/` and `.gdextension`, move its contents up one level:
+> ```bash
+> mv client/addons/godot-dojo/godot-dojo/* client/addons/godot-dojo/
+> rm -r client/addons/godot-dojo/godot-dojo
+> ```
+
+The `bin/` directory contains platform-specific binaries (Linux, macOS, Windows). These are gitignored -- each developer downloads for their platform.
+
+### WSL users (Windows Subsystem for Linux)
+
+Godot Windows cannot load GDExtension `.dll` files from WSL network paths (`\\wsl$\...`). Use Godot **Linux** inside WSL instead:
+
+```bash
+# Install Godot Linux
+wget https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_linux.x86_64.zip
+unzip Godot_v4.6-stable_linux.x86_64.zip
+mkdir -p ~/bin && mv Godot_v4.6-stable_linux.x86_64 ~/bin/godot
+chmod +x ~/bin/godot
+echo 'export PATH="$HOME/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+WSLg (Windows 11) handles the display automatically. The extension will load the Linux `.so` binaries.
 
 ### 2. Start the backend (3 terminals)
 

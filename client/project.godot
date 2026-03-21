@@ -1,5 +1,10 @@
 ; Engine configuration file.
-; Prefer editor UI for long-term edits.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
 
 config_version=5
 
@@ -9,15 +14,15 @@ config/name="Athanor"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
 
-[display]
-
-window/size/viewport_width=1280
-window/size/viewport_height=720
-
 [autoload]
 
 game_state="*res://scripts/autoload/game_state.gd"
 dojo_bridge="*res://scripts/autoload/dojo_bridge.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
 
 [dojo]
 
@@ -34,3 +39,7 @@ config/debug/warning=true
 config/debug/info=true
 config/debug/success=true
 config/debug/debug=true
+config/fixed_point/default=128
+config/fixed_point/64=40
+config/fixed_point/128=60
+config/fixed_point/256=123
