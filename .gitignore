@@ -28,11 +28,15 @@ Thumbs.db
 # === Node (for npx skill tooling) ===
 node_modules/
 
-# === Skills: doc_api is bootstrapped locally ===
-skills/godot-task/doc_api/
+# === Skills: bootstrapped locally by ensure_doc_api.sh ===
+skills/godot-task/doc_source/
+skills/godot-task/doc_api/*.md
 !skills/godot-task/doc_api/_common.md
 !skills/godot-task/doc_api/_other.md
 
 # === Agent state ===
 .claude/
+.agents/
 .sisyphus/
+skills-lock.json
+references/
