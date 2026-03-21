@@ -27,7 +27,11 @@ func _ready() -> void:
 	# Listen to game_state autoload for game-over (single source of truth)
 	game_state.game_over.connect(_on_game_over)
 
-	_switch_scene(connection_scene)
+	# Dev mode: if burner key is configured, auto-connect and skip to lobby
+	if _try_burner_connect():
+		_switch_scene(lobby_scene)
+	else:
+		_switch_scene(connection_scene)
 
 func _create_or_fallback(type_name: String, placeholder: Node) -> Node:
 	if ClassDB.class_exists(type_name):
@@ -38,6 +42,21 @@ func _create_or_fallback(type_name: String, placeholder: Node) -> Node:
 			placeholder.queue_free()
 			return real
 	return placeholder
+
+# --- Burner dev mode ---
+
+func _try_burner_connect() -> bool:
+	var dev_key := String(ProjectSettings.get_setting("dojo/config/account/private_key", ""))
+	var dev_address := String(ProjectSettings.get_setting("dojo/config/account/address", ""))
+	if dev_key.is_empty() or dev_key == "0x0" or dev_address.is_empty() or dev_address == "0x0":
+		return false
+
+	# Connect Torii first
+	if not dojo_bridge.connect_torii():
+		return false
+
+	# Create burner session from dev keys
+	return dojo_bridge.setup_burner(dev_key, dev_address)
 
 # --- Scene management ---
 

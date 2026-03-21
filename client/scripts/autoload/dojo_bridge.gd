@@ -58,6 +58,38 @@ func configure_network(next_torii_url: String, next_rpc_url: String, next_world_
 	if session_account != null:
 		session_account.set("full_policies", full_policies)
 
+# --- Auth: Burner account for local dev (no browser, no Controller) ---
+
+const KATANA_CHAIN_ID := "0x4b4154414e41"  # felt("KATANA")
+
+func setup_burner(private_key: String, address: String) -> bool:
+	if session_account == null:
+		tx_failed.emit("auth", "DojoSessionAccount node is missing")
+		return false
+	if not ClassDB.class_exists("ControllerHelper"):
+		tx_failed.emit("auth", "ControllerHelper not available (install godot-dojo SDK)")
+		return false
+
+	var helper: Variant = ClassDB.instantiate("ControllerHelper")
+	var owner_guid := String(helper.call("signer_to_guid", private_key))
+
+	session_account.call("create",
+		rpc_url,
+		private_key,
+		address,
+		owner_guid,
+		KATANA_CHAIN_ID,
+		0  # no expiry
+	)
+
+	if bool(session_account.call("is_valid")):
+		current_player = address.to_lower()
+		session_ready.emit(current_player)
+		return true
+
+	tx_failed.emit("auth", "Burner session creation failed")
+	return false
+
 # --- Auth: Controller session flow (no private key input) ---
 
 func connect_torii() -> bool:
