@@ -5,11 +5,16 @@ manifest_*.json
 # === Godot ===
 .godot/
 *.import
+*.uid
 screenshots/
 export_presets.cfg
 
-# === Godot Dojo SDK (binary, downloaded per-platform) ===
-client/addons/godot-dojo/bin/
+# === Godot Dojo SDK (downloaded per-platform, see README) ===
+client/addons/godot-dojo/
+
+# === Environment ===
+.env
+client/.env
 
 # === Build artifacts ===
 *.o
@@ -24,6 +29,9 @@ Thumbs.db
 # === IDE ===
 .vscode/
 .idea/
+
+# === Version managers ===
+.tool-versions
 
 # === Node (for npx skill tooling) ===
 node_modules/
