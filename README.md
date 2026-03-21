@@ -84,14 +84,7 @@ athanor/
 |   +-- scenes/
 |   +-- scripts/
 |   +-- project.godot
-+-- skills/             # AI agent skills (29 total)
-|   +-- godogen/        # Godot game generation orchestrator
-|   +-- godot-task/     # Godot task executor + 862 API docs
-|   +-- dojo-*/         # 12 Dojo skills (model, system, deploy, etc.)
-|   +-- controller-*/   # 7 Controller skills (setup, sessions, signers, etc.)
-|   +-- slot-*/         # 6 Slot skills (deploy, paymaster, vrng, etc.)
-|   +-- create-a-plan/  # Planning skill
-|   +-- create-pr/      # PR workflow skill
++-- .agents/skills/     # AI agent skills (installed via npx, gitignored)
 +-- PLAN.md             # Detailed implementation plan
 +-- .gitignore
 ```
@@ -112,9 +105,6 @@ athanor/
 git clone git@github.com:djizus/athanor.git
 cd athanor
 
-# Bootstrap Godot API docs for AI skills (862 class references)
-bash skills/godot-task/tools/ensure_doc_api.sh
-
 # Install godot-dojo SDK
 # Download v0.7.4 from: https://github.com/lonewolftechnology/godot-dojo/releases/tag/v0.7.4
 # Extract addons/godot-dojo/ into client/addons/godot-dojo/
@@ -122,9 +112,10 @@ bash skills/godot-task/tools/ensure_doc_api.sh
 
 ### Install AI Skills (for contributors using AI agents)
 
-Skills are already committed to the repo in `skills/`. To also install the Dojo and Controller skills into your local agent config:
-
 ```bash
+# Godot skills (game generation orchestrator + task executor + 862 API docs)
+npx skills add htdt/godogen -y
+
 # Dojo skills (12 skills -- models, systems, deploy, testing, etc.)
 npx skills add dojoengine/book -y
 
