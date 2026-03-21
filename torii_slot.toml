@@ -1,0 +1,7 @@
+world_address = "0x0"
+rpc = "https://api.cartridge.gg/x/athanor-djizus-slot/katana"
+
+[indexing]
+pending = true
+transactions = true
+namespaces = ["athanor"]

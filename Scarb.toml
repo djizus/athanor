@@ -13,3 +13,5 @@ cairo_test = "2.15.0"
 
 [workspace.cairo]
 sierra-replace-ids = true
+
+[profile.slot]

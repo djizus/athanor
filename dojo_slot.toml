@@ -1,0 +1,15 @@
+[world]
+name = "Athanor"
+description = "Onchain tactical dungeon crawler"
+seed = "athanor"
+
+[env]
+rpc_url = "https://api.cartridge.gg/x/athanor-djizus-slot/katana"
+account_address = "0x0"
+private_key = "0x0"
+
+[namespace]
+default = "athanor"
+
+[writers]
+"athanor" = ["athanor-actions"]
