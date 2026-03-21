@@ -113,8 +113,10 @@ cd athanor
 ### Install AI Skills (for contributors using AI agents)
 
 ```bash
-# Godot skills (game generation orchestrator + task executor + 862 API docs)
+# Godot skills (task executor + 862 API docs, GDScript reference, scene/script generation)
 npx skills add htdt/godogen -y
+# Then remove the auto-pilot orchestrator (we orchestrate manually):
+rm -rf .agents/skills/godogen
 
 # Dojo skills (12 skills -- models, systems, deploy, testing, etc.)
 npx skills add dojoengine/book -y
