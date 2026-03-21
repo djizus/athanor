@@ -64,7 +64,7 @@ func _build_meshes() -> void:
 
 	var capsule := CapsuleMesh.new()
 	capsule.radius = 0.42
-	capsule.mid_section.height = 1.0
+	capsule.height = 1.4
 	player_marker.mesh = capsule
 	var player_mat := StandardMaterial3D.new()
 	player_mat.albedo_color = COLOR_PLAYER
