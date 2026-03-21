@@ -24,8 +24,9 @@ var http_tools: Node
 var current_player := ""
 var entity_subscription_id := -1
 
-# Burner mode: uses DojoController.new_headless() for plain Katana dev accounts
-var _burner_controller: Variant = null
+# Burner mode: plain Katana dev account, txs via sozo CLI
+var _burner_address := ""
+var _burner_private_key := ""
 
 # Ephemeral session key — generated internally, NEVER user-provided
 var _session_priv_key := ""
@@ -66,39 +67,12 @@ func configure_network(next_torii_url: String, next_rpc_url: String, next_world_
 const KATANA_CHAIN_ID := "0x4b4154414e41"  # felt("KATANA")
 
 func setup_burner(private_key: String, address: String) -> bool:
-	# DojoController.new_headless() works with plain Katana dev accounts.
-	# DojoSessionAccount.create() does NOT — it requires a Controller account on-chain.
-	if not ClassDB.class_exists("DojoController") or not ClassDB.class_exists("DojoOwner"):
-		push_error("[dojo_bridge] DojoController/DojoOwner not available (install godot-dojo SDK)")
-		tx_failed.emit("auth", "godot-dojo SDK not installed")
-		return false
-	if not ClassDB.class_exists("ControllerHelper"):
-		push_error("[dojo_bridge] ControllerHelper not available")
-		tx_failed.emit("auth", "godot-dojo SDK not installed")
-		return false
-
-	var owner: Variant = ClassDB.instantiate("DojoOwner").call("init", private_key)
-	var helper: Variant = ClassDB.instantiate("ControllerHelper")
-	var class_hash: String = String(helper.call("get_controller_class_hash", 7))
-
-	_burner_controller = ClassDB.instantiate("DojoController").call("new_headless",
-		rpc_url,         # app_id (use rpc for local)
-		"burner",        # username
-		class_hash,
-		rpc_url,
-		owner,
-		KATANA_CHAIN_ID
-	)
-
-	if _burner_controller != null:
-		current_player = address.to_lower()
-		session_ready.emit(current_player)
-		push_warning("[dojo_bridge] Burner controller created for %s" % address)
-		return true
-
-	push_error("[dojo_bridge] Failed to create burner controller")
-	tx_failed.emit("auth", "Burner controller creation failed")
-	return false
+	_burner_address = address
+	_burner_private_key = private_key
+	current_player = address.to_lower()
+	session_ready.emit(current_player)
+	push_warning("[dojo_bridge] Burner mode: %s (txs via sozo CLI)" % address)
+	return true
 
 # --- Auth: Controller session flow (no private key input) ---
 
@@ -278,15 +252,8 @@ func _execute_action(entrypoint: String, calldata: Array) -> void:
 		"calldata": calldata,
 	}
 
-	# Burner mode: use DojoController (plain Katana accounts)
-	if _burner_controller != null:
-		var result: String = String(_burner_controller.call("execute", [call]))
-		if result.begins_with("0x"):
-			push_warning("[dojo_bridge] tx %s submitted: %s" % [entrypoint, result])
-			tx_submitted.emit(entrypoint)
-		else:
-			push_error("[dojo_bridge] tx %s failed: %s" % [entrypoint, result])
-			tx_failed.emit(entrypoint, result)
+	if not _burner_private_key.is_empty():
+		_sozo_execute(entrypoint, calldata)
 		return
 
 	# Controller mode: use DojoSessionAccount
@@ -311,3 +278,30 @@ func _instantiate_dojo_class(type_name: String) -> Variant:
 	if not ClassDB.class_exists(type_name):
 		return null
 	return ClassDB.instantiate(type_name)
+
+func _sozo_execute(entrypoint: String, calldata: Array) -> void:
+	var args: PackedStringArray = PackedStringArray([
+		"execute", actions_address, entrypoint,
+		"--rpc-url", rpc_url,
+		"--account-address", _burner_address,
+		"--private-key", _burner_private_key,
+		"--world", world_address,
+	])
+	if not calldata.is_empty():
+		args.append("--calldata")
+		var parts: PackedStringArray = PackedStringArray()
+		for arg in calldata:
+			parts.append(str(arg))
+		args.append(",".join(parts))
+
+	var output: Array = []
+	push_warning("[dojo_bridge] sozo %s" % " ".join(args))
+	var exit_code := OS.execute("sozo", args, output, true)
+	var stdout: String = "\n".join(output)
+
+	if exit_code == 0:
+		push_warning("[dojo_bridge] tx %s ok: %s" % [entrypoint, stdout.strip_edges()])
+		tx_submitted.emit(entrypoint)
+	else:
+		push_error("[dojo_bridge] tx %s failed (exit %d): %s" % [entrypoint, exit_code, stdout.strip_edges()])
+		tx_failed.emit(entrypoint, stdout.strip_edges())
