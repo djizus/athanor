@@ -1,0 +1,184 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/dungeon_view.gd" id="1"]
+[ext_resource type="PackedScene" path="res://scenes/combat_ui.tscn" id="2"]
+
+[sub_resource type="BoxShape3D" id="2"]
+size = Vector3(2.8, 0.6, 2.8)
+
+[node name="DungeonView" type="Node3D"]
+unique_name_in_owner = true
+script = ExtResource("1")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(-56, -36, 0)
+light_energy = 2.2
+
+[node name="CameraRig" type="Node3D" parent="."]
+position = Vector3(0, 0, 2)
+
+[node name="Camera3D" type="Camera3D" parent="CameraRig"]
+position = Vector3(13, 12, 13)
+rotation_degrees = Vector3(-35, 45, 0)
+current = true
+
+[node name="PathLines" type="Node3D" parent="."]
+
+[node name="Line01" type="MeshInstance3D" parent="PathLines"]
+position = Vector3(-2, 0.3, -2)
+rotation_degrees = Vector3(0, 0, 45)
+
+[node name="Line02" type="MeshInstance3D" parent="PathLines"]
+position = Vector3(2, 0.3, -2)
+rotation_degrees = Vector3(0, 0, -45)
+
+[node name="Line13" type="MeshInstance3D" parent="PathLines"]
+position = Vector3(-2, 0.3, 2)
+rotation_degrees = Vector3(0, 0, -45)
+
+[node name="Line23" type="MeshInstance3D" parent="PathLines"]
+position = Vector3(2, 0.3, 2)
+rotation_degrees = Vector3(0, 0, 45)
+
+[node name="Line34" type="MeshInstance3D" parent="PathLines"]
+position = Vector3(0, 0.3, 6)
+rotation_degrees = Vector3(90, 0, 0)
+
+[node name="Zones" type="Node3D" parent="."]
+
+[node name="Zone0" type="Node3D" parent="Zones"]
+position = Vector3(0, 0, -4)
+
+[node name="Zone0Mesh" type="MeshInstance3D" parent="Zones/Zone0"]
+unique_name_in_owner = true
+
+[node name="Area" type="Area3D" parent="Zones/Zone0"]
+input_ray_pickable = true
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Zones/Zone0/Area"]
+shape = SubResource("2")
+
+[node name="Zone1" type="Node3D" parent="Zones"]
+position = Vector3(-4, 0, 0)
+
+[node name="Zone1Mesh" type="MeshInstance3D" parent="Zones/Zone1"]
+unique_name_in_owner = true
+
+[node name="Area" type="Area3D" parent="Zones/Zone1"]
+input_ray_pickable = true
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Zones/Zone1/Area"]
+shape = SubResource("2")
+
+[node name="Zone2" type="Node3D" parent="Zones"]
+position = Vector3(4, 0, 0)
+
+[node name="Zone2Mesh" type="MeshInstance3D" parent="Zones/Zone2"]
+unique_name_in_owner = true
+
+[node name="Area" type="Area3D" parent="Zones/Zone2"]
+input_ray_pickable = true
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Zones/Zone2/Area"]
+shape = SubResource("2")
+
+[node name="Zone3" type="Node3D" parent="Zones"]
+position = Vector3(0, 0, 4)
+
+[node name="Zone3Mesh" type="MeshInstance3D" parent="Zones/Zone3"]
+unique_name_in_owner = true
+
+[node name="Area" type="Area3D" parent="Zones/Zone3"]
+input_ray_pickable = true
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Zones/Zone3/Area"]
+shape = SubResource("2")
+
+[node name="Zone4" type="Node3D" parent="Zones"]
+position = Vector3(0, 0, 8)
+
+[node name="Zone4Mesh" type="MeshInstance3D" parent="Zones/Zone4"]
+unique_name_in_owner = true
+
+[node name="Area" type="Area3D" parent="Zones/Zone4"]
+input_ray_pickable = true
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Zones/Zone4/Area"]
+shape = SubResource("2")
+
+[node name="PlayerMarker" type="MeshInstance3D" parent="."]
+unique_name_in_owner = true
+visible = false
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="TopLeft" type="MarginContainer" parent="HUD"]
+anchors_preset = 0
+offset_right = 356.0
+offset_bottom = 240.0
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 14
+
+[node name="VBox" type="VBoxContainer" parent="HUD/TopLeft"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="DungeonStatus" type="Label" parent="HUD/TopLeft/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = ""
+
+[node name="SpawnButton" type="Button" parent="HUD/TopLeft/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(180, 40)
+layout_mode = 2
+text = "Spawn Hero"
+
+[node name="StartButton" type="Button" parent="HUD/TopLeft/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(180, 40)
+layout_mode = 2
+text = "Start Fight"
+
+[node name="OverlayPanel" type="PanelContainer" parent="HUD"]
+unique_name_in_owner = true
+visible = false
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -180.0
+offset_top = -90.0
+offset_right = 180.0
+offset_bottom = 90.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="OverlayVBox" type="VBoxContainer" parent="HUD/OverlayPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="OverlayLabel" type="Label" parent="HUD/OverlayPanel/OverlayVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Dungeon Complete"
+horizontal_alignment = 1
+
+[node name="PlayAgainButton" type="Button" parent="HUD/OverlayPanel/OverlayVBox"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+text = "Play Again"
+
+[node name="CombatUI" parent="." instance=ExtResource("2")]
+
+[connection signal="pressed" from="HUD/TopLeft/VBox/SpawnButton" to="." method="_on_spawn_button_pressed"]
+[connection signal="pressed" from="HUD/TopLeft/VBox/StartButton" to="." method="_on_start_button_pressed"]
+[connection signal="pressed" from="HUD/OverlayPanel/OverlayVBox/PlayAgainButton" to="." method="_on_play_again_button_pressed"]
+[connection signal="input_event" from="Zones/Zone0/Area" to="." method="_on_zone_0_input_event"]
+[connection signal="input_event" from="Zones/Zone1/Area" to="." method="_on_zone_1_input_event"]
+[connection signal="input_event" from="Zones/Zone2/Area" to="." method="_on_zone_2_input_event"]
+[connection signal="input_event" from="Zones/Zone3/Area" to="." method="_on_zone_3_input_event"]
+[connection signal="input_event" from="Zones/Zone4/Area" to="." method="_on_zone_4_input_event"]

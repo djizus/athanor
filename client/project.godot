@@ -1,0 +1,36 @@
+; Engine configuration file.
+; Prefer editor UI for long-term edits.
+
+config_version=5
+
+[application]
+
+config/name="Athanor"
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.3", "Forward Plus")
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+
+[autoload]
+
+game_state="*res://scripts/autoload/game_state.gd"
+dojo_bridge="*res://scripts/autoload/dojo_bridge.gd"
+
+[dojo]
+
+config/katana_url="http://localhost:5050"
+config/torii/torii_url="http://localhost:8080"
+config/torii/worlds=Array[String]([])
+config/world_address="0x0"
+config/actions_address="0x0"
+config/account/address="0x0"
+config/account/public_key="0x0"
+config/account/private_key="0x0"
+config/debug/error=true
+config/debug/warning=true
+config/debug/info=true
+config/debug/success=true
+config/debug/debug=true
