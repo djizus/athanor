@@ -457,14 +457,26 @@ Must exit cleanly with no errors.
 
 ---
 
-## Install AI Skills (for contributors using AI agents)
+## AI Tooling (for contributors using AI agents)
+
+### Godot MCP server
+
+We use [godot-mcp](https://github.com/Coding-Solo/godot-mcp) for direct Godot editor integration (scene management, node manipulation, project inspection) instead of static skill files. Add it to your `~/.config/opencode/opencode.json`:
+
+```json
+{
+  "mcp": {
+    "godot": {
+      "type": "local",
+      "command": ["npx", "@coding-solo/godot-mcp"]
+    }
+  }
+}
+```
+
+### Dojo & Controller skills
 
 ```bash
-# Godot skills (task executor + 862 API docs, GDScript reference, scene/script generation)
-npx skills add htdt/godogen -y
-# Then remove the auto-pilot orchestrator (we orchestrate manually):
-rm -rf .agents/skills/godogen
-
 # Dojo skills (12 skills -- models, systems, deploy, testing, etc.)
 npx skills add dojoengine/book -y
 
