@@ -30,6 +30,7 @@ var _burner_private_key := ""
 
 # Ephemeral session key — generated internally, NEVER user-provided
 var _session_priv_key := ""
+const SESSION_CACHE_PATH := "user://controller_session.json"
 
 var full_policies: Dictionary:
 	get:
@@ -117,13 +118,39 @@ func complete_controller_auth() -> bool:
 		tx_failed.emit("auth", "No session key generated — call initiate_controller_auth() first")
 		return false
 
-	session_account.call("create_from_subscribe", _session_priv_key, rpc_url, relay_url, full_policies)
+	session_account.call("create_from_subscribe", _session_priv_key, rpc_url, full_policies, relay_url)
 	if bool(session_account.call("is_valid")):
 		var info: Dictionary = session_account.call("get_info")
 		current_player = String(info.get("address", "")).to_lower()
+		_save_session_info(_session_priv_key, info)
 		session_ready.emit(current_player)
-		pull_entities_snapshot()
+		call_deferred("pull_entities_snapshot")
 		return true
+	return false
+
+func try_resume_controller_session() -> bool:
+	if session_account == null:
+		return false
+	var cached := _load_session_info()
+	var cached_key := String(cached.get("private_key", ""))
+	var cached_address := String(cached.get("address", ""))
+	var cached_owner_guid := String(cached.get("owner_guid", ""))
+	var cached_chain_id := String(cached.get("chain_id", ""))
+	var expires_at := int(cached.get("expires_at", 0))
+	if cached_key.is_empty() or cached_address.is_empty() or cached_owner_guid.is_empty() or cached_chain_id.is_empty() or expires_at <= 0:
+		return false
+	if int(Time.get_unix_time_from_system()) >= expires_at:
+		_clear_session_cache()
+		return false
+	_session_priv_key = cached_key
+	session_account.call("create", rpc_url, _session_priv_key, cached_address, cached_owner_guid, cached_chain_id, expires_at)
+	if bool(session_account.call("is_valid")) and not bool(session_account.call("is_expired")) and not bool(session_account.call("is_revoked")):
+		var info: Dictionary = session_account.call("get_info")
+		current_player = String(info.get("address", "")).to_lower()
+		session_ready.emit(current_player)
+		call_deferred("pull_entities_snapshot")
+		return true
+	_clear_session_cache()
 	return false
 
 func get_player_info() -> Dictionary:
@@ -305,3 +332,33 @@ func _sozo_execute(entrypoint: String, calldata: Array) -> void:
 	else:
 		push_error("[dojo_bridge] tx %s failed (exit %d): %s" % [entrypoint, exit_code, stdout.strip_edges()])
 		tx_failed.emit(entrypoint, stdout.strip_edges())
+
+func _save_session_info(key: String, info: Dictionary) -> void:
+	if key.is_empty() or info.is_empty():
+		return
+	var file := FileAccess.open(SESSION_CACHE_PATH, FileAccess.WRITE)
+	if file == null:
+		return
+	file.store_string(JSON.stringify({
+		"private_key": key,
+		"address": String(info.get("address", "")),
+		"owner_guid": String(info.get("owner_guid", "")),
+		"chain_id": String(info.get("chain_id", "")),
+		"expires_at": int(info.get("expires_at", 0))
+	}))
+
+func _load_session_info() -> Dictionary:
+	if not FileAccess.file_exists(SESSION_CACHE_PATH):
+		return {}
+	var file := FileAccess.open(SESSION_CACHE_PATH, FileAccess.READ)
+	if file == null:
+		return {}
+	var text := file.get_as_text()
+	var parsed: Variant = JSON.parse_string(text)
+	if parsed is Dictionary:
+		return parsed
+	return {}
+
+func _clear_session_cache() -> void:
+	if FileAccess.file_exists(SESSION_CACHE_PATH):
+		DirAccess.remove_absolute(SESSION_CACHE_PATH)
