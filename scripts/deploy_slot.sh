@@ -47,8 +47,10 @@ ACCOUNT_ADDRESS=""
 PRIVATE_KEY=""
 for i in $(seq 1 18); do
     ACCOUNTS_JSON=$(slot deployments accounts "$SLOT_NAME" katana 2>&1) || true
-    ACCOUNT_ADDRESS=$(echo "$ACCOUNTS_JSON" | jq -r '.[0].address // empty' 2>/dev/null)
-    PRIVATE_KEY=$(echo "$ACCOUNTS_JSON" | jq -r '.[0].privateKey // empty' 2>/dev/null)
+    ACCOUNT_ADDRESS=$(printf "%s" "$ACCOUNTS_JSON" | jq -r 'if type=="array" and length>0 then .[0].address // "" else "" end' 2>/dev/null || true)
+    PRIVATE_KEY=$(printf "%s" "$ACCOUNTS_JSON" | jq -r 'if type=="array" and length>0 then .[0].privateKey // "" else "" end' 2>/dev/null || true)
+    if [ "$ACCOUNT_ADDRESS" = "null" ]; then ACCOUNT_ADDRESS=""; fi
+    if [ "$PRIVATE_KEY" = "null" ]; then PRIVATE_KEY=""; fi
     if [ -n "$ACCOUNT_ADDRESS" ] && [ -n "$PRIVATE_KEY" ]; then
         break
     fi
