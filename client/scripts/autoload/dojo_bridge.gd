@@ -117,7 +117,7 @@ func complete_controller_auth() -> bool:
 		tx_failed.emit("auth", "No session key generated — call initiate_controller_auth() first")
 		return false
 
-	session_account.call("create_from_subscribe", _session_priv_key, rpc_url, relay_url)
+	session_account.call("create_from_subscribe", _session_priv_key, rpc_url, relay_url, full_policies)
 	if bool(session_account.call("is_valid")):
 		var info: Dictionary = session_account.call("get_info")
 		current_player = String(info.get("address", "")).to_lower()
