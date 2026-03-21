@@ -21,25 +21,24 @@ Spawn Hero --> Navigate Dungeon --> Fight Mobs --> Clear Zones --> Complete Dung
 ### Dungeon Graph (Diamond / Branching)
 
 ```
-        [Zone 1: Spawn]
+        [Zone 0: Spawn]
            /        \
-    [Zone 2a]    [Zone 2b]      <-- 1 mob each
+    [Zone 1]    [Zone 2]      <-- 1 mob each
            \        /
         [Zone 3]                <-- 2 mobs
            |
         [Zone 4]                <-- 4 mobs (final)
 ```
 
-Players choose their path through the diamond via `choose(direction)`. Each zone contains turn-based combat encounters.
+Players choose their path at forks via `choose(direction)`. Zones with a single exit auto-advance after clearing combat.
 
-### Combat
+### Combat (Turn-Based)
 
-| Action | Effect |
-|--------|--------|
-| `cast(mob_id, AA)` | Spend 30 stamina, deal 10 damage |
-| `finish()` | End turn -- all surviving mobs attack (5 dmg each), stamina regens |
+Each turn:
+1. **Player phase**: Cast 1-3 auto-attacks (30 stamina each, 100 stamina total)
+2. **Call `finish()`**: All surviving mobs attack simultaneously, stamina resets to max
 
-Combat continues until all mobs in the zone are dead or the player's HP hits 0.
+Combat ends when all mobs in the zone are dead (zone cleared) or player HP hits 0 (dungeon failed).
 
 ### Stats
 
@@ -48,16 +47,21 @@ Combat continues until all mobs in the zone are dead or the player's HP hits 0.
 | Health | 100 | 20 |
 | Power | 10 | 5 |
 | Stamina | 100 | -- |
+| Auto-Attack Cost | 30 | -- |
+
+- **No health regen** between zones (attrition is the difficulty)
+- **Stamina fully resets** on `finish()`
+- Mobs attack simultaneously: `total_damage = alive_mobs * 5`
 
 ### Contract Actions
 
-| Action | Purpose |
-|--------|---------|
-| `spawn(class_id)` | Create character + dungeon |
-| `choose(direction)` | Navigate to next zone |
-| `start()` | Begin combat in current zone |
-| `cast(mob_id, skill_id)` | Attack a mob |
-| `finish()` | End turn, resolve mob attacks |
+| Action | Params | Purpose |
+|--------|--------|---------|
+| `spawn(class_id)` | `u8` | Create character + dungeon, place in zone 0 |
+| `choose(game_id, direction)` | `u32, Direction` | Navigate to next zone at a fork |
+| `start(game_id)` | `u32` | Begin combat in current zone |
+| `cast(game_id, mob_id, skill_id)` | `u32, u8, u8` | Attack a mob (skill 0 = auto-attack) |
+| `finish(game_id)` | `u32` | End turn, resolve mob attacks |
 
 ---
 
@@ -65,7 +69,7 @@ Combat continues until all mobs in the zone are dead or the player's HP hits 0.
 
 | Layer | Technology |
 |-------|-----------|
-| Contracts | [Cairo](https://www.cairo-lang.org/) + [Dojo](https://www.dojoengine.org/) 1.8 |
+| Contracts | [Cairo](https://www.cairo-lang.org/) 2.15 + [Dojo](https://www.dojoengine.org/) 1.8 |
 | Client | [Godot 4.3+](https://godotengine.org/) (GDScript, 3D isometric) |
 | Dojo SDK | [godot-dojo](https://github.com/lonewolftechnology/godot-dojo) v0.7.4 (gRPC streaming) |
 | Wallet | [Cartridge Controller](https://docs.cartridge.gg/controller/overview) (session keys, passkey auth) |
@@ -78,39 +82,382 @@ Combat continues until all mobs in the zone are dead or the player's HP hits 0.
 
 ```
 athanor/
-+-- contracts/          # Cairo smart contracts (Dojo ECS)
-+-- client/             # Godot 4 project
-|   +-- addons/godot-dojo/  # Dojo SDK (download from releases)
++-- contracts/                        # Cairo smart contracts (Dojo ECS)
+|   +-- src/
+|   |   +-- constants.cairo           # Zone graph, mob/player stats, skill costs
+|   |   +-- store.cairo               # Typed read/write for all models + event emitters
+|   |   +-- models/
+|   |   |   +-- character.cairo       # Character model (health, power, stamina, zone)
+|   |   |   +-- dungeon.cairo         # Dungeon model (zones_cleared bitmap, completed/failed)
+|   |   |   +-- fight.cairo           # Fight model (packed mob HPs, mob_power, active)
+|   |   |   +-- player_state.cairo    # Per-player game counter
+|   |   +-- types/
+|   |   |   +-- direction.cairo       # Direction enum (Left, Right)
+|   |   |   +-- class.cairo           # ClassType enum (Warrior for PoC)
+|   |   |   +-- skill.cairo           # SkillType enum (AutoAttack)
+|   |   +-- events/
+|   |   |   +-- index.cairo           # 11 events (CharacterSpawned, MobDamaged, etc.)
+|   |   +-- helpers/
+|   |   |   +-- packing.cairo         # Mob HP bit-packing in u64 (16 bits per mob)
+|   |   +-- systems/
+|   |   |   +-- actions.cairo         # Main system: spawn, choose, start, cast, finish
+|   |   +-- tests.cairo               # 19 tests (unit + integration)
+|   +-- Scarb.toml
++-- client/                           # Godot 4 project
+|   +-- addons/godot-dojo/            # Dojo SDK (binary, gitignored except metadata)
 |   +-- scenes/
+|   |   +-- main.tscn                 # Entry point: ToriiClient, DojoSessionAccount, scene switcher
+|   |   +-- connection.tscn           # Auth screen (Connect wallet button)
+|   |   +-- dungeon.tscn             # 3D dungeon view (5 zones, player, isometric camera)
+|   |   +-- combat_ui.tscn           # CanvasLayer: HP bars, Attack/End Turn buttons, stamina
 |   +-- scripts/
+|   |   +-- autoload/
+|   |   |   +-- game_state.gd        # Singleton: parsed entity state, signals
+|   |   |   +-- dojo_bridge.gd       # Singleton: Torii subscriptions, tx calldata helpers
+|   |   +-- main.gd                  # Scene switcher, SDK node bootstrapping
+|   |   +-- connection.gd            # Controller auth flow
+|   |   +-- dungeon_view.gd          # Zone rendering, player movement, state colors
+|   |   +-- combat_ui.gd             # Combat HUD logic
 |   +-- project.godot
-+-- .agents/skills/     # AI agent skills (installed via npx, gitignored)
-+-- PLAN.md             # Detailed implementation plan
++-- Scarb.toml                        # Workspace root
++-- dojo_dev.toml                     # Local Katana deployment config
++-- PLAN.md                           # Detailed implementation plan
 +-- .gitignore
 ```
 
 ---
 
-## Getting Started
+## Prerequisites
 
-### Prerequisites
+- [Dojo](https://book.dojoengine.org/getting-started) 1.8.0+ (installs `sozo`, `katana`, `torii`)
+- [Godot 4.3+](https://godotengine.org/download/) (editor for GUI, or headless for CI)
+- [Scarb](https://docs.swmansion.com/scarb/) 2.15+ (Cairo package manager, included with Dojo)
 
-- [Dojo](https://book.dojoengine.org/getting-started) 1.8.0+ (`sozo`, `katana`, `torii`)
-- [Godot 4.3+](https://godotengine.org/download/) (editor or headless)
-- [Scarb](https://docs.swmansion.com/scarb/) (Cairo package manager)
+Verify installation:
 
-### Setup
+```bash
+sozo --version     # sozo 1.8.x
+katana --version   # katana 1.8.x
+torii --version    # torii 1.8.x
+scarb --version    # scarb 2.15.x
+godot --version    # 4.3.x
+```
+
+---
+
+## Running Locally (Contracts Only)
+
+If you just want to test the onchain logic without the Godot client.
+
+### 1. Clone and build
 
 ```bash
 git clone git@github.com:djizus/athanor.git
 cd athanor
 
-# Install godot-dojo SDK
-# Download v0.7.4 from: https://github.com/lonewolftechnology/godot-dojo/releases/tag/v0.7.4
-# Extract addons/godot-dojo/ into client/addons/godot-dojo/
+# Build contracts
+sozo build
 ```
 
-### Install AI Skills (for contributors using AI agents)
+### 2. Run tests
+
+```bash
+sozo test
+```
+
+Expected output: `test result: ok. 19 passed; 0 failed; 0 ignored; 0 filtered out;`
+
+### 3. Deploy to local Katana
+
+Open **Terminal 1** -- start the local sequencer:
+
+```bash
+katana --dev --dev.no-fee
+```
+
+Open **Terminal 2** -- deploy contracts:
+
+```bash
+sozo migrate
+```
+
+You'll see: `Migration successful with world at address 0x06e71...` (address varies).
+
+### 4. Play through the dungeon via CLI
+
+After deploying, you can play the entire game from the command line:
+
+```bash
+# 1. Spawn a hero (class_id=0 = Warrior)
+sozo execute athanor-actions spawn 0
+
+# 2. Choose a path at the fork (0=Left to Zone 1, 1=Right to Zone 2)
+sozo execute athanor-actions choose 1 0
+
+# 3. Start combat in Zone 1 (1 mob, 20 HP)
+sozo execute athanor-actions start 1
+
+# 4. Attack the mob twice (mob_id=0, skill_id=0=AutoAttack)
+#    Each auto-attack costs 30 stamina and deals 10 damage
+#    2 hits = 20 damage = mob dead
+sozo execute athanor-actions cast 1 0 0
+sozo execute athanor-actions cast 1 0 0
+
+# 5. End turn -- mob is dead, zone clears, auto-advance to Zone 3
+sozo execute athanor-actions finish 1
+
+# 6. Zone 3 has 2 mobs -- start combat
+sozo execute athanor-actions start 1
+
+# 7. Turn 1: kill mob 0, wound mob 1
+sozo execute athanor-actions cast 1 0 0    # mob 0: 20 -> 10
+sozo execute athanor-actions cast 1 0 0    # mob 0: 10 -> 0 (dead)
+sozo execute athanor-actions cast 1 1 0    # mob 1: 20 -> 10
+sozo execute athanor-actions finish 1       # mob 1 attacks: 5 dmg. stamina resets.
+
+# 8. Turn 2: kill mob 1
+sozo execute athanor-actions cast 1 1 0    # mob 1: 10 -> 0 (dead)
+sozo execute athanor-actions finish 1       # zone cleared, auto-advance to Zone 4
+
+# 9. Zone 4 has 4 mobs -- start combat
+sozo execute athanor-actions start 1
+
+# 10. Turn 1: kill mob 0, wound mob 1
+sozo execute athanor-actions cast 1 0 0
+sozo execute athanor-actions cast 1 0 0
+sozo execute athanor-actions cast 1 1 0
+sozo execute athanor-actions finish 1       # 3 mobs attack: 15 dmg
+
+# 11. Turn 2: kill mob 1, kill mob 2
+sozo execute athanor-actions cast 1 1 0
+sozo execute athanor-actions cast 1 2 0
+sozo execute athanor-actions cast 1 2 0
+sozo execute athanor-actions finish 1       # 1 mob attacks: 5 dmg
+
+# 12. Turn 3: kill mob 3
+sozo execute athanor-actions cast 1 3 0
+sozo execute athanor-actions cast 1 3 0
+sozo execute athanor-actions finish 1       # ALL MOBS DEAD -- DUNGEON COMPLETE!
+```
+
+Every `sozo execute` returns a transaction hash. If any action fails, it will show the revert reason (e.g., `'Not enough stamina'`, `'Mob already dead'`, `'Not at a fork'`).
+
+### 5. Start Torii (optional, for querying state)
+
+Open **Terminal 3**:
+
+```bash
+# Replace with your world address from step 3
+torii --world 0x06e7172f23b20e73fa5dcbdf059133c73b53dfda89ec5447b3fd54f19eba30b5 \
+      --rpc http://localhost:5050
+```
+
+Torii provides:
+- **GraphQL** at `http://localhost:8080/graphql`
+- **gRPC** at `http://localhost:8080` (used by the Godot client)
+
+---
+
+## Running Locally (Full Stack with Godot)
+
+### 1. Install the godot-dojo SDK
+
+Download the SDK binary for your platform from [godot-dojo releases](https://github.com/lonewolftechnology/godot-dojo/releases/tag/v0.7.4):
+
+```bash
+# Download the starter project (contains the SDK addon)
+wget https://github.com/lonewolftechnology/godot-dojo/releases/download/v0.7.4/dojo-starter-godot-project.zip
+
+# Extract the addon into the client
+unzip dojo-starter-godot-project.zip
+cp -r dojo-starter-godot-project/addons/godot-dojo client/addons/godot-dojo
+```
+
+The `client/addons/godot-dojo/bin/` directory contains platform-specific binaries (Linux, macOS, Windows). These are gitignored -- each developer downloads for their platform.
+
+### 2. Start the backend (3 terminals)
+
+**Terminal 1 -- Katana** (local sequencer):
+
+```bash
+katana --dev --dev.no-fee
+```
+
+**Terminal 2 -- Deploy contracts**:
+
+```bash
+sozo build && sozo migrate
+```
+
+Note the world address printed at the end.
+
+**Terminal 3 -- Torii** (indexer):
+
+```bash
+torii --world <WORLD_ADDRESS> --rpc http://localhost:5050
+```
+
+### 3. Open the Godot project
+
+**Terminal 4**:
+
+```bash
+cd client
+godot --editor
+```
+
+This opens the Godot 4 editor. The project has:
+
+- **Main scene** (`scenes/main.tscn`): Entry point with ToriiClient and DojoSessionAccount nodes
+- **Connection scene** (`scenes/connection.tscn`): Wallet connect screen
+- **Dungeon scene** (`scenes/dungeon.tscn`): 3D diamond dungeon with 5 zone platforms
+- **Combat UI** (`scenes/combat_ui.tscn`): Overlay with HP bars, Attack/End Turn buttons
+
+### 4. Configure connection (if needed)
+
+The default configuration in `scripts/autoload/dojo_bridge.gd` points to:
+- **RPC**: `http://localhost:5050` (Katana)
+- **Torii**: `http://localhost:8080` (Torii gRPC)
+
+These match the default local development ports. No changes needed for local testing.
+
+### 5. Run the game
+
+Press **F5** in the Godot editor (or click the Play button). The game flow:
+
+1. **Connection screen** -- click Connect to authenticate via Cartridge Controller
+2. **Spawn** -- click Spawn to create your hero and dungeon
+3. **Dungeon view** -- 3D diamond layout with 5 zone platforms
+4. **Navigate** -- click a zone to choose your path at forks
+5. **Combat** -- click Start to begin fighting, then use Attack/End Turn buttons
+6. **Win/Lose** -- overlay appears when dungeon is completed or you die
+
+### Headless validation (CI)
+
+```bash
+cd client && timeout 60 godot --headless --quit 2>&1
+```
+
+This validates all GDScript files parse correctly without needing a display.
+
+---
+
+## Architecture
+
+### Onchain State (Dojo ECS)
+
+| Model | Key | Fields |
+|-------|-----|--------|
+| `Character` | `(player, game_id)` | class_id, health, max_health, power, stamina, max_stamina, current_zone |
+| `Dungeon` | `(player, game_id)` | zones_cleared (bitmap), completed, failed |
+| `Fight` | `(player, game_id, zone_id)` | mob_count, mob_healths (packed u64), mob_power, active |
+| `PlayerState` | `(player)` | game_count (auto-increment) |
+
+### Mob HP Packing
+
+Up to 4 mob HPs are packed into a single `u64` (16 bits per mob):
+
+```
+mob 0 = bits 0-15, mob 1 = bits 16-31, mob 2 = bits 32-47, mob 3 = bits 48-63
+```
+
+### Events (Indexed by Torii)
+
+| Event | Emitted By | Key Fields |
+|-------|-----------|------------|
+| `CharacterSpawned` | spawn | player, game_id, class_id, health, power, stamina |
+| `DungeonCreated` | spawn | player, game_id |
+| `ZoneEntered` | choose/auto-advance | player, game_id, zone_id |
+| `FightStarted` | start | player, game_id, zone_id, mob_count |
+| `MobDamaged` | cast | player, game_id, zone_id, mob_id, damage, remaining_hp |
+| `MobDied` | cast | player, game_id, zone_id, mob_id |
+| `PlayerDamaged` | finish | player, game_id, damage, remaining_hp |
+| `TurnEnded` | finish | player, game_id, zone_id |
+| `FightEnded` | finish | player, game_id, zone_id |
+| `DungeonCompleted` | finish | player, game_id |
+| `DungeonFailed` | finish | player, game_id |
+
+### Action State Machine
+
+```
+[SPAWNED]                    <-- spawn(class_id)
+    |
+    v
+[IN_ZONE: zone=0]           Spawn zone (no combat)
+    |
+    | choose(direction)      Only at forks (zone 0)
+    v
+[IN_ZONE: zone=1|2]         Zone with mobs
+    |
+    | start()                Creates Fight entity
+    v
+[IN_FIGHT]                   Fight is active
+    |
+    | cast(mob_id, AA)       1-3 times per turn
+    | finish()               Mobs attack, stamina resets
+    |   |-- mobs remain --> back to [IN_FIGHT]
+    |   |-- all dead + single exit --> auto-advance to next zone
+    |   |-- all dead + fork --> wait for choose()
+    |   |-- all dead + zone 4 --> [DUNGEON_COMPLETE]
+    |   +-- player HP=0 --> [DUNGEON_FAILED]
+```
+
+### Client Architecture (Godot)
+
+```
+project.godot
+  |-- Autoloads:
+  |     GameState (game_state.gd)   <-- parsed entity state + signals
+  |     DojoBridge (dojo_bridge.gd) <-- ToriiClient wrapper, tx helpers
+  |
+  |-- Main scene
+  |     ToriiClient node        <-- gRPC connection to Torii
+  |     DojoSessionAccount node <-- Cartridge Controller session
+  |     SceneSwitcher           <-- swaps between Connection and Dungeon
+  |
+  |-- Connection scene          <-- wallet auth flow
+  |
+  |-- Dungeon scene             <-- 3D diamond layout, player mesh, camera
+  |     +-- CombatUI (CanvasLayer) <-- HP bars, buttons, stamina
+```
+
+**Data flow:**
+1. `ToriiClient` subscribes to entity updates via gRPC streaming
+2. Callbacks fire in `DojoBridge` -> parses Dictionary -> updates `GameState`
+3. `GameState` emits signals (`character_updated`, `fight_updated`, etc.)
+4. Scene scripts (`dungeon_view.gd`, `combat_ui.gd`) react to signals and update visuals
+5. UI buttons call `DojoBridge` tx helpers -> encode calldata -> execute via `DojoSessionAccount`
+
+---
+
+## Testing
+
+### Contract Tests
+
+```bash
+sozo test
+```
+
+19 tests covering:
+- spawn (initial state, game counter, multiple games)
+- choose (left/right/non-fork revert)
+- start (creates fight, no-mobs revert, already-active revert, already-cleared revert)
+- cast (damage, stamina, dead-mob revert, no-stamina revert, no-fight revert)
+- finish (mob damage, stamina reset, zone clear, auto-advance, player death, no-fight revert)
+- Full integration: complete dungeon run via left path
+- Full integration: complete dungeon run via right path
+
+### Client Validation
+
+```bash
+cd client && timeout 60 godot --headless --quit 2>&1
+```
+
+Must exit cleanly with no errors.
+
+---
+
+## Install AI Skills (for contributors using AI agents)
 
 ```bash
 # Godot skills (task executor + 862 API docs, GDScript reference, scene/script generation)
@@ -125,58 +472,11 @@ npx skills add dojoengine/book -y
 npx skills add cartridge-gg/docs -y
 ```
 
-### Local Development
-
-```bash
-# Terminal 1: Start Katana
-katana --dev
-
-# Terminal 2: Build and deploy contracts
-sozo build && sozo migrate --dev
-
-# Terminal 3: Start Torii indexer
-torii --world <WORLD_ADDRESS> --rpc http://localhost:5050
-
-# Terminal 4: Open Godot client
-cd client && godot
-```
-
----
-
-## Architecture
-
-### Onchain State (Dojo ECS)
-
-| Model | Purpose |
-|-------|---------|
-| `Character` | Hero stats -- HP, power, stamina, current zone |
-| `Dungeon` | Zone graph, cleared zones, completion status |
-| `Fight` | Active combat -- mob HPs (bit-packed), mob power, turn counter |
-
-### Events (Indexed by Torii)
-
-| Event | Trigger |
-|-------|---------|
-| `CharacterSpawned` | New hero created |
-| `ZoneEntered` | Player moves to next zone |
-| `FightStarted` | Combat begins |
-| `MobDamaged` | Player attacks a mob |
-| `PlayerDamaged` | Mobs attack on finish() |
-| `FightEnded` | All mobs dead or player died |
-| `DungeonCompleted` | Zone 4 cleared |
-
-### Client Architecture (Godot)
-
-- `ToriiClient` node subscribes to Character/Dungeon/Fight entity updates via gRPC streaming
-- Typed GDScript wrapper converts raw Dictionary API to typed classes
-- Fixed isometric camera, 3D zone platforms in diamond layout
-- Combat UI overlay with mob HP bars, action buttons, stamina display
-
 ---
 
 ## Roadmap
 
-- [ ] **PoC**: Core loop (spawn, navigate, fight, clear)
+- [x] **PoC**: Core loop (spawn, navigate, fight, clear) -- contracts + client
 - [ ] **v2.1**: Multiple hero classes, skill trees
 - [ ] **v2.2**: Procedural dungeon generation
 - [ ] **v2.3**: Async MMO (shared world, trading, PvP)
