@@ -1,0 +1,8 @@
+client/addons/godot_cef/bin/**/*.so filter=lfs diff=lfs merge=lfs -text
+client/addons/godot_cef/bin/**/*.so.* filter=lfs diff=lfs merge=lfs -text
+client/addons/godot_cef/bin/**/gdcef_helper filter=lfs diff=lfs merge=lfs -text
+client/addons/godot_cef/bin/**/chrome-sandbox filter=lfs diff=lfs merge=lfs -text
+client/addons/godot_cef/bin/**/*.pak filter=lfs diff=lfs merge=lfs -text
+client/addons/godot_cef/bin/**/*.bin filter=lfs diff=lfs merge=lfs -text
+client/addons/godot_cef/bin/**/*.dat filter=lfs diff=lfs merge=lfs -text
+client/addons/godot_cef/bin/**/*.json filter=lfs diff=lfs merge=lfs -text

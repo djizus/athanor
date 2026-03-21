@@ -1,0 +1,38 @@
+# === Dojo / Cairo ===
+target/
+manifest_*.json
+
+# === Godot ===
+.godot/
+*.import
+screenshots/
+export_presets.cfg
+
+# === Godot Dojo SDK (binary, downloaded per-platform) ===
+client/addons/godot-dojo/bin/
+
+# === Build artifacts ===
+*.o
+*.so
+*.dylib
+*.dll
+
+# === OS ===
+.DS_Store
+Thumbs.db
+
+# === IDE ===
+.vscode/
+.idea/
+
+# === Node (for npx skill tooling) ===
+node_modules/
+
+# === Skills: doc_api is bootstrapped locally ===
+skills/godot-task/doc_api/
+!skills/godot-task/doc_api/_common.md
+!skills/godot-task/doc_api/_other.md
+
+# === Agent state ===
+.claude/
+.sisyphus/
