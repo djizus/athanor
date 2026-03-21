@@ -26,14 +26,14 @@ window/size/viewport_height=720
 
 [dojo]
 
-config/katana_url="http://localhost:5050"
-config/torii/torii_url="http://localhost:8080"
+config/katana_url="https://api.cartridge.gg/x/athanor-djizus-slot/katana"
+config/torii/torii_url="https://api.cartridge.gg/x/athanor-djizus-slot/torii"
 config/torii/worlds=Array[String]([])
-config/world_address="0x0"
-config/actions_address="0x0"
-config/account/address="0x0"
+config/world_address="0x77382f71a4459797905b267e6a2f6e395ce914f3942e2fe140ffa712b1a9e81"
+config/actions_address="0x1d828082fb3c107f246e2d4a45c149894528f38b54687d7aaf8e5ac207bff6d"
+config/account/address="0x127fd5f1fe78a71f8bcd1fec63e3fe2f0486b6ecd5c86a0466c3a21fa5cfcec"
 config/account/public_key="0x0"
-config/account/private_key="0x0"
+config/account/private_key="0xc5b2fcab997346f3ea1c00b002ecf6f382c5f9c9659a3894eb783c5320f912"
 config/debug/error=true
 config/debug/warning=true
 config/debug/info=true
