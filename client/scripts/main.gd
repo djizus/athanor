@@ -64,6 +64,10 @@ func _create_or_fallback(type_name: String, placeholder: Node) -> Node:
 # --- Burner dev mode ---
 
 func _try_burner_connect() -> bool:
+	# Burner mode is local-dev only. On Slot/public RPC we always use Controller auth.
+	if not _is_local_rpc(rpc_url):
+		return false
+
 	var dev_key := String(ProjectSettings.get_setting("dojo/config/account/private_key", ""))
 	var dev_address := String(ProjectSettings.get_setting("dojo/config/account/address", ""))
 	if dev_key.is_empty() or dev_key == "0x0" or dev_address.is_empty() or dev_address == "0x0":
@@ -75,6 +79,10 @@ func _try_burner_connect() -> bool:
 
 	# Create burner session from dev keys
 	return dojo_bridge.setup_burner(dev_key, dev_address)
+
+func _is_local_rpc(url: String) -> bool:
+	var u := url.to_lower()
+	return u.begins_with("http://localhost") or u.begins_with("http://127.0.0.1")
 
 # --- Scene management ---
 
