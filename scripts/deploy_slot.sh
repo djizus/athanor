@@ -42,11 +42,17 @@ info "Creating Katana deployment: $SLOT_NAME"
 slot deployments create "$SLOT_NAME" katana --config "$KATANA_TOML" 2>&1 || warn "Katana may already exist, continuing..."
 
 # --- Step 2: Get Slot account credentials ---
-info "Fetching Slot accounts..."
-ACCOUNTS_JSON=$(slot deployments accounts "$SLOT_NAME" katana 2>&1) || {
-    err "Could not fetch Slot accounts. Is Katana deployed?"
+info "Waiting for Katana to be ready..."
+for i in $(seq 1 12); do
+    ACCOUNTS_JSON=$(slot deployments accounts "$SLOT_NAME" katana 2>&1) && break
+    warn "Katana not ready yet, retrying in 10s... ($i/12)"
+    sleep 10
+done
+
+if [ -z "${ACCOUNTS_JSON:-}" ]; then
+    err "Katana never became ready after 2 minutes"
     exit 1
-}
+fi
 
 ACCOUNT_ADDRESS=$(echo "$ACCOUNTS_JSON" | jq -r '.[0].address // empty' 2>/dev/null)
 PRIVATE_KEY=$(echo "$ACCOUNTS_JSON" | jq -r '.[0].privateKey // empty' 2>/dev/null)
