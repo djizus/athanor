@@ -20,8 +20,12 @@ const DIRECTION_RIGHT := 1
 
 var torii_client: Node
 var session_account: Node
+var http_tools: Node
 var current_player := ""
 var entity_subscription_id := -1
+
+# Ephemeral session key — generated internally, NEVER user-provided
+var _session_priv_key := ""
 
 var full_policies: Dictionary:
 	get:
@@ -39,9 +43,10 @@ var full_policies: Dictionary:
 			}
 		}
 
-func configure_nodes(next_torii_client: Node, next_session_account: Node) -> void:
+func configure_nodes(next_torii_client: Node, next_session_account: Node, next_http_tools: Node = null) -> void:
 	torii_client = next_torii_client
 	session_account = next_session_account
+	http_tools = next_http_tools
 	session_account.set("max_fee", "0x100000")
 	session_account.set("full_policies", full_policies)
 
@@ -52,6 +57,8 @@ func configure_network(next_torii_url: String, next_rpc_url: String, next_world_
 	actions_address = next_actions_address
 	if session_account != null:
 		session_account.set("full_policies", full_policies)
+
+# --- Auth: Controller session flow (no private key input) ---
 
 func connect_torii() -> bool:
 	if torii_client == null:
@@ -64,11 +71,37 @@ func connect_torii() -> bool:
 		pull_entities_snapshot()
 	return ok
 
-func create_session_from_private_key(private_key: String) -> bool:
+func initiate_controller_auth() -> void:
 	if session_account == null:
-		tx_failed.emit("session", "DojoSessionAccount node is missing")
+		tx_failed.emit("auth", "DojoSessionAccount node is missing")
+		return
+
+	# Generate ephemeral keypair if not already generated
+	if _session_priv_key.is_empty():
+		if ClassDB.class_exists("ControllerHelper"):
+			_session_priv_key = String(ClassDB.instantiate("ControllerHelper").call("generate_private_key"))
+		else:
+			tx_failed.emit("auth", "ControllerHelper not available (install godot-dojo SDK)")
+			return
+
+	var session_url := _build_session_url()
+	if session_url.is_empty():
+		tx_failed.emit("auth", "Could not generate session URL")
+		return
+
+	# Allow window to steal focus back after browser auth
+	DisplayServer.enable_for_stealing_focus(OS.get_process_id())
+	OS.shell_open(session_url)
+
+func complete_controller_auth() -> bool:
+	if session_account == null:
+		tx_failed.emit("auth", "DojoSessionAccount node is missing")
 		return false
-	session_account.call("create_from_subscribe", private_key, rpc_url, relay_url)
+	if _session_priv_key.is_empty():
+		tx_failed.emit("auth", "No session key generated — call initiate_controller_auth() first")
+		return false
+
+	session_account.call("create_from_subscribe", _session_priv_key, rpc_url, relay_url)
 	if bool(session_account.call("is_valid")):
 		var info: Dictionary = session_account.call("get_info")
 		current_player = String(info.get("address", "")).to_lower()
@@ -77,12 +110,33 @@ func create_session_from_private_key(private_key: String) -> bool:
 		return true
 	return false
 
-func get_session_request_url(private_key: String, redirect_uri := "", redirect_query_name := "") -> String:
-	if session_account == null or not ClassDB.class_exists("ControllerHelper"):
+func get_player_info() -> Dictionary:
+	if session_account == null or not bool(session_account.call("is_valid")):
+		return {}
+	return session_account.call("get_info")
+
+func is_session_valid() -> bool:
+	if session_account == null:
+		return false
+	return bool(session_account.call("is_valid"))
+
+func _build_session_url() -> String:
+	if not ClassDB.class_exists("ControllerHelper"):
 		return ""
-	var public_key: String = _controller_public_key(private_key)
+	var helper: Variant = ClassDB.instantiate("ControllerHelper")
+	var public_key := String(helper.call("get_public_key", _session_priv_key))
 	if public_key.is_empty():
 		return ""
+
+	# Start local redirect server if HttpTools is available
+	var redirect_uri := ""
+	var redirect_query_name := ""
+	if http_tools != null and http_tools.has_method("start_server"):
+		if bool(http_tools.call("start_server")):
+			var port: int = int(http_tools.get("port"))
+			redirect_uri = "http://localhost:%d" % port
+			redirect_query_name = "startapp"
+
 	return String(session_account.call("generate_session_request_url",
 		session_base_url,
 		public_key,
@@ -91,6 +145,8 @@ func get_session_request_url(private_key: String, redirect_uri := "", redirect_q
 		redirect_uri,
 		redirect_query_name
 	))
+
+# --- Entity sync ---
 
 func pull_entities_snapshot() -> void:
 	if torii_client == null:
@@ -103,6 +159,8 @@ func pull_entities_snapshot() -> void:
 	for entity in items:
 		if entity is Dictionary:
 			_handle_entity_payload(entity)
+
+# --- Game actions ---
 
 func spawn(class_id: int = 0) -> void:
 	_execute_action("spawn", [class_id])
@@ -118,6 +176,8 @@ func cast(game_id: int, mob_id: int, skill_id: int) -> void:
 
 func finish(game_id: int) -> void:
 	_execute_action("finish", [_resolve_game_id(game_id)])
+
+# --- Internals ---
 
 func _create_entity_subscription() -> void:
 	if world_address == "0x0":
@@ -186,11 +246,3 @@ func _instantiate_dojo_class(type_name: String) -> Variant:
 	if not ClassDB.class_exists(type_name):
 		return null
 	return ClassDB.instantiate(type_name)
-
-func _controller_public_key(private_key: String) -> String:
-	if not ClassDB.class_exists("ControllerHelper"):
-		return ""
-	var helper: Variant = ClassDB.instantiate("ControllerHelper")
-	if helper == null or not helper.has_method("get_public_key"):
-		return ""
-	return String(helper.call("get_public_key", private_key))

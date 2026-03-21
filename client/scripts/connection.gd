@@ -2,54 +2,55 @@ extends Control
 
 signal connected
 
-var private_key := ""
-var is_connecting := false
+var _auth_pending := false
 
 @onready var status_label: Label = %StatusLabel
 @onready var connect_button: Button = %ConnectButton
-@onready var complete_button: Button = %CompleteButton
-@onready var private_key_input: LineEdit = %PrivateKeyInput
-
-func configure(torii_url: String, rpc_url: String, world_address: String, actions_address: String) -> void:
-	dojo_bridge.configure_network(torii_url, rpc_url, world_address, actions_address)
+@onready var retry_button: Button = %RetryButton
 
 func _ready() -> void:
-	complete_button.disabled = true
-	status_label.text = "Connect Controller to enter Athanor"
+	retry_button.visible = false
+	status_label.text = "Connect your account to enter Athanor"
+	get_window().focus_entered.connect(_on_window_focus)
 
 func _on_connect_button_pressed() -> void:
-	if is_connecting:
+	if _auth_pending:
 		return
-	is_connecting = true
 	connect_button.disabled = true
-	status_label.text = "Connecting Torii..."
+	status_label.text = "Connecting to Torii..."
+
 	if not dojo_bridge.connect_torii():
 		status_label.text = "Could not connect to Torii at %s" % dojo_bridge.torii_url
 		connect_button.disabled = false
-		is_connecting = false
 		return
 
-	if private_key.is_empty():
-		private_key = private_key_input.text.strip_edges()
-	if private_key.is_empty():
-		private_key = String(ProjectSettings.get_setting("dojo/config/account/private_key", ""))
-	if private_key.is_empty():
-		status_label.text = "Set a private key to create session"
-		connect_button.disabled = false
-		is_connecting = false
+	status_label.text = "Opening browser for authentication..."
+	_auth_pending = true
+	dojo_bridge.initiate_controller_auth()
+	status_label.text = "Approve the session in your browser, then return here"
+	retry_button.visible = true
+
+func _on_retry_button_pressed() -> void:
+	_try_complete_auth()
+
+func _on_window_focus() -> void:
+	if _auth_pending:
+		_try_complete_auth()
+
+func _try_complete_auth() -> void:
+	if not _auth_pending:
 		return
-
-	var session_url: String = dojo_bridge.get_session_request_url(private_key)
-	if not session_url.is_empty():
-		OS.shell_open(session_url)
-	status_label.text = "Approve session in browser if opened, then click Complete"
-	complete_button.disabled = false
-	is_connecting = false
-
-func _on_complete_button_pressed() -> void:
-	status_label.text = "Creating session..."
-	if dojo_bridge.create_session_from_private_key(private_key):
-		status_label.text = "Connected"
+	status_label.text = "Verifying session..."
+	if dojo_bridge.complete_controller_auth():
+		_auth_pending = false
+		retry_button.visible = false
+		var info := dojo_bridge.get_player_info()
+		var username: String = info.get("username", "")
+		if username.is_empty():
+			status_label.text = "Connected"
+		else:
+			status_label.text = "Welcome, %s" % username
 		connected.emit()
-		return
-	status_label.text = "Session is not valid yet, complete auth and retry"
+	else:
+		status_label.text = "Session not ready yet — complete auth in browser, then click Retry"
+		connect_button.disabled = false

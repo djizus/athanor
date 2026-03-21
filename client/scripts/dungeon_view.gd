@@ -7,12 +7,9 @@ const COLOR_CLEARED := Color(0.2, 0.7, 0.35, 1.0)
 const COLOR_PLAYER := Color(0.85, 0.26, 0.24, 1.0)
 const COLOR_PATH := Color(0.47, 0.43, 0.36, 1.0)
 
-@onready var spawn_button: Button = %SpawnButton
 @onready var start_button: Button = %StartButton
 @onready var status_label: Label = %DungeonStatus
 @onready var player_marker: MeshInstance3D = %PlayerMarker
-@onready var overlay_panel: PanelContainer = %OverlayPanel
-@onready var overlay_label: Label = %OverlayLabel
 
 @onready var zone_0_mesh: MeshInstance3D = %Zone0Mesh
 @onready var zone_1_mesh: MeshInstance3D = %Zone1Mesh
@@ -44,10 +41,8 @@ func _ready() -> void:
 	game_state.character_updated.connect(_on_character_updated)
 	game_state.dungeon_updated.connect(_on_dungeon_updated)
 	game_state.fight_updated.connect(_on_fight_updated)
-	game_state.game_over.connect(_on_game_over)
 
-	overlay_panel.visible = false
-	status_label.text = "Spawn your hero to begin"
+	status_label.text = "Navigate the dungeon"
 	_refresh_scene()
 
 func _build_meshes() -> void:
@@ -93,7 +88,6 @@ func _on_fight_updated(_fight: Dictionary) -> void:
 
 func _refresh_scene() -> void:
 	var has_character := not game_state.character.is_empty()
-	spawn_button.disabled = has_character
 	start_button.disabled = not _can_start_fight()
 
 	if has_character:
@@ -155,13 +149,9 @@ func _can_start_fight() -> bool:
 	var current_zone := int(game_state.character.get("current_zone", 0))
 	return current_zone != 0 and not _is_zone_cleared(current_zone)
 
-func _on_spawn_button_pressed() -> void:
-	dojo_bridge.spawn(0)
-	status_label.text = "Spawn transaction submitted"
-
 func _try_choose(zone_id: int) -> void:
 	if game_state.character.is_empty():
-		status_label.text = "Spawn first"
+		status_label.text = "Not in dungeon yet"
 		return
 	var current_zone := int(game_state.character.get("current_zone", 0))
 	var game_id := game_state.get_game_id()
@@ -181,8 +171,7 @@ func _on_start_button_pressed() -> void:
 
 func _on_zone_0_input_event(_camera: Node, event: InputEvent, _position: Vector3, _normal: Vector3, _shape_idx: int) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		if game_state.character.is_empty():
-			_on_spawn_button_pressed()
+		status_label.text = "Spawn zone — you start here"
 
 func _on_zone_1_input_event(_camera: Node, event: InputEvent, _position: Vector3, _normal: Vector3, _shape_idx: int) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
@@ -199,16 +188,3 @@ func _on_zone_3_input_event(_camera: Node, event: InputEvent, _position: Vector3
 func _on_zone_4_input_event(_camera: Node, event: InputEvent, _position: Vector3, _normal: Vector3, _shape_idx: int) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		status_label.text = "Final zone reached via auto-advance"
-
-func _on_game_over(completed: bool, failed: bool) -> void:
-	overlay_panel.visible = true
-	if completed:
-		overlay_label.text = "Dungeon Cleared"
-	elif failed:
-		overlay_label.text = "Dungeon Failed"
-
-func _on_play_again_button_pressed() -> void:
-	overlay_panel.visible = false
-	game_state.reset()
-	dojo_bridge.spawn(0)
-	status_label.text = "New run spawned"
