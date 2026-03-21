@@ -34,9 +34,39 @@ ACCOUNT_ADDRESS=$(grep '^account_address' "$DOJO_TOML" | head -1 | sed 's/.*= *"
 PRIVATE_KEY=$(grep '^private_key' "$DOJO_TOML" | head -1 | sed 's/.*= *"\(.*\)"/\1/' || true)
 
 if [ -z "$ACCOUNT_ADDRESS" ] || [ "$ACCOUNT_ADDRESS" = "0x0" ] || [ -z "$PRIVATE_KEY" ] || [ "$PRIVATE_KEY" = "0x0" ]; then
-    err "dojo_slot.toml must contain a valid account_address/private_key"
-    err "Fetch one with: slot deployments accounts $SLOT_NAME katana"
-    exit 1
+    warn "No account in dojo_slot.toml, trying to fetch from Slot..."
+    if ! command -v slot >/dev/null 2>&1; then
+        err "slot CLI not found and dojo_slot.toml has no account"
+        err "Install slot and run: slot deployments accounts $SLOT_NAME katana"
+        exit 1
+    fi
+
+    ACCOUNTS_OUTPUT=$(slot deployments accounts "$SLOT_NAME" katana 2>&1 || true)
+    ACCOUNT_ADDRESS=$(printf "%s" "$ACCOUNTS_OUTPUT" | jq -r '
+        if type=="array" and length>0 then .[0].address // ""
+        elif type=="object" and has("accounts") and (.accounts | type)=="array" and (.accounts | length)>0 then .accounts[0].address // ""
+        elif type=="object" then .address // ""
+        else "" end' 2>/dev/null || true)
+    PRIVATE_KEY=$(printf "%s" "$ACCOUNTS_OUTPUT" | jq -r '
+        if type=="array" and length>0 then (.[0].privateKey // .[0].private_key // .[0].secretKey // "")
+        elif type=="object" and has("accounts") and (.accounts | type)=="array" and (.accounts | length)>0 then (.accounts[0].privateKey // .accounts[0].private_key // .accounts[0].secretKey // "")
+        elif type=="object" then .privateKey // .private_key // .secretKey // ""
+        else "" end' 2>/dev/null || true)
+    if [ -z "$ACCOUNT_ADDRESS" ] || [ "$ACCOUNT_ADDRESS" = "null" ]; then
+        ACCOUNT_ADDRESS=$(printf "%s" "$ACCOUNTS_OUTPUT" | grep -Ei 'address' | grep -Eo '0x[0-9a-fA-F]+' | head -1 || true)
+    fi
+    if [ -z "$PRIVATE_KEY" ] || [ "$PRIVATE_KEY" = "null" ]; then
+        PRIVATE_KEY=$(printf "%s" "$ACCOUNTS_OUTPUT" | grep -Ei 'private|secret' | grep -Eo '0x[0-9a-fA-F]+' | head -1 || true)
+    fi
+
+    if [ -z "$ACCOUNT_ADDRESS" ] || [ -z "$PRIVATE_KEY" ]; then
+        err "Could not fetch account from Slot output"
+        echo "$ACCOUNTS_OUTPUT"
+        exit 1
+    fi
+
+    sed -i "s|account_address = \".*\"|account_address = \"$ACCOUNT_ADDRESS\"|" "$DOJO_TOML"
+    sed -i "s|private_key = \".*\"|private_key = \"$PRIVATE_KEY\"|" "$DOJO_TOML"
 fi
 
 info "Using account: $ACCOUNT_ADDRESS"
