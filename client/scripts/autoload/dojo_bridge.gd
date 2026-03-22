@@ -295,7 +295,11 @@ func _handle_entity_payload(payload: Dictionary) -> void:
 	if models.has(FIGHT_MODEL):
 		var fight_model := _normalize_model(models[FIGHT_MODEL])
 		if _matches_current_player(fight_model):
-			game_state.update_fight(fight_model)
+			# Only accept the fight for the current zone — old zone fights must not overwrite
+			var current_zone := int(game_state.character.get("current_zone", -1))
+			var fight_zone := int(fight_model.get("zone_id", -2))
+			if current_zone < 0 or fight_zone == current_zone:
+				game_state.update_fight(fight_model)
 
 func _normalize_model(model: Dictionary) -> Dictionary:
 	var normalized := model.duplicate(true)
