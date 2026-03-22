@@ -60,10 +60,14 @@ func _ready() -> void:
 	game_state.character_updated.connect(_on_state_changed)
 	game_state.dungeon_updated.connect(_on_state_changed)
 	game_state.fight_updated.connect(_on_state_changed)
+	dojo_bridge.tx_submitted.connect(_on_tx_submitted)
 	dojo_bridge.tx_failed.connect(_on_tx_failed)
 
 	_build_mob_rows()
+	dojo_bridge.pull_entities_snapshot()
 	_refresh()
+	# Also schedule a delayed re-pull in case Torii hasn't indexed yet
+	dojo_bridge._schedule_entity_poll()
 
 func _build_mob_rows() -> void:
 	for i in range(MAX_MOBS):
@@ -264,6 +268,25 @@ func _on_return_pressed() -> void:
 
 func _on_state_changed(_data: Dictionary = {}) -> void:
 	_refresh()
+
+func _on_tx_submitted(_action: String) -> void:
+	# Poll aggressively since Torii subscription is unreliable
+	_poll_after_delay(2.0)
+	_poll_after_delay(5.0)
+
+var _poll_timers: Array[Timer] = []
+
+func _poll_after_delay(delay: float) -> void:
+	var timer := Timer.new()
+	timer.one_shot = true
+	timer.wait_time = delay
+	timer.timeout.connect(func():
+		dojo_bridge.pull_entities_snapshot()
+		timer.queue_free()
+	)
+	add_child(timer)
+	timer.start()
+	_poll_timers.append(timer)
 
 func _on_tx_failed(action: String, reason: String) -> void:
 	turn_info.text = "Error: %s" % reason
