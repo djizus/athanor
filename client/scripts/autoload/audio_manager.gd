@@ -84,11 +84,12 @@ func play_music(track_name: String) -> void:
 		return
 	if _current_track == track_name and _music_player.playing:
 		return
-	if not tracks.has(track_name):
+	var stream := _get_track(track_name)
+	if stream == null:
 		push_warning("[audio] Track not found: %s" % track_name)
 		return
 	_current_track = track_name
-	_music_player.stream = tracks[track_name]
+	_music_player.stream = stream
 	_apply_music_volume()
 	_music_player.play()
 
@@ -98,9 +99,10 @@ func stop_music() -> void:
 func play_sfx(sfx_name: String) -> void:
 	if not sfx_enabled:
 		return
-	if not sfx.has(sfx_name):
+	var stream := _get_sfx(sfx_name)
+	if stream == null:
 		return
-	_sfx_player.stream = sfx[sfx_name]
+	_sfx_player.stream = stream
 	_sfx_player.volume_db = linear_to_db(sfx_volume)
 	_sfx_player.play()
 
