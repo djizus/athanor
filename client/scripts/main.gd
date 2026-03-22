@@ -18,7 +18,6 @@ var current_scene: Node
 @onready var scene_container: Control = $SceneContainer
 
 func _ready() -> void:
-	# Read addresses from project.godot if @export values are still default
 	_apply_project_settings()
 
 	torii_client = _create_or_fallback("ToriiClient", $ToriiClient)
@@ -27,17 +26,42 @@ func _ready() -> void:
 	dojo_bridge.configure_nodes(torii_client, session_account, http_tools)
 	dojo_bridge.configure_network(torii_url, rpc_url, world_address, actions_address)
 
-	# Listen to game_state autoload for game-over (single source of truth)
 	game_state.game_over.connect(_on_game_over)
 
-	# Dev mode: if burner key is configured, auto-connect and skip to lobby
-	if _try_burner_connect():
-		_switch_scene(lobby_scene)
+	# --- Auth + routing: connect Torii, resume session, route by game state ---
+	var authenticated := false
+
+	# Burner mode (localhost only)
+	if _is_local_rpc(rpc_url):
+		authenticated = _try_burner_connect()
+
+	# Controller session resume (Slot / public RPC)
+	if not authenticated:
+		# Connect Torii early so resume + entity pull work
+		dojo_bridge.connect_torii()
+		authenticated = dojo_bridge.try_resume_controller_session()
+
+	# Route based on state
+	if authenticated:
+		_route_after_auth()
 	else:
 		_switch_scene(connection_scene)
 
+func _route_after_auth() -> void:
+	# Pull latest entities to check if character already exists
+	dojo_bridge.pull_entities_snapshot()
+
+	if not game_state.character.is_empty() and game_state.is_alive():
+		var completed := bool(game_state.dungeon.get("completed", false))
+		var failed := bool(game_state.dungeon.get("failed", false))
+		if completed or failed:
+			_switch_scene(lobby_scene)
+		else:
+			_switch_scene(dungeon_scene)
+	else:
+		_switch_scene(lobby_scene)
+
 func _apply_project_settings() -> void:
-	# Use project.godot [dojo] settings as fallback when @export values are default
 	var cfg_torii := String(ProjectSettings.get_setting("dojo/config/torii/torii_url", ""))
 	var cfg_rpc := String(ProjectSettings.get_setting("dojo/config/katana_url", ""))
 	var cfg_world := String(ProjectSettings.get_setting("dojo/config/world_address", ""))
@@ -61,23 +85,13 @@ func _create_or_fallback(type_name: String, placeholder: Node) -> Node:
 			return real
 	return placeholder
 
-# --- Burner dev mode ---
-
 func _try_burner_connect() -> bool:
-	# Burner mode is local-dev only. On Slot/public RPC we always use Controller auth.
-	if not _is_local_rpc(rpc_url):
-		return false
-
 	var dev_key := String(ProjectSettings.get_setting("dojo/config/account/private_key", ""))
 	var dev_address := String(ProjectSettings.get_setting("dojo/config/account/address", ""))
 	if dev_key.is_empty() or dev_key == "0x0" or dev_address.is_empty() or dev_address == "0x0":
 		return false
-
-	# Connect Torii first
 	if not dojo_bridge.connect_torii():
 		return false
-
-	# Create burner session from dev keys
 	return dojo_bridge.setup_burner(dev_key, dev_address)
 
 func _is_local_rpc(url: String) -> bool:
@@ -111,14 +125,14 @@ func _connect_scene_signals(scene: Node) -> void:
 # --- Scene transition handlers ---
 
 func _on_connected() -> void:
-	_switch_scene(lobby_scene)
+	_route_after_auth()
 
 func _on_dungeon_entered() -> void:
 	_switch_scene(dungeon_scene)
 
 func _on_game_over(completed: bool, failed: bool) -> void:
 	var scene := _switch_scene(game_over_scene)
-	if scene.has_method("setup"):
+	if scene != null and scene.has_method("setup"):
 		scene.call("setup", completed, failed)
 
 func _on_play_again() -> void:

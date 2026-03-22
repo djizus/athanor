@@ -423,3 +423,222 @@ cd client && godot --headless --quit
 | Skip game-components for PoC | No NFT minting overhead, simpler contract surface. Add structured settings/lifecycle in v2.1. | Include — proven in v1 but adds pre_action/post_action complexity |
 | Contracts first, then client | Client needs real Torii data to test against. No mock layer to maintain. | Parallel — faster but higher integration risk with untested SDK |
 | 16-bit mob HP packing (u64) | 4 mobs × 16 bits = 64 bits. Fits in u64 cleanly. Headroom for mobs with >255 HP in future. | 8-bit (u32) — caps at 255 HP per mob. felt252 — overkill for 4 mobs. |
+
+---
+
+# Cartridge In-Client Authentication (No External Browser) Implementation Plan
+
+## Overview
+
+Replace the current `OS.shell_open(session_url)` browser-based Controller authorization with an in-client authentication flow in Godot 4.6. The primary target is a pure in-game onboarding path using controller.c capabilities exposed by the existing godot-dojo GDExtension (`DojoController`), while keeping a fallback path for compatibility.
+
+## Goals
+
+- Eliminate the external browser popup from the default player authentication flow.
+- Validate whether `DojoController` exposes headless account/session APIs needed for fully in-client auth.
+- Keep compatibility with existing transaction flow (`DojoSessionAccount.execute`) and policy model.
+- Define a funding/paymaster path so newly created headless accounts can transact immediately.
+
+## Non-Goals
+
+- Rewriting gameplay state sync, Torii subscriptions, or combat flow.
+- Building a full social/passkey identity migration UX in this iteration.
+- Guaranteeing Cartridge identity continuity if the selected mode is headless account creation.
+
+## Assumptions and Constraints
+
+- Godot client uses `godot-dojo` v0.7.4 GDExtension with `DojoSessionAccount`, `ControllerHelper`, and `DojoController` classes.
+- Current auth flow in `client/scripts/autoload/dojo_bridge.gd` uses `create_from_subscribe` + external browser URL approval.
+- Game currently targets Slot/Katana URLs; production target may include Sepolia and possibly mainnet.
+- Player preference questions were asked and are currently unresolved; plan includes decision gates for both outcomes.
+
+## Requirements
+
+### Functional
+
+- In-client auth flow must not call `OS.shell_open()` in the primary path.
+- Auth flow must produce a usable account/session for executing `spawn`, `choose`, `start`, `cast`, `finish`.
+- Session/account metadata must still be persisted in `user://controller_session.json` (extended schema allowed).
+- Existing resume flow must continue to work after app restart.
+
+### Non-Functional
+
+- First-time auth UX should complete in <10 seconds on healthy network.
+- Clear on-screen status/error states for: creating account, funding check, signup, session ready, retry.
+- Safe fallback if headless flow unsupported on a platform build.
+
+## Technical Design
+
+### Approach Analysis (Three Options)
+
+| Approach | Browser Needed | Keeps Existing Cartridge Account | Complexity | Recommended Use |
+|---|---:|---:|---:|---|
+| 1. Headless `ControllerAccount::new_headless` via `DojoController` | No | No (new account model) | Medium | **Recommended default** for “no popup ever” UX |
+| 2. `create_from_subscribe` (current) | Yes (first time) | Yes | Low | Keep as fallback/legacy mode |
+| 3. `SessionAccount::init/create` with externally obtained session data | No | Depends on source | High (needs external broker/QR/backend) | Phase-2 optional enhancement |
+
+### Recommendation
+
+Implement a **dual-mode architecture** with **Headless-first** and **Subscribe fallback**:
+
+1. **Primary:** Headless in-client account creation via `DojoController` (Approach 1) to fully remove browser popup.
+2. **Fallback:** Existing `create_from_subscribe` path kept behind a feature flag for platforms/builds where headless APIs are unavailable.
+3. **Future Optional:** External session-broker path (Approach 3) if product later requires existing Cartridge identity continuity without browser.
+
+### Architecture
+
+```text
+Connection UI
+  -> dojo_bridge.start_auth(mode)
+      -> HeadlessAuthProvider (new)
+          -> DojoController (introspected API)
+          -> create/load owner key
+          -> create controller account
+          -> signup if needed
+          -> build session/account object for tx execution
+      -> SessionCacheStore (extended metadata)
+      -> dojo_bridge.current_player + session_ready signal
+
+Fallback path:
+  -> Existing ControllerHelper + DojoSessionAccount.create_from_subscribe
+```
+
+### UX Flow (No Browser)
+
+1. Player taps **Connect**.
+2. UI shows: “Creating secure local account…”
+3. If no account exists: generate/store owner keypair and (optional) prompt username.
+4. UI shows: “Registering account on Starknet…”
+5. If funding required: show “Funding required / Sponsoring transaction…” with retry.
+6. On success: “Connected” and transition to dungeon.
+
+---
+
+## Implementation Plan
+
+### Serial Dependencies (Must Complete First)
+
+#### Phase 0: API Discovery and Decision Gate
+**Prerequisite for:** All implementation workstreams
+
+| Task | Description | Output |
+|------|-------------|--------|
+| 0.1 | Introspect `DojoController` methods in runtime using `ClassDB.class_get_method_list("DojoController")` (debug script/tool scene) and document signatures/return shapes | `docs/controller-dojocontroller-api.md` with callable method map |
+| 0.2 | Confirm whether methods cover headless lifecycle (owner init/new_headless/signup/execute/get_address/info) and whether they map to `controller.c` capabilities | Feasibility verdict: Headless Supported / Partial / Unsupported |
+| 0.3 | Resolve product decision gate from user prefs: headless-only vs existing Cartridge continuity, network scope (Sepolia/mainnet), account style (guest vs username) | Decision record added to PLAN Decision Log |
+
+---
+
+### Parallel Workstreams
+
+#### Workstream A: Auth Domain Refactor in `dojo_bridge.gd`
+**Dependencies:** Phase 0
+**Can parallelize with:** Workstreams B, C
+
+| Task | Description | Output |
+|------|-------------|--------|
+| A.1 | Introduce `auth_mode` enum/config (`headless`, `subscribe_fallback`) and `start_auth()` orchestrator | Browser-independent auth entrypoint |
+| A.2 | Implement `_auth_headless_start()` path using `DojoController` methods discovered in 0.1; remove direct `OS.shell_open()` from primary path | In-client auth implementation |
+| A.3 | Keep `_auth_subscribe_start()` as fallback behind feature flag; default off in production | Backward-compatible fallback |
+| A.4 | Extend cache schema to include headless account metadata (`auth_mode`, `username`, `owner_key_version`, optional `controller_address`) and migrate old cache safely | Versioned session/account cache |
+
+#### Workstream B: Connection UX and Error Recovery
+**Dependencies:** Phase 0
+**Can parallelize with:** Workstreams A, C
+
+| Task | Description | Output |
+|------|-------------|--------|
+| B.1 | Replace browser-oriented labels in `connection.gd` with in-client auth states/progress | Updated status machine and copy |
+| B.2 | Add explicit transient states: `creating_account`, `registering`, `funding_check`, `ready`, `failed_retryable` | Better UX and diagnosability |
+| B.3 | Add optional username capture UI (if chosen by decision gate) and guest autogeneration fallback | Player onboarding UI branch |
+
+#### Workstream C: Funding + Paymaster Integration
+**Dependencies:** Phase 0
+**Can parallelize with:** Workstreams A, B
+
+| Task | Description | Output |
+|------|-------------|--------|
+| C.1 | Define account activation strategy for headless signup tx (self-funded vs sponsored) per environment (local, Slot Sepolia, mainnet) | `docs/headless-funding-matrix.md` |
+| C.2 | Integrate Slot paymaster configuration (if available) for signup + gameplay tx sponsorship; add runtime checks and clear errors when unavailable | Paymaster-aware tx submission flow |
+| C.3 | Add preflight “can transact” check before entering gameplay | Prevents post-connect transaction failures |
+
+---
+
+### Merge Phase
+
+#### Phase 4: Integration, Compatibility, and Cleanup
+**Dependencies:** Workstreams A, B, C
+
+| Task | Description | Output |
+|------|-------------|--------|
+| 4.1 | Integrate all auth/funding states and ensure `session_ready` signal semantics stay stable for scene switcher | End-to-end connect flow |
+| 4.2 | Remove legacy focus-return auth completion hooks (`focus_entered` browser return coupling) when headless mode is active | Cleaner auth lifecycle |
+| 4.3 | Add telemetry/logging tags for auth steps and failures (`[auth][headless]`, `[auth][funding]`) | Faster issue triage |
+
+---
+
+## Testing and Validation
+
+- Unit-style script tests for cache migration and auth mode switching.
+- Manual E2E scenarios:
+  - Fresh install, no cache -> connect -> spawn -> cast/finish txs succeed.
+  - Restart app -> resume session/account without re-auth.
+  - Simulate funding/paymaster unavailable -> user gets actionable retry/error.
+  - Fallback mode enabled -> existing browser flow still works.
+- Network matrix:
+  - Local Katana (dev)
+  - Slot Sepolia deployment
+  - (Optional) Mainnet dry-run config validation
+
+## Rollout and Migration
+
+- Stage 1: Ship behind `auth_mode=headless` feature flag defaulting to fallback on unknown platforms.
+- Stage 2: Enable headless by default on validated platforms (Linux/macOS/Windows).
+- Stage 3: Decide whether to remove subscribe flow entirely or keep as identity-continuity option.
+- Rollback: flip config to `subscribe_fallback` without reverting gameplay code.
+
+## Verification Checklist
+
+```bash
+# 1) Godot script parse check
+cd client && godot --headless --quit
+
+# 2) Auth smoke (manual in editor/runtime)
+# - Connect shows no external browser launch
+# - Account/session becomes valid
+# - session cache file updated
+
+# 3) Transaction smoke
+# - spawn/start/cast/finish succeed from connected account
+
+# 4) Resume smoke
+# - Restart client; auth resumes without popup
+```
+
+Success criteria:
+- No `OS.shell_open(...)` invocation on default auth path.
+- Player reaches connected state and can submit transactions.
+- Resume path works with new cache schema.
+
+## Risk Assessment
+
+| Risk | Likelihood | Impact | Mitigation |
+|------|------------|--------|------------|
+| `DojoController` lacks required headless bindings in v0.7.4 | Medium | High | Phase 0 hard-gate; retain subscribe fallback |
+| Headless signup requires funds and blocks onboarding | High | High | Slot paymaster sponsorship + preflight funding checks |
+| Cross-platform extension behavior differs (desktop/mobile/web) | Medium | Medium | Enable per-platform rollout flags |
+| Loss of existing Cartridge identity continuity | Medium | Medium | Keep fallback mode and communicate account model clearly |
+
+## Open Questions
+
+- [ ] Product choice: headless-first (new accounts) vs identity continuity with existing Cartridge accounts.
+- [ ] Network scope at launch: Sepolia-only or Sepolia+mainnet.
+- [ ] Onboarding preference: guest auto-generated only or username/recovery UX at connect.
+
+## Decision Log (Auth Track)
+
+| Decision | Rationale | Alternatives Considered |
+|----------|-----------|------------------------|
+| Use headless as primary path when supported | Only approach that guarantees no external browser popup | Keep `create_from_subscribe` only (fails UX requirement) |
+| Preserve browser-based subscribe as fallback initially | Limits rollout risk while validating DojoController coverage | Hard cutover immediately |
+| Add explicit funding/paymaster workstream | Headless accounts fail without activation/gas strategy | Defer funding concerns to later (creates broken first-run UX) |

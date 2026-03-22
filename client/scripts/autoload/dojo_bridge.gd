@@ -134,26 +134,38 @@ func complete_controller_auth() -> bool:
 
 func try_resume_controller_session() -> bool:
 	if session_account == null:
+		push_warning("[dojo_bridge] resume: no session_account node")
 		return false
 	var cached := _load_session_info()
+	if cached.is_empty():
+		push_warning("[dojo_bridge] resume: no cached session at %s" % SESSION_CACHE_PATH)
+		return false
 	var cached_key := String(cached.get("private_key", ""))
 	var cached_address := String(cached.get("address", ""))
 	var cached_owner_guid := String(cached.get("owner_guid", ""))
 	var cached_chain_id := String(cached.get("chain_id", ""))
 	var expires_at := int(cached.get("expires_at", 0))
 	if cached_key.is_empty() or cached_address.is_empty() or cached_owner_guid.is_empty() or cached_chain_id.is_empty() or expires_at <= 0:
+		push_warning("[dojo_bridge] resume: incomplete cached data")
 		return false
-	if int(Time.get_unix_time_from_system()) >= expires_at:
+	var now := int(Time.get_unix_time_from_system())
+	if now >= expires_at:
+		push_warning("[dojo_bridge] resume: session expired (now=%d >= expires=%d)" % [now, expires_at])
 		_clear_session_cache()
 		return false
+	push_warning("[dojo_bridge] resume: restoring session for %s (expires in %ds)" % [cached_address, expires_at - now])
 	_session_priv_key = cached_key
 	session_account.call("create", rpc_url, _session_priv_key, cached_address, cached_owner_guid, cached_chain_id, expires_at)
-	if bool(session_account.call("is_valid")) and not bool(session_account.call("is_expired")) and not bool(session_account.call("is_revoked")):
+	var valid := bool(session_account.call("is_valid"))
+	var expired := bool(session_account.call("is_expired"))
+	var revoked := bool(session_account.call("is_revoked"))
+	if valid and not expired and not revoked:
 		var info: Dictionary = session_account.call("get_info")
 		current_player = String(info.get("address", "")).to_lower()
+		push_warning("[dojo_bridge] resume: success — player %s" % current_player)
 		session_ready.emit(current_player)
-		call_deferred("pull_entities_snapshot")
 		return true
+	push_warning("[dojo_bridge] resume: failed (valid=%s expired=%s revoked=%s)" % [valid, expired, revoked])
 	_clear_session_cache()
 	return false
 
@@ -294,6 +306,7 @@ func _execute_action(entrypoint: String, calldata: Array) -> void:
 	if result.begins_with("0x"):
 		push_warning("[dojo_bridge] tx %s submitted: %s" % [entrypoint, result])
 		tx_submitted.emit(entrypoint)
+		_schedule_entity_poll()
 	else:
 		push_error("[dojo_bridge] tx %s failed: %s" % [entrypoint, result])
 		tx_failed.emit(entrypoint, result)
@@ -302,6 +315,21 @@ func _resolve_game_id(game_id: int) -> int:
 	if game_id >= 0:
 		return game_id
 	return game_state.get_game_id()
+
+var _poll_timer: Timer = null
+
+func _schedule_entity_poll() -> void:
+	if _poll_timer != null and _poll_timer.time_left > 0:
+		return
+	if _poll_timer == null:
+		_poll_timer = Timer.new()
+		_poll_timer.one_shot = true
+		_poll_timer.timeout.connect(_on_poll_timer)
+		add_child(_poll_timer)
+	_poll_timer.start(2.0)
+
+func _on_poll_timer() -> void:
+	pull_entities_snapshot()
 
 func _instantiate_dojo_class(type_name: String) -> Variant:
 	if not ClassDB.class_exists(type_name):
