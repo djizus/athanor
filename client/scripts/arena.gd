@@ -267,6 +267,8 @@ func _on_start_fight_pressed() -> void:
 	dojo_bridge.start(game_state.get_game_id())
 
 func _on_attack_pressed() -> void:
+	if current_state != ArenaState.FIGHTING:
+		return
 	var target := _first_alive_mob()
 	if target < 0:
 		return
@@ -275,6 +277,11 @@ func _on_attack_pressed() -> void:
 	dojo_bridge.cast(game_state.get_game_id(), target, 0)
 
 func _on_end_turn_pressed() -> void:
+	if current_state != ArenaState.FIGHTING:
+		return
+	if not bool(game_state.fight.get("active", false)):
+		_refresh()
+		return
 	end_turn_button.disabled = true
 	dojo_bridge.finish(game_state.get_game_id())
 
