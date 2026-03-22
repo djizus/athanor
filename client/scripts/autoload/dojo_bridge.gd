@@ -138,8 +138,8 @@ func complete_controller_auth() -> bool:
 	return false
 
 func try_resume_controller_session() -> bool:
-	if session_account == null:
-		push_warning("[dojo_bridge] resume: no session_account node")
+	if session_account == null or not session_account.has_method("create"):
+		push_warning("[dojo_bridge] resume: no DojoSessionAccount SDK node")
 		return false
 	var cached := _load_session_info()
 	if cached.is_empty():
