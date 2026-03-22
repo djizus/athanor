@@ -449,21 +449,21 @@ func _instantiate_dojo_class(type_name: String) -> Variant:
 func _sozo_execute(entrypoint: String, calldata: Array) -> void:
 	var args: PackedStringArray = PackedStringArray([
 		"execute", actions_address, entrypoint,
+	])
+	for arg in calldata:
+		args.append(str(arg))
+	args.append_array(PackedStringArray([
 		"--rpc-url", rpc_url,
 		"--account-address", _burner_address,
 		"--private-key", _burner_private_key,
 		"--world", world_address,
-	])
-	if not calldata.is_empty():
-		args.append("--calldata")
-		var parts: PackedStringArray = PackedStringArray()
-		for arg in calldata:
-			parts.append(str(arg))
-		args.append(",".join(parts))
+		"--profile", "dev",
+	]))
 
+	var project_root := ProjectSettings.globalize_path("res://").trim_suffix("/").get_base_dir()
 	var output: Array = []
-	push_warning("[dojo_bridge] sozo %s" % " ".join(args))
-	var exit_code := OS.execute("sozo", args, output, true)
+	push_warning("[dojo_bridge] sozo %s (cwd: %s)" % [" ".join(args), project_root])
+	var exit_code := OS.execute("bash", PackedStringArray(["-c", "cd %s && sozo %s" % [project_root, " ".join(args)]]), output, true)
 	var stdout: String = "\n".join(output)
 
 	if exit_code == 0:
@@ -472,6 +472,21 @@ func _sozo_execute(entrypoint: String, calldata: Array) -> void:
 	else:
 		push_error("[dojo_bridge] tx %s failed (exit %d): %s" % [entrypoint, exit_code, stdout.strip_edges()])
 		tx_failed.emit(entrypoint, stdout.strip_edges())
+
+func _find_binary(name: String) -> String:
+	var output: Array = []
+	if OS.execute("which", PackedStringArray([name]), output, true) == 0:
+		var path := String("\n".join(output)).strip_edges()
+		if not path.is_empty():
+			return path
+	for candidate in [
+		"/home/" + OS.get_environment("USER") + "/.asdf/shims/" + name,
+		"/usr/local/bin/" + name,
+		"/usr/bin/" + name,
+	]:
+		if FileAccess.file_exists(candidate):
+			return candidate
+	return ""
 
 func _save_session_info(key: String, info: Dictionary) -> void:
 	if key.is_empty() or info.is_empty():
