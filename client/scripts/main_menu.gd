@@ -245,7 +245,7 @@ func _refresh_history() -> void:
 		var zone := int(ch.get("current_zone", 0))
 
 		var row := HBoxContainer.new()
-		row.theme_override_constants_separation = 8
+		row.add_theme_constant_override("separation", 8)
 
 		var id_label := Label.new()
 		id_label.text = "#%d" % gid
