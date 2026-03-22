@@ -6,6 +6,7 @@ signal connected
 var _auth_pending := false
 var _verifying := false
 var _leaving := false
+var _spawning := false
 
 @onready var logo: TextureRect = %Logo
 @onready var player_info: Label = %PlayerInfo
@@ -76,7 +77,7 @@ func _refresh_ui() -> void:
 	disconnect_button.visible = authed
 	history_panel.visible = authed and not game_state.past_runs.is_empty()
 
-	spawn_button.disabled = false
+	spawn_button.disabled = _spawning
 	if not authed:
 		status_label.text = "Connect your account to enter Athanor"
 	elif dungeon_active:
@@ -148,6 +149,9 @@ func _try_complete_auth() -> void:
 # --- Game actions ---
 
 func _on_spawn_button_pressed() -> void:
+	if _spawning:
+		return
+	_spawning = true
 	spawn_button.disabled = true
 	status_label.text = "Spawning new dungeon..."
 	game_state.reset()
@@ -169,6 +173,7 @@ func _on_state_changed(_data: Dictionary) -> void:
 		and not bool(game_state.dungeon.get("completed", false)) \
 		and not bool(game_state.dungeon.get("failed", false))
 	if active:
+		_spawning = false
 		_leaving = true
 		_disconnect_signals()
 		enter_arena.emit()
@@ -193,12 +198,16 @@ func _disconnect_signals() -> void:
 		dojo_bridge.tx_submitted.disconnect(_on_tx_submitted)
 	if dojo_bridge.tx_failed.is_connected(_on_tx_failed):
 		dojo_bridge.tx_failed.disconnect(_on_tx_failed)
+	var window := get_window()
+	if window != null and window.focus_entered.is_connected(_on_window_focus):
+		window.focus_entered.disconnect(_on_window_focus)
 
 func _on_tx_submitted(_action: String) -> void:
 	pass
 
 func _on_tx_failed(action: String, reason: String) -> void:
 	status_label.text = "Error: %s — %s" % [action, reason]
+	_spawning = false
 	spawn_button.disabled = false
 
 # --- Settings ---

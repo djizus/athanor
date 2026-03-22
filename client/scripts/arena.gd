@@ -11,6 +11,7 @@ const ZONE_NAMES := ["Entrance", "Left Cavern", "Right Passage", "Deep Hall", "F
 const ZONE_CHILDREN := {0: [1, 2], 1: [3], 2: [3], 3: [4], 4: []}
 const ZONE_MOB_COUNT := {0: 0, 1: 1, 2: 1, 3: 2, 4: 4}
 const NO_EXIT := 0xFF
+const AA_COST := 30
 
 # Minimap layout (normalized 0-1 positions for the 5 zones)
 const MINIMAP_POS := {
@@ -55,6 +56,8 @@ const MINIMAP_POS := {
 
 var mob_rows: Array[HBoxContainer] = []
 var current_state: ArenaState = ArenaState.FORK
+var _auto_finishing := false
+var _auto_advancing := false
 
 func _ready() -> void:
 	game_state.character_updated.connect(_on_state_changed)
@@ -67,8 +70,23 @@ func _ready() -> void:
 	dojo_bridge.pull_entities_snapshot()
 	_refresh()
 	audio_manager.play_music("game_loop_1")
-	# Also schedule a delayed re-pull in case Torii hasn't indexed yet
 	dojo_bridge._schedule_entity_poll()
+
+func _exit_tree() -> void:
+	for timer in _poll_timers:
+		if is_instance_valid(timer):
+			timer.queue_free()
+	_poll_timers.clear()
+	if game_state.character_updated.is_connected(_on_state_changed):
+		game_state.character_updated.disconnect(_on_state_changed)
+	if game_state.dungeon_updated.is_connected(_on_state_changed):
+		game_state.dungeon_updated.disconnect(_on_state_changed)
+	if game_state.fight_updated.is_connected(_on_state_changed):
+		game_state.fight_updated.disconnect(_on_state_changed)
+	if dojo_bridge.tx_submitted.is_connected(_on_tx_submitted):
+		dojo_bridge.tx_submitted.disconnect(_on_tx_submitted)
+	if dojo_bridge.tx_failed.is_connected(_on_tx_failed):
+		dojo_bridge.tx_failed.disconnect(_on_tx_failed)
 
 func _build_mob_rows() -> void:
 	for i in range(MAX_MOBS):
@@ -111,6 +129,9 @@ func _determine_state() -> ArenaState:
 	if bool(dungeon.get("completed", false)):
 		return ArenaState.COMPLETED
 	if bool(dungeon.get("failed", false)):
+		return ArenaState.FAILED
+	# Death detection takes priority over fight state
+	if not character.is_empty() and int(character.get("health", 0)) <= 0:
 		return ArenaState.FAILED
 	if bool(fight.get("active", false)):
 		return ArenaState.FIGHTING
@@ -173,8 +194,12 @@ func _refresh(_data: Dictionary = {}) -> void:
 				door_title.text = "No exit..."
 				continue_button.visible = false
 			elif children.size() == 1:
-				continue_button.visible = true
-				continue_button.text = "Continue →"
+				# Single exit — contract already auto-advanced, just poll for update
+				continue_button.visible = false
+				left_door_button.visible = false
+				right_door_button.visible = false
+				if not _auto_advancing:
+					_auto_advance_single_exit()
 			else:
 				left_door_button.visible = true
 				right_door_button.visible = true
@@ -190,6 +215,14 @@ func _refresh(_data: Dictionary = {}) -> void:
 		ArenaState.FAILED:
 			result_title.text = "You Died"
 			_update_stats()
+
+	# Auto-transitions for fighting state
+	if current_state == ArenaState.FIGHTING and not _auto_finishing:
+		if bool(game_state.fight.get("active", false)):
+			if _first_alive_mob() < 0:
+				_auto_finish("All mobs defeated!")
+			elif int(game_state.character.get("stamina", 0)) < AA_COST:
+				_auto_finish("Out of stamina — ending turn...")
 
 func _update_player_bars() -> void:
 	var max_hp := int(game_state.character.get("max_health", 100))
@@ -226,9 +259,8 @@ func _update_fight_panel() -> void:
 			bar.value = mob_hp
 			bar_label.text = "%d / %d" % [mob_hp, 20]
 
-	attack_button.disabled = _first_alive_mob() < 0
+	attack_button.disabled = _first_alive_mob() < 0 or int(game_state.character.get("stamina", 0)) < AA_COST
 	end_turn_button.disabled = false
-	turn_info.text = ""
 
 func _update_stats() -> void:
 	var hp := int(game_state.character.get("health", 0))
@@ -269,12 +301,22 @@ func _on_start_fight_pressed() -> void:
 func _on_attack_pressed() -> void:
 	if current_state != ArenaState.FIGHTING:
 		return
+	var stamina := int(game_state.character.get("stamina", 0))
+	if stamina < AA_COST:
+		turn_info.text = "Not enough stamina"
+		attack_button.disabled = true
+		return
 	var target := _first_alive_mob()
 	if target < 0:
 		return
 	audio_manager.play_sfx("click")
 	attack_button.disabled = true
+	turn_info.text = "Attacking..."
 	dojo_bridge.cast(game_state.get_game_id(), target, 0)
+	# Optimistic stamina update
+	var new_stamina := maxi(0, stamina - AA_COST)
+	stamina_bar.value = new_stamina
+	stamina_label.text = "Stamina %d / %d" % [new_stamina, int(game_state.character.get("max_stamina", 100))]
 
 func _on_end_turn_pressed() -> void:
 	if current_state != ArenaState.FIGHTING:
@@ -282,7 +324,9 @@ func _on_end_turn_pressed() -> void:
 	if not bool(game_state.fight.get("active", false)):
 		_refresh()
 		return
+	audio_manager.play_sfx("click")
 	end_turn_button.disabled = true
+	turn_info.text = "Ending turn..."
 	dojo_bridge.finish(game_state.get_game_id())
 
 func _on_return_pressed() -> void:
@@ -317,7 +361,8 @@ func _on_state_changed(_data: Dictionary = {}) -> void:
 	_refresh()
 
 func _on_tx_submitted(_action: String) -> void:
-	# Poll aggressively since Torii subscription is unreliable
+	if current_state == ArenaState.FIGHTING:
+		turn_info.text = "Processing..."
 	_poll_after_delay(2.0)
 	_poll_after_delay(5.0)
 
@@ -385,6 +430,29 @@ func _draw_minimap() -> void:
 		)
 
 # --- Helpers ---
+
+func _auto_finish(reason: String) -> void:
+	if _auto_finishing:
+		return
+	_auto_finishing = true
+	turn_info.text = reason
+	attack_button.disabled = true
+	end_turn_button.disabled = true
+	push_warning("[arena] Auto-finish: %s" % reason)
+	get_tree().create_timer(0.8).timeout.connect(func():
+		_auto_finishing = false
+		if current_state == ArenaState.FIGHTING and bool(game_state.fight.get("active", false)):
+			dojo_bridge.finish(game_state.get_game_id())
+	)
+
+func _auto_advance_single_exit() -> void:
+	_auto_advancing = true
+	door_title.text = "Advancing..."
+	push_warning("[arena] Auto-advancing from single-exit zone")
+	get_tree().create_timer(1.0).timeout.connect(func():
+		_auto_advancing = false
+		dojo_bridge.pull_entities_snapshot()
+	)
 
 func _is_fork(zone_id: int) -> bool:
 	var children: Array = ZONE_CHILDREN.get(zone_id, [])
