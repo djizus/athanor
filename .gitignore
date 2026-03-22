@@ -9,8 +9,9 @@ manifest_*.json
 screenshots/
 export_presets.cfg
 
-# === Godot Dojo SDK (downloaded per-platform, see README) ===
+# === Godot addons (downloaded via setup.sh, see README) ===
 client/addons/godot-dojo/
+client/addons/godot_cef/
 
 
 
