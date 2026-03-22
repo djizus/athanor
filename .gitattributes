@@ -6,3 +6,5 @@ client/addons/godot_cef/bin/**/*.pak filter=lfs diff=lfs merge=lfs -text
 client/addons/godot_cef/bin/**/*.bin filter=lfs diff=lfs merge=lfs -text
 client/addons/godot_cef/bin/**/*.dat filter=lfs diff=lfs merge=lfs -text
 client/addons/godot_cef/bin/**/*.json filter=lfs diff=lfs merge=lfs -text
+client/addons/godot_cef/bin/**/*.exe filter=lfs diff=lfs merge=lfs -text
+client/addons/godot_cef/bin/**/*.dll filter=lfs diff=lfs merge=lfs -text
