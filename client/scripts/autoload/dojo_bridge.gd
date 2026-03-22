@@ -310,7 +310,18 @@ func _normalize_model(model: Dictionary) -> Dictionary:
 func _matches_current_player(model: Dictionary) -> bool:
 	if current_player.is_empty():
 		return true
-	return String(model.get("player", "")).to_lower() == current_player
+	var model_player := _normalize_hex(String(model.get("player", "")))
+	var local_player := _normalize_hex(current_player)
+	return model_player == local_player
+
+func _normalize_hex(hex: String) -> String:
+	var h := hex.to_lower().strip_edges()
+	if h.begins_with("0x"):
+		h = h.substr(2)
+	h = h.lstrip("0")
+	if h.is_empty():
+		h = "0"
+	return "0x" + h
 
 func _execute_action(entrypoint: String, calldata: Array) -> void:
 	if actions_address == "0x0":
