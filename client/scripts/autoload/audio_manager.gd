@@ -48,6 +48,8 @@ var _sfx_paths := {
 	"heal": "res://assets/sounds/effects/heal.mp3",
 }
 
+const REBINDABLE_ACTIONS := ["move_up", "move_down", "move_left", "move_right"]
+
 var _loaded_tracks := {}
 var _loaded_sfx := {}
 
@@ -120,7 +122,30 @@ func _on_music_finished() -> void:
 
 # --- Settings persistence ---
 
+func rebind_action(action: String, event: InputEventKey) -> void:
+	if action not in REBINDABLE_ACTIONS:
+		return
+	var events := InputMap.action_get_events(action)
+	for old_event in events:
+		if old_event is InputEventKey:
+			InputMap.action_erase_event(action, old_event)
+			break
+	InputMap.action_add_event(action, event)
+	save_settings()
+
+func get_action_key_name(action: String) -> String:
+	for event in InputMap.action_get_events(action):
+		if event is InputEventKey:
+			return OS.get_keycode_string(event.keycode) if event.keycode != 0 else OS.get_keycode_string(event.physical_keycode)
+	return "?"
+
 func save_settings() -> void:
+	var keybinds := {}
+	for action in REBINDABLE_ACTIONS:
+		for event in InputMap.action_get_events(action):
+			if event is InputEventKey:
+				keybinds[action] = event.keycode if event.keycode != 0 else event.physical_keycode
+				break
 	var file := FileAccess.open(SETTINGS_PATH, FileAccess.WRITE)
 	if file == null:
 		return
@@ -129,6 +154,7 @@ func save_settings() -> void:
 		"sfx_volume": sfx_volume,
 		"music_enabled": music_enabled,
 		"sfx_enabled": sfx_enabled,
+		"keybinds": keybinds,
 	}))
 
 func load_settings() -> void:
@@ -147,3 +173,11 @@ func load_settings() -> void:
 	music_enabled = bool(data.get("music_enabled", true))
 	sfx_enabled = bool(data.get("sfx_enabled", true))
 	_apply_music_volume()
+	var keybinds: Variant = data.get("keybinds", {})
+	if keybinds is Dictionary:
+		for action in keybinds.keys():
+			if action in REBINDABLE_ACTIONS:
+				var keycode := int(keybinds[action])
+				var event := InputEventKey.new()
+				event.keycode = keycode as Key
+				rebind_action(action, event)

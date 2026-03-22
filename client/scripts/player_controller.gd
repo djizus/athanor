@@ -14,13 +14,13 @@ func _process(delta: float) -> void:
 	if not _movement_enabled:
 		return
 	var input_dir := Vector2.ZERO
-	if Input.is_action_pressed("ui_left") or Input.is_key_pressed(KEY_A):
+	if Input.is_action_pressed("move_left"):
 		input_dir.x -= 1.0
-	if Input.is_action_pressed("ui_right") or Input.is_key_pressed(KEY_D):
+	if Input.is_action_pressed("move_right"):
 		input_dir.x += 1.0
-	if Input.is_action_pressed("ui_up") or Input.is_key_pressed(KEY_W):
+	if Input.is_action_pressed("move_up"):
 		input_dir.y -= 1.0
-	if Input.is_action_pressed("ui_down") or Input.is_key_pressed(KEY_S):
+	if Input.is_action_pressed("move_down"):
 		input_dir.y += 1.0
 	if input_dir.length_squared() < 0.01:
 		return

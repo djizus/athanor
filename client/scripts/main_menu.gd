@@ -25,6 +25,18 @@ var _spawning := false
 @onready var auth_browser: Control = %AuthBrowser
 @onready var history_container: VBoxContainer = %HistoryContainer
 @onready var history_panel: PanelContainer = %HistoryPanel
+@onready var keybind_container: VBoxContainer = %KeybindContainer
+
+var _listening_action := ""
+var _listening_button: Button = null
+var _keybind_buttons: Dictionary = {}
+
+const ACTION_LABELS := {
+	"move_up": "Move Up",
+	"move_down": "Move Down",
+	"move_left": "Move Left",
+	"move_right": "Move Right",
+}
 
 func _ready() -> void:
 	get_window().focus_entered.connect(_on_window_focus)
@@ -40,6 +52,7 @@ func _ready() -> void:
 	_refresh_ui()
 	_refresh_history()
 	_init_settings()
+	_build_keybind_rows()
 	audio_manager.play_music("main_theme")
 
 func _refresh_ui() -> void:
@@ -235,6 +248,39 @@ func _on_music_toggle_toggled(pressed: bool) -> void:
 
 func _on_sfx_toggle_toggled(pressed: bool) -> void:
 	audio_manager.sfx_enabled = pressed
+
+func _unhandled_input(event: InputEvent) -> void:
+	if _listening_action != "" and event is InputEventKey and event.pressed:
+		audio_manager.rebind_action(_listening_action, event)
+		_listening_button.text = audio_manager.get_action_key_name(_listening_action)
+		_listening_action = ""
+		_listening_button = null
+		get_viewport().set_input_as_handled()
+
+func _build_keybind_rows() -> void:
+	if keybind_container == null:
+		return
+	for action in audio_manager.REBINDABLE_ACTIONS:
+		var row := HBoxContainer.new()
+		var label := Label.new()
+		label.text = ACTION_LABELS.get(action, action)
+		label.custom_minimum_size = Vector2(100, 0)
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(label)
+		var btn := Button.new()
+		btn.text = audio_manager.get_action_key_name(action)
+		btn.custom_minimum_size = Vector2(120, 36)
+		btn.pressed.connect(func(): _on_keybind_pressed(action, btn))
+		row.add_child(btn)
+		_keybind_buttons[action] = btn
+		keybind_container.add_child(row)
+
+func _on_keybind_pressed(action: String, btn: Button) -> void:
+	if _listening_action != "" and _listening_button != null:
+		_listening_button.text = audio_manager.get_action_key_name(_listening_action)
+	_listening_action = action
+	_listening_button = btn
+	btn.text = "Press a key..."
 
 # --- History ---
 
