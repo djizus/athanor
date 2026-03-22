@@ -1,3 +1,4 @@
+import "./shims.js";
 import dotenv from "dotenv";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";

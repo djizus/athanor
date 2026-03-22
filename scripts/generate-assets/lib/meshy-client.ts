@@ -1,3 +1,4 @@
+import "./shims.js";
 import { MESHY_API_KEY, MAX_RETRIES } from "./env.js";
 
 const MESHY_BASE = "https://api.meshy.ai/openapi/v2";

@@ -1,7 +1,8 @@
-import * as fal from "@fal-ai/client";
+import "./shims.js";
+import { createFalClient } from "@fal-ai/client";
 import { FAL_KEY, MAX_RETRIES, REQUEST_DELAY_MS } from "./env.js";
 
-fal.config({ credentials: FAL_KEY });
+const fal = createFalClient({ credentials: FAL_KEY });
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 

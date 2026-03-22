@@ -1,11 +1,13 @@
 import "./lib/shims.js";
-import { mkdir, readFile, writeFile, access } from "fs/promises";
+import { mkdir, readFile, writeFile, access, copyFile } from "fs/promises";
 import { constants } from "fs";
 import { dirname, resolve } from "path";
 import { fileURLToPath } from "url";
-import sharp from "sharp";
-import { REQUEST_DELAY_MS } from "./lib/env.js";
-import { downloadImage, generateImage } from "./lib/fal-client.js";
+import { createFalClient } from "@fal-ai/client";
+import { FAL_KEY } from "./lib/env.js";
+import { generateModel } from "./lib/meshy-client.js";
+
+const fal = createFalClient({ credentials: FAL_KEY });
 
 type AssetCategory = "character" | "prop" | "floor";
 
@@ -24,8 +26,6 @@ interface CliOptions {
   category?: AssetCategory;
   force: boolean;
 }
-
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 function parseArgs(argv: string[]): CliOptions {
   const options: CliOptions = { dryRun: false, force: false };
@@ -67,58 +67,67 @@ async function exists(filePath: string): Promise<boolean> {
   }
 }
 
-function conceptPrompt(description: string): string {
-  return `${description}. Isometric 3/4 view, single object centered on pure white background #FFFFFF.\nLow-poly stylized game asset reference. Clean silhouette, no ground plane, no shadows, no other objects.\nDark fantasy with bioluminescent energy accents.`;
-}
-
 async function main(): Promise<void> {
   const options = parseArgs(process.argv.slice(2));
   const __dirname = dirname(fileURLToPath(import.meta.url));
 
   const manifestPath = resolve(__dirname, "data", "models-3d.json");
   const conceptsDir = resolve(__dirname, "output", "concepts");
+  const rawDir = resolve(__dirname, "output", "raw");
+  const finalModelsDir = resolve(__dirname, "..", "..", "client", "assets", "models");
 
   const raw = await readFile(manifestPath, "utf-8");
   const allAssets = JSON.parse(raw) as AssetDef[];
-
   const filtered = allAssets.filter((asset) => {
     if (options.id && asset.id !== options.id) return false;
     if (options.category && asset.category !== options.category) return false;
     return true;
   });
 
-  await mkdir(conceptsDir, { recursive: true });
+  await mkdir(rawDir, { recursive: true });
 
-  console.log(`Generating concept art for ${filtered.length} assets...`);
+  console.log(`Generating 3D models for ${filtered.length} assets...`);
   for (let i = 0; i < filtered.length; i++) {
     const asset = filtered[i];
-    const outPath = resolve(conceptsDir, `${asset.id}.png`);
+    const conceptPath = resolve(conceptsDir, `${asset.id}.png`);
+    const rawGlbPath = resolve(rawDir, `${asset.id}.glb`);
+    const finalGlbPath = resolve(finalModelsDir, asset.filename);
 
-    if (!options.force && (await exists(outPath))) {
-      console.log(`[${i + 1}/${filtered.length}] ${asset.id} -> exists, skipping`);
+    if (!(await exists(conceptPath))) {
+      console.warn(`[${i + 1}/${filtered.length}] ${asset.id} -> concept missing, skipping`);
       continue;
     }
 
-    const prompt = conceptPrompt(asset.description);
+    if (!options.force && (await exists(rawGlbPath))) {
+      console.log(`[${i + 1}/${filtered.length}] ${asset.id} -> raw GLB exists, skipping`);
+      continue;
+    }
+
     if (options.dryRun) {
       console.log(`[${i + 1}/${filtered.length}] DRY RUN ${asset.id}`);
-      console.log(`  ${prompt}`);
+      console.log(`  concept: ${conceptPath}`);
+      console.log(`  raw:     ${rawGlbPath}`);
+      console.log(`  final:   ${finalGlbPath}`);
       continue;
     }
 
-    console.log(`[${i + 1}/${filtered.length}] Generating ${asset.id}...`);
-    const generated = await generateImage(prompt, 1024, 1024);
-    const sourceBuffer = await downloadImage(generated.url);
-    const pngBuffer = await sharp(sourceBuffer).png().toBuffer();
-    await writeFile(outPath, pngBuffer);
-    console.log(`  Saved ${outPath}`);
+    console.log(`[${i + 1}/${filtered.length}] Generating model ${asset.id}...`);
+    const conceptBuffer = await readFile(conceptPath);
+    const uploadedUrl = await fal.storage.upload(new Blob([conceptBuffer], { type: "image/png" }));
+    const glbBuffer = await generateModel(uploadedUrl, {
+      targetPolycount: asset.targetTris,
+      topology: "quad",
+    });
 
-    if (i < filtered.length - 1) {
-      await sleep(REQUEST_DELAY_MS);
-    }
+    await writeFile(rawGlbPath, glbBuffer);
+    await mkdir(dirname(finalGlbPath), { recursive: true });
+    await copyFile(rawGlbPath, finalGlbPath);
+
+    console.log(`  Saved raw:   ${rawGlbPath}`);
+    console.log(`  Saved final: ${finalGlbPath}`);
   }
 
-  console.log("Concept generation complete.");
+  console.log("Model generation complete.");
 }
 
 main().catch((error) => {
