@@ -18,6 +18,7 @@ config/features=PackedStringArray("4.6", "Forward Plus")
 
 game_state="*res://scripts/autoload/game_state.gd"
 dojo_bridge="*res://scripts/autoload/dojo_bridge.gd"
+audio_manager="*res://scripts/autoload/audio_manager.gd"
 
 [display]
 

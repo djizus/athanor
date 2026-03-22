@@ -220,8 +220,10 @@ func pull_entities_snapshot() -> void:
 		return
 	var response: Dictionary = torii_client.call("entities", query)
 	var items: Array = response.get("items", [])
+	push_warning("[dojo_bridge] Snapshot: %d entities returned" % items.size())
 	for entity in items:
 		if entity is Dictionary:
+			push_warning("[dojo_bridge] Entity: %s" % str(entity).left(300))
 			_handle_entity_payload(entity)
 
 # --- Game actions ---
@@ -255,9 +257,11 @@ func _create_entity_subscription() -> void:
 	var clause: Variant = null
 	if ClassDB.class_exists("KeysClause"):
 		clause = ClassDB.instantiate("KeysClause")
-		clause.call("models", PackedStringArray([CHARACTER_MODEL, DUNGEON_MODEL, FIGHT_MODEL]))
+		clause.call("add_model", CHARACTER_MODEL)
+		clause.call("add_model", DUNGEON_MODEL)
+		clause.call("add_model", FIGHT_MODEL)
 		clause.call("pattern", 2)  # VariableLen
-		push_warning("[dojo_bridge] Subscribing with KeysClause: %s" % [CHARACTER_MODEL, DUNGEON_MODEL, FIGHT_MODEL])
+		push_warning("[dojo_bridge] Subscribing with KeysClause: %s, %s, %s" % [CHARACTER_MODEL, DUNGEON_MODEL, FIGHT_MODEL])
 	else:
 		clause = _instantiate_dojo_class("DojoClause")
 		if clause == null:
@@ -267,10 +271,19 @@ func _create_entity_subscription() -> void:
 	push_warning("[dojo_bridge] Entity subscription ID: %d" % entity_subscription_id)
 
 func _on_entities(args: Dictionary) -> void:
+	push_warning("[dojo_bridge] SUBSCRIPTION entity update: %s" % str(args).left(500))
 	_handle_entity_payload(args)
 
 func _handle_entity_payload(payload: Dictionary) -> void:
 	var models: Dictionary = payload.get("models", {})
+	if models.is_empty():
+		# Try flat payload — some SDK versions don't wrap in "models"
+		if payload.has("player") or payload.has("health") or payload.has("game_id"):
+			push_warning("[dojo_bridge] Flat entity payload, checking model type...")
+			# Can't determine model type from flat dict, skip
+			return
+		return
+	push_warning("[dojo_bridge] Entity models keys: %s" % str(models.keys()))
 	if models.has(CHARACTER_MODEL):
 		var character_model := _normalize_model(models[CHARACTER_MODEL])
 		if _matches_current_player(character_model):

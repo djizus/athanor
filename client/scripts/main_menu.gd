@@ -15,6 +15,11 @@ var _verifying := false
 @onready var resume_button: Button = %ResumeButton
 @onready var retry_button: Button = %RetryButton
 @onready var disconnect_button: Button = %DisconnectButton
+@onready var settings_panel: PanelContainer = %SettingsPanel
+@onready var music_slider: HSlider = %MusicSlider
+@onready var sfx_slider: HSlider = %SfxSlider
+@onready var music_toggle: CheckButton = %MusicToggle
+@onready var sfx_toggle: CheckButton = %SfxToggle
 
 func _ready() -> void:
 	get_window().focus_entered.connect(_on_window_focus)
@@ -23,6 +28,8 @@ func _ready() -> void:
 	dojo_bridge.tx_submitted.connect(_on_tx_submitted)
 	dojo_bridge.tx_failed.connect(_on_tx_failed)
 	_refresh_ui()
+	_init_settings()
+	audio_manager.play_music("main_theme")
 
 func _refresh_ui() -> void:
 	var authed := dojo_bridge.is_session_valid() or not dojo_bridge.current_player.is_empty()
@@ -134,3 +141,29 @@ func _on_tx_submitted(_action: String) -> void:
 func _on_tx_failed(action: String, reason: String) -> void:
 	status_label.text = "Error: %s — %s" % [action, reason]
 	spawn_button.disabled = false
+
+# --- Settings ---
+
+func _init_settings() -> void:
+	settings_panel.visible = false
+	music_slider.value = audio_manager.music_volume
+	sfx_slider.value = audio_manager.sfx_volume
+	music_toggle.button_pressed = audio_manager.music_enabled
+	sfx_toggle.button_pressed = audio_manager.sfx_enabled
+
+func _on_settings_button_pressed() -> void:
+	settings_panel.visible = not settings_panel.visible
+
+func _on_music_slider_changed(value: float) -> void:
+	audio_manager.music_volume = value
+
+func _on_sfx_slider_changed(value: float) -> void:
+	audio_manager.sfx_volume = value
+
+func _on_music_toggle_toggled(pressed: bool) -> void:
+	audio_manager.music_enabled = pressed
+	if pressed:
+		audio_manager.play_music("main_theme")
+
+func _on_sfx_toggle_toggled(pressed: bool) -> void:
+	audio_manager.sfx_enabled = pressed

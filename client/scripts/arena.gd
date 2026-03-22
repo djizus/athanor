@@ -66,6 +66,7 @@ func _ready() -> void:
 	_build_mob_rows()
 	dojo_bridge.pull_entities_snapshot()
 	_refresh()
+	audio_manager.play_music("game_loop_1")
 	# Also schedule a delayed re-pull in case Torii hasn't indexed yet
 	dojo_bridge._schedule_entity_poll()
 
@@ -126,8 +127,21 @@ func _determine_state() -> ArenaState:
 	return ArenaState.CLEARED
 
 func _refresh(_data: Dictionary = {}) -> void:
+	var prev_state := current_state
 	current_state = _determine_state()
 	var zone := int(game_state.character.get("current_zone", 0))
+
+	# SFX on state transitions
+	if current_state != prev_state:
+		match current_state:
+			ArenaState.CLEARED:
+				audio_manager.play_sfx("beast_win")
+			ArenaState.COMPLETED:
+				audio_manager.play_sfx("victory")
+			ArenaState.FAILED:
+				audio_manager.play_sfx("beast_lose")
+			ArenaState.PRE_FIGHT:
+				audio_manager.play_sfx("discovery")
 
 	# Visibility
 	door_panel.visible = (current_state == ArenaState.FORK or current_state == ArenaState.CLEARED)
@@ -229,11 +243,13 @@ func _update_stats() -> void:
 # --- Actions ---
 
 func _on_left_door_pressed() -> void:
+	audio_manager.play_sfx("click")
 	left_door_button.disabled = true
 	right_door_button.disabled = true
 	dojo_bridge.choose(game_state.get_game_id(), dojo_bridge.DIRECTION_LEFT)
 
 func _on_right_door_pressed() -> void:
+	audio_manager.play_sfx("click")
 	left_door_button.disabled = true
 	right_door_button.disabled = true
 	dojo_bridge.choose(game_state.get_game_id(), dojo_bridge.DIRECTION_RIGHT)
@@ -246,6 +262,7 @@ func _on_continue_pressed() -> void:
 	dojo_bridge.pull_entities_snapshot()
 
 func _on_start_fight_pressed() -> void:
+	audio_manager.play_sfx("click")
 	start_fight_button.disabled = true
 	dojo_bridge.start(game_state.get_game_id())
 
@@ -253,6 +270,7 @@ func _on_attack_pressed() -> void:
 	var target := _first_alive_mob()
 	if target < 0:
 		return
+	audio_manager.play_sfx("click")
 	attack_button.disabled = true
 	dojo_bridge.cast(game_state.get_game_id(), target, 0)
 
