@@ -12,8 +12,7 @@ export_presets.cfg
 # === Godot Dojo SDK (downloaded per-platform, see README) ===
 client/addons/godot-dojo/
 
-# === Godot CEF plugin (downloaded per-platform, ~500MB binary) ===
-client/addons/godot_cef/
+
 
 # === Environment ===
 .env
