@@ -1,8 +1,11 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/arena.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/camera_rig.gd" id="cam"]
 [ext_resource type="Script" path="res://scripts/dungeon_view.gd" id="dv"]
+[ext_resource type="Script" path="res://scripts/pause_menu.gd" id="pause"]
+[ext_resource type="Script" path="res://scripts/player_controller.gd" id="pc"]
+[ext_resource type="Script" path="res://scripts/targeting_system.gd" id="ts"]
 
 [sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
 sky_top_color = Color(0.01, 0.01, 0.03, 1)
@@ -48,8 +51,12 @@ script = ExtResource("dv")
 [node name="ZoneAnchor" type="Node3D" parent="DungeonWorld"]
 
 [node name="PlayerAnchor" type="Node3D" parent="DungeonWorld"]
+script = ExtResource("pc")
 
 [node name="MobAnchor" type="Node3D" parent="DungeonWorld"]
+
+[node name="TargetingSystem" type="Node3D" parent="."]
+script = ExtResource("ts")
 
 [node name="CameraRig" type="Node3D" parent="."]
 script = ExtResource("cam")
@@ -82,12 +89,12 @@ mouse_filter = 1
 
 [node name="Minimap" type="PanelContainer" parent="UILayer/UIRoot"]
 layout_mode = 1
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -220.0
+anchors_preset = 0
+anchor_left = 0.0
+anchor_right = 0.0
+offset_left = 8.0
 offset_top = 8.0
-offset_right = -8.0
+offset_right = 220.0
 offset_bottom = 158.0
 
 [node name="MinimapDraw" type="Control" parent="UILayer/UIRoot/Minimap"]
@@ -97,13 +104,13 @@ custom_minimum_size = Vector2(200, 140)
 
 [node name="PlayerBars" type="VBoxContainer" parent="UILayer/UIRoot"]
 layout_mode = 1
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -340.0
-offset_top = 168.0
-offset_right = -8.0
-offset_bottom = 230.0
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = -100.0
+offset_right = 300.0
+offset_bottom = -8.0
 theme_override_constants/separation = 4
 
 [node name="HPBar" type="ProgressBar" parent="UILayer/UIRoot/PlayerBars"]
@@ -276,8 +283,9 @@ anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
 offset_left = -200.0
-offset_top = -40.0
+offset_top = -120.0
 offset_right = 200.0
+offset_bottom = -104.0
 grow_horizontal = 2
 grow_vertical = 0
 theme_override_colors/font_color = Color(0.831, 0.659, 0.286, 1)
@@ -285,8 +293,115 @@ theme_override_font_sizes/font_size = 18
 horizontal_alignment = 1
 text = ""
 
+[node name="BottomActionBar" type="HBoxContainer" parent="UILayer/UIRoot"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -220.0
+offset_top = -70.0
+offset_right = 220.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 0
+alignment = 1
+theme_override_constants/separation = 12
+
 [node name="OverlayLayer" type="CanvasLayer" parent="."]
 layer = 2
+
+[node name="PauseMenu" type="Control" parent="OverlayLayer"]
+script = ExtResource("pause")
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Dimmer" type="ColorRect" parent="OverlayLayer/PauseMenu"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.6)
+
+[node name="Center" type="CenterContainer" parent="OverlayLayer/PauseMenu"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="PanelContainer" parent="OverlayLayer/PauseMenu/Center"]
+custom_minimum_size = Vector2(360, 300)
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="OverlayLayer/PauseMenu/Center/Panel"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Title" type="Label" parent="OverlayLayer/PauseMenu/Center/Panel/VBox"]
+layout_mode = 2
+theme_type_variation = &"HeaderLabel"
+horizontal_alignment = 1
+text = "Paused"
+
+[node name="MusicRow" type="HBoxContainer" parent="OverlayLayer/PauseMenu/Center/Panel/VBox"]
+layout_mode = 2
+
+[node name="MusicLabel" type="Label" parent="OverlayLayer/PauseMenu/Center/Panel/VBox/MusicRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(80, 0)
+text = "Music"
+
+[node name="PauseMusicSlider" type="HSlider" parent="OverlayLayer/PauseMenu/Center/Panel/VBox/MusicRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 1.0
+step = 0.05
+value = 0.8
+
+[node name="SfxRow" type="HBoxContainer" parent="OverlayLayer/PauseMenu/Center/Panel/VBox"]
+layout_mode = 2
+
+[node name="SfxLabel" type="Label" parent="OverlayLayer/PauseMenu/Center/Panel/VBox/SfxRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(80, 0)
+text = "SFX"
+
+[node name="PauseSfxSlider" type="HSlider" parent="OverlayLayer/PauseMenu/Center/Panel/VBox/SfxRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 1.0
+step = 0.05
+value = 1.0
+
+[node name="Spacer" type="Control" parent="OverlayLayer/PauseMenu/Center/Panel/VBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 8)
+
+[node name="ResumeButton" type="Button" parent="OverlayLayer/PauseMenu/Center/Panel/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+text = "Resume"
+
+[node name="QuitButton" type="Button" parent="OverlayLayer/PauseMenu/Center/Panel/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+text = "Quit to Menu"
 
 [connection signal="pressed" from="UILayer/UIRoot/CenterContent/DoorPanel/DoorVBox/DoorRow/LeftDoorButton" to="." method="_on_left_door_pressed"]
 [connection signal="pressed" from="UILayer/UIRoot/CenterContent/DoorPanel/DoorVBox/DoorRow/RightDoorButton" to="." method="_on_right_door_pressed"]
@@ -296,3 +411,8 @@ layer = 2
 [connection signal="pressed" from="UILayer/UIRoot/CenterContent/StartFightButton" to="." method="_on_start_fight_pressed"]
 [connection signal="pressed" from="UILayer/UIRoot/CenterContent/ResultPanel/ResultVBox/ReturnButton" to="." method="_on_return_pressed"]
 [connection signal="draw" from="UILayer/UIRoot/Minimap/MinimapDraw" to="." method="_draw_minimap"]
+[connection signal="pressed" from="OverlayLayer/PauseMenu/Center/Panel/VBox/ResumeButton" to="OverlayLayer/PauseMenu" method="_on_resume_pressed"]
+[connection signal="pressed" from="OverlayLayer/PauseMenu/Center/Panel/VBox/QuitButton" to="OverlayLayer/PauseMenu" method="_on_quit_pressed"]
+[connection signal="value_changed" from="OverlayLayer/PauseMenu/Center/Panel/VBox/MusicRow/PauseMusicSlider" to="OverlayLayer/PauseMenu" method="_on_music_slider_changed"]
+[connection signal="value_changed" from="OverlayLayer/PauseMenu/Center/Panel/VBox/SfxRow/PauseSfxSlider" to="OverlayLayer/PauseMenu" method="_on_sfx_slider_changed"]
+[connection signal="quit_to_menu" from="OverlayLayer/PauseMenu" to="." method="_on_return_pressed"]

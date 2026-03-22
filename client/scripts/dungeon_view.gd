@@ -1,14 +1,11 @@
 extends Node3D
 
-# 3D dungeon world manager — loads zone rooms, manages character/mob models, plays animations.
-# Called by arena.gd on state changes. Does NOT contain game logic — only visuals.
-
 const ZONE_COLORS := {
-	0: Color(0.831, 0.659, 0.286),  # Amber
-	1: Color(0.722, 0.314, 0.188),  # Ember
-	2: Color(0.620, 0.353, 0.620),  # Aether
-	3: Color(0.165, 0.353, 0.541),  # Sunken
-	4: Color(0.165, 0.541, 0.416),  # Crystal
+	0: Color(0.831, 0.659, 0.286),
+	1: Color(0.722, 0.314, 0.188),
+	2: Color(0.620, 0.353, 0.620),
+	3: Color(0.165, 0.353, 0.541),
+	4: Color(0.165, 0.541, 0.416),
 }
 
 const MOB_POSITIONS := {
@@ -18,133 +15,181 @@ const MOB_POSITIONS := {
 }
 
 const PLAYER_POSITION := Vector3(0, 0, 2)
+const SPRITE_SCALE := Vector3(2.0, 2.0, 2.0)
+const MOB_SPRITE_SCALE := Vector3(1.6, 1.6, 1.6)
 
 @onready var zone_anchor: Node3D = $ZoneAnchor
 @onready var player_anchor: Node3D = $PlayerAnchor
 @onready var mob_anchor: Node3D = $MobAnchor
 
 var _current_zone_id: int = -1
-var _player_model: Node3D = null
-var _mob_models: Array[Node3D] = []
+var _player_sprite: AnimatedSprite3D = null
+var _mob_sprites: Array[AnimatedSprite3D] = []
 var _zone_scenes: Dictionary = {}
 
+var _hit_flash_shader: Shader = null
+
 func _ready() -> void:
-	# Preload zone scenes if they exist
 	for i in range(5):
 		var path := "res://scenes/zones/zone_%d.tscn" % i
 		if ResourceLoader.exists(path):
 			_zone_scenes[i] = load(path)
+	if ResourceLoader.exists("res://shaders/hit_flash.gdshader"):
+		_hit_flash_shader = load("res://shaders/hit_flash.gdshader")
 
 func load_zone(zone_id: int) -> void:
 	if zone_id == _current_zone_id:
 		return
 	_current_zone_id = zone_id
-
-	# Clear current zone
 	for child in zone_anchor.get_children():
 		child.queue_free()
-
-	# Load zone scene if available
 	if _zone_scenes.has(zone_id):
-		var instance: Node3D = _zone_scenes[zone_id].instantiate()
-		zone_anchor.add_child(instance)
+		zone_anchor.add_child(_zone_scenes[zone_id].instantiate())
 	else:
-		# Fallback: colored platform
 		_create_fallback_platform(zone_id)
-
-	# Position player
-	if _player_model != null:
-		_player_model.position = _get_zone_player_position()
+	if _player_sprite != null:
+		_player_sprite.position = _get_zone_player_position()
 
 func spawn_hero() -> void:
-	if _player_model != null:
+	if _player_sprite != null:
 		return
-
-	# Try to load GLB model
-	var hero_path := "res://assets/models/characters/hero.glb"
-	if ResourceLoader.exists(hero_path):
-		var scene: PackedScene = load(hero_path)
-		_player_model = scene.instantiate()
+	var frames := sprite_loader.get_sprite_frames("hero")
+	if frames.get_animation_names().size() > 0:
+		_player_sprite = _create_animated_sprite(frames, SPRITE_SCALE)
 	else:
-		# Fallback: capsule mesh
-		_player_model = _create_fallback_character(Color(0.831, 0.659, 0.286))
-
-	_player_model.position = _get_zone_player_position()
-	player_anchor.add_child(_player_model)
+		var glb_path := "res://assets/models/characters/hero.glb"
+		if ResourceLoader.exists(glb_path):
+			var model: Node3D = (load(glb_path) as PackedScene).instantiate()
+			player_anchor.add_child(model)
+			model.position = _get_zone_player_position()
+			return
+		_player_sprite = _create_animated_sprite(_make_placeholder_frames(Color(0.831, 0.659, 0.286)), SPRITE_SCALE)
+	_player_sprite.position = _get_zone_player_position()
+	player_anchor.add_child(_player_sprite)
+	_play_sprite_anim(_player_sprite, "idle")
 
 func spawn_mobs(count: int, zone_id: int) -> void:
 	clear_mobs()
-
-	# Get positions from zone scene Marker3D nodes, fallback to constants
 	var positions: Array = _get_zone_mob_positions(count)
 	if positions.is_empty():
 		positions = MOB_POSITIONS.get(count, [Vector3(0, 0, -2)])
 
 	var mob_type := _get_mob_type(zone_id)
-	var mob_path := "res://assets/models/characters/%s.glb" % mob_type
 
 	for i in range(count):
-		var mob: Node3D
-		if ResourceLoader.exists(mob_path):
-			mob = (load(mob_path) as PackedScene).instantiate()
+		var sprite: AnimatedSprite3D
+		var frames := sprite_loader.get_sprite_frames(mob_type)
+		if frames.get_animation_names().size() > 0:
+			sprite = _create_animated_sprite(frames, MOB_SPRITE_SCALE)
 		else:
-			mob = _create_fallback_character(ZONE_COLORS.get(zone_id, Color.RED))
+			var glb_path := "res://assets/models/characters/%s.glb" % mob_type
+			if ResourceLoader.exists(glb_path):
+				var model: Node3D = (load(glb_path) as PackedScene).instantiate()
+				model.name = "Mob%d" % i
+				if i < positions.size():
+					model.position = positions[i]
+				mob_anchor.add_child(model)
+				continue
+			sprite = _create_animated_sprite(_make_placeholder_frames(ZONE_COLORS.get(zone_id, Color.RED)), MOB_SPRITE_SCALE)
 
-		mob.name = "Mob%d" % i
+		sprite.name = "Mob%d" % i
 		if i < positions.size():
-			mob.position = positions[i]
+			sprite.position = positions[i]
 		else:
-			mob.position = Vector3(randf_range(-2, 2), 0, randf_range(-3, -1))
-		mob_anchor.add_child(mob)
-		_mob_models.append(mob)
+			sprite.position = Vector3(randf_range(-2, 2), 0, randf_range(-3, -1))
+		mob_anchor.add_child(sprite)
+		_mob_sprites.append(sprite)
+		_play_sprite_anim(sprite, "idle")
 
 func clear_mobs() -> void:
-	for mob in _mob_models:
-		if is_instance_valid(mob):
-			mob.queue_free()
-	_mob_models.clear()
+	for child in mob_anchor.get_children():
+		if is_instance_valid(child):
+			child.queue_free()
+	_mob_sprites.clear()
 
-func update_mob_visual(mob_id: int, hp: int, max_hp: int) -> void:
-	if mob_id >= _mob_models.size():
+func update_mob_visual(mob_id: int, hp: int, _max_hp: int) -> void:
+	if mob_id >= _mob_sprites.size():
 		return
-	var mob := _mob_models[mob_id]
-	if not is_instance_valid(mob):
+	var sprite := _mob_sprites[mob_id]
+	if not is_instance_valid(sprite):
 		return
 	if hp <= 0:
-		# Death: scale down + fade
+		_play_sprite_anim(sprite, "death")
 		var tween := create_tween()
-		tween.tween_property(mob, "scale", Vector3.ZERO, 0.4).set_ease(Tween.EASE_IN)
-		tween.tween_callback(mob.queue_free)
+		tween.tween_interval(0.5)
+		tween.tween_property(sprite, "modulate:a", 0.0, 0.3)
+		tween.tween_callback(sprite.queue_free)
 
 func play_attack(target_mob_id: int) -> void:
-	# Hero attack animation
-	if _player_model != null:
-		_play_anim(_player_model, "attack_cast")
-	# Mob hit reaction
-	if target_mob_id < _mob_models.size():
-		var mob := _mob_models[target_mob_id]
+	if _player_sprite != null:
+		_play_sprite_anim(_player_sprite, "attack")
+		get_tree().create_timer(0.5).timeout.connect(func():
+			if is_instance_valid(_player_sprite):
+				_play_sprite_anim(_player_sprite, "idle")
+		)
+	if target_mob_id < _mob_sprites.size():
+		var mob := _mob_sprites[target_mob_id]
 		if is_instance_valid(mob):
-			_play_anim(mob, "hit_reaction")
-			_flash_white(mob, 0.15)
+			_play_sprite_anim(mob, "hit")
+			_flash_sprite(mob, 0.15)
+			get_tree().create_timer(0.4).timeout.connect(func():
+				if is_instance_valid(mob):
+					_play_sprite_anim(mob, "idle")
+			)
 
 func play_mob_turn() -> void:
-	for mob in _mob_models:
+	for mob in _mob_sprites:
 		if is_instance_valid(mob):
-			_play_anim(mob, "attack")
-	if _player_model != null:
-		_play_anim(_player_model, "hit_reaction")
-		_flash_white(_player_model, 0.15)
+			_play_sprite_anim(mob, "attack")
+			get_tree().create_timer(0.5).timeout.connect(func():
+				if is_instance_valid(mob):
+					_play_sprite_anim(mob, "idle")
+			)
+	if _player_sprite != null:
+		_play_sprite_anim(_player_sprite, "hit")
+		_flash_sprite(_player_sprite, 0.15)
+		get_tree().create_timer(0.4).timeout.connect(func():
+			if is_instance_valid(_player_sprite):
+				_play_sprite_anim(_player_sprite, "idle")
+		)
 
 func play_player_death() -> void:
-	if _player_model != null:
-		_play_anim(_player_model, "death")
+	if _player_sprite != null:
+		_play_sprite_anim(_player_sprite, "death")
 
 func play_victory() -> void:
-	if _player_model != null:
-		_play_anim(_player_model, "victory")
+	if _player_sprite != null:
+		_play_sprite_anim(_player_sprite, "idle")
+
+func spawn_damage_number(world_pos: Vector3, amount: int, is_heal: bool = false) -> void:
+	var label := Label3D.new()
+	label.text = str(amount) if not is_heal else "+%d" % amount
+	label.font_size = 48
+	label.outline_size = 8
+	label.modulate = Color(0.85, 0.27, 0.27) if not is_heal else Color(0.25, 0.7, 0.35)
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.no_depth_test = true
+	label.position = world_pos + Vector3(randf_range(-0.3, 0.3), 1.5, 0)
+	add_child(label)
+
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(label, "position:y", label.position.y + 1.5, 0.8).set_ease(Tween.EASE_OUT)
+	tween.tween_property(label, "modulate:a", 0.0, 0.8).set_delay(0.3)
+	tween.set_parallel(false)
+	tween.tween_callback(label.queue_free)
+
+func get_mob_world_position(mob_id: int) -> Vector3:
+	if mob_id < _mob_sprites.size() and is_instance_valid(_mob_sprites[mob_id]):
+		return _mob_sprites[mob_id].global_position
+	return Vector3.ZERO
+
+func get_player_world_position() -> Vector3:
+	if _player_sprite != null:
+		return _player_sprite.global_position
+	return player_anchor.global_position
 
 func on_state_changed(state: int, zone_id: int, prev_state: int) -> void:
-	# ArenaState enum values: FORK=0, PRE_FIGHT=1, FIGHTING=2, CLEARED=3, COMPLETED=4, FAILED=5
 	load_zone(zone_id)
 	spawn_hero()
 
@@ -173,7 +218,60 @@ func on_state_changed(state: int, zone_id: int, prev_state: int) -> void:
 		5:  # FAILED
 			play_player_death()
 
-# --- Helpers ---
+func _create_animated_sprite(frames: SpriteFrames, scale: Vector3) -> AnimatedSprite3D:
+	var sprite := AnimatedSprite3D.new()
+	sprite.sprite_frames = frames
+	sprite.pixel_size = 0.003
+	sprite.scale = scale
+	sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	sprite.transparent = true
+	sprite.alpha_cut = SpriteBase3D.ALPHA_CUT_OPAQUE_PREPASS
+	sprite.position.y = 1.0
+	if _hit_flash_shader != null:
+		var mat := ShaderMaterial.new()
+		mat.shader = _hit_flash_shader
+		sprite.material_override = mat
+	return sprite
+
+func _play_sprite_anim(sprite: AnimatedSprite3D, anim_name: String) -> void:
+	if sprite == null or not is_instance_valid(sprite):
+		return
+	if sprite.sprite_frames == null:
+		return
+	if sprite.sprite_frames.has_animation(anim_name):
+		sprite.play(anim_name)
+
+func _flash_sprite(sprite: AnimatedSprite3D, duration: float) -> void:
+	if sprite == null or not is_instance_valid(sprite):
+		return
+	var mat := sprite.material_override
+	if mat is ShaderMaterial:
+		mat.set_shader_parameter("flash_active", true)
+		get_tree().create_timer(duration).timeout.connect(func():
+			if is_instance_valid(sprite) and mat is ShaderMaterial:
+				mat.set_shader_parameter("flash_active", false)
+		)
+	else:
+		var original_modulate := sprite.modulate
+		sprite.modulate = Color.WHITE * 3.0
+		get_tree().create_timer(duration).timeout.connect(func():
+			if is_instance_valid(sprite):
+				sprite.modulate = original_modulate
+		)
+
+func _make_placeholder_frames(color: Color) -> SpriteFrames:
+	var frames := SpriteFrames.new()
+	frames.remove_animation("default")
+	var img := Image.create(64, 64, false, Image.FORMAT_RGBA8)
+	img.fill(color)
+	var texture := ImageTexture.create_from_image(img)
+	for anim_name in ["idle", "attack", "hit", "death"]:
+		frames.add_animation(anim_name)
+		frames.set_animation_speed(anim_name, 2.0)
+		frames.set_animation_loop(anim_name, anim_name == "idle")
+		frames.add_frame(anim_name, texture)
+	return frames
 
 func _get_zone_mob_positions(count: int) -> Array:
 	var positions: Array = []
@@ -203,43 +301,6 @@ func _get_mob_type(zone_id: int) -> String:
 		4: return "mob_crystal"
 		_: return "mob_ember"
 
-func _play_anim(node: Node3D, anim_name: String) -> void:
-	var anim_player: AnimationPlayer = node.get_node_or_null("AnimationPlayer")
-	if anim_player == null:
-		# Search children
-		for child in node.get_children():
-			if child is AnimationPlayer:
-				anim_player = child
-				break
-	if anim_player != null and anim_player.has_animation(anim_name):
-		anim_player.play(anim_name)
-
-func _flash_white(node: Node3D, duration: float) -> void:
-	# Find first MeshInstance3D and flash it
-	var mesh := _find_mesh(node)
-	if mesh == null:
-		return
-	var original_mat: Material = mesh.get_surface_override_material(0)
-	var flash_mat := StandardMaterial3D.new()
-	flash_mat.albedo_color = Color.WHITE
-	flash_mat.emission_enabled = true
-	flash_mat.emission = Color.WHITE
-	flash_mat.emission_energy_multiplier = 2.0
-	mesh.set_surface_override_material(0, flash_mat)
-	get_tree().create_timer(duration).timeout.connect(func():
-		if is_instance_valid(mesh):
-			mesh.set_surface_override_material(0, original_mat)
-	)
-
-func _find_mesh(node: Node) -> MeshInstance3D:
-	if node is MeshInstance3D:
-		return node
-	for child in node.get_children():
-		var found := _find_mesh(child)
-		if found != null:
-			return found
-	return null
-
 func _create_fallback_platform(zone_id: int) -> void:
 	var mesh_inst := MeshInstance3D.new()
 	var box := BoxMesh.new()
@@ -255,22 +316,3 @@ func _create_fallback_platform(zone_id: int) -> void:
 	mesh_inst.material_override = mat
 	mesh_inst.position = Vector3(0, -0.15, 0)
 	zone_anchor.add_child(mesh_inst)
-
-func _create_fallback_character(color: Color) -> Node3D:
-	var root := Node3D.new()
-	var mesh_inst := MeshInstance3D.new()
-	var capsule := CapsuleMesh.new()
-	capsule.radius = 0.3
-	capsule.height = 1.2
-	mesh_inst.mesh = capsule
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = color
-	mat.roughness = 0.4
-	mat.metallic = 0.3
-	mat.emission_enabled = true
-	mat.emission = color
-	mat.emission_energy_multiplier = 0.8
-	mesh_inst.material_override = mat
-	mesh_inst.position = Vector3(0, 0.6, 0)
-	root.add_child(mesh_inst)
-	return root

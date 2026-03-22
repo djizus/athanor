@@ -77,7 +77,10 @@ func _is_local_rpc(url: String) -> bool:
 
 # --- Scene management ---
 
-func _switch_scene(packed: PackedScene) -> Node:
+func _switch_scene(packed: PackedScene, use_transition: bool = false) -> Node:
+	if use_transition and not transition_manager.is_transitioning:
+		transition_manager.fade_to_black(0.3)
+		await transition_manager.transition_midpoint
 	if current_scene:
 		current_scene.queue_free()
 		current_scene = null
@@ -85,6 +88,8 @@ func _switch_scene(packed: PackedScene) -> Node:
 	scene_container.add_child(instance)
 	current_scene = instance
 	_connect_scene_signals(instance)
+	if use_transition:
+		transition_manager.fade_from_black(0.3)
 	return instance
 
 func _connect_scene_signals(scene: Node) -> void:
@@ -98,10 +103,10 @@ func _connect_scene_signals(scene: Node) -> void:
 # --- Scene transition handlers ---
 
 func _on_enter_arena() -> void:
-	_switch_scene(arena_scene)
+	_switch_scene(arena_scene, true)
 
 func _on_connected() -> void:
 	pass
 
 func _on_return_to_menu() -> void:
-	_switch_scene(main_menu_scene)
+	_switch_scene(main_menu_scene, true)

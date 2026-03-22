@@ -5,7 +5,8 @@
   "scripts": {
     "concepts": "tsx generate-concepts.ts",
     "models": "tsx generate-models.ts",
-    "all": "tsx generate-concepts.ts && tsx generate-models.ts"
+    "sprites": "tsx generate-sprites.ts",
+    "all": "tsx generate-concepts.ts && tsx generate-models.ts && tsx generate-sprites.ts"
   },
   "dependencies": {
     "@fal-ai/client": "^1.2.0",

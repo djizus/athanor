@@ -321,7 +321,12 @@ func _on_attack_pressed() -> void:
 	dojo_bridge.cast(game_state.get_game_id(), target, 0)
 	if dungeon_view != null and dungeon_view.has_method("play_attack"):
 		dungeon_view.play_attack(target)
-	# Optimistic stamina update
+		var mob_pos: Vector3 = dungeon_view.get_mob_world_position(target) if dungeon_view.has_method("get_mob_world_position") else Vector3.ZERO
+		if mob_pos != Vector3.ZERO and dungeon_view.has_method("spawn_damage_number"):
+			dungeon_view.spawn_damage_number(mob_pos, int(game_state.character.get("power", 10)))
+	var camera_rig := get_node_or_null("CameraRig")
+	if camera_rig and camera_rig.has_method("shake"):
+		camera_rig.shake(0.15, 0.2)
 	var new_stamina := maxi(0, stamina - AA_COST)
 	stamina_bar.value = new_stamina
 	stamina_label.text = "Stamina %d / %d" % [new_stamina, int(game_state.character.get("max_stamina", 100))]
@@ -338,6 +343,18 @@ func _on_end_turn_pressed() -> void:
 	dojo_bridge.finish(game_state.get_game_id())
 	if dungeon_view != null and dungeon_view.has_method("play_mob_turn"):
 		dungeon_view.play_mob_turn()
+		var player_pos: Vector3 = dungeon_view.get_player_world_position() if dungeon_view.has_method("get_player_world_position") else Vector3.ZERO
+		var alive_mobs := 0
+		var mob_count := int(game_state.fight.get("mob_count", 0))
+		var packed: int = _parse_int(game_state.fight.get("mob_healths", 0))
+		for i in range(mob_count):
+			if _unpack_mob_hp(packed, i) > 0:
+				alive_mobs += 1
+		if player_pos != Vector3.ZERO and alive_mobs > 0 and dungeon_view.has_method("spawn_damage_number"):
+			dungeon_view.spawn_damage_number(player_pos, alive_mobs * 5)
+	var camera_rig := get_node_or_null("CameraRig")
+	if camera_rig and camera_rig.has_method("shake"):
+		camera_rig.shake(0.25, 0.3)
 
 func _on_return_pressed() -> void:
 	# Archive current run to history before resetting

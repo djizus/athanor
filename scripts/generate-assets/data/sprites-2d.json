@@ -1,0 +1,53 @@
+{
+  "outputDir": "sprites",
+  "imageSize": { "width": 1024, "height": 1024 },
+  "style": "2D hand-painted fantasy game sprite, centered on canvas, transparent background, single character, no text, no UI, dramatic lighting, dark alchemical dungeon theme",
+  "characters": [
+    {
+      "id": "hero",
+      "basePrompt": "armored alchemist warrior, medieval plate armor with golden alchemical symbols, hooded cloak, holding a glowing runic sword",
+      "animations": [
+        { "name": "idle", "frames": 2, "poseHints": ["standing upright relaxed, sword at side, slight breathing motion", "standing upright, sword at side, weight shifted slightly"] },
+        { "name": "attack", "frames": 2, "poseHints": ["winding up sword strike, sword raised behind head", "slashing forward, sword extended, motion blur arc"] },
+        { "name": "hit", "frames": 2, "poseHints": ["recoiling backward from impact, pain expression", "stumbling, hand on wound, recovering balance"] },
+        { "name": "death", "frames": 2, "poseHints": ["collapsing to knees, sword falling from hand", "lying on ground defeated, armor cracked"] }
+      ]
+    },
+    {
+      "id": "mob_ember",
+      "basePrompt": "fire elemental creature, body made of molten rock and flames, ember eyes glowing orange, medium size humanoid",
+      "animations": [
+        { "name": "idle", "frames": 1, "poseHints": ["hovering slightly, flames flickering around body"] },
+        { "name": "attack", "frames": 1, "poseHints": ["lunging forward with flaming fist, fire trail behind"] },
+        { "name": "death", "frames": 1, "poseHints": ["flames extinguishing, crumbling into cooling rocks"] }
+      ]
+    },
+    {
+      "id": "mob_aether",
+      "basePrompt": "ethereal wraith creature, translucent purple body, glowing arcane runes floating around it, spectral claws",
+      "animations": [
+        { "name": "idle", "frames": 1, "poseHints": ["floating eerily, runes orbiting slowly"] },
+        { "name": "attack", "frames": 1, "poseHints": ["slashing with spectral claws, purple energy wave"] },
+        { "name": "death", "frames": 1, "poseHints": ["dissolving into purple mist, runes shattering"] }
+      ]
+    },
+    {
+      "id": "mob_sunken",
+      "basePrompt": "deep sea abomination, barnacle-covered humanoid, bioluminescent patches, dripping water, tentacle arms",
+      "animations": [
+        { "name": "idle", "frames": 1, "poseHints": ["swaying slowly, tentacles writhing, bioluminescence pulsing"] },
+        { "name": "attack", "frames": 1, "poseHints": ["lashing out with tentacle arms, water spray"] },
+        { "name": "death", "frames": 1, "poseHints": ["deflating, collapsing into a puddle of dark water"] }
+      ]
+    },
+    {
+      "id": "mob_crystal",
+      "basePrompt": "crystal golem, body made of jagged green crystals, glowing core visible through translucent chest, heavy and angular",
+      "animations": [
+        { "name": "idle", "frames": 1, "poseHints": ["standing still, core pulsing with green light, crystals refracting"] },
+        { "name": "attack", "frames": 1, "poseHints": ["slamming crystal fist down, shards flying from impact"] },
+        { "name": "death", "frames": 1, "poseHints": ["shattering into crystal fragments, core dimming"] }
+      ]
+    }
+  ]
+}
