@@ -21,6 +21,7 @@ var _leaving := false
 @onready var sfx_slider: HSlider = %SfxSlider
 @onready var music_toggle: CheckButton = %MusicToggle
 @onready var sfx_toggle: CheckButton = %SfxToggle
+@onready var auth_browser: Control = %AuthBrowser
 
 func _ready() -> void:
 	get_window().focus_entered.connect(_on_window_focus)
@@ -28,6 +29,10 @@ func _ready() -> void:
 	game_state.dungeon_updated.connect(_on_state_changed)
 	dojo_bridge.tx_submitted.connect(_on_tx_submitted)
 	dojo_bridge.tx_failed.connect(_on_tx_failed)
+	dojo_bridge.auth_url_ready.connect(_on_auth_url_ready)
+	auth_browser.auth_url_matched.connect(_on_auth_browser_matched)
+	auth_browser.auth_closed.connect(_on_auth_browser_closed)
+	auth_browser.auth_error.connect(_on_auth_browser_error)
 	_refresh_ui()
 	_init_settings()
 	audio_manager.play_music("main_theme")
@@ -79,8 +84,33 @@ func _on_connect_button_pressed() -> void:
 	if _auth_pending:
 		return
 	connect_button.disabled = true
-	status_label.text = "Opening browser for authentication..."
+	status_label.text = "Connecting..."
 	_auth_pending = true
+	dojo_bridge.initiate_controller_auth()
+	# If embedded browser is available, auth_url_ready signal will fire → _on_auth_url_ready
+	# If not, OS.shell_open fires and we show the fallback text
+	if not auth_browser.is_showing():
+		status_label.text = "A browser window has opened — approve the session there, then Alt-Tab back"
+		retry_button.visible = true
+
+func _on_auth_url_ready(url: String) -> void:
+	status_label.text = "Approve the session below"
+	retry_button.visible = false
+	auth_browser.show_auth(url)
+
+func _on_auth_browser_matched(_url: String) -> void:
+	auth_browser.hide_auth()
+	_try_complete_auth()
+
+func _on_auth_browser_closed() -> void:
+	_auth_pending = false
+	connect_button.disabled = false
+	status_label.text = "Authentication cancelled"
+
+func _on_auth_browser_error(message: String) -> void:
+	auth_browser.hide_auth()
+	status_label.text = message
+	# Fall back to external browser
 	dojo_bridge.initiate_controller_auth()
 	status_label.text = "A browser window has opened — approve the session there, then Alt-Tab back"
 	retry_button.visible = true
@@ -89,7 +119,7 @@ func _on_retry_button_pressed() -> void:
 	_try_complete_auth()
 
 func _on_window_focus() -> void:
-	if _auth_pending:
+	if _auth_pending and not auth_browser.is_showing():
 		_try_complete_auth()
 
 func _try_complete_auth() -> void:

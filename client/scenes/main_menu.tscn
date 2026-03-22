@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/main_menu.gd" id="1"]
 [ext_resource type="Texture2D" path="res://assets/branding/logo-in-game-gold.png" id="logo"]
+[ext_resource type="PackedScene" path="res://scenes/auth_browser.tscn" id="auth_browser"]
 
 [node name="MainMenu" type="Control"]
 layout_mode = 3
@@ -167,6 +168,9 @@ min_value = 0.0
 max_value = 1.0
 step = 0.05
 value = 1.0
+
+[node name="AuthBrowser" parent="." instance=ExtResource("auth_browser")]
+unique_name_in_owner = true
 
 [connection signal="pressed" from="Center/Panel/VBox/ConnectButton" to="." method="_on_connect_button_pressed"]
 [connection signal="pressed" from="Center/Panel/VBox/SpawnButton" to="." method="_on_spawn_button_pressed"]
