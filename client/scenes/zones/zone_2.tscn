@@ -1,0 +1,37 @@
+[gd_scene load_steps=3 format=3]
+
+[sub_resource type="BoxMesh" id="floor"]
+size = Vector3(10, 0.3, 10)
+
+[sub_resource type="StandardMaterial3D" id="floor_mat"]
+albedo_color = Color(0.08, 0.05, 0.1, 1)
+roughness = 0.7
+metallic = 0.1
+emission_enabled = true
+emission = Color(0.620, 0.353, 0.620, 1)
+emission_energy_multiplier = 0.2
+
+[node name="Zone2" type="Node3D"]
+
+[node name="Floor" type="MeshInstance3D" parent="."]
+mesh = SubResource("floor")
+material_override = SubResource("floor_mat")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.15, 0)
+
+[node name="AccentLight" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3, -2)
+light_color = Color(0.620, 0.353, 0.620, 1)
+light_energy = 2.0
+omni_range = 12.0
+
+[node name="AccentLight2" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 1.5, 2)
+light_color = Color(0.5, 0.2, 0.7, 1)
+light_energy = 0.8
+omni_range = 6.0
+
+[node name="PlayerPosition" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2)
+
+[node name="MobPosition0" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -2)

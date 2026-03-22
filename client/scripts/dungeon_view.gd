@@ -54,7 +54,7 @@ func load_zone(zone_id: int) -> void:
 
 	# Position player
 	if _player_model != null:
-		_player_model.position = PLAYER_POSITION
+		_player_model.position = _get_zone_player_position()
 
 func spawn_hero() -> void:
 	if _player_model != null:
@@ -69,14 +69,16 @@ func spawn_hero() -> void:
 		# Fallback: capsule mesh
 		_player_model = _create_fallback_character(Color(0.831, 0.659, 0.286))
 
-	_player_model.position = PLAYER_POSITION
+	_player_model.position = _get_zone_player_position()
 	player_anchor.add_child(_player_model)
 
 func spawn_mobs(count: int, zone_id: int) -> void:
 	clear_mobs()
-	var positions: Array = MOB_POSITIONS.get(count, [])
+
+	# Get positions from zone scene Marker3D nodes, fallback to constants
+	var positions: Array = _get_zone_mob_positions(count)
 	if positions.is_empty():
-		positions = [Vector3(0, 0, -2)]
+		positions = MOB_POSITIONS.get(count, [Vector3(0, 0, -2)])
 
 	var mob_type := _get_mob_type(zone_id)
 	var mob_path := "res://assets/models/characters/%s.glb" % mob_type
@@ -172,6 +174,26 @@ func on_state_changed(state: int, zone_id: int, prev_state: int) -> void:
 			play_player_death()
 
 # --- Helpers ---
+
+func _get_zone_mob_positions(count: int) -> Array:
+	var positions: Array = []
+	if zone_anchor.get_child_count() == 0:
+		return positions
+	var zone_scene: Node3D = zone_anchor.get_child(0)
+	for i in range(count):
+		var marker := zone_scene.get_node_or_null("MobPosition%d" % i) as Marker3D
+		if marker != null:
+			positions.append(marker.global_position - zone_anchor.global_position)
+	return positions
+
+func _get_zone_player_position() -> Vector3:
+	if zone_anchor.get_child_count() == 0:
+		return PLAYER_POSITION
+	var zone_scene: Node3D = zone_anchor.get_child(0)
+	var marker := zone_scene.get_node_or_null("PlayerPosition") as Marker3D
+	if marker != null:
+		return marker.global_position - zone_anchor.global_position
+	return PLAYER_POSITION
 
 func _get_mob_type(zone_id: int) -> String:
 	match zone_id:
