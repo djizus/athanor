@@ -5,6 +5,7 @@ signal connected
 
 var _auth_pending := false
 var _verifying := false
+var _leaving := false
 
 @onready var logo: TextureRect = %Logo
 @onready var player_info: Label = %PlayerInfo
@@ -115,9 +116,6 @@ func _on_spawn_button_pressed() -> void:
 	status_label.text = "Spawning hero..."
 	dojo_bridge.spawn(0)
 
-func _on_resume_button_pressed() -> void:
-	enter_arena.emit()
-
 func _on_disconnect_pressed() -> void:
 	game_state.reset()
 	_refresh_ui()
@@ -125,15 +123,36 @@ func _on_disconnect_pressed() -> void:
 # --- Callbacks ---
 
 func _on_state_changed(_data: Dictionary) -> void:
+	if _leaving:
+		return
 	var has_char := not game_state.character.is_empty()
 	var alive := has_char and int(game_state.character.get("health", 0)) > 0
 	var active := has_char and alive \
 		and not bool(game_state.dungeon.get("completed", false)) \
 		and not bool(game_state.dungeon.get("failed", false))
 	if active:
+		_leaving = true
+		_disconnect_signals()
 		enter_arena.emit()
 	else:
 		_refresh_ui()
+
+func _on_resume_button_pressed() -> void:
+	if _leaving:
+		return
+	_leaving = true
+	_disconnect_signals()
+	enter_arena.emit()
+
+func _disconnect_signals() -> void:
+	if game_state.character_updated.is_connected(_on_state_changed):
+		game_state.character_updated.disconnect(_on_state_changed)
+	if game_state.dungeon_updated.is_connected(_on_state_changed):
+		game_state.dungeon_updated.disconnect(_on_state_changed)
+	if dojo_bridge.tx_submitted.is_connected(_on_tx_submitted):
+		dojo_bridge.tx_submitted.disconnect(_on_tx_submitted)
+	if dojo_bridge.tx_failed.is_connected(_on_tx_failed):
+		dojo_bridge.tx_failed.disconnect(_on_tx_failed)
 
 func _on_tx_submitted(_action: String) -> void:
 	pass
