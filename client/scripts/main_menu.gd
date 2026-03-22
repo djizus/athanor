@@ -33,7 +33,7 @@ func _ready() -> void:
 	audio_manager.play_music("main_theme")
 
 func _refresh_ui() -> void:
-	var authed := dojo_bridge.is_session_valid() or not dojo_bridge.current_player.is_empty()
+	var authed := not dojo_bridge.current_player.is_empty()
 	var has_character := not game_state.character.is_empty()
 	var alive := has_character and int(game_state.character.get("health", 0)) > 0
 	var dungeon_active := has_character and alive \
