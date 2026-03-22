@@ -100,6 +100,25 @@ layout_mode = 2
 visible = false
 text = "Disconnect"
 
+[node name="HistoryPanel" type="PanelContainer" parent="Center/Panel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+visible = false
+
+[node name="HistoryVBox" type="VBoxContainer" parent="Center/Panel/VBox/HistoryPanel"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="HistoryTitle" type="Label" parent="Center/Panel/VBox/HistoryPanel/HistoryVBox"]
+layout_mode = 2
+theme_type_variation = &"SubtitleLabel"
+text = "Past Dungeons"
+
+[node name="HistoryContainer" type="VBoxContainer" parent="Center/Panel/VBox/HistoryPanel/HistoryVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 4
+
 [node name="SettingsButton" type="Button" parent="."]
 layout_mode = 1
 anchors_preset = 1

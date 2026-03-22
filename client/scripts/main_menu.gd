@@ -22,6 +22,8 @@ var _leaving := false
 @onready var music_toggle: CheckButton = %MusicToggle
 @onready var sfx_toggle: CheckButton = %SfxToggle
 @onready var auth_browser: Control = %AuthBrowser
+@onready var history_container: VBoxContainer = %HistoryContainer
+@onready var history_panel: PanelContainer = %HistoryPanel
 
 func _ready() -> void:
 	get_window().focus_entered.connect(_on_window_focus)
@@ -33,7 +35,9 @@ func _ready() -> void:
 	auth_browser.auth_url_matched.connect(_on_auth_browser_matched)
 	auth_browser.auth_closed.connect(_on_auth_browser_closed)
 	auth_browser.auth_error.connect(_on_auth_browser_error)
+	game_state.history_updated.connect(_refresh_history)
 	_refresh_ui()
+	_refresh_history()
 	_init_settings()
 	audio_manager.play_music("main_theme")
 
@@ -66,15 +70,17 @@ func _refresh_ui() -> void:
 	# Button visibility
 	connect_button.visible = not authed
 	retry_button.visible = false
-	spawn_button.visible = authed and not dungeon_active
+	spawn_button.visible = authed
+	spawn_button.text = "New Dungeon" if dungeon_active else "Enter Dungeon"
 	resume_button.visible = authed and dungeon_active
 	disconnect_button.visible = authed
+	history_panel.visible = authed and not game_state.past_runs.is_empty()
 
 	spawn_button.disabled = false
 	if not authed:
 		status_label.text = "Connect your account to enter Athanor"
 	elif dungeon_active:
-		status_label.text = "Your dungeon awaits..."
+		status_label.text = "You have an active dungeon run"
 	else:
 		status_label.text = ""
 
@@ -143,7 +149,8 @@ func _try_complete_auth() -> void:
 
 func _on_spawn_button_pressed() -> void:
 	spawn_button.disabled = true
-	status_label.text = "Spawning hero..."
+	status_label.text = "Spawning new dungeon..."
+	game_state.reset()
 	dojo_bridge.spawn(0)
 
 func _on_disconnect_pressed() -> void:
@@ -180,6 +187,8 @@ func _disconnect_signals() -> void:
 		game_state.character_updated.disconnect(_on_state_changed)
 	if game_state.dungeon_updated.is_connected(_on_state_changed):
 		game_state.dungeon_updated.disconnect(_on_state_changed)
+	if game_state.history_updated.is_connected(_refresh_history):
+		game_state.history_updated.disconnect(_refresh_history)
 	if dojo_bridge.tx_submitted.is_connected(_on_tx_submitted):
 		dojo_bridge.tx_submitted.disconnect(_on_tx_submitted)
 	if dojo_bridge.tx_failed.is_connected(_on_tx_failed):
@@ -217,3 +226,50 @@ func _on_music_toggle_toggled(pressed: bool) -> void:
 
 func _on_sfx_toggle_toggled(pressed: bool) -> void:
 	audio_manager.sfx_enabled = pressed
+
+# --- History ---
+
+func _refresh_history() -> void:
+	if history_container == null:
+		return
+	# Clear old rows
+	for child in history_container.get_children():
+		child.queue_free()
+	# Build rows from game_state.past_runs
+	for run in game_state.past_runs:
+		var gid := int(run.get("game_id", 0))
+		var status: String = run.get("status", "Unknown")
+		var ch: Dictionary = run.get("character", {})
+		var hp := int(ch.get("health", 0))
+		var max_hp := int(ch.get("max_health", 100))
+		var zone := int(ch.get("current_zone", 0))
+
+		var row := HBoxContainer.new()
+		row.theme_override_constants_separation = 8
+
+		var id_label := Label.new()
+		id_label.text = "#%d" % gid
+		id_label.custom_minimum_size = Vector2(40, 0)
+		id_label.theme_type_variation = &"SubtitleLabel"
+		row.add_child(id_label)
+
+		var status_label_item := Label.new()
+		match status:
+			"Completed":
+				status_label_item.text = "Cleared"
+				status_label_item.add_theme_color_override("font_color", Color(0.25, 0.7, 0.35))
+			"Failed":
+				status_label_item.text = "Failed"
+				status_label_item.add_theme_color_override("font_color", Color(0.85, 0.27, 0.27))
+			_:
+				status_label_item.text = status
+		status_label_item.custom_minimum_size = Vector2(80, 0)
+		row.add_child(status_label_item)
+
+		var detail := Label.new()
+		detail.text = "Zone %d  HP %d/%d" % [zone, hp, max_hp]
+		detail.theme_type_variation = &"SubtitleLabel"
+		detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(detail)
+
+		history_container.add_child(row)

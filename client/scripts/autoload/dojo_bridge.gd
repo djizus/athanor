@@ -9,6 +9,7 @@ signal auth_url_ready(url: String)
 const CHARACTER_MODEL := "athanor-Character"
 const DUNGEON_MODEL := "athanor-Dungeon"
 const FIGHT_MODEL := "athanor-Fight"
+const PLAYER_STATE_MODEL := "athanor-PlayerState"
 const DIRECTION_LEFT := 0
 const DIRECTION_RIGHT := 1
 
@@ -268,6 +269,7 @@ func _create_entity_subscription() -> void:
 		clause.call("add_model", CHARACTER_MODEL)
 		clause.call("add_model", DUNGEON_MODEL)
 		clause.call("add_model", FIGHT_MODEL)
+		clause.call("add_model", PLAYER_STATE_MODEL)
 		clause.call("pattern", 2)  # VariableLen
 		push_warning("[dojo_bridge] Subscribing with KeysClause: %s, %s, %s" % [CHARACTER_MODEL, DUNGEON_MODEL, FIGHT_MODEL])
 	else:
@@ -285,29 +287,83 @@ func _on_entities(args: Dictionary) -> void:
 func _handle_entity_payload(payload: Dictionary) -> void:
 	var models: Dictionary = payload.get("models", {})
 	if models.is_empty():
-		# Try flat payload — some SDK versions don't wrap in "models"
-		if payload.has("player") or payload.has("health") or payload.has("game_id"):
-			push_warning("[dojo_bridge] Flat entity payload, checking model type...")
-			# Can't determine model type from flat dict, skip
-			return
 		return
-	push_warning("[dojo_bridge] Entity models keys: %s" % str(models.keys()))
+
+	# Parse PlayerState first to learn latest game_id
+	if models.has(PLAYER_STATE_MODEL):
+		var ps := _normalize_model(models[PLAYER_STATE_MODEL])
+		if _matches_current_player(ps):
+			var game_count := int(ps.get("game_count", 0))
+			if game_count > game_state.latest_game_id:
+				game_state.set_latest_game_id(game_count)
+
+	# Determine which game_id to accept for current state
+	var target_gid := game_state.latest_game_id
+
 	if models.has(CHARACTER_MODEL):
 		var character_model := _normalize_model(models[CHARACTER_MODEL])
 		if _matches_current_player(character_model):
-			game_state.update_character(character_model)
+			var gid := int(character_model.get("game_id", -1))
+			if gid == target_gid:
+				game_state.update_character(character_model)
+			elif gid > 0:
+				_store_historical_character(character_model)
+
 	if models.has(DUNGEON_MODEL):
 		var dungeon_model := _normalize_model(models[DUNGEON_MODEL])
 		if _matches_current_player(dungeon_model):
-			game_state.update_dungeon(dungeon_model)
+			var gid := int(dungeon_model.get("game_id", -1))
+			if gid == target_gid:
+				game_state.update_dungeon(dungeon_model)
+			elif gid > 0:
+				_store_historical_dungeon(dungeon_model)
+
 	if models.has(FIGHT_MODEL):
 		var fight_model := _normalize_model(models[FIGHT_MODEL])
 		if _matches_current_player(fight_model):
-			# Only accept the fight for the current zone — old zone fights must not overwrite
-			var current_zone := int(game_state.character.get("current_zone", -1))
-			var fight_zone := int(fight_model.get("zone_id", -2))
-			if current_zone < 0 or fight_zone == current_zone:
-				game_state.update_fight(fight_model)
+			var gid := int(fight_model.get("game_id", -1))
+			if gid == target_gid:
+				var current_zone := int(game_state.character.get("current_zone", -1))
+				var fight_zone := int(fight_model.get("zone_id", -2))
+				if current_zone < 0 or fight_zone == current_zone:
+					game_state.update_fight(fight_model)
+
+# Build historical run entries from old game data
+var _history_chars := {}  # game_id → character dict
+var _history_dungeons := {}  # game_id → dungeon dict
+
+func _store_historical_character(model: Dictionary) -> void:
+	var gid := int(model.get("game_id", -1))
+	if gid < 0:
+		return
+	_history_chars[gid] = model
+	_flush_history(gid)
+
+func _store_historical_dungeon(model: Dictionary) -> void:
+	var gid := int(model.get("game_id", -1))
+	if gid < 0:
+		return
+	_history_dungeons[gid] = model
+	_flush_history(gid)
+
+func _flush_history(gid: int) -> void:
+	if not _history_chars.has(gid) or not _history_dungeons.has(gid):
+		return
+	var ch: Dictionary = _history_chars[gid]
+	var dg: Dictionary = _history_dungeons[gid]
+	var status := "In Progress"
+	if bool(dg.get("completed", false)):
+		status = "Completed"
+	elif bool(dg.get("failed", false)):
+		status = "Failed"
+	elif int(ch.get("health", 0)) <= 0:
+		status = "Failed"
+	game_state.add_historical_run({
+		"game_id": gid,
+		"character": ch,
+		"dungeon": dg,
+		"status": status,
+	})
 
 func _normalize_model(model: Dictionary) -> Dictionary:
 	var normalized := model.duplicate(true)
