@@ -4,6 +4,7 @@ signal torii_connected(success: bool)
 signal session_ready(address: String)
 signal tx_submitted(action: String)
 signal tx_failed(action: String, reason: String)
+signal auth_url_ready(url: String)
 
 const CHARACTER_MODEL := "athanor-Character"
 const DUNGEON_MODEL := "athanor-Dungeon"
@@ -109,7 +110,11 @@ func initiate_controller_auth() -> void:
 		tx_failed.emit("auth", "Could not generate session URL")
 		return
 
-	# Allow window to steal focus back after browser auth
+	if _can_use_embedded_auth_browser():
+		auth_url_ready.emit(session_url)
+		return
+
+	# Fallback for mobile/web or when CefTexture is unavailable.
 	DisplayServer.enable_for_stealing_focus(OS.get_process_id())
 	OS.shell_open(session_url)
 
@@ -392,3 +397,10 @@ func _load_session_info() -> Dictionary:
 func _clear_session_cache() -> void:
 	if FileAccess.file_exists(SESSION_CACHE_PATH):
 		DirAccess.remove_absolute(SESSION_CACHE_PATH)
+
+func _is_desktop_platform() -> bool:
+	var os_name := OS.get_name()
+	return os_name in ["Linux", "Windows", "macOS"]
+
+func _can_use_embedded_auth_browser() -> bool:
+	return _is_desktop_platform() and ClassDB.class_exists("CefTexture")
