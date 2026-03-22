@@ -247,11 +247,24 @@ func _create_entity_subscription() -> void:
 	if world_address == "0x0":
 		return
 	var callback: Variant = _instantiate_dojo_class("DojoCallback")
-	var clause: Variant = _instantiate_dojo_class("DojoClause")
-	if callback == null or clause == null:
+	if callback == null:
 		return
 	callback.set("on_update", Callable(self, "_on_entities"))
+
+	# Use KeysClause with our model names so Torii streams matching entity updates
+	var clause: Variant = null
+	if ClassDB.class_exists("KeysClause"):
+		clause = ClassDB.instantiate("KeysClause")
+		clause.call("models", PackedStringArray([CHARACTER_MODEL, DUNGEON_MODEL, FIGHT_MODEL]))
+		clause.call("pattern", 2)  # VariableLen
+		push_warning("[dojo_bridge] Subscribing with KeysClause: %s" % [CHARACTER_MODEL, DUNGEON_MODEL, FIGHT_MODEL])
+	else:
+		clause = _instantiate_dojo_class("DojoClause")
+		if clause == null:
+			return
+
 	entity_subscription_id = int(torii_client.call("subscribe_entity_updates", clause, [world_address], callback))
+	push_warning("[dojo_bridge] Entity subscription ID: %d" % entity_subscription_id)
 
 func _on_entities(args: Dictionary) -> void:
 	_handle_entity_payload(args)
