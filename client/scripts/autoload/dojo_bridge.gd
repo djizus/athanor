@@ -180,7 +180,7 @@ func get_player_info() -> Dictionary:
 	return session_account.call("get_info")
 
 func is_session_valid() -> bool:
-	if session_account == null:
+	if session_account == null or not session_account.has_method("is_valid"):
 		return false
 	return bool(session_account.call("is_valid"))
 

@@ -5,10 +5,8 @@ extends Node
 @export var world_address := "0x0"
 @export var actions_address := "0x0"
 
-var connection_scene: PackedScene = preload("res://scenes/connection.tscn")
-var lobby_scene: PackedScene = preload("res://scenes/lobby.tscn")
-var dungeon_scene: PackedScene = preload("res://scenes/dungeon.tscn")
-var game_over_scene: PackedScene = preload("res://scenes/game_over.tscn")
+var main_menu_scene: PackedScene = preload("res://scenes/main_menu.tscn")
+var arena_scene: PackedScene = preload("res://scenes/arena.tscn")
 
 var torii_client: Node
 var session_account: Node
@@ -26,40 +24,19 @@ func _ready() -> void:
 	dojo_bridge.configure_nodes(torii_client, session_account, http_tools)
 	dojo_bridge.configure_network(torii_url, rpc_url, world_address, actions_address)
 
-	game_state.game_over.connect(_on_game_over)
+	# Connect Torii + try auth
+	dojo_bridge.connect_torii()
 
-	# --- Auth + routing: connect Torii, resume session, route by game state ---
 	var authenticated := false
-
-	# Burner mode (localhost only)
 	if _is_local_rpc(rpc_url):
 		authenticated = _try_burner_connect()
-
-	# Controller session resume (Slot / public RPC)
 	if not authenticated:
-		# Connect Torii early so resume + entity pull work
-		dojo_bridge.connect_torii()
 		authenticated = dojo_bridge.try_resume_controller_session()
-
-	# Route based on state
 	if authenticated:
-		_route_after_auth()
-	else:
-		_switch_scene(connection_scene)
+		dojo_bridge.pull_entities_snapshot()
 
-func _route_after_auth() -> void:
-	# Pull latest entities to check if character already exists
-	dojo_bridge.pull_entities_snapshot()
-
-	if not game_state.character.is_empty() and game_state.is_alive():
-		var completed := bool(game_state.dungeon.get("completed", false))
-		var failed := bool(game_state.dungeon.get("failed", false))
-		if completed or failed:
-			_switch_scene(lobby_scene)
-		else:
-			_switch_scene(dungeon_scene)
-	else:
-		_switch_scene(lobby_scene)
+	# Always start at main menu — it handles routing based on state
+	_switch_scene(main_menu_scene)
 
 func _apply_project_settings() -> void:
 	var cfg_torii := String(ProjectSettings.get_setting("dojo/config/torii/torii_url", ""))
@@ -111,35 +88,20 @@ func _switch_scene(packed: PackedScene) -> Node:
 	return instance
 
 func _connect_scene_signals(scene: Node) -> void:
+	if scene.has_signal("enter_arena"):
+		scene.enter_arena.connect(_on_enter_arena)
 	if scene.has_signal("connected"):
 		scene.connected.connect(_on_connected)
-	if scene.has_signal("dungeon_entered"):
-		scene.dungeon_entered.connect(_on_dungeon_entered)
-	if scene.has_signal("disconnected"):
-		scene.disconnected.connect(_on_disconnected)
-	if scene.has_signal("play_again"):
-		scene.play_again.connect(_on_play_again)
-	if scene.has_signal("back_to_lobby"):
-		scene.back_to_lobby.connect(_on_back_to_lobby)
+	if scene.has_signal("return_to_menu"):
+		scene.return_to_menu.connect(_on_return_to_menu)
 
 # --- Scene transition handlers ---
 
+func _on_enter_arena() -> void:
+	_switch_scene(arena_scene)
+
 func _on_connected() -> void:
-	_route_after_auth()
+	pass
 
-func _on_dungeon_entered() -> void:
-	_switch_scene(dungeon_scene)
-
-func _on_game_over(completed: bool, failed: bool) -> void:
-	var scene := _switch_scene(game_over_scene)
-	if scene != null and scene.has_method("setup"):
-		scene.call("setup", completed, failed)
-
-func _on_play_again() -> void:
-	_switch_scene(lobby_scene)
-
-func _on_back_to_lobby() -> void:
-	_switch_scene(lobby_scene)
-
-func _on_disconnected() -> void:
-	_switch_scene(connection_scene)
+func _on_return_to_menu() -> void:
+	_switch_scene(main_menu_scene)
