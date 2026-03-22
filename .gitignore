@@ -18,6 +18,9 @@ client/addons/godot_cef/
 # === Environment ===
 .env
 client/.env
+scripts/generate-assets/.env
+scripts/generate-assets/output/
+scripts/generate-assets/node_modules/
 
 # === Build artifacts ===
 *.o

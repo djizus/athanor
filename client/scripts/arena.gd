@@ -1,4 +1,4 @@
-extends Control
+extends Node3D
 
 signal return_to_menu
 
@@ -58,6 +58,8 @@ var mob_rows: Array[HBoxContainer] = []
 var current_state: ArenaState = ArenaState.FORK
 var _auto_finishing := false
 var _auto_advancing := false
+
+@onready var dungeon_view: Node3D = $DungeonWorld
 
 func _ready() -> void:
 	game_state.character_updated.connect(_on_state_changed)
@@ -224,6 +226,10 @@ func _refresh(_data: Dictionary = {}) -> void:
 			elif int(game_state.character.get("stamina", 0)) < AA_COST:
 				_auto_finish("Out of stamina — ending turn...")
 
+	# 3D visual sync
+	if current_state != prev_state and dungeon_view != null and dungeon_view.has_method("on_state_changed"):
+		dungeon_view.on_state_changed(current_state, zone, prev_state)
+
 func _update_player_bars() -> void:
 	var max_hp := int(game_state.character.get("max_health", 100))
 	var hp := int(game_state.character.get("health", 0))
@@ -313,6 +319,8 @@ func _on_attack_pressed() -> void:
 	attack_button.disabled = true
 	turn_info.text = "Attacking..."
 	dojo_bridge.cast(game_state.get_game_id(), target, 0)
+	if dungeon_view != null and dungeon_view.has_method("play_attack"):
+		dungeon_view.play_attack(target)
 	# Optimistic stamina update
 	var new_stamina := maxi(0, stamina - AA_COST)
 	stamina_bar.value = new_stamina
@@ -328,6 +336,8 @@ func _on_end_turn_pressed() -> void:
 	end_turn_button.disabled = true
 	turn_info.text = "Ending turn..."
 	dojo_bridge.finish(game_state.get_game_id())
+	if dungeon_view != null and dungeon_view.has_method("play_mob_turn"):
+		dungeon_view.play_mob_turn()
 
 func _on_return_pressed() -> void:
 	# Archive current run to history before resetting
