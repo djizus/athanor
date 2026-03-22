@@ -82,7 +82,7 @@ func _on_connect_button_pressed() -> void:
 	status_label.text = "Opening browser for authentication..."
 	_auth_pending = true
 	dojo_bridge.initiate_controller_auth()
-	status_label.text = "Approve the session in your browser, then return here"
+	status_label.text = "A browser window has opened — approve the session there, then Alt-Tab back"
 	retry_button.visible = true
 
 func _on_retry_button_pressed() -> void:
