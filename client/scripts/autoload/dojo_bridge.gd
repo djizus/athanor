@@ -304,7 +304,9 @@ func _handle_entity_payload(payload: Dictionary) -> void:
 		var character_model := _normalize_model(models[CHARACTER_MODEL])
 		if _matches_current_player(character_model):
 			var gid := int(character_model.get("game_id", -1))
-			if gid == target_gid:
+			if gid >= target_gid and gid > 0:
+				if gid > target_gid:
+					game_state.set_latest_game_id(gid)
 				game_state.update_character(character_model)
 			elif gid > 0:
 				_store_historical_character(character_model)
@@ -313,7 +315,7 @@ func _handle_entity_payload(payload: Dictionary) -> void:
 		var dungeon_model := _normalize_model(models[DUNGEON_MODEL])
 		if _matches_current_player(dungeon_model):
 			var gid := int(dungeon_model.get("game_id", -1))
-			if gid == target_gid:
+			if gid >= game_state.latest_game_id and gid > 0:
 				game_state.update_dungeon(dungeon_model)
 			elif gid > 0:
 				_store_historical_dungeon(dungeon_model)

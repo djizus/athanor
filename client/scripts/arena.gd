@@ -197,7 +197,9 @@ func _refresh(_data: Dictionary = {}) -> void:
 	if current_state == ArenaState.FIGHTING and not _auto_finishing:
 		if bool(game_state.fight.get("active", false)):
 			if _first_alive_mob() < 0:
-				_auto_finish("All mobs defeated!")
+				turn_info.text = "All mobs defeated!"
+				attack_button.disabled = true
+				end_turn_button.disabled = true
 			elif int(game_state.character.get("stamina", 0)) < AA_COST:
 				_auto_finish("Out of stamina — ending turn...")
 
@@ -431,13 +433,15 @@ func _poll_after_delay(delay: float) -> void:
 	_poll_timers.append(timer)
 
 func _on_tx_failed(action: String, reason: String) -> void:
-	var short_reason := reason
-	if reason.length() > 60:
-		if "Failure reason" in reason:
-			var idx := reason.find("Failure reason")
-			short_reason = reason.substr(idx, 80).strip_edges()
-		else:
-			short_reason = reason.left(60) + "..."
+	var short_reason := "TX failed"
+	for keyword in ["No active fight", "already cleared", "not active", "invalid"]:
+		if keyword.to_lower() in reason.to_lower():
+			short_reason = keyword
+			break
+	if short_reason == "TX failed" and reason.length() > 40:
+		short_reason = reason.left(40) + "..."
+	elif short_reason == "TX failed":
+		short_reason = reason
 	turn_info.text = short_reason
 	push_warning("[arena] TX failed (%s): %s" % [action, reason])
 	attack_button.disabled = false
