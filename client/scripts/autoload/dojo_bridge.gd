@@ -81,6 +81,9 @@ func connect_torii() -> bool:
 	if torii_client == null:
 		tx_failed.emit("connect", "ToriiClient node is missing")
 		return false
+	if not torii_client.has_method("entities") or not torii_client.has_method("subscribe_entity_updates"):
+		tx_failed.emit("connect", "ToriiClient SDK node missing (install godot-dojo addon)")
+		return false
 	var ok: bool = bool(torii_client.call("connect", torii_url))
 	torii_connected.emit(ok)
 	if ok:
@@ -118,7 +121,8 @@ func complete_controller_auth() -> bool:
 		tx_failed.emit("auth", "No session key generated — call initiate_controller_auth() first")
 		return false
 
-	session_account.call("create_from_subscribe", _session_priv_key, rpc_url, full_policies, relay_url)
+	var session_policies: Dictionary = session_account.call("get_session_policy")
+	session_account.call("create_from_subscribe", _session_priv_key, rpc_url, session_policies, relay_url)
 	if bool(session_account.call("is_valid")):
 		var info: Dictionary = session_account.call("get_info")
 		current_player = String(info.get("address", "")).to_lower()
@@ -179,17 +183,15 @@ func _build_session_url() -> String:
 				"method": method.get("entrypoint", "")
 			})
 	var policies := {"policies": policy_list}
+	var session_policies: Dictionary = session_account.call("get_session_policy")
+	if session_policies.is_empty():
+		session_policies = policies
 
 	# Use the preferred API (ControllerHelper) instead of deprecated DojoSessionAccount method.
 	# NOTE: rpc_url MUST be publicly reachable (Slot deployment, not localhost).
 	# The Controller keychain page resolves chain_id by calling starknet_chainId on rpc_url.
 	# localhost:5050 is unreachable from x.cartridge.gg → "No chainId" error.
-	return String(helper.call("create_session_registration_url",
-		_session_priv_key,
-		policies,
-		rpc_url,
-		""  # preset (optional, for verified session branding)
-	))
+	return String(helper.call("create_session_registration_url", _session_priv_key, session_policies, rpc_url, ""))
 
 # --- Entity sync ---
 
