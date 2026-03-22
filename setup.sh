@@ -34,19 +34,9 @@ else
     echo "[godot-dojo] Downloading ${GODOT_DOJO_VERSION}..."
     curl -fSL "$GODOT_DOJO_URL" -o "${TMP_DIR}/godot_dojo.zip"
     mkdir -p "${ADDONS_DIR}"
-    unzip -q "${TMP_DIR}/godot_dojo.zip" -d "${TMP_DIR}/extract_dojo"
-
-    DOJO_SRC="${TMP_DIR}/extract_dojo/addons/godot-dojo"
-    if [ ! -d "$DOJO_SRC" ]; then
-        DOJO_SRC=$(find "${TMP_DIR}/extract_dojo" -name "godot-dojo.gdextension" -exec dirname {} \; | head -1)
-    fi
-
-    if [ -z "$DOJO_SRC" ] || [ ! -d "$DOJO_SRC" ]; then
-        echo "[godot-dojo] ERROR: Could not find godot-dojo addon in zip. Install manually."
-    else
-        cp -r "$DOJO_SRC" "${ADDONS_DIR}/godot-dojo"
-        echo "[godot-dojo] Installed."
-    fi
+    unzip -q "${TMP_DIR}/godot_dojo.zip" "dojo-starter-godot-project/addons/godot-dojo/*" -d "${TMP_DIR}/extract_dojo"
+    mv "${TMP_DIR}/extract_dojo/dojo-starter-godot-project/addons/godot-dojo" "${ADDONS_DIR}/godot-dojo"
+    echo "[godot-dojo] Installed."
 fi
 
 echo ""
