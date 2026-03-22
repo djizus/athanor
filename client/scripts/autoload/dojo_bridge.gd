@@ -184,6 +184,14 @@ func is_session_valid() -> bool:
 		return false
 	return bool(session_account.call("is_valid"))
 
+func disconnect_session() -> void:
+	current_player = ""
+	_session_priv_key = ""
+	_burner_address = ""
+	_burner_private_key = ""
+	_clear_session_cache()
+	push_warning("[dojo_bridge] Session disconnected")
+
 func _build_session_url() -> String:
 	if not ClassDB.class_exists("ControllerHelper"):
 		return ""

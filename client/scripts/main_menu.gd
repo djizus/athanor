@@ -118,6 +118,7 @@ func _on_spawn_button_pressed() -> void:
 
 func _on_disconnect_pressed() -> void:
 	game_state.reset()
+	dojo_bridge.disconnect_session()
 	_refresh_ui()
 
 # --- Callbacks ---
