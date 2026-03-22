@@ -29,6 +29,11 @@ const MINIMAP_POS := {
 @onready var stamina_bar: ProgressBar = %StaminaBar
 @onready var stamina_label: Label = %StaminaLabel
 @onready var zone_label: Label = %ZoneLabel
+@onready var top_bar: PanelContainer = $UILayer/UIRoot/TopBar
+@onready var bottom_bar: PanelContainer = $UILayer/UIRoot/BottomBar
+@onready var target_name: Label = %TargetName
+@onready var target_hp_bar: ProgressBar = %TargetHPBar
+@onready var target_hp_label: Label = %TargetHPLabel
 
 # Door panel
 @onready var door_panel: PanelContainer = %DoorPanel
@@ -37,10 +42,6 @@ const MINIMAP_POS := {
 @onready var right_door_button: Button = %RightDoorButton
 @onready var continue_button: Button = %ContinueButton
 
-# Fight panel
-@onready var fight_panel: PanelContainer = %FightPanel
-@onready var fight_title: Label = %FightTitle
-@onready var mob_container: VBoxContainer = %MobContainer
 @onready var attack_button: Button = %AttackButton
 @onready var end_turn_button: Button = %EndTurnButton
 @onready var turn_info: Label = %TurnInfo
@@ -54,12 +55,12 @@ const MINIMAP_POS := {
 @onready var stats_label: Label = %StatsLabel
 @onready var return_button: Button = %ReturnButton
 
-var mob_rows: Array[HBoxContainer] = []
 var current_state: ArenaState = ArenaState.FORK
 var _auto_finishing := false
 var _auto_advancing := false
 
 @onready var dungeon_view: Node3D = $DungeonWorld
+@onready var targeting_system: Node3D = $TargetingSystem
 
 func _ready() -> void:
 	game_state.character_updated.connect(_on_state_changed)
@@ -68,7 +69,6 @@ func _ready() -> void:
 	dojo_bridge.tx_submitted.connect(_on_tx_submitted)
 	dojo_bridge.tx_failed.connect(_on_tx_failed)
 
-	_build_mob_rows()
 	dojo_bridge.pull_entities_snapshot()
 	_refresh()
 	audio_manager.play_music("game_loop_1")
@@ -89,37 +89,6 @@ func _exit_tree() -> void:
 		dojo_bridge.tx_submitted.disconnect(_on_tx_submitted)
 	if dojo_bridge.tx_failed.is_connected(_on_tx_failed):
 		dojo_bridge.tx_failed.disconnect(_on_tx_failed)
-
-func _build_mob_rows() -> void:
-	for i in range(MAX_MOBS):
-		var row := HBoxContainer.new()
-		row.name = "MobRow%d" % i
-
-		var label := Label.new()
-		label.name = "Name"
-		label.custom_minimum_size = Vector2(90, 0)
-		label.text = "Mob %d" % i
-		row.add_child(label)
-
-		var bar := ProgressBar.new()
-		bar.name = "Bar"
-		bar.custom_minimum_size = Vector2(200, 22)
-		bar.max_value = 20
-		bar.show_percentage = false
-		bar.theme_type_variation = &"MobBar"
-		bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(bar)
-
-		var bar_label := Label.new()
-		bar_label.name = "BarLabel"
-		bar_label.text = "0 / 20"
-		bar_label.theme_type_variation = &"SubtitleLabel"
-		bar_label.custom_minimum_size = Vector2(70, 0)
-		bar_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		row.add_child(bar_label)
-
-		mob_container.add_child(row)
-		mob_rows.append(row)
 
 # --- State machine ---
 
@@ -168,7 +137,12 @@ func _refresh(_data: Dictionary = {}) -> void:
 
 	# Visibility
 	door_panel.visible = (current_state == ArenaState.FORK or current_state == ArenaState.CLEARED)
-	fight_panel.visible = (current_state == ArenaState.FIGHTING)
+	var in_combat := (current_state == ArenaState.FIGHTING)
+	if in_combat and not bottom_bar.visible:
+		_show_combat_hud()
+	elif not in_combat and bottom_bar.visible:
+		_hide_combat_hud()
+	_set_target_visible(in_combat)
 	start_fight_button.visible = (current_state == ArenaState.PRE_FIGHT)
 	result_panel.visible = (current_state == ArenaState.COMPLETED or current_state == ArenaState.FAILED)
 
@@ -210,7 +184,8 @@ func _refresh(_data: Dictionary = {}) -> void:
 			start_fight_button.text = "Begin Combat"
 			start_fight_button.disabled = false
 		ArenaState.FIGHTING:
-			_update_fight_panel()
+			_update_target_bar()
+			_update_mob_hp_bars()
 		ArenaState.COMPLETED:
 			result_title.text = "Dungeon Cleared!"
 			_update_stats()
@@ -225,6 +200,17 @@ func _refresh(_data: Dictionary = {}) -> void:
 				_auto_finish("All mobs defeated!")
 			elif int(game_state.character.get("stamina", 0)) < AA_COST:
 				_auto_finish("Out of stamina — ending turn...")
+
+	# Targeting system activation
+	if current_state == ArenaState.FIGHTING and targeting_system != null:
+		if not targeting_system.active:
+			var mob_nodes: Array = []
+			for child in dungeon_view.get_node("MobAnchor").get_children():
+				if child is AnimatedSprite3D:
+					mob_nodes.append(child)
+			targeting_system.activate(mob_nodes)
+	elif targeting_system != null and targeting_system.active:
+		targeting_system.deactivate()
 
 	# 3D visual sync
 	if current_state != prev_state and dungeon_view != null and dungeon_view.has_method("on_state_changed"):
@@ -244,29 +230,54 @@ func _update_player_bars() -> void:
 	stamina_bar.value = stamina
 	stamina_label.text = "Stamina %d / %d" % [stamina, max_stamina]
 
-func _update_fight_panel() -> void:
-	var zone := int(game_state.character.get("current_zone", 0))
-	var zone_name: String = ZONE_NAMES[zone] if zone < ZONE_NAMES.size() else "Zone %d" % zone
-	fight_title.text = "%s — Combat" % zone_name
+func _show_combat_hud() -> void:
+	bottom_bar.modulate.a = 0.0
+	bottom_bar.visible = true
+	var tween := create_tween()
+	tween.tween_property(bottom_bar, "modulate:a", 1.0, 0.3)
 
-	var mob_count := int(game_state.fight.get("mob_count", 0))
+func _hide_combat_hud() -> void:
+	var tween := create_tween()
+	tween.tween_property(bottom_bar, "modulate:a", 0.0, 0.2)
+	tween.tween_callback(func(): bottom_bar.visible = false)
+
+func _set_target_visible(vis: bool) -> void:
+	target_name.visible = vis
+	target_hp_bar.visible = vis
+	target_hp_label.visible = vis
+
+func _update_target_bar() -> void:
+	var mob_idx := _first_alive_mob()
+	if mob_idx < 0:
+		target_name.text = ""
+		target_hp_bar.value = 0
+		target_hp_label.text = ""
+		return
 	var packed: int = _parse_int(game_state.fight.get("mob_healths", 0))
-
-	for i in range(MAX_MOBS):
-		var row := mob_rows[i]
-		row.visible = i < mob_count
-		if row.visible:
-			var mob_hp := _unpack_mob_hp(packed, i)
-			var label: Label = row.get_node("Name")
-			var bar: ProgressBar = row.get_node("Bar")
-			var bar_label: Label = row.get_node("BarLabel")
-			label.text = "Mob %d" % i
-			bar.max_value = 20
-			bar.value = mob_hp
-			bar_label.text = "%d / %d" % [mob_hp, 20]
-
+	var mob_hp := _unpack_mob_hp(packed, mob_idx)
+	var max_hp := 20
+	target_name.text = _zone_mob_name(int(game_state.character.get("current_zone", 0)))
+	target_hp_bar.max_value = max_hp
+	target_hp_bar.value = mob_hp
+	target_hp_label.text = "%d / %d" % [mob_hp, max_hp]
 	attack_button.disabled = _first_alive_mob() < 0 or int(game_state.character.get("stamina", 0)) < AA_COST
 	end_turn_button.disabled = false
+
+func _update_mob_hp_bars() -> void:
+	if dungeon_view == null or not dungeon_view.has_method("update_mob_hp"):
+		return
+	var mob_count := int(game_state.fight.get("mob_count", 0))
+	var packed: int = _parse_int(game_state.fight.get("mob_healths", 0))
+	for i in range(mob_count):
+		dungeon_view.update_mob_hp(i, _unpack_mob_hp(packed, i), 20)
+
+func _zone_mob_name(zone_id: int) -> String:
+	match zone_id:
+		1: return "Ember Fiend"
+		2: return "Aether Wraith"
+		3: return "Sunken Horror"
+		4: return "Crystal Guardian"
+		_: return "Creature"
 
 func _update_stats() -> void:
 	var hp := int(game_state.character.get("health", 0))
@@ -312,7 +323,11 @@ func _on_attack_pressed() -> void:
 		turn_info.text = "Not enough stamina"
 		attack_button.disabled = true
 		return
-	var target := _first_alive_mob()
+	var target := -1
+	if targeting_system != null and targeting_system.active and targeting_system.current_target >= 0:
+		target = targeting_system.current_target
+	if target < 0:
+		target = _first_alive_mob()
 	if target < 0:
 		return
 	audio_manager.play_sfx("click")
@@ -361,6 +376,14 @@ func _on_return_pressed() -> void:
 	_archive_current_run()
 	game_state.reset()
 	return_to_menu.emit()
+
+func _unhandled_input(event: InputEvent) -> void:
+	if current_state != ArenaState.FIGHTING:
+		return
+	if event is InputEventKey and event.pressed:
+		match event.keycode:
+			KEY_1: _on_attack_pressed()
+			KEY_2: _on_end_turn_pressed()
 
 func _archive_current_run() -> void:
 	if game_state.character.is_empty():

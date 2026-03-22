@@ -15,8 +15,8 @@ const MOB_POSITIONS := {
 }
 
 const PLAYER_POSITION := Vector3(0, 0, 2)
-const SPRITE_SCALE := Vector3(2.0, 2.0, 2.0)
-const MOB_SPRITE_SCALE := Vector3(1.6, 1.6, 1.6)
+const SPRITE_SCALE := Vector3.ONE
+const MOB_SPRITE_SCALE := Vector3(0.8, 0.8, 0.8)
 
 @onready var zone_anchor: Node3D = $ZoneAnchor
 @onready var player_anchor: Node3D = $PlayerAnchor
@@ -28,6 +28,8 @@ var _mob_sprites: Array[AnimatedSprite3D] = []
 var _zone_scenes: Dictionary = {}
 
 var _hit_flash_shader: Shader = null
+var _hp_bar_shader: Shader = null
+var _mob_hp_bars: Array[MeshInstance3D] = []
 
 func _ready() -> void:
 	for i in range(5):
@@ -36,6 +38,8 @@ func _ready() -> void:
 			_zone_scenes[i] = load(path)
 	if ResourceLoader.exists("res://shaders/hit_flash.gdshader"):
 		_hit_flash_shader = load("res://shaders/hit_flash.gdshader")
+	if ResourceLoader.exists("res://shaders/hp_bar_3d.gdshader"):
+		_hp_bar_shader = load("res://shaders/hp_bar_3d.gdshader")
 
 func load_zone(zone_id: int) -> void:
 	if zone_id == _current_zone_id:
@@ -47,6 +51,7 @@ func load_zone(zone_id: int) -> void:
 		zone_anchor.add_child(_zone_scenes[zone_id].instantiate())
 	else:
 		_create_fallback_platform(zone_id)
+	_decorate_zone(zone_id)
 	if _player_sprite != null:
 		_player_sprite.position = _get_zone_player_position()
 
@@ -100,12 +105,17 @@ func spawn_mobs(count: int, zone_id: int) -> void:
 		mob_anchor.add_child(sprite)
 		_mob_sprites.append(sprite)
 		_play_sprite_anim(sprite, "idle")
+		var hp_bar := _create_mob_hp_bar()
+		hp_bar.position = sprite.position + Vector3(0, 2.0, 0)
+		mob_anchor.add_child(hp_bar)
+		_mob_hp_bars.append(hp_bar)
 
 func clear_mobs() -> void:
 	for child in mob_anchor.get_children():
 		if is_instance_valid(child):
 			child.queue_free()
 	_mob_sprites.clear()
+	_mob_hp_bars.clear()
 
 func update_mob_visual(mob_id: int, hp: int, _max_hp: int) -> void:
 	if mob_id >= _mob_sprites.size():
@@ -164,19 +174,25 @@ func play_victory() -> void:
 func spawn_damage_number(world_pos: Vector3, amount: int, is_heal: bool = false) -> void:
 	var label := Label3D.new()
 	label.text = str(amount) if not is_heal else "+%d" % amount
-	label.font_size = 48
-	label.outline_size = 8
-	label.modulate = Color(0.85, 0.27, 0.27) if not is_heal else Color(0.25, 0.7, 0.35)
+	label.font_size = 42
+	label.outline_size = 6
+	label.modulate = Color(1.0, 0.9, 0.8) if not is_heal else Color(0.3, 1.0, 0.4)
+	label.outline_modulate = Color(0, 0, 0, 0.8)
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	label.no_depth_test = true
-	label.position = world_pos + Vector3(randf_range(-0.3, 0.3), 1.5, 0)
+	label.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	label.position = world_pos + Vector3(randf_range(-0.3, 0.3), 2.0, 0)
+	label.scale = Vector3(0.5, 0.5, 0.5)
 	add_child(label)
 
+	var drift := randf_range(-0.4, 0.4)
 	var tween := create_tween()
 	tween.set_parallel(true)
-	tween.tween_property(label, "position:y", label.position.y + 1.5, 0.8).set_ease(Tween.EASE_OUT)
-	tween.tween_property(label, "modulate:a", 0.0, 0.8).set_delay(0.3)
+	tween.tween_property(label, "scale", Vector3(1.3, 1.3, 1.3), 0.08)
+	tween.tween_property(label, "position", label.position + Vector3(drift, 1.5, 0), 1.0).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_property(label, "modulate:a", 0.0, 0.4).set_delay(0.6)
 	tween.set_parallel(false)
+	tween.tween_property(label, "scale", Vector3.ONE, 0.12)
 	tween.tween_callback(label.queue_free)
 
 func get_mob_world_position(mob_id: int) -> Vector3:
@@ -221,12 +237,15 @@ func on_state_changed(state: int, zone_id: int, prev_state: int) -> void:
 func _create_animated_sprite(frames: SpriteFrames, scale: Vector3) -> AnimatedSprite3D:
 	var sprite := AnimatedSprite3D.new()
 	sprite.sprite_frames = frames
-	sprite.pixel_size = 0.003
+	sprite.pixel_size = 0.002
 	sprite.scale = scale
 	sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	sprite.shaded = true
 	sprite.transparent = true
-	sprite.alpha_cut = SpriteBase3D.ALPHA_CUT_OPAQUE_PREPASS
+	sprite.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
+	sprite.alpha_scissor_threshold = 0.4
+	sprite.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	sprite.position.y = 1.0
 	if _hit_flash_shader != null:
 		var mat := ShaderMaterial.new()
@@ -316,3 +335,138 @@ func _create_fallback_platform(zone_id: int) -> void:
 	mesh_inst.material_override = mat
 	mesh_inst.position = Vector3(0, -0.15, 0)
 	zone_anchor.add_child(mesh_inst)
+
+func _create_mob_hp_bar() -> MeshInstance3D:
+	var mesh_inst := MeshInstance3D.new()
+	var quad := QuadMesh.new()
+	quad.size = Vector2(1.2, 0.12)
+	mesh_inst.mesh = quad
+	if _hp_bar_shader != null:
+		var mat := ShaderMaterial.new()
+		mat.shader = _hp_bar_shader
+		mat.set_shader_parameter("health_ratio", 1.0)
+		mat.set_shader_parameter("bar_color", Color(0.75, 0.35, 0.15))
+		mesh_inst.material_override = mat
+	mesh_inst.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return mesh_inst
+
+func update_mob_hp(mob_index: int, current_hp: int, max_hp: int) -> void:
+	if mob_index < 0 or mob_index >= _mob_hp_bars.size():
+		return
+	var bar := _mob_hp_bars[mob_index]
+	if not is_instance_valid(bar):
+		return
+	var ratio := float(current_hp) / float(max_hp) if max_hp > 0 else 0.0
+	var mat := bar.material_override as ShaderMaterial
+	if mat != null:
+		var tween := create_tween()
+		var current_ratio: float = mat.get_shader_parameter("health_ratio")
+		tween.tween_method(func(val: float): mat.set_shader_parameter("health_ratio", val), current_ratio, ratio, 0.3)
+	bar.visible = current_hp > 0
+
+func _decorate_zone(zone_id: int) -> void:
+	var radius: float = 6.0 + zone_id * 0.5
+	_add_edge_props(zone_id, radius)
+	_add_atmosphere_particles(zone_id, radius)
+	_add_edge_darkness(radius)
+
+func _add_edge_props(zone_id: int, radius: float) -> void:
+	var prop_color := _zone_prop_color(zone_id)
+	for i in range(10):
+		var angle := (TAU / 10.0) * float(i) + randf_range(-0.2, 0.2)
+		var pos := Vector3(cos(angle) * radius, 0, sin(angle) * radius)
+		var pillar := MeshInstance3D.new()
+		var mesh := CylinderMesh.new()
+		if i % 3 == 0:
+			mesh.top_radius = randf_range(0.12, 0.2)
+			mesh.bottom_radius = randf_range(0.25, 0.4)
+			mesh.height = randf_range(1.5, 3.0)
+		else:
+			mesh.top_radius = randf_range(0.2, 0.45)
+			mesh.bottom_radius = randf_range(0.3, 0.55)
+			mesh.height = randf_range(0.5, 1.2)
+		pillar.mesh = mesh
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = prop_color.darkened(randf_range(0.1, 0.4))
+		mat.roughness = 0.9
+		mat.emission_enabled = true
+		mat.emission = ZONE_COLORS.get(zone_id, Color.GRAY)
+		mat.emission_energy_multiplier = 0.1
+		pillar.material_override = mat
+		pillar.position = pos
+		pillar.position.y = mesh.height * 0.5
+		pillar.rotation.y = randf() * TAU
+		zone_anchor.add_child(pillar)
+
+func _add_atmosphere_particles(zone_id: int, radius: float) -> void:
+	var particles := GPUParticles3D.new()
+	particles.amount = 60
+	particles.lifetime = 5.0
+	particles.emitting = true
+	var mat := ParticleProcessMaterial.new()
+	mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	mat.emission_box_extents = Vector3(radius, 0.5, radius)
+	mat.gravity = Vector3.ZERO
+	match zone_id:
+		1:
+			mat.direction = Vector3(0, 1, 0)
+			mat.initial_velocity_min = 0.1
+			mat.initial_velocity_max = 0.3
+			mat.spread = 20.0
+		2:
+			mat.direction = Vector3(1, 0.3, 0)
+			mat.initial_velocity_min = 0.05
+			mat.initial_velocity_max = 0.15
+			mat.spread = 60.0
+		3:
+			mat.direction = Vector3(0, -1, 0)
+			mat.initial_velocity_min = 0.1
+			mat.initial_velocity_max = 0.2
+			mat.spread = 15.0
+			mat.emission_box_extents.y = 3.0
+			particles.position.y = 4.0
+		_:
+			mat.direction = Vector3(0, 1, 0)
+			mat.initial_velocity_min = 0.02
+			mat.initial_velocity_max = 0.1
+			mat.spread = 45.0
+	mat.turbulence_enabled = true
+	mat.turbulence_noise_strength = 0.3
+	mat.turbulence_noise_scale = 2.0
+	mat.scale_min = 0.02
+	mat.scale_max = 0.06
+	var color: Color = ZONE_COLORS.get(zone_id, Color.WHITE)
+	mat.color = Color(color.r, color.g, color.b, 0.4)
+	particles.process_material = mat
+	var draw_mesh := QuadMesh.new()
+	draw_mesh.size = Vector2(0.05, 0.05)
+	particles.draw_pass_1 = draw_mesh
+	particles.position.y += 1.0
+	zone_anchor.add_child(particles)
+
+func _add_edge_darkness(radius: float) -> void:
+	var wall := MeshInstance3D.new()
+	var mesh := CylinderMesh.new()
+	mesh.top_radius = radius + 3.0
+	mesh.bottom_radius = radius + 3.0
+	mesh.height = 6.0
+	mesh.rings = 1
+	mesh.radial_segments = 32
+	wall.mesh = mesh
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.02, 0.02, 0.04, 0.85)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.cull_mode = BaseMaterial3D.CULL_FRONT
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	wall.material_override = mat
+	wall.position.y = 2.0
+	zone_anchor.add_child(wall)
+
+func _zone_prop_color(zone_id: int) -> Color:
+	match zone_id:
+		0: return Color(0.35, 0.30, 0.25)
+		1: return Color(0.30, 0.15, 0.10)
+		2: return Color(0.25, 0.18, 0.30)
+		3: return Color(0.15, 0.20, 0.28)
+		4: return Color(0.15, 0.28, 0.22)
+		_: return Color(0.25, 0.25, 0.25)

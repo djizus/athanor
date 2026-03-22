@@ -1,22 +1,25 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
-[sub_resource type="BoxMesh" id="floor"]
-size = Vector3(10, 0.3, 10)
+[ext_resource type="Shader" path="res://shaders/ground_stone.gdshader" id="gs"]
 
-[sub_resource type="StandardMaterial3D" id="floor_mat"]
-albedo_color = Color(0.12, 0.06, 0.04, 1)
-roughness = 0.9
-metallic = 0.02
-emission_enabled = true
-emission = Color(0.722, 0.314, 0.188, 1)
-emission_energy_multiplier = 0.2
+[sub_resource type="PlaneMesh" id="floor"]
+size = Vector2(12, 12)
+
+[sub_resource type="ShaderMaterial" id="floor_mat"]
+shader = ExtResource("gs")
+shader_parameter/stone_color = Color(0.15, 0.10, 0.08, 1)
+shader_parameter/crack_color = Color(0.05, 0.03, 0.03, 1)
+shader_parameter/emission_color = Color(0.722, 0.314, 0.188, 1)
+shader_parameter/emission_strength = 0.4
+shader_parameter/tile_scale = 6.0
+shader_parameter/crack_threshold = 0.4
+shader_parameter/edge_darken_radius = 0.65
 
 [node name="Zone1" type="Node3D"]
 
 [node name="Floor" type="MeshInstance3D" parent="."]
 mesh = SubResource("floor")
 material_override = SubResource("floor_mat")
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.15, 0)
 
 [node name="AccentLight" type="OmniLight3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 2.5, -1)
