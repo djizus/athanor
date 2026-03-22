@@ -70,8 +70,8 @@ func _refresh_ui() -> void:
 	# Button visibility
 	connect_button.visible = not authed
 	retry_button.visible = false
-	spawn_button.visible = authed
-	spawn_button.text = "New Dungeon" if dungeon_active else "Enter Dungeon"
+	spawn_button.visible = authed and not dungeon_active
+	spawn_button.text = "Enter Dungeon"
 	resume_button.visible = authed and dungeon_active
 	disconnect_button.visible = authed
 	history_panel.visible = authed and not game_state.past_runs.is_empty()

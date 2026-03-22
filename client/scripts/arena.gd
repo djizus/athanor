@@ -286,8 +286,30 @@ func _on_end_turn_pressed() -> void:
 	dojo_bridge.finish(game_state.get_game_id())
 
 func _on_return_pressed() -> void:
+	# Archive current run to history before resetting
+	_archive_current_run()
 	game_state.reset()
 	return_to_menu.emit()
+
+func _archive_current_run() -> void:
+	if game_state.character.is_empty():
+		return
+	var gid := game_state.get_game_id()
+	if gid < 0:
+		return
+	var status := "In Progress"
+	if bool(game_state.dungeon.get("completed", false)):
+		status = "Completed"
+	elif bool(game_state.dungeon.get("failed", false)):
+		status = "Failed"
+	elif int(game_state.character.get("health", 0)) <= 0:
+		status = "Failed"
+	game_state.add_historical_run({
+		"game_id": gid,
+		"character": game_state.character.duplicate(true),
+		"dungeon": game_state.dungeon.duplicate(true),
+		"status": status,
+	})
 
 # --- Callbacks ---
 
