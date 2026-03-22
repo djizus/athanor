@@ -48,7 +48,7 @@ func get_sprite_frames(character_id: String) -> SpriteFrames:
 		frames.set_animation_loop(anim_name, anim_name == "idle")
 		var paths: Array = anim_frames[anim_name]
 		for i in range(paths.size()):
-			var texture: Texture2D = load(paths[i])
+			var texture := _load_texture(paths[i])
 			if texture != null:
 				frames.add_frame(anim_name, texture, 1.0, i)
 
@@ -78,6 +78,17 @@ func _parse_filename(character_id: String, fname: String) -> Dictionary:
 	if not frame_str.is_valid_int():
 		return {}
 	return { "animation": anim_name, "frame": int(frame_str) }
+
+func _load_texture(res_path: String) -> Texture2D:
+	var imported: Texture2D = load(res_path) as Texture2D
+	if imported != null:
+		return imported
+	var abs_path := ProjectSettings.globalize_path(res_path)
+	var img := Image.new()
+	if img.load(abs_path) != OK:
+		push_warning("[sprite_loader] Failed to load: %s" % res_path)
+		return null
+	return ImageTexture.create_from_image(img)
 
 func _get_animation_fps(anim_name: String) -> float:
 	match anim_name:
