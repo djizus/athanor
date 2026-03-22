@@ -247,10 +247,6 @@ func _create_animated_sprite(frames: SpriteFrames, scale: Vector3) -> AnimatedSp
 	sprite.alpha_scissor_threshold = 0.4
 	sprite.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	sprite.position.y = 1.0
-	if _hit_flash_shader != null:
-		var mat := ShaderMaterial.new()
-		mat.shader = _hit_flash_shader
-		sprite.material_override = mat
 	return sprite
 
 func _play_sprite_anim(sprite: AnimatedSprite3D, anim_name: String) -> void:
@@ -264,25 +260,17 @@ func _play_sprite_anim(sprite: AnimatedSprite3D, anim_name: String) -> void:
 func _flash_sprite(sprite: AnimatedSprite3D, duration: float) -> void:
 	if sprite == null or not is_instance_valid(sprite):
 		return
-	var mat := sprite.material_override
-	if mat is ShaderMaterial:
-		mat.set_shader_parameter("flash_active", true)
-		get_tree().create_timer(duration).timeout.connect(func():
-			if is_instance_valid(sprite) and mat is ShaderMaterial:
-				mat.set_shader_parameter("flash_active", false)
-		)
-	else:
-		var original_modulate := sprite.modulate
-		sprite.modulate = Color.WHITE * 3.0
-		get_tree().create_timer(duration).timeout.connect(func():
-			if is_instance_valid(sprite):
-				sprite.modulate = original_modulate
-		)
+	var original_modulate := sprite.modulate
+	sprite.modulate = Color(4.0, 4.0, 4.0, 1.0)
+	get_tree().create_timer(duration).timeout.connect(func():
+		if is_instance_valid(sprite):
+			sprite.modulate = original_modulate
+	)
 
 func _make_placeholder_frames(color: Color) -> SpriteFrames:
 	var frames := SpriteFrames.new()
 	frames.remove_animation("default")
-	var img := Image.create(64, 64, false, Image.FORMAT_RGBA8)
+	var img := Image.create(256, 256, false, Image.FORMAT_RGBA8)
 	img.fill(color)
 	var texture := ImageTexture.create_from_image(img)
 	for anim_name in ["idle", "attack", "hit", "death"]:

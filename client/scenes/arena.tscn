@@ -24,8 +24,8 @@ background_mode = 2
 sky = SubResource("sky")
 background_energy_multiplier = 0.2
 ambient_light_source = 2
-ambient_light_color = Color(0.05, 0.04, 0.06, 1)
-ambient_light_energy = 0.3
+ambient_light_color = Color(0.12, 0.10, 0.14, 1)
+ambient_light_energy = 0.6
 tonemap_mode = 3
 tonemap_exposure = 1.1
 glow_enabled = true
@@ -44,7 +44,7 @@ environment = SubResource("env")
 
 [node name="Sun" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.707107, -0.353553, 0.612372, 0, 0.866025, 0.5, -0.707107, -0.353553, 0.612372, 0, 0, 0)
-light_energy = 0.6
+light_energy = 1.0
 light_color = Color(1, 0.95, 0.9, 1)
 shadow_enabled = true
 

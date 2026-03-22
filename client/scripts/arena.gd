@@ -431,7 +431,15 @@ func _poll_after_delay(delay: float) -> void:
 	_poll_timers.append(timer)
 
 func _on_tx_failed(action: String, reason: String) -> void:
-	turn_info.text = "Error: %s" % reason
+	var short_reason := reason
+	if reason.length() > 60:
+		if "Failure reason" in reason:
+			var idx := reason.find("Failure reason")
+			short_reason = reason.substr(idx, 80).strip_edges()
+		else:
+			short_reason = reason.left(60) + "..."
+	turn_info.text = short_reason
+	push_warning("[arena] TX failed (%s): %s" % [action, reason])
 	attack_button.disabled = false
 	end_turn_button.disabled = false
 	start_fight_button.disabled = false
@@ -488,11 +496,12 @@ func _auto_finish(reason: String) -> void:
 	turn_info.text = reason
 	attack_button.disabled = true
 	end_turn_button.disabled = true
-	push_warning("[arena] Auto-finish: %s" % reason)
-	get_tree().create_timer(0.8).timeout.connect(func():
-		_auto_finishing = false
+	get_tree().create_timer(1.0).timeout.connect(func():
 		if current_state == ArenaState.FIGHTING and bool(game_state.fight.get("active", false)):
 			dojo_bridge.finish(game_state.get_game_id())
+		else:
+			dojo_bridge.pull_entities_snapshot()
+		_auto_finishing = false
 	)
 
 func _auto_advance_single_exit() -> void:
