@@ -39,6 +39,7 @@ config/actions_address="0x1d828082fb3c107f246e2d4a45c149894528f38b54687d7aaf8e5a
 config/account/address="0x127fd5f1fe78a71f8bcd1fec63e3fe2f0486b6ecd5c86a0466c3a21fa5cfcec"
 config/account/public_key="0x0"
 config/account/private_key="0xc5b2fcab997346f3ea1c00b002ecf6f382c5f9c9659a3894eb783c5320f912"
+config/disable_embedded_browser=true
 config/debug/error=true
 config/debug/warning=true
 config/debug/info=true

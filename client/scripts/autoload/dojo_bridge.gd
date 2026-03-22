@@ -452,4 +452,6 @@ func _is_desktop_platform() -> bool:
 	return os_name in ["Linux", "Windows", "macOS"]
 
 func _can_use_embedded_auth_browser() -> bool:
+	if bool(ProjectSettings.get_setting("dojo/config/disable_embedded_browser", false)):
+		return false
 	return _is_desktop_platform() and ClassDB.class_exists("CefTexture")
