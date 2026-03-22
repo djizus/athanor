@@ -72,7 +72,8 @@ Combat ends when all mobs in the zone are dead (zone cleared) or player HP hits 
 | Contracts | [Cairo](https://www.cairo-lang.org/) 2.15 + [Dojo](https://www.dojoengine.org/) 1.8 |
 | Client | [Godot 4.6+](https://godotengine.org/) (GDScript, 3D isometric) |
 | Dojo SDK | [godot-dojo](https://github.com/lonewolftechnology/godot-dojo) v0.7.4 (gRPC streaming) |
-| Wallet | [Cartridge Controller](https://docs.cartridge.gg/controller/overview) (session keys, passkey auth) |
+| Wallet | [Cartridge Controller](https://docs.cartridge.gg/controller/overview) (session keys, passkey auth, in-game CEF browser) |
+| Embedded Browser | [godot-cef](https://github.com/dsh0416/godot-cef) v1.13.0 (in-client auth, no external browser popup) |
 | Indexer | [Torii](https://book.dojoengine.org/toolchain/torii) (real-time entity sync) |
 | Deployment | [Slot](https://docs.cartridge.gg/slot/overview) / Sepolia |
 
@@ -108,19 +109,22 @@ athanor/
 |   +-- scenes/
 |   |   +-- main.tscn                 # Entry point: ToriiClient, DojoSessionAccount, scene switcher
 |   |   +-- connection.tscn           # Auth screen (Connect wallet button)
+|   |   +-- auth_browser.tscn         # Embedded CEF browser overlay for in-game auth
 |   |   +-- dungeon.tscn             # 3D dungeon view (5 zones, player, isometric camera)
 |   |   +-- combat_ui.tscn           # CanvasLayer: HP bars, Attack/End Turn buttons, stamina
 |   +-- scripts/
 |   |   +-- autoload/
 |   |   |   +-- game_state.gd        # Singleton: parsed entity state, signals
-|   |   |   +-- dojo_bridge.gd       # Singleton: Torii subscriptions, tx calldata helpers
+|   |   |   +-- dojo_bridge.gd       # Singleton: Torii subscriptions, tx calldata, auth signals
 |   |   +-- main.gd                  # Scene switcher, SDK node bootstrapping
-|   |   +-- connection.gd            # Controller auth flow
+|   |   +-- connection.gd            # Controller auth flow (embedded + external browser)
+|   |   +-- auth_browser.gd          # CefTexture wrapper: URL monitoring, auth completion detection
 |   |   +-- dungeon_view.gd          # Zone rendering, player movement, state colors
 |   |   +-- combat_ui.gd             # Combat HUD logic
 |   +-- project.godot
 +-- Scarb.toml                        # Workspace root
 +-- dojo_dev.toml                     # Local Katana deployment config
++-- setup.sh                          # Downloads gitignored addons (godot-cef, godot-dojo)
 +-- PLAN.md                           # Detailed implementation plan
 +-- .gitignore
 ```
@@ -260,36 +264,36 @@ Torii provides:
 
 ## Running Locally (Full Stack with Godot)
 
-### 1. Install the godot-dojo SDK
+### 1. Install addons
 
-Download the SDK binary for your platform from [godot-dojo releases](https://github.com/lonewolftechnology/godot-dojo/releases/tag/v0.7.4):
+Both `godot-dojo` (Dojo SDK) and `godot_cef` (embedded browser) are gitignored due to their size. Run the setup script to download them:
 
 ```bash
-# Download the starter project (contains the SDK addon)
-wget https://github.com/lonewolftechnology/godot-dojo/releases/download/v0.7.4/dojo-starter-godot-project.zip
+./setup.sh
+```
 
-# Extract and copy the addon into the client
+This downloads:
+- **godot-cef** v1.13.0 (~580MB, all platforms) from [GitHub releases](https://github.com/dsh0416/godot-cef/releases)
+
+You still need to manually install the godot-dojo SDK from [godot-dojo releases](https://github.com/lonewolftechnology/godot-dojo/releases/tag/v0.7.4):
+
+```bash
+wget https://github.com/lonewolftechnology/godot-dojo/releases/download/v0.7.4/dojo-starter-godot-project.zip
 unzip dojo-starter-godot-project.zip
 cp -r dojo-starter-godot-project/addons/godot-dojo client/addons/godot-dojo
 ```
 
-Verify the structure -- `godot-dojo.gdextension` must be next to `bin/`:
+After setup, verify both addons exist:
 
 ```
-client/addons/godot-dojo/
-├── bin/                          # Platform binaries (.so, .dll, .dylib)
-├── assets/
-├── godot-dojo.gdextension        # Extension descriptor
-└── godot-dojo.gdextension.uid
+client/addons/
+├── godot-dojo/
+│   ├── bin/                      # Platform binaries (.so, .dll, .dylib)
+│   └── godot-dojo.gdextension
+└── godot_cef/
+    ├── bin/                      # Platform binaries (Linux, macOS, Windows)
+    └── godot_cef.gdextension
 ```
-
-> **Warning**: If you end up with a nested `client/addons/godot-dojo/godot-dojo/` directory containing the `bin/` and `.gdextension`, move its contents up one level:
-> ```bash
-> mv client/addons/godot-dojo/godot-dojo/* client/addons/godot-dojo/
-> rm -r client/addons/godot-dojo/godot-dojo
-> ```
-
-The `bin/` directory contains platform-specific binaries (Linux, macOS, Windows). These are gitignored -- each developer downloads for their platform.
 
 ### 2. Start the backend (3 terminals)
 
@@ -341,7 +345,7 @@ These match the default local development ports. No changes needed for local tes
 
 Press **F5** in the Godot editor (or click the Play button). The game flow:
 
-1. **Connection screen** -- click Connect to authenticate via Cartridge Controller
+1. **Connection screen** -- click Connect to authenticate via Cartridge Controller (opens in-game browser on desktop, external browser on mobile)
 2. **Spawn** -- click Spawn to create your hero and dungeon
 3. **Dungeon view** -- 3D diamond layout with 5 zone platforms
 4. **Navigate** -- click a zone to choose your path at forks
@@ -431,7 +435,8 @@ project.godot
   |     DojoSessionAccount node <-- Cartridge Controller session
   |     SceneSwitcher           <-- swaps between Connection and Dungeon
   |
-  |-- Connection scene          <-- wallet auth flow
+  |-- Connection scene          <-- wallet auth flow (state machine)
+  |     +-- AuthBrowser         <-- embedded CEF browser for in-game passkey/social login
   |
   |-- Dungeon scene             <-- 3D diamond layout, player mesh, camera
   |     +-- CombatUI (CanvasLayer) <-- HP bars, buttons, stamina
