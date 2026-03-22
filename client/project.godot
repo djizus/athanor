@@ -24,6 +24,10 @@ dojo_bridge="*res://scripts/autoload/dojo_bridge.gd"
 window/size/viewport_width=1280
 window/size/viewport_height=720
 
+[gui]
+
+theme/custom="res://themes/athanor_theme.tres"
+
 [dojo]
 
 config/katana_url="https://api.cartridge.gg/x/athanor-djizus-slot/katana"

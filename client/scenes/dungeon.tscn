@@ -1,7 +1,37 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/dungeon_view.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/combat_ui.tscn" id="2"]
+
+[sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
+sky_top_color = Color(0.02, 0.01, 0.04, 1)
+sky_horizon_color = Color(0.06, 0.03, 0.08, 1)
+sky_curve = 0.15
+sky_energy_multiplier = 0.15
+ground_bottom_color = Color(0.01, 0.01, 0.02, 1)
+ground_horizon_color = Color(0.04, 0.03, 0.06, 1)
+ground_energy_multiplier = 0.1
+
+[sub_resource type="Sky" id="sky"]
+sky_material = SubResource("sky_mat")
+
+[sub_resource type="Environment" id="env"]
+background_mode = 2
+sky = SubResource("sky")
+background_energy_multiplier = 0.3
+ambient_light_source = 2
+ambient_light_color = Color(0.06, 0.04, 0.09, 1)
+ambient_light_energy = 0.4
+tonemap_mode = 3
+tonemap_exposure = 0.85
+fog_enabled = true
+fog_light_color = Color(0.08, 0.05, 0.12, 1)
+fog_light_energy = 0.3
+fog_density = 0.008
+glow_enabled = true
+glow_intensity = 0.5
+glow_bloom = 0.05
+glow_hdr_threshold = 0.9
 
 [sub_resource type="BoxShape3D" id="2"]
 size = Vector3(2.8, 0.6, 2.8)
@@ -10,10 +40,11 @@ size = Vector3(2.8, 0.6, 2.8)
 script = ExtResource("1")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("env")
 
 [node name="Sun" type="DirectionalLight3D" parent="."]
 rotation_degrees = Vector3(-56, -36, 0)
-light_energy = 2.2
+light_energy = 1.4
 
 [node name="CameraRig" type="Node3D" parent="."]
 position = Vector3(0, 0, 2)
@@ -128,6 +159,8 @@ theme_override_constants/separation = 8
 unique_name_in_owner = true
 layout_mode = 2
 text = ""
+theme_override_colors/font_color = Color(0.831, 0.659, 0.286, 1)
+theme_override_font_sizes/font_size = 18
 
 [node name="StartButton" type="Button" parent="HUD/TopLeft/VBox"]
 unique_name_in_owner = true

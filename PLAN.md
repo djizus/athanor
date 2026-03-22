@@ -642,3 +642,235 @@ Success criteria:
 | Use headless as primary path when supported | Only approach that guarantees no external browser popup | Keep `create_from_subscribe` only (fails UX requirement) |
 | Preserve browser-based subscribe as fallback initially | Limits rollout risk while validating DojoController coverage | Hard cutover immediately |
 | Add explicit funding/paymaster workstream | Headless accounts fail without activation/gas strategy | Defer funding concerns to later (creates broken first-run UX) |
+
+---
+
+## In-Client Controller Authentication
+
+### Overview
+
+Implement embedded Cartridge authentication inside the Godot client using a CEF webview so players keep using existing Cartridge identities (passkeys/social login) without leaving the game window. The current session architecture remains intact (`ControllerHelper` URL generation + `DojoSessionAccount.create_from_subscribe` + session cache); only the browser surface changes from external (`OS.shell_open`) to in-app (`CefTexture`/CEF browser scene).
+
+### Goals
+
+- Eliminate external browser popups on desktop platforms (Linux/macOS/Windows).
+- Preserve existing Cartridge account reuse (no headless/new account flow).
+- Support both Sepolia and Mainnet from day one.
+- Keep current auth/session APIs and transaction path unchanged after approval.
+- Provide a polished embedded auth UX with clear states and recovery.
+
+### Non-Goals
+
+- Adopting `DojoController` headless mode (creates new accounts; rejected by product decision).
+- Reworking Torii sync, gameplay systems, or transaction encoding.
+- Solving mobile in-app webview parity with CEF (desktop-first scope).
+
+### Assumptions and Constraints
+
+- Preferred plugin: `dsh0416/godot-cef` (Godot 4.6 support, OSR texture rendering, MIT, prebuilt binaries).
+- CEF is desktop-only and increases distribution size (~100MB+).
+- WebAuthn platform authenticators are expected to work; cross-device QR has known CEF popup issues.
+- Existing `controller_session.json` resume model remains valid.
+
+### Requirements
+
+#### Functional
+
+- Replace `OS.shell_open(session_url)` with in-client browser presentation on desktop.
+- Detect auth completion from CEF navigation/callback instead of window focus return.
+- Trigger the same completion step: `DojoSessionAccount.create_from_subscribe(...)`.
+- Keep session persistence/resume behavior unchanged.
+- Provide mobile fallback to external browser where CEF is unavailable.
+
+#### Non-Functional
+
+- Auth panel opens within 300ms after Connect click (desktop target).
+- Failed auth attempts are retryable without app restart.
+- Logs provide enough detail to diagnose auth failure causes quickly.
+
+### Technical Design
+
+#### Data Model
+
+- No new gameplay/contract models.
+- Optional small auth cache extension fields (backward compatible):
+  - `auth_transport`: `cef` or `external`
+  - `last_auth_network`: `sepolia` or `mainnet`
+
+#### API Design
+
+- Keep existing SDK API usage:
+  - `ControllerHelper.generate_private_key()`
+  - `ControllerHelper.create_session_registration_url(...)`
+  - `DojoSessionAccount.create_from_subscribe(...)`
+  - `DojoSessionAccount.create(...)` (resume)
+- Add bridge-level orchestration methods:
+  - `start_embedded_auth()`
+  - `on_embedded_auth_url_changed(url)`
+  - `cancel_embedded_auth()`
+
+#### Architecture
+
+```text
+connection.gd
+  -> dojo_bridge.initiate_controller_auth()
+      -> build session URL (existing)
+      -> auth_browser.show(url) [NEW CEF scene]
+          -> CEF emits URL/navigation signals
+              -> dojo_bridge.complete_controller_auth() [existing]
+                  -> session_account.create_from_subscribe(...)
+                  -> cache session info
+                  -> emit session_ready
+      -> hide auth_browser on success/failure/cancel
+```
+
+`DojoController` is intentionally not used in this feature because it targets headless/new-account workflows.
+
+#### UX Flow
+
+1. Player clicks **Connect**.
+2. Fullscreen/modal auth panel appears with embedded Cartridge page.
+3. Player completes passkey/social login and approves session.
+4. Auth panel closes automatically on detected completion.
+5. Connection screen shows success state and transitions to game.
+6. On failure/cancel: user sees retry + “Open in browser” fallback action.
+
+---
+
+### Implementation Plan
+
+### Serial Dependencies (Must Complete First)
+
+These tasks create foundations that other work depends on. Complete in order.
+
+#### Phase 0: CEF Foundation
+**Prerequisite for:** All subsequent phases
+
+| Task | Description | Output |
+|------|-------------|--------|
+| 0.1 | Add CEF plugin (`dsh0416/godot-cef`) to `client/addons/` and register in project settings | Plugin loads in Godot 4.6 editor/runtime |
+| 0.2 | Validate desktop startup with plugin enabled and no scene changes | `godot --headless --quit` and editor start both stable |
+| 0.3 | Create `client/scenes/auth_browser.tscn` scaffold with `CefTexture` + spinner + close button + error label | Reusable auth browser scene |
+| 0.4 | Create `client/scripts/auth_browser.gd` wrapper exposing signals (`url_changed`, `auth_completed_candidate`, `closed`, `error`) | Browser component contract for bridge/connection |
+
+---
+
+### Parallel Workstreams
+
+These workstreams can be executed independently after Phase 0.
+
+#### Workstream A: Bridge Authentication Orchestration (`dojo_bridge.gd`)
+**Dependencies:** Phase 0
+**Can parallelize with:** Workstreams B, C
+
+| Task | Description | Output |
+|------|-------------|--------|
+| A.1 | Replace `OS.shell_open()` branch with desktop embedded-browser launch | No external browser call on desktop path |
+| A.2 | Add callback-driven completion path wired from `auth_browser` URL/navigation signals | `complete_controller_auth()` invoked without focus polling |
+| A.3 | Preserve existing create/resume/cache semantics and policy generation | Backward-compatible session behavior |
+| A.4 | Add transport fallback (`external`) for unsupported platforms (Android/iOS/Web) | Reliable cross-platform behavior |
+
+#### Workstream B: Connection UX State Machine (`connection.gd` + scene)
+**Dependencies:** Phase 0
+**Can parallelize with:** Workstreams A, C
+
+| Task | Description | Output |
+|------|-------------|--------|
+| B.1 | Remove focus-based completion logic (`focus_entered`) and replace with auth-browser signal handling | Deterministic in-app auth lifecycle |
+| B.2 | Add explicit states: `opening_auth`, `awaiting_approval`, `verifying_session`, `connected`, `retryable_error` | Clear user feedback |
+| B.3 | Add controls: retry embedded, open system browser fallback, cancel | Better recovery UX |
+
+#### Workstream C: Auth Browser Component (`auth_browser.gd` + `auth_browser.tscn`)
+**Dependencies:** Phase 0
+**Can parallelize with:** Workstreams A, B
+
+| Task | Description | Output |
+|------|-------------|--------|
+| C.1 | Implement URL load/start/end callbacks and loading/error overlays | Stable embedded browser component |
+| C.2 | Implement auth-completion candidate detection rules (redirect URL patterns + optional query markers) | Trigger point for session completion |
+| C.3 | Implement secure lifecycle controls (clear close behavior, timeout, visibility reset) | Reusable and leak-free UI component |
+
+---
+
+### Merge Phase
+
+After parallel workstreams complete, these tasks integrate the work.
+
+#### Phase 3: Integration and Network Validation
+**Dependencies:** Workstreams A, B, C
+
+| Task | Description | Output |
+|------|-------------|--------|
+| 3.1 | Wire `connection.gd` ↔ `dojo_bridge.gd` ↔ `auth_browser.gd` end-to-end | Complete embedded auth flow |
+| 3.2 | Validate Sepolia and Mainnet configuration paths (URLs, chain labels, cache resume) | Dual-network-ready auth path |
+| 3.3 | Run desktop matrix tests (Linux/macOS/Windows) + fallback path tests on non-CEF targets | Platform acceptance report |
+
+---
+
+### Testing and Validation
+
+- Unit/logic tests (script-level where possible):
+  - URL completion matcher correctness
+  - bridge state transitions for success/cancel/error
+  - cache backward compatibility
+- Manual E2E desktop tests:
+  - Fresh user login via passkey/social in embedded panel
+  - Session approval -> tx execution (`spawn`, `start`, `cast`, `finish`)
+  - Restart and resume from cache without relogin
+  - Cancel midway and recover with retry
+- Network tests:
+  - Sepolia auth flow + tx submission
+  - Mainnet auth flow + tx submission (or safe dry-run validation environment)
+
+### Rollout and Migration
+
+- Stage 1: Ship behind config flag `auth.embedded_enabled=true` on desktop builds only.
+- Stage 2: Promote embedded auth to default on desktop after matrix validation.
+- Stage 3: Keep browser fallback available behind explicit user action.
+- Rollback: disable embedded flag and revert to existing `OS.shell_open()` flow.
+
+### Verification Checklist
+
+```bash
+# Verify project still parses
+cd client && godot --headless --quit
+
+# Manual desktop checks
+# 1) Click Connect -> embedded auth panel opens in-game
+# 2) Complete Cartridge auth in panel (passkey/social)
+# 3) Panel closes, session becomes valid, user enters game
+# 4) spawn/start/cast/finish transactions succeed
+# 5) Restart game -> session resumes without auth prompt
+
+# Platform fallback checks
+# Android/iOS/Web path uses OS.shell_open() fallback
+```
+
+### Risk Assessment
+
+| Risk | Likelihood | Impact | Mitigation |
+|------|------------|--------|------------|
+| CEF plugin compatibility regression with future Godot versions | Medium | High | Pin plugin version, test against each engine upgrade |
+| Large binary size increase from Chromium bundle | High | Medium | Separate desktop distribution channel notes; optional download packaging |
+| Cross-device QR WebAuthn popup bug in CEF OSR | Medium | Medium | Provide “Open in system browser” fallback CTA |
+| Desktop-only capability causes inconsistent platform UX | High | Medium | Explicit platform policy + fallback strategy in product UX |
+| Incorrect auth completion URL detection causes false positives/negatives | Medium | High | Harden matcher with allowlist patterns and timeout-safe retries |
+
+### Open Questions
+
+- [x] ~~Final plugin choice~~ → Resolved: lock `dsh0416/godot-cef`
+- [ ] Canonical auth completion URL pattern from Cartridge session page (exact redirect markers) — discover during Phase 0 by inspecting CEF navigation on the live session page.
+- [x] ~~Mobile fallback UX policy~~ → Resolved: prompt confirmation dialog, then `OS.shell_open()`
+- [x] ~~Mainnet safety policy~~ → Resolved: Slot-first (default), Sepolia/Mainnet secondary via config
+
+### Decision Log
+
+| Decision | Rationale | Alternatives Considered |
+|----------|-----------|------------------------|
+| Reuse existing Cartridge accounts only | Product requirement for account continuity | Headless/new-account via `DojoController` |
+| Desktop embedded auth via CEF | Meets "same process but in-app" requirement | External browser popup, native webview overlays |
+| Keep `DojoSessionAccount.create_from_subscribe` | Preserves proven session architecture and cache resume | Rebuild auth stack around controller.c headless mode |
+| Slot as primary network, Sepolia/Mainnet secondary | Currently deployed to Slot (`api.cartridge.gg/x/athanor-djizus-slot`) | Sepolia-first, Mainnet day-one |
+| Lock `dsh0416/godot-cef` without bake-off | GPU-accelerated, Godot 4.6 native, 46 releases, MIT, actively maintained | `Lecrapouille/gdcef` (more stars but software-rendered) |
+| URL redirect detection for auth completion | Simple, reliable — monitor CEF navigation for redirect pattern | GraphQL subscription only, or belt-and-suspenders |
+| Mobile fallback: prompt then open | Better UX than silent browser launch — user knows what's happening | Auto-open (current behavior) |

@@ -21,6 +21,7 @@ func _ready() -> void:
 	for row in mob_rows:
 		var bar: ProgressBar = row.get_node("Bar")
 		bar.max_value = DEFAULT_MOB_HP
+		bar.theme_type_variation = &"MobBar"
 
 	game_state.character_updated.connect(_on_character_updated)
 	game_state.fight_updated.connect(_on_fight_updated)

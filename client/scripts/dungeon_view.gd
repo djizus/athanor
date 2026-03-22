@@ -1,11 +1,16 @@
 extends Node3D
 
-const COLOR_LOCKED := Color(0.2, 0.2, 0.24, 1.0)
-const COLOR_AVAILABLE := Color(0.85, 0.72, 0.3, 1.0)
-const COLOR_CURRENT := Color(0.3, 0.6, 0.95, 1.0)
-const COLOR_CLEARED := Color(0.2, 0.7, 0.35, 1.0)
-const COLOR_PLAYER := Color(0.85, 0.26, 0.24, 1.0)
-const COLOR_PATH := Color(0.47, 0.43, 0.36, 1.0)
+const COLOR_LOCKED := Color(0.12, 0.11, 0.16, 1.0)
+const COLOR_AVAILABLE := Color(0.831, 0.659, 0.286, 1.0)
+const COLOR_CURRENT := Color(0.267, 0.722, 0.851, 1.0)
+const COLOR_CLEARED := Color(0.25, 0.5, 0.3, 1.0)
+const COLOR_PLAYER := Color(0.831, 0.659, 0.286, 1.0)
+const COLOR_PATH := Color(0.18, 0.16, 0.13, 1.0)
+
+const EMISSION_AVAILABLE := Color(0.6, 0.45, 0.1)
+const EMISSION_CURRENT := Color(0.15, 0.5, 0.6)
+const EMISSION_CLEARED := Color(0.1, 0.25, 0.1)
+const EMISSION_PLAYER := Color(0.6, 0.45, 0.1)
 
 @onready var start_button: Button = %StartButton
 @onready var status_label: Label = %DungeonStatus
@@ -63,6 +68,11 @@ func _build_meshes() -> void:
 	player_marker.mesh = capsule
 	var player_mat := StandardMaterial3D.new()
 	player_mat.albedo_color = COLOR_PLAYER
+	player_mat.roughness = 0.3
+	player_mat.metallic = 0.4
+	player_mat.emission_enabled = true
+	player_mat.emission = EMISSION_PLAYER
+	player_mat.emission_energy_multiplier = 1.5
 	player_marker.material_override = player_mat
 
 	var path_line := CylinderMesh.new()
@@ -71,6 +81,11 @@ func _build_meshes() -> void:
 	path_line.height = 4.0
 	var path_mat := StandardMaterial3D.new()
 	path_mat.albedo_color = COLOR_PATH
+	path_mat.roughness = 0.85
+	path_mat.metallic = 0.05
+	path_mat.emission_enabled = true
+	path_mat.emission = Color(0.08, 0.06, 0.04)
+	path_mat.emission_energy_multiplier = 0.3
 	var path_lines: Node3D = get_node("PathLines")
 	for child in path_lines.get_children():
 		if child is MeshInstance3D:
@@ -106,14 +121,23 @@ func _apply_zone_color(zone_id: int) -> void:
 		return
 	var mesh_inst: MeshInstance3D = zone_meshes[zone_id]
 	var material := StandardMaterial3D.new()
-	material.roughness = 0.45
-	material.metallic = 0.05
+	material.roughness = 0.7
+	material.metallic = 0.15
 	if _is_zone_cleared(zone_id):
 		material.albedo_color = COLOR_CLEARED
+		material.emission_enabled = true
+		material.emission = EMISSION_CLEARED
+		material.emission_energy_multiplier = 0.5
 	elif _is_zone_current(zone_id):
 		material.albedo_color = COLOR_CURRENT
+		material.emission_enabled = true
+		material.emission = EMISSION_CURRENT
+		material.emission_energy_multiplier = 1.2
 	elif _is_zone_available(zone_id):
 		material.albedo_color = COLOR_AVAILABLE
+		material.emission_enabled = true
+		material.emission = EMISSION_AVAILABLE
+		material.emission_energy_multiplier = 0.8
 	else:
 		material.albedo_color = COLOR_LOCKED
 	mesh_inst.material_override = material
