@@ -266,34 +266,13 @@ Torii provides:
 
 ### 1. Install addons
 
-Both `godot-dojo` (Dojo SDK) and `godot_cef` (embedded browser) are gitignored due to their size. Run the setup script to download them:
-
 ```bash
 ./setup.sh
 ```
 
-This downloads:
-- **godot-cef** v1.13.0 (~580MB, all platforms) from [GitHub releases](https://github.com/dsh0416/godot-cef/releases)
-
-You still need to manually install the godot-dojo SDK from [godot-dojo releases](https://github.com/lonewolftechnology/godot-dojo/releases/tag/v0.7.4):
-
-```bash
-wget https://github.com/lonewolftechnology/godot-dojo/releases/download/v0.7.4/dojo-starter-godot-project.zip
-unzip dojo-starter-godot-project.zip
-cp -r dojo-starter-godot-project/addons/godot-dojo client/addons/godot-dojo
-```
-
-After setup, verify both addons exist:
-
-```
-client/addons/
-├── godot-dojo/
-│   ├── bin/                      # Platform binaries (.so, .dll, .dylib)
-│   └── godot-dojo.gdextension
-└── godot_cef/
-    ├── bin/                      # Platform binaries (Linux, macOS, Windows)
-    └── godot_cef.gdextension
-```
+Downloads both gitignored addons:
+- **godot-dojo** v0.7.4 — Dojo SDK (GDExtension)
+- **godot-cef** v1.13.0 — Embedded Chromium browser (all platforms)
 
 ### 2. Start the backend (3 terminals)
 
