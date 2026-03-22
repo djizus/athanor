@@ -1,7 +1,7 @@
 import "./shims.js";
 import { MESHY_API_KEY, MAX_RETRIES } from "./env.js";
 
-const MESHY_BASE = "https://api.meshy.ai/openapi/v2";
+const MESHY_BASE = "https://api.meshy.ai/openapi/v1";
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 interface MeshyTaskResponse {
@@ -27,9 +27,11 @@ export async function createImageTo3D(
   const body = {
     image_url: imageUrl,
     enable_pbr: options.enablePbr ?? true,
-    ai_model: "meshy-4",
+    ai_model: "meshy-6",
     topology: options.topology ?? "quad",
     target_polycount: options.targetPolycount ?? 10000,
+    should_remesh: true,
+    target_formats: ["glb"],
   };
 
   const res = await fetch(`${MESHY_BASE}/image-to-3d`, {
