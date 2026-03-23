@@ -172,10 +172,10 @@ func show_zone_title(title: String) -> void:
 		_zone_title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_zone_title_label.position = Vector2(0, 120)
 		_zone_title_label.size = Vector2(ui_root.size.x, 96)
-		_zone_title_label.theme_override_font_sizes.font_size = 34
-		_zone_title_label.theme_override_colors.font_color = Color(0.95, 0.92, 0.8, 1.0)
-		_zone_title_label.theme_override_colors.font_outline_color = Color(0.02, 0.02, 0.02, 0.95)
-		_zone_title_label.theme_override_constants.outline_size = 10
+		_zone_title_label.add_theme_font_size_override("font_size", 34)
+		_zone_title_label.add_theme_color_override("font_color", Color(0.95, 0.92, 0.8, 1.0))
+		_zone_title_label.add_theme_color_override("font_outline_color", Color(0.02, 0.02, 0.02, 0.95))
+		_zone_title_label.add_theme_constant_override("outline_size", 10)
 		ui_root.add_child(_zone_title_label)
 
 	_zone_title_label.size = Vector2(ui_root.size.x, 96)
