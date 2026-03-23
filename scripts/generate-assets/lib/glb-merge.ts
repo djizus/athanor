@@ -1,4 +1,4 @@
-import { NodeIO, Document, Animation, AnimationChannel, AnimationSampler, Accessor, Node as GltfNode } from "@gltf-transform/core";
+import { NodeIO, Document, Animation, AnimationChannel, AnimationSampler, Accessor, Node as GltfNode, Material, Texture, Mesh, Primitive } from "@gltf-transform/core";
 
 interface AnimationInput {
   name: string;
@@ -12,8 +12,13 @@ export async function mergeAnimationsIntoModel(
   baseGlbPath: string,
   animations: AnimationInput[],
   outputPath: string,
+  textureSourceGlbPath?: string,
 ): Promise<number> {
   const baseDoc = await io.read(baseGlbPath);
+
+  if (textureSourceGlbPath) {
+    await transferMaterials(baseDoc, textureSourceGlbPath);
+  }
   const baseRoot = baseDoc.getRoot();
   const baseNodes = baseRoot.listNodes();
   const nodeNameMap = new Map<string, GltfNode>();
@@ -76,4 +81,50 @@ export async function mergeAnimationsIntoModel(
 
   await io.write(outputPath, baseDoc);
   return mergedCount;
+}
+
+async function transferMaterials(targetDoc: Document, sourceGlbPath: string): Promise<void> {
+  const srcDoc = await io.read(sourceGlbPath);
+  const srcMats = srcDoc.getRoot().listMaterials();
+  if (srcMats.length === 0) return;
+
+  const srcMat = srcMats[0];
+  const newMat = targetDoc.createMaterial(srcMat.getName() || "PBR_Material");
+  newMat.setBaseColorFactor(srcMat.getBaseColorFactor());
+  newMat.setMetallicFactor(srcMat.getMetallicFactor());
+  newMat.setRoughnessFactor(srcMat.getRoughnessFactor());
+  newMat.setDoubleSided(srcMat.getDoubleSided());
+  newMat.setAlphaMode(srcMat.getAlphaMode());
+
+  const copyTexture = (srcTex: Texture | null): Texture | null => {
+    if (!srcTex) return null;
+    const img = srcTex.getImage();
+    if (!img) return null;
+    const newTex = targetDoc.createTexture(srcTex.getName() || "texture");
+    newTex.setImage(img);
+    newTex.setMimeType(srcTex.getMimeType());
+    return newTex;
+  };
+
+  const baseColorTex = copyTexture(srcMat.getBaseColorTexture());
+  if (baseColorTex) newMat.setBaseColorTexture(baseColorTex);
+
+  const mrTex = copyTexture(srcMat.getMetallicRoughnessTexture());
+  if (mrTex) newMat.setMetallicRoughnessTexture(mrTex);
+
+  const normalTex = copyTexture(srcMat.getNormalTexture());
+  if (normalTex) newMat.setNormalTexture(normalTex);
+
+  const emissiveTex = copyTexture(srcMat.getEmissiveTexture());
+  if (emissiveTex) newMat.setEmissiveTexture(emissiveTex);
+  newMat.setEmissiveFactor(srcMat.getEmissiveFactor());
+
+  const occTex = copyTexture(srcMat.getOcclusionTexture());
+  if (occTex) newMat.setOcclusionTexture(occTex);
+
+  for (const mesh of targetDoc.getRoot().listMeshes()) {
+    for (const prim of mesh.listPrimitives()) {
+      prim.setMaterial(newMat);
+    }
+  }
 }

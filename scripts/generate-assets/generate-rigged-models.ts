@@ -59,7 +59,7 @@ async function uploadToFalStorage(filePath: string): Promise<string> {
 async function processCharacter(
   char: typeof RIGGABLE_CHARACTERS[number],
   manifest: Record<string, CharacterManifest>,
-  dirs: { modelsDir: string; tmpDir: string; conceptsDir: string },
+  dirs: { modelsDir: string; tmpDir: string; conceptsDir: string; rawDir: string },
   opts: CliOptions,
 ): Promise<boolean> {
   const tag = `[${char.id}]`;
@@ -137,8 +137,11 @@ async function processCharacter(
     if (opts.skipMerge) {
       console.log(`${tag} Skipping merge (--skip-merge). GLBs in ${charTmp}`);
     } else {
+      const rawGlbPath = resolve(dirs.rawDir, `${char.id}.glb`);
+      const textureSource = (await exists(rawGlbPath)) ? rawGlbPath : undefined;
       console.log(`${tag} Merging ${animInputs.length} animations into rigged model...`);
-      const mergedCount = await mergeAnimationsIntoModel(riggedPath, animInputs, sourceGlb);
+      if (textureSource) console.log(`${tag} Restoring PBR textures from ${rawGlbPath}`);
+      const mergedCount = await mergeAnimationsIntoModel(riggedPath, animInputs, sourceGlb, textureSource);
       console.log(`${tag} Merged ${mergedCount} animations → ${sourceGlb}`);
     }
 
@@ -161,7 +164,7 @@ async function processCharacter(
 
 async function regenerateAndRig(
   char: typeof RIGGABLE_CHARACTERS[number],
-  dirs: { modelsDir: string; tmpDir: string; conceptsDir: string },
+  dirs: { modelsDir: string; tmpDir: string; conceptsDir: string; rawDir: string },
   animActions: Array<{ name: string; actionId: number }>,
 ): Promise<ReturnType<typeof rigAndAnimate> extends Promise<infer T> ? T | null : never> {
   const conceptPath = resolve(dirs.conceptsDir, `${char.id}.png`);
@@ -196,6 +199,7 @@ async function main(): Promise<void> {
   const modelsDir = resolve(__dirname, "..", "..", "client", "assets", "models");
   const tmpDir = resolve(__dirname, "output", "rigging-tmp");
   const conceptsDir = resolve(__dirname, "output", "concepts");
+  const rawDir = resolve(__dirname, "output", "raw");
 
   await mkdir(tmpDir, { recursive: true });
 
@@ -215,7 +219,7 @@ async function main(): Promise<void> {
   let succeeded = 0, failed = 0;
 
   for (const char of chars) {
-    const ok = await processCharacter(char, manifest, { modelsDir, tmpDir, conceptsDir }, opts);
+    const ok = await processCharacter(char, manifest, { modelsDir, tmpDir, conceptsDir, rawDir }, opts);
     if (ok) succeeded++; else failed++;
     await writeFile(manifestPath, JSON.stringify(manifest, null, 2));
   }

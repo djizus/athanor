@@ -2,9 +2,9 @@ extends Node3D
 
 @onready var camera: Camera3D = $CameraYaw/CameraPitch/Camera3D
 
-const SIZE_DEFAULT := 12.0
-const SIZE_COMBAT := 10.0
-const SIZE_WIDE := 16.0
+const SIZE_DEFAULT := 16.0
+const SIZE_COMBAT := 13.0
+const SIZE_WIDE := 20.0
 const FOLLOW_SPEED := 4.0
 
 var _tween: Tween
