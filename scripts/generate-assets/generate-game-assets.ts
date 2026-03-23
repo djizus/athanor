@@ -20,23 +20,23 @@ async function exists(filePath: string): Promise<boolean> {
 const ZONE_BACKGROUNDS: Array<{ id: string; prompt: string }> = [
   {
     id: "zone_0",
-    prompt: "dark dungeon entrance floor seen from above, top-down view, hand-painted style, golden amber and dark grey palette, crumbling archway stones, torch sconces with warm glow, ancient carved stone tiles, atmospheric volumetric lighting, Hades Supergiant game art style, dark fantasy, moody atmosphere, richly detailed ground texture filling entire frame",
+    prompt: "Isometric dungeon entrance hall, 3/4 view low camera angle like Hades by Supergiant Games, diamond-shaped stone floor tiles, tall ornate stone archways and pillars framing the room rising above, two doorways visible at the far end, green-gold torchlight casting dramatic pools of light, hand-painted ink and watercolor style with bold black outlines, deep purple shadows between light sources, atmospheric fog, dark fantasy aesthetic, no characters, game environment art",
   },
   {
     id: "zone_1",
-    prompt: "volcanic cavern floor seen from above, top-down perspective, hand-painted, deep red and burnt orange palette, lava cracks with glowing embers seeping through obsidian stone tiles, smoldering coals scattered across cracked basalt ground, Hades Supergiant art style, dark fantasy, intense heat atmosphere, richly detailed ground texture filling entire frame",
+    prompt: "Isometric volcanic underground cavern, 3/4 view low camera angle like Hades by Supergiant Games, diamond-shaped obsidian floor tiles with glowing lava cracks, tall stalagmites and rock formations rising above the gameplay plane, ember particles floating, deep orange-red ambient glow from magma below, hand-painted ink style with bold black outlines, dramatic fire lighting, dark fantasy, no characters, game environment art",
   },
   {
     id: "zone_2",
-    prompt: "arcane passage floor seen from above, top-down view, hand-painted, purple and dark mauve palette, runic inscriptions glowing faintly etched into dark violet flagstones, small crystal formations embedded in stone, mystical energy wisps, Hades Supergiant art style, dark fantasy, magical atmosphere, richly detailed ground texture filling entire frame",
+    prompt: "Isometric arcane crystal passage, 3/4 view low camera angle like Hades by Supergiant Games, diamond-shaped violet flagstone floor with glowing runic inscriptions, tall crystal formations and ornate carved walls rising above, floating arcane sigils, purple-mauve palette with ethereal mist, hand-painted ink style with bold black outlines, mystical atmosphere, dark fantasy, no characters, game environment art",
   },
   {
     id: "zone_3",
-    prompt: "underwater temple floor seen from above, top-down, hand-painted, dark blue and teal palette, wet stone covered with barnacles and coral growth, bioluminescent teal accents in cracks, shallow puddles reflecting dim light, Hades Supergiant art style, dark fantasy, deep ocean atmosphere, richly detailed ground texture filling entire frame",
+    prompt: "Isometric vast subterranean temple hall, 3/4 view low camera angle like Hades by Supergiant Games, diamond-shaped wet stone floor tiles partially flooded, massive broken columns and ruined arches towering above the gameplay plane, dark teal and deep blue palette, cyan bioluminescent glow from cracks and coral, hand-painted ink style with bold black outlines, dramatic underwater lighting, dark fantasy, no characters, game environment art",
   },
   {
     id: "zone_4",
-    prompt: "dark ritual chamber floor seen from above, top-down, hand-painted, deep green and black palette, cracked obsidian with glowing emerald energy veins, ritual circle patterns, crystal formations erupting from floor, Hades Supergiant art style, dark fantasy, ominous final boss arena atmosphere, richly detailed ground texture filling entire frame",
+    prompt: "Isometric grand ritual arena chamber, 3/4 view low camera angle like Hades by Supergiant Games, obsidian diamond floor tiles with glowing red-orange cracks and energy veins, towering dark stone walls with ancient carvings rising dramatically above, crimson and black palette, ominous glow from below, floating embers, ornate pedestals at corners, hand-painted ink style with bold black outlines, boss arena feeling, dark fantasy, no characters, game environment art",
   },
 ];
 
