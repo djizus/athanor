@@ -301,6 +301,7 @@ func _build_turn_order_bar(ui_root: Control) -> void:
 		_turn_slots.append(slot)
 		_turn_slot_labels.append(label)
 	ui_root.add_child(_turn_order_bar)
+	_turn_order_bar.visible = false  # Hidden — "P E E" is confusing, turn status label suffices
 
 func _build_command_panel(ui_root: Control) -> void:
 	if ui_root == null:
@@ -355,7 +356,9 @@ func _build_command_panel(ui_root: Control) -> void:
 
 	_stamina_preview_label = Label.new()
 	_stamina_preview_label.text = ""
-	_stamina_preview_label.custom_minimum_size = Vector2(200, 36)
+	_stamina_preview_label.custom_minimum_size = Vector2(200, 54)
+	_stamina_preview_label.clip_text = true
+	_stamina_preview_label.add_theme_font_size_override("font_size", 13)
 	context.add_child(_stamina_preview_label)
 
 	turn_status_label = Label.new()

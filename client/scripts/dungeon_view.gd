@@ -9,14 +9,14 @@ const ZONE_COLORS := {
 }
 
 const MOB_POSITIONS := {
-	1: [Vector2(0, -120)],
-	2: [Vector2(-100, -120), Vector2(100, -120)],
-	4: [Vector2(-140, -100), Vector2(140, -100), Vector2(-70, -200), Vector2(70, -200)],
+	1: [Vector2(0, -180)],
+	2: [Vector2(-160, -180), Vector2(160, -180)],
+	4: [Vector2(-220, -140), Vector2(220, -140), Vector2(-110, -280), Vector2(110, -280)],
 }
 
-const PLAYER_POSITION := Vector2(0, 100)
-const SPRITE_SCALE := Vector2(0.25, 0.25)
-const MOB_SPRITE_SCALE := Vector2(0.2, 0.2)
+const PLAYER_POSITION := Vector2(0, 150)
+const SPRITE_SCALE := Vector2(0.45, 0.45)
+const MOB_SPRITE_SCALE := Vector2(0.38, 0.38)
 const ZONE_MOB_COUNT := {0: 0, 1: 1, 2: 1, 3: 2, 4: 4}
 
 const ZONE_PALETTES := {
@@ -28,11 +28,11 @@ const ZONE_PALETTES := {
 }
 
 const ZONE_ATMOSPHERES := {
-	0: {"ambient": Color(0.22, 0.20, 0.18), "player_light": Color(1.0, 0.95, 0.85), "vignette": 0.5},
-	1: {"ambient": Color(0.20, 0.14, 0.12), "player_light": Color(1.0, 0.90, 0.80), "vignette": 0.55},
-	2: {"ambient": Color(0.16, 0.14, 0.22), "player_light": Color(0.90, 0.85, 1.0), "vignette": 0.55},
-	3: {"ambient": Color(0.12, 0.14, 0.22), "player_light": Color(0.85, 0.90, 1.0), "vignette": 0.6},
-	4: {"ambient": Color(0.12, 0.18, 0.14), "player_light": Color(0.85, 1.0, 0.90), "vignette": 0.6},
+	0: {"ambient": Color(0.55, 0.50, 0.45), "player_light": Color(1.0, 0.95, 0.85), "vignette": 0.35},
+	1: {"ambient": Color(0.50, 0.40, 0.35), "player_light": Color(1.0, 0.90, 0.80), "vignette": 0.38},
+	2: {"ambient": Color(0.42, 0.38, 0.52), "player_light": Color(0.90, 0.85, 1.0), "vignette": 0.38},
+	3: {"ambient": Color(0.35, 0.40, 0.55), "player_light": Color(0.85, 0.90, 1.0), "vignette": 0.40},
+	4: {"ambient": Color(0.35, 0.48, 0.40), "player_light": Color(0.85, 1.0, 0.90), "vignette": 0.40},
 }
 
 @onready var zone_background: ColorRect = $ZoneBackground
@@ -176,8 +176,8 @@ func spawn_hero() -> void:
 	var light_tex := _load_texture_safe("res://assets/vfx/light_gradient.png")
 	if light_tex != null:
 		player_light.texture = light_tex
-	player_light.texture_scale = 4.0
-	player_light.energy = 1.2
+	player_light.texture_scale = 5.0
+	player_light.energy = 1.8
 	player_light.color = Color(1.0, 0.95, 0.85)
 	player_light.blend_mode = Light2D.BLEND_MODE_ADD
 	_player_sprite.add_child(player_light)

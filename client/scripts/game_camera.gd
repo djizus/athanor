@@ -1,8 +1,8 @@
 extends Camera2D
 
-const ZOOM_DEFAULT := Vector2(0.5, 0.5)
-const ZOOM_COMBAT := Vector2(0.65, 0.65)
-const ZOOM_WIDE := Vector2(0.4, 0.4)
+const ZOOM_DEFAULT := Vector2(1.0, 1.0)
+const ZOOM_COMBAT := Vector2(1.2, 1.2)
+const ZOOM_WIDE := Vector2(0.85, 0.85)
 const FOLLOW_SPEED := 4.0
 
 enum CameraMode { FOLLOW, FIXED }
