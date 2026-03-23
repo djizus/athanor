@@ -1,7 +1,7 @@
-extends Node3D
+extends Node2D
 
-const MOVE_SPEED := 5.0
-const ARENA_RADIUS := 12.0
+const MOVE_SPEED := 300.0
+const ARENA_RADIUS := 350.0
 
 var _movement_enabled := true
 
@@ -26,9 +26,6 @@ func _process(delta: float) -> void:
 	if input_dir.length_squared() < 0.01:
 		return
 	input_dir = input_dir.normalized()
-	var iso_x := (input_dir.x - input_dir.y) * 0.7071
-	var iso_z := (input_dir.x + input_dir.y) * 0.7071
-	var new_pos := position + Vector3(iso_x, 0, iso_z) * MOVE_SPEED * delta
-	var flat_dist := Vector2(new_pos.x, new_pos.z).length()
-	if flat_dist <= ARENA_RADIUS:
+	var new_pos := position + input_dir * MOVE_SPEED * delta
+	if new_pos.length() <= ARENA_RADIUS:
 		position = new_pos

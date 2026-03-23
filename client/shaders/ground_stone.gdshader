@@ -1,4 +1,4 @@
-shader_type spatial;
+shader_type canvas_item;
 
 uniform vec4 stone_color : source_color = vec4(0.15, 0.13, 0.12, 1.0);
 uniform vec4 crack_color : source_color = vec4(0.05, 0.04, 0.04, 1.0);
@@ -45,10 +45,6 @@ void fragment() {
 	float vignette = 1.0 - smoothstep(edge_darken_radius, 1.0, dist) * 0.6;
 	base *= vignette;
 
-	ALBEDO = base * 1.3;
-	ROUGHNESS = 0.85;
-	METALLIC = 0.02;
-
-	EMISSION = emission_color.rgb * emission_strength * (1.0 - cracks) * 0.4
-	         * smoothstep(0.3, 0.5, n);
+	vec3 emission = emission_color.rgb * emission_strength * (1.0 - cracks) * 0.4 * smoothstep(0.3, 0.5, n);
+	COLOR = vec4(base * 1.3 + emission, 1.0);
 }

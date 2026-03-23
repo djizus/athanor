@@ -1,4 +1,4 @@
-extends Node3D
+extends Node2D
 
 signal return_to_menu
 
@@ -60,8 +60,8 @@ var _auto_finishing := false
 var _auto_advancing := false
 var _action_in_flight := false
 
-@onready var dungeon_view: Node3D = $DungeonWorld
-@onready var targeting_system: Node3D = $TargetingSystem
+@onready var dungeon_view: Node2D = $DungeonWorld
+@onready var targeting_system: Node2D = $TargetingSystem
 
 func _ready() -> void:
 	game_state.character_updated.connect(_on_state_changed)
@@ -72,7 +72,7 @@ func _ready() -> void:
 
 	dojo_bridge.pull_entities_snapshot()
 
-	var camera_rig := get_node_or_null("CameraRig")
+	var camera_rig := get_node_or_null("GameCamera")
 	var player_anchor := get_node_or_null("DungeonWorld/PlayerAnchor")
 	if camera_rig and camera_rig.has_method("set_follow_target") and player_anchor:
 		camera_rig.set_follow_target(player_anchor)
@@ -214,7 +214,7 @@ func _refresh(_data: Dictionary = {}) -> void:
 		if not targeting_system.active:
 			var mob_nodes: Array = []
 			for child in dungeon_view.get_node("MobAnchor").get_children():
-				if child is AnimatedSprite3D:
+				if child is AnimatedSprite2D:
 					mob_nodes.append(child)
 			targeting_system.activate(mob_nodes)
 	elif targeting_system != null and targeting_system.active:
@@ -355,10 +355,10 @@ func _on_attack_pressed() -> void:
 	dojo_bridge.cast(game_state.get_game_id(), target, 0)
 	if dungeon_view != null and dungeon_view.has_method("play_attack"):
 		dungeon_view.play_attack(target)
-		var mob_pos: Vector3 = dungeon_view.get_mob_world_position(target) if dungeon_view.has_method("get_mob_world_position") else Vector3.ZERO
-		if mob_pos != Vector3.ZERO and dungeon_view.has_method("spawn_damage_number"):
+		var mob_pos: Vector2 = dungeon_view.get_mob_world_position(target) if dungeon_view.has_method("get_mob_world_position") else Vector2.ZERO
+		if mob_pos != Vector2.ZERO and dungeon_view.has_method("spawn_damage_number"):
 			dungeon_view.spawn_damage_number(mob_pos, int(game_state.character.get("power", 10)))
-	var camera_rig := get_node_or_null("CameraRig")
+	var camera_rig := get_node_or_null("GameCamera")
 	if camera_rig and camera_rig.has_method("shake"):
 		camera_rig.shake(0.15, 0.2)
 	var new_stamina := maxi(0, stamina - AA_COST)
@@ -379,16 +379,16 @@ func _on_end_turn_pressed() -> void:
 	dojo_bridge.finish(game_state.get_game_id())
 	if dungeon_view != null and dungeon_view.has_method("play_mob_turn"):
 		dungeon_view.play_mob_turn()
-		var player_pos: Vector3 = dungeon_view.get_player_world_position() if dungeon_view.has_method("get_player_world_position") else Vector3.ZERO
+		var player_pos: Vector2 = dungeon_view.get_player_world_position() if dungeon_view.has_method("get_player_world_position") else Vector2.ZERO
 		var alive_mobs := 0
 		var mob_count := int(game_state.fight.get("mob_count", 0))
 		var packed: int = _parse_int(game_state.fight.get("mob_healths", 0))
 		for i in range(mob_count):
 			if _unpack_mob_hp(packed, i) > 0:
 				alive_mobs += 1
-		if player_pos != Vector3.ZERO and alive_mobs > 0 and dungeon_view.has_method("spawn_damage_number"):
+		if player_pos != Vector2.ZERO and alive_mobs > 0 and dungeon_view.has_method("spawn_damage_number"):
 			dungeon_view.spawn_damage_number(player_pos, alive_mobs * 5)
-	var camera_rig := get_node_or_null("CameraRig")
+	var camera_rig := get_node_or_null("GameCamera")
 	if camera_rig and camera_rig.has_method("shake"):
 		camera_rig.shake(0.25, 0.3)
 
