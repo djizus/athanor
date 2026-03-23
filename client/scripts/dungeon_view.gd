@@ -41,6 +41,13 @@ func _ready() -> void:
 	if ResourceLoader.exists("res://shaders/hp_bar_3d.gdshader"):
 		_hp_bar_shader = load("res://shaders/hp_bar_3d.gdshader")
 
+func _process(_delta: float) -> void:
+	for i in range(mini(_mob_sprites.size(), _mob_hp_bars.size())):
+		if is_instance_valid(_mob_sprites[i]) and is_instance_valid(_mob_hp_bars[i]):
+			_mob_hp_bars[i].position.x = _mob_sprites[i].position.x
+			_mob_hp_bars[i].position.z = _mob_sprites[i].position.z
+			_mob_hp_bars[i].position.y = _mob_sprites[i].position.y + 1.5
+
 func load_zone(zone_id: int) -> void:
 	if zone_id == _current_zone_id:
 		return
@@ -69,7 +76,8 @@ func spawn_hero() -> void:
 			model.position = _get_zone_player_position()
 			return
 		_player_sprite = _create_animated_sprite(_make_placeholder_frames(Color(0.831, 0.659, 0.286)), SPRITE_SCALE)
-	_player_sprite.position = _get_zone_player_position()
+	var hero_pos := _get_zone_player_position()
+	_player_sprite.position = Vector3(hero_pos.x, 1.0, hero_pos.z)
 	player_anchor.add_child(_player_sprite)
 	_play_sprite_anim(_player_sprite, "idle")
 
@@ -98,15 +106,15 @@ func spawn_mobs(count: int, zone_id: int) -> void:
 			sprite = _create_animated_sprite(_make_placeholder_frames(ZONE_COLORS.get(zone_id, Color.RED)), MOB_SPRITE_SCALE)
 
 		sprite.name = "Mob%d" % i
+		var marker_pos := Vector3(randf_range(-2, 2), 0, randf_range(-3, -1))
 		if i < positions.size():
-			sprite.position = positions[i]
-		else:
-			sprite.position = Vector3(randf_range(-2, 2), 0, randf_range(-3, -1))
+			marker_pos = positions[i]
+		sprite.position = Vector3(marker_pos.x, 1.0, marker_pos.z)
 		mob_anchor.add_child(sprite)
 		_mob_sprites.append(sprite)
 		_play_sprite_anim(sprite, "idle")
 		var hp_bar := _create_mob_hp_bar()
-		hp_bar.position = sprite.position + Vector3(0, 2.0, 0)
+		hp_bar.position = Vector3(marker_pos.x, 2.5, marker_pos.z)
 		mob_anchor.add_child(hp_bar)
 		_mob_hp_bars.append(hp_bar)
 

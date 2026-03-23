@@ -58,6 +58,7 @@ const MINIMAP_POS := {
 var current_state: ArenaState = ArenaState.FORK
 var _auto_finishing := false
 var _auto_advancing := false
+var _action_in_flight := false
 
 @onready var dungeon_view: Node3D = $DungeonWorld
 @onready var targeting_system: Node3D = $TargetingSystem
@@ -318,7 +319,7 @@ func _on_start_fight_pressed() -> void:
 	dojo_bridge.start(game_state.get_game_id())
 
 func _on_attack_pressed() -> void:
-	if current_state != ArenaState.FIGHTING:
+	if current_state != ArenaState.FIGHTING or _action_in_flight:
 		return
 	var stamina := int(game_state.character.get("stamina", 0))
 	if stamina < AA_COST:
@@ -333,7 +334,9 @@ func _on_attack_pressed() -> void:
 	if target < 0:
 		return
 	audio_manager.play_sfx("click")
+	_action_in_flight = true
 	attack_button.disabled = true
+	end_turn_button.disabled = true
 	turn_info.text = "Attacking..."
 	dojo_bridge.cast(game_state.get_game_id(), target, 0)
 	if dungeon_view != null and dungeon_view.has_method("play_attack"):
@@ -349,12 +352,14 @@ func _on_attack_pressed() -> void:
 	stamina_label.text = "Stamina %d / %d" % [new_stamina, int(game_state.character.get("max_stamina", 100))]
 
 func _on_end_turn_pressed() -> void:
-	if current_state != ArenaState.FIGHTING:
+	if current_state != ArenaState.FIGHTING or _action_in_flight:
 		return
 	if not bool(game_state.fight.get("active", false)):
 		_refresh()
 		return
 	audio_manager.play_sfx("click")
+	_action_in_flight = true
+	attack_button.disabled = true
 	end_turn_button.disabled = true
 	turn_info.text = "Ending turn..."
 	dojo_bridge.finish(game_state.get_game_id())
@@ -410,6 +415,7 @@ func _archive_current_run() -> void:
 # --- Callbacks ---
 
 func _on_state_changed(_data: Dictionary = {}) -> void:
+	_action_in_flight = false
 	_refresh()
 
 func _on_tx_submitted(_action: String) -> void:
@@ -433,17 +439,25 @@ func _poll_after_delay(delay: float) -> void:
 	_poll_timers.append(timer)
 
 func _on_tx_failed(action: String, reason: String) -> void:
-	var short_reason := "TX failed"
-	for keyword in ["No active fight", "already cleared", "not active", "invalid"]:
-		if keyword.to_lower() in reason.to_lower():
-			short_reason = keyword
+	var short_reason := ""
+	var error_patterns := {
+		"mob already dead": "Target already defeated",
+		"no active fight": "No active fight",
+		"not enough stamina": "Not enough stamina",
+		"already cleared": "Zone already cleared",
+		"not active": "Fight not active",
+		"invalid": "Invalid action",
+		"insufficient": "Insufficient resources",
+	}
+	for pattern in error_patterns.keys():
+		if pattern in reason.to_lower():
+			short_reason = error_patterns[pattern]
 			break
-	if short_reason == "TX failed" and reason.length() > 40:
-		short_reason = reason.left(40) + "..."
-	elif short_reason == "TX failed":
-		short_reason = reason
+	if short_reason.is_empty():
+		short_reason = "Action failed"
 	turn_info.text = short_reason
 	push_warning("[arena] TX failed (%s): %s" % [action, reason])
+	_action_in_flight = false
 	attack_button.disabled = false
 	end_turn_button.disabled = false
 	start_fight_button.disabled = false

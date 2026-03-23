@@ -250,9 +250,10 @@ size_flags_horizontal = 3
 [node name="TurnInfo" type="Label" parent="UILayer/UIRoot/BottomBar/BottomHBox"]
 unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(140, 0)
+custom_minimum_size = Vector2(180, 0)
 horizontal_alignment = 2
-autowrap_mode = 2
+clip_text = true
+text_overrun_behavior = 3
 text = ""
 
 [node name="CenterContent" type="CenterContainer" parent="UILayer/UIRoot"]
