@@ -27,6 +27,14 @@ var _player_sprite: AnimatedSprite3D = null
 var _mob_sprites: Array[AnimatedSprite3D] = []
 var _zone_scenes: Dictionary = {}
 
+const ZONE_PROPS := {
+	0: ["res://assets/models/props/zone_0/z0_brazier.glb", "res://assets/models/props/zone_0/z0_pillar.glb"],
+	1: ["res://assets/models/props/zone_1/z1_geode.glb", "res://assets/models/props/zone_1/z1_boulder.glb"],
+	2: ["res://assets/models/props/zone_2/z2_crystal.glb", "res://assets/models/props/zone_2/z2_runestone.glb"],
+	3: ["res://assets/models/props/zone_3/z3_mushroom.glb", "res://assets/models/props/zone_3/z3_column.glb"],
+	4: ["res://assets/models/props/zone_4/z4_pylon.glb", "res://assets/models/props/zone_4/z4_throne.glb"],
+}
+
 var _hit_flash_shader: Shader = null
 var _hp_bar_shader: Shader = null
 var _mob_hp_bars: Array[MeshInstance3D] = []
@@ -448,62 +456,49 @@ func _add_player_fill_light() -> void:
 	player_anchor.add_child(light)
 
 func _add_edge_props(zone_id: int, radius: float) -> void:
-	var prop_color := _zone_prop_color(zone_id)
 	var zone_emission: Color = ZONE_COLORS.get(zone_id, Color.GRAY)
-	for i in range(12):
-		var angle := (TAU / 12.0) * float(i) + randf_range(-0.15, 0.15)
-		var dist := radius + randf_range(-0.5, 0.5)
-		var pos := Vector3(cos(angle) * dist, 0, sin(angle) * dist)
-		var pillar := MeshInstance3D.new()
-		var mesh: Mesh
-		var h: float
-		match i % 4:
-			0:
-				var cyl := CylinderMesh.new()
-				cyl.top_radius = randf_range(0.05, 0.12)
-				cyl.bottom_radius = randf_range(0.3, 0.5)
-				cyl.height = randf_range(2.0, 3.5)
-				h = cyl.height
-				mesh = cyl
-			1:
-				var prism := PrismMesh.new()
-				prism.size = Vector3(randf_range(0.4, 0.8), randf_range(1.5, 2.5), randf_range(0.4, 0.8))
-				h = prism.size.y
-				mesh = prism
-			2:
-				var box := BoxMesh.new()
-				box.size = Vector3(randf_range(0.3, 0.6), randf_range(0.8, 1.5), randf_range(0.3, 0.6))
-				h = box.size.y
-				mesh = box
-			_:
-				var cyl2 := CylinderMesh.new()
-				cyl2.top_radius = randf_range(0.15, 0.25)
-				cyl2.bottom_radius = randf_range(0.15, 0.25)
-				cyl2.height = randf_range(1.0, 2.0)
-				h = cyl2.height
-				mesh = cyl2
-		pillar.mesh = mesh
-		var mat := StandardMaterial3D.new()
-		mat.albedo_color = prop_color.darkened(randf_range(0.1, 0.3))
-		mat.roughness = 0.85
-		mat.emission_enabled = true
-		mat.emission = zone_emission
-		mat.emission_energy_multiplier = randf_range(0.05, 0.2)
-		pillar.material_override = mat
-		pillar.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
-		pillar.position = pos
-		pillar.position.y = h * 0.5
-		pillar.rotation.y = randf() * TAU
-		pillar.rotation.x = randf_range(-0.05, 0.05)
-		pillar.rotation.z = randf_range(-0.05, 0.05)
-		zone_anchor.add_child(pillar)
+	var prop_paths: Array = ZONE_PROPS.get(zone_id, [])
+	var loaded_props: Array[PackedScene] = []
+	for path in prop_paths:
+		if ResourceLoader.exists(path):
+			loaded_props.append(load(path) as PackedScene)
 
-		if i % 3 == 0:
+	for i in range(8):
+		var angle := (TAU / 8.0) * float(i) + randf_range(-0.2, 0.2)
+		var dist := radius + randf_range(-0.5, 0.8)
+		var pos := Vector3(cos(angle) * dist, 0, sin(angle) * dist)
+
+		if not loaded_props.is_empty():
+			var scene: PackedScene = loaded_props[i % loaded_props.size()]
+			var instance: Node3D = scene.instantiate()
+			instance.position = pos
+			var s := randf_range(0.4, 0.7)
+			instance.scale = Vector3(s, s, s)
+			instance.rotation.y = randf() * TAU
+			zone_anchor.add_child(instance)
+		else:
+			var pillar := MeshInstance3D.new()
+			var cyl := CylinderMesh.new()
+			cyl.top_radius = randf_range(0.05, 0.15)
+			cyl.bottom_radius = randf_range(0.25, 0.4)
+			cyl.height = randf_range(1.5, 3.0)
+			pillar.mesh = cyl
+			var mat := StandardMaterial3D.new()
+			mat.albedo_color = _zone_prop_color(zone_id).darkened(randf_range(0.1, 0.3))
+			mat.roughness = 0.85
+			pillar.material_override = mat
+			pillar.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+			pillar.position = pos
+			pillar.position.y = cyl.height * 0.5
+			pillar.rotation.y = randf() * TAU
+			zone_anchor.add_child(pillar)
+
+		if i % 2 == 0:
 			var glow := OmniLight3D.new()
 			glow.light_color = zone_emission
-			glow.light_energy = 0.4
-			glow.omni_range = 2.0
-			glow.position = pos + Vector3(0, h + 0.3, 0)
+			glow.light_energy = 0.6
+			glow.omni_range = 3.0
+			glow.position = pos + Vector3(0, 1.5, 0)
 			zone_anchor.add_child(glow)
 
 func _add_atmosphere_particles(zone_id: int, radius: float) -> void:
