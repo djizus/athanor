@@ -5,7 +5,7 @@
     {
       "id": "hero",
       "gridSize": 4,
-      "basePrompt": "armored alchemist warrior, dark medieval plate armor etched with golden alchemical symbols, hooded dark cloak, wielding a glowing runic longsword, strong silhouette, isometric three-quarter view, dark fantasy hand-painted game art style",
+      "basePrompt": "armored alchemist warrior, dark medieval plate armor etched with golden alchemical symbols, hooded dark cloak, wielding a glowing runic longsword, strong silhouette, 3/4 isometric view low camera angle like Hades by Supergiant Games, showing front and slight top of character, hand-painted ink style with bold black outlines, dark fantasy game art",
       "animations": [
         { "name": "idle", "row": 0, "choreography": "breathing idle stance, sword held at right side pointing down, weight centered, cloak gently swaying, four phases of subtle weight shift" },
         { "name": "attack", "row": 1, "choreography": "overhead sword slash sequence, first beat winds up with sword behind head, second and third swing forward with full body rotation, fourth beat follow-through with sword extended" },

@@ -9,14 +9,14 @@ const ZONE_COLORS := {
 }
 
 const MOB_POSITIONS := {
-	1: [Vector2(0, -120)],
-	2: [Vector2(-100, -120), Vector2(100, -120)],
-	4: [Vector2(-140, -100), Vector2(140, -100), Vector2(-70, -200), Vector2(70, -200)],
+	1: [Vector2(0, -80)],
+	2: [Vector2(-110, -80), Vector2(110, -80)],
+	4: [Vector2(-150, -50), Vector2(150, -50), Vector2(-80, -160), Vector2(80, -160)],
 }
 
-const PLAYER_POSITION := Vector2(0, 100)
-const SPRITE_SCALE := Vector2(0.25, 0.25)
-const MOB_SPRITE_SCALE := Vector2(0.2, 0.2)
+const PLAYER_POSITION := Vector2(0, 60)
+const SPRITE_SCALE := Vector2(0.35, 0.35)
+const MOB_SPRITE_SCALE := Vector2(0.3, 0.3)
 const ZONE_MOB_COUNT := {0: 0, 1: 1, 2: 1, 3: 2, 4: 4}
 
 const ZONE_PALETTES := {
@@ -170,8 +170,11 @@ func spawn_hero() -> void:
 	_player_sprite.offset.y = -128
 	_player_sprite.z_index = 10
 	_player_sprite.material = _make_hit_flash_material()
-	_player_sprite.add_child(_create_blob_shadow(Vector2(1.2, 0.7)))
 	player_anchor.add_child(_player_sprite)
+	# Shadow as sibling of sprite (not child) so it doesn't inherit sprite scale
+	var hero_shadow := _create_blob_shadow(Vector2(2.0, 1.0))
+	hero_shadow.position = Vector2(0, 0)  # at entity feet
+	player_anchor.add_child(hero_shadow)
 	var player_light := PointLight2D.new()
 	var light_tex := _load_texture_safe("res://assets/vfx/light_gradient.png")
 	if light_tex != null:
@@ -201,14 +204,24 @@ func spawn_mobs(count: int, zone_id: int) -> void:
 		sprite.scale = MOB_SPRITE_SCALE
 		sprite.offset.y = -128
 		sprite.material = _make_hit_flash_material()
-		sprite.add_child(_create_blob_shadow(Vector2(1.0, 0.6)))
 		container.add_child(sprite)
+		# Shadow as sibling of sprite (not child) so it doesn't inherit sprite scale
+		var mob_shadow := _create_blob_shadow(Vector2(1.8, 0.9))
+		mob_shadow.position = Vector2(0, 0)
+		container.add_child(mob_shadow)
 		_play_sprite_anim(sprite, "idle")
 
+		# HP bar with dark background for visibility
+		var hp_bg := ColorRect.new()
+		hp_bg.name = "HPBarBG"
+		hp_bg.size = Vector2(84, 12)
+		hp_bg.position = Vector2(-42, -12)
+		hp_bg.color = Color(0.0, 0.0, 0.0, 0.6)
+		container.add_child(hp_bg)
 		var hp := ColorRect.new()
 		hp.name = "HPBar"
-		hp.size = Vector2(60, 8)
-		hp.position = Vector2(-30, -150)
+		hp.size = Vector2(80, 8)
+		hp.position = Vector2(-40, -10)
 		hp.color = Color.WHITE
 		if _hp_bar_shader != null:
 			var hp_mat := ShaderMaterial.new()
