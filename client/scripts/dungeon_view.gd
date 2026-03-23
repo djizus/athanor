@@ -259,7 +259,7 @@ func on_state_changed(state: int, zone_id: int, prev_state: int) -> void:
 func _create_animated_sprite(frames: SpriteFrames, scale: Vector3) -> AnimatedSprite3D:
 	var sprite := AnimatedSprite3D.new()
 	sprite.sprite_frames = frames
-	sprite.pixel_size = 0.004
+	sprite.pixel_size = 0.005
 	sprite.scale = scale
 	sprite.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
 	sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
@@ -409,8 +409,43 @@ func update_mob_hp(mob_index: int, current_hp: int, max_hp: int) -> void:
 
 func _decorate_zone(zone_id: int) -> void:
 	var radius: float = 6.0 + zone_id * 0.5
-	_add_edge_props(zone_id, radius)
+	_add_arena_boundary(zone_id, radius)
+	_add_edge_props(zone_id, radius + 2.0)
 	_add_atmosphere_particles(zone_id, radius)
+	_add_player_fill_light()
+
+func _add_arena_boundary(zone_id: int, radius: float) -> void:
+	var color: Color = ZONE_COLORS.get(zone_id, Color.GRAY)
+	for i in range(28):
+		var angle := (TAU / 28.0) * float(i) + randf_range(-0.08, 0.08)
+		var dist := radius + randf_range(-0.3, 0.3)
+		var pos := Vector3(cos(angle) * dist, 0, sin(angle) * dist)
+		var rock := MeshInstance3D.new()
+		var mesh := SphereMesh.new()
+		var s := randf_range(0.3, 0.8)
+		mesh.radius = s
+		mesh.height = s * randf_range(0.6, 1.2)
+		mesh.radial_segments = 6
+		mesh.rings = 3
+		rock.mesh = mesh
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = color.darkened(randf_range(0.5, 0.7))
+		mat.roughness = 0.95
+		rock.material_override = mat
+		rock.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		rock.position = pos
+		rock.position.y = mesh.height * 0.2
+		rock.rotation = Vector3(randf_range(-0.2, 0.2), randf() * TAU, randf_range(-0.2, 0.2))
+		zone_anchor.add_child(rock)
+
+func _add_player_fill_light() -> void:
+	var light := OmniLight3D.new()
+	light.light_color = Color(1.0, 0.95, 0.85)
+	light.light_energy = 1.5
+	light.omni_range = 5.0
+	light.shadow_enabled = false
+	light.position = Vector3(0, 3.0, 0)
+	player_anchor.add_child(light)
 
 func _add_edge_props(zone_id: int, radius: float) -> void:
 	var prop_color := _zone_prop_color(zone_id)

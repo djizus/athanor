@@ -33,17 +33,22 @@ void fragment() {
 	float n = fbm(uv);
 	float cracks = step(crack_threshold, fbm(uv * 1.5 + 3.7));
 
-	vec3 base = mix(stone_color.rgb, stone_color.rgb * 1.3, n);
-	base = mix(base, crack_color.rgb, cracks * 0.6);
+	vec3 base = mix(stone_color.rgb, stone_color.rgb * 1.5, n);
+	base = mix(base, crack_color.rgb, cracks * 0.5);
+
+	vec2 grid_uv = fract(uv);
+	float grid_line = step(0.96, grid_uv.x) + step(0.96, grid_uv.y);
+	grid_line = clamp(grid_line, 0.0, 1.0);
+	base = mix(base, base * 0.7, grid_line * 0.3);
 
 	float dist = length(UV - vec2(0.5)) * 2.0;
-	float vignette = 1.0 - smoothstep(edge_darken_radius, 1.0, dist) * 0.8;
+	float vignette = 1.0 - smoothstep(edge_darken_radius, 1.0, dist) * 0.6;
 	base *= vignette;
 
-	ALBEDO = base;
-	ROUGHNESS = 0.9;
-	METALLIC = 0.0;
+	ALBEDO = base * 1.3;
+	ROUGHNESS = 0.85;
+	METALLIC = 0.02;
 
-	EMISSION = emission_color.rgb * emission_strength * (1.0 - cracks) * 0.3
+	EMISSION = emission_color.rgb * emission_strength * (1.0 - cracks) * 0.4
 	         * smoothstep(0.3, 0.5, n);
 }
