@@ -1,5 +1,7 @@
 extends Node3D
 
+const ToonMaterial = preload("res://scripts/toon_material.gd")
+
 const ZONE_COLORS := {
 	0: Color(0.831, 0.659, 0.286),
 	1: Color(0.722, 0.314, 0.188),
@@ -75,6 +77,7 @@ func load_zone(zone_id: int) -> void:
 	else:
 		_create_fallback_platform(zone_id)
 	_decorate_zone(zone_id)
+	_apply_zone_environment(zone_id)
 	if _player_sprite != null:
 		_player_sprite.position = _get_zone_player_position()
 
@@ -88,6 +91,7 @@ func spawn_hero() -> void:
 		_player_model.position = Vector3.ZERO
 		player_anchor.position = _get_zone_player_position()
 		player_anchor.add_child(_player_model)
+		ToonMaterial.apply_toon(_player_model, ZONE_COLORS.get(_current_zone_id, Color.WHITE))
 		_setup_model_animations(_player_model)
 		_face_node_toward(_player_model, Vector3(0, 0, -2) - player_anchor.position)
 		var shadow := _create_blob_shadow()
@@ -124,6 +128,7 @@ func spawn_mobs(count: int, zone_id: int) -> void:
 			model.scale = MOB_MODEL_SCALE
 			model.position = marker_pos
 			mob_anchor.add_child(model)
+			ToonMaterial.apply_toon(model, ZONE_COLORS.get(zone_id, Color.WHITE))
 			_setup_model_animations(model)
 			_face_node_toward(model, player_anchor.position)
 			_mob_models.append(model)
@@ -171,6 +176,7 @@ func update_mob_visual(mob_id: int, hp: int, _max_hp: int) -> void:
 			node = _mob_sprites[mob_id]
 			_play_sprite_anim(_mob_sprites[mob_id], "death")
 		if node != null:
+			_spawn_hit_particles(node.global_position + Vector3(0, 1.0, 0), ZONE_COLORS.get(_current_zone_id, Color.WHITE))
 			var tween := create_tween()
 			tween.tween_interval(0.5)
 			tween.tween_property(node, "scale", Vector3(0.01, 0.01, 0.01), 0.5).set_ease(Tween.EASE_IN)
@@ -210,6 +216,7 @@ func play_attack(target_mob_id: int) -> void:
 	if target_node != null:
 		if target_mob_id < _mob_models.size() and is_instance_valid(_mob_models[target_mob_id]):
 			_play_model_anim(_mob_models[target_mob_id], "hit")
+			_flash_model(_mob_models[target_mob_id], 0.15)
 		elif target_mob_id < _mob_sprites.size() and is_instance_valid(_mob_sprites[target_mob_id]):
 			_play_sprite_anim(_mob_sprites[target_mob_id], "hit")
 			_flash_sprite(_mob_sprites[target_mob_id], 0.15)
@@ -217,6 +224,7 @@ func play_attack(target_mob_id: int) -> void:
 				if is_instance_valid(_mob_sprites[target_mob_id]):
 					_play_sprite_anim(_mob_sprites[target_mob_id], "idle")
 			)
+		_spawn_hit_particles(target_node.global_position + Vector3(0, 1.2, 0), ZONE_COLORS.get(_current_zone_id, Color.WHITE))
 
 func play_mob_turn() -> void:
 	for i in range(_mob_models.size()):
@@ -231,6 +239,7 @@ func play_mob_turn() -> void:
 			)
 	if _player_model != null:
 		_play_model_anim(_player_model, "hit")
+		_flash_model(_player_model, 0.15)
 	elif _player_sprite != null:
 		_play_sprite_anim(_player_sprite, "hit")
 		_flash_sprite(_player_sprite, 0.15)
@@ -509,6 +518,15 @@ func _flash_sprite(sprite: AnimatedSprite3D, duration: float) -> void:
 			sprite.modulate = original_modulate
 	)
 
+func _flash_model(model: Node3D, duration: float) -> void:
+	if model == null or not is_instance_valid(model):
+		return
+	ToonMaterial.set_flash(model, 1.0)
+	get_tree().create_timer(duration).timeout.connect(func():
+		if is_instance_valid(model):
+			ToonMaterial.set_flash(model, 0.0)
+	)
+
 func _make_placeholder_frames(color: Color) -> SpriteFrames:
 	var frames := SpriteFrames.new()
 	frames.remove_animation("default")
@@ -616,6 +634,80 @@ func _decorate_zone(zone_id: int) -> void:
 	_add_atmosphere_particles(zone_id, radius)
 	_add_player_fill_light()
 
+func _apply_zone_environment(zone_id: int) -> void:
+	var world_env := get_tree().get_root().find_child("WorldEnvironment", true, false) as WorldEnvironment
+	if world_env == null or world_env.environment == null:
+		return
+	var env := world_env.environment
+	match zone_id:
+		0:
+			env.background_color = Color(0.10, 0.08, 0.06)
+			env.ambient_light_color = Color(0.55, 0.50, 0.40)
+			env.ambient_light_energy = 0.8
+			env.fog_enabled = false
+		1:
+			env.background_color = Color(0.12, 0.03, 0.02)
+			env.ambient_light_color = Color(0.60, 0.25, 0.15)
+			env.ambient_light_energy = 0.6
+			env.fog_enabled = true
+			env.fog_density = 0.005
+			env.fog_light_color = Color(0.4, 0.1, 0.05)
+		2:
+			env.background_color = Color(0.08, 0.05, 0.16)
+			env.ambient_light_color = Color(0.35, 0.25, 0.60)
+			env.ambient_light_energy = 0.7
+			env.fog_enabled = true
+			env.fog_density = 0.003
+			env.fog_light_color = Color(0.2, 0.1, 0.35)
+		3:
+			env.background_color = Color(0.02, 0.06, 0.14)
+			env.ambient_light_color = Color(0.15, 0.25, 0.50)
+			env.ambient_light_energy = 0.5
+			env.fog_enabled = true
+			env.fog_density = 0.008
+			env.fog_light_color = Color(0.05, 0.1, 0.3)
+		4:
+			env.background_color = Color(0.03, 0.12, 0.11)
+			env.ambient_light_color = Color(0.20, 0.50, 0.45)
+			env.ambient_light_energy = 0.9
+			env.fog_enabled = true
+			env.fog_density = 0.004
+			env.fog_light_color = Color(0.1, 0.35, 0.3)
+
+func _spawn_hit_particles(world_pos: Vector3, color: Color = Color.WHITE) -> void:
+	var particles := GPUParticles3D.new()
+	particles.amount = 8
+	particles.lifetime = 0.5
+	particles.one_shot = true
+	particles.emitting = true
+	var mat := ParticleProcessMaterial.new()
+	mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+	mat.emission_sphere_radius = 0.1
+	mat.direction = Vector3(0, 1, 0)
+	mat.spread = 80.0
+	mat.initial_velocity_min = 1.0
+	mat.initial_velocity_max = 3.0
+	mat.gravity = Vector3(0, -4, 0)
+	mat.scale_min = 0.05
+	mat.scale_max = 0.12
+	mat.color = color
+	particles.process_material = mat
+	var draw_mesh := QuadMesh.new()
+	draw_mesh.size = Vector2(0.08, 0.08)
+	particles.draw_pass_1 = draw_mesh
+	var draw_material := StandardMaterial3D.new()
+	draw_material.albedo_color = Color(1.0, 1.0, 1.0, 0.95)
+	draw_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	draw_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	draw_material.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	particles.material_override = draw_material
+	add_child(particles)
+	particles.global_position = world_pos
+	get_tree().create_timer(1.0).timeout.connect(func():
+		if is_instance_valid(particles):
+			particles.queue_free()
+	)
+
 func _add_arena_boundary(zone_id: int, radius: float) -> void:
 	var color: Color = ZONE_COLORS.get(zone_id, Color.GRAY)
 	for i in range(28):
@@ -641,7 +733,11 @@ func _add_arena_boundary(zone_id: int, radius: float) -> void:
 		zone_anchor.add_child(rock)
 
 func _add_player_fill_light() -> void:
+	var existing := player_anchor.get_node_or_null("PlayerFillLight") as OmniLight3D
+	if existing != null:
+		return
 	var light := OmniLight3D.new()
+	light.name = "PlayerFillLight"
 	light.light_color = Color(1.0, 0.95, 0.85)
 	light.light_energy = 1.5
 	light.omni_range = 5.0
@@ -670,6 +766,7 @@ func _add_edge_props(zone_id: int, radius: float) -> void:
 			instance.scale = Vector3(s, s, s)
 			instance.rotation.y = randf() * TAU
 			zone_anchor.add_child(instance)
+			ToonMaterial.apply_toon(instance, _zone_prop_color(zone_id))
 		else:
 			var pillar := MeshInstance3D.new()
 			var cyl := CylinderMesh.new()

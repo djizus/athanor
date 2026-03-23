@@ -6,14 +6,11 @@ enum ArenaState { FORK, PRE_FIGHT, FIGHTING, CLEARED, COMPLETED, FAILED }
 
 const MAX_MOBS := 4
 const ZONE_NAMES := ["Entrance", "Left Cavern", "Right Passage", "Deep Hall", "Final Chamber"]
-
-# Zone graph (mirrors contracts/src/constants.cairo)
 const ZONE_CHILDREN := {0: [1, 2], 1: [3], 2: [3], 3: [4], 4: []}
 const ZONE_MOB_COUNT := {0: 0, 1: 1, 2: 1, 3: 2, 4: 4}
 const NO_EXIT := 0xFF
 const AA_COST := 30
-
-# Minimap layout (normalized 0-1 positions for the 5 zones)
+const RoomStateMachine = preload("res://scripts/room_state_machine.gd")
 const MINIMAP_POS := {
 	0: Vector2(0.5, 0.1),
 	1: Vector2(0.2, 0.4),
@@ -22,46 +19,14 @@ const MINIMAP_POS := {
 	4: Vector2(0.5, 0.95),
 }
 
-# --- Node references ---
-@onready var minimap_draw: Control = %MinimapDraw
-@onready var hp_bar: ProgressBar = %HPBar
-@onready var hp_label: Label = %HPLabel
-@onready var stamina_bar: ProgressBar = %StaminaBar
-@onready var stamina_label: Label = %StaminaLabel
-@onready var zone_label: Label = %ZoneLabel
-@onready var top_bar: PanelContainer = $UILayer/UIRoot/TopBar
-@onready var bottom_bar: PanelContainer = $UILayer/UIRoot/BottomBar
-@onready var target_name: Label = %TargetName
-@onready var target_hp_bar: ProgressBar = %TargetHPBar
-@onready var target_hp_label: Label = %TargetHPLabel
-
-# Door panel
-@onready var door_panel: PanelContainer = %DoorPanel
-@onready var door_title: Label = %DoorTitle
-@onready var left_door_button: Button = %LeftDoorButton
-@onready var right_door_button: Button = %RightDoorButton
-@onready var continue_button: Button = %ContinueButton
-
-@onready var attack_button: Button = %AttackButton
-@onready var end_turn_button: Button = %EndTurnButton
-@onready var turn_info: Label = %TurnInfo
-
-# Start fight
-@onready var start_fight_button: Button = %StartFightButton
-
-# Result panel
-@onready var result_panel: PanelContainer = %ResultPanel
-@onready var result_title: Label = %ResultTitle
-@onready var stats_label: Label = %StatsLabel
-@onready var return_button: Button = %ReturnButton
-
 var current_state: ArenaState = ArenaState.FORK
-var _auto_finishing := false
-var _auto_advancing := false
-var _action_in_flight := false
+var _room_zone_setup: int = -1
 
+@onready var combat_controller: Node = $CombatController
+@onready var arena_ui: Node = $ArenaUI
 @onready var dungeon_view: Node3D = $DungeonWorld
 @onready var targeting_system: Node3D = $TargetingSystem
+@onready var camera_rig: Node3D = $CameraRig
 
 func _ready() -> void:
 	game_state.character_updated.connect(_on_state_changed)
@@ -72,10 +37,25 @@ func _ready() -> void:
 
 	dojo_bridge.pull_entities_snapshot()
 
-	var camera_rig := get_node_or_null("CameraRig")
 	var player_anchor := get_node_or_null("DungeonWorld/PlayerAnchor")
 	if camera_rig and camera_rig.has_method("set_follow_target") and player_anchor:
 		camera_rig.set_follow_target(player_anchor)
+
+	# Wire room manager + room controller
+	if room_manager != null and not room_manager.room_state_changed.is_connected(_on_room_state_changed):
+		room_manager.room_state_changed.connect(_on_room_state_changed)
+	if room_manager != null and not room_manager.room_changed.is_connected(_on_room_changed):
+		room_manager.room_changed.connect(_on_room_changed)
+	var room_ctrl := get_node_or_null("DungeonWorld/RoomTemplate")
+	if room_ctrl != null and room_ctrl.has_method("setup_for_zone"):
+		room_ctrl.setup_for_zone(0)
+		if room_ctrl.has_signal("battle_trigger_hit") and not room_ctrl.battle_trigger_hit.is_connected(_on_battle_trigger_hit):
+			room_ctrl.battle_trigger_hit.connect(_on_battle_trigger_hit)
+		if room_ctrl.has_signal("door_triggered") and not room_ctrl.door_triggered.is_connected(_on_door_triggered):
+			room_ctrl.door_triggered.connect(_on_door_triggered)
+
+	arena_ui.setup(self)
+	combat_controller.setup(self, arena_ui)
 
 	_refresh()
 	_force_initial_visuals()
@@ -83,10 +63,11 @@ func _ready() -> void:
 	dojo_bridge._schedule_entity_poll()
 
 func _exit_tree() -> void:
-	for timer in _poll_timers:
-		if is_instance_valid(timer):
-			timer.queue_free()
-	_poll_timers.clear()
+	combat_controller.cleanup_timers()
+	if room_manager != null and room_manager.room_state_changed.is_connected(_on_room_state_changed):
+		room_manager.room_state_changed.disconnect(_on_room_state_changed)
+	if room_manager != null and room_manager.room_changed.is_connected(_on_room_changed):
+		room_manager.room_changed.disconnect(_on_room_changed)
 	if game_state.character_updated.is_connected(_on_state_changed):
 		game_state.character_updated.disconnect(_on_state_changed)
 	if game_state.dungeon_updated.is_connected(_on_state_changed):
@@ -98,8 +79,6 @@ func _exit_tree() -> void:
 	if dojo_bridge.tx_failed.is_connected(_on_tx_failed):
 		dojo_bridge.tx_failed.disconnect(_on_tx_failed)
 
-# --- State machine ---
-
 func _determine_state() -> ArenaState:
 	var dungeon := game_state.dungeon
 	var character := game_state.character
@@ -109,7 +88,6 @@ func _determine_state() -> ArenaState:
 		return ArenaState.COMPLETED
 	if bool(dungeon.get("failed", false)):
 		return ArenaState.FAILED
-	# Death detection takes priority over fight state
 	if not character.is_empty() and int(character.get("health", 0)) <= 0:
 		return ArenaState.FAILED
 	if bool(fight.get("active", false)):
@@ -131,7 +109,6 @@ func _refresh(_data: Dictionary = {}) -> void:
 	current_state = _determine_state()
 	var zone := int(game_state.character.get("current_zone", 0))
 
-	# SFX on state transitions
 	if current_state != prev_state:
 		match current_state:
 			ArenaState.CLEARED:
@@ -143,73 +120,58 @@ func _refresh(_data: Dictionary = {}) -> void:
 			ArenaState.PRE_FIGHT:
 				audio_manager.play_sfx("discovery")
 
-	# Visibility
-	door_panel.visible = (current_state == ArenaState.FORK or current_state == ArenaState.CLEARED)
+	arena_ui.door_panel.visible = (current_state == ArenaState.FORK or current_state == ArenaState.CLEARED)
 	var in_combat := (current_state == ArenaState.FIGHTING)
-	if in_combat and not bottom_bar.visible:
-		_show_combat_hud()
-	elif not in_combat and bottom_bar.visible:
-		_hide_combat_hud()
-	_set_target_visible(in_combat)
-	start_fight_button.visible = (current_state == ArenaState.PRE_FIGHT)
-	result_panel.visible = (current_state == ArenaState.COMPLETED or current_state == ArenaState.FAILED)
+	if in_combat and not arena_ui.bottom_bar.visible:
+		arena_ui._show_combat_hud()
+	elif not in_combat and arena_ui.bottom_bar.visible:
+		arena_ui._hide_combat_hud()
+	arena_ui._set_target_visible(in_combat)
+	arena_ui.start_fight_button.visible = (current_state == ArenaState.PRE_FIGHT)
+	arena_ui.result_panel.visible = (current_state == ArenaState.COMPLETED or current_state == ArenaState.FAILED)
 
-	# Zone label
 	var zone_name: String = ZONE_NAMES[zone] if zone < ZONE_NAMES.size() else "Zone %d" % zone
-	zone_label.text = "Zone %d — %s" % [zone, zone_name]
+	arena_ui.zone_label.text = "Zone %d — %s" % [zone, zone_name]
 
-	# Player bars
-	_update_player_bars()
+	arena_ui.refresh(current_state, zone, game_state.character, game_state.fight, game_state.dungeon)
 
-	# Minimap
-	minimap_draw.queue_redraw()
-
-	# State-specific UI
 	match current_state:
 		ArenaState.FORK:
-			door_title.text = "Choose your path"
-			left_door_button.visible = true
-			right_door_button.visible = true
-			continue_button.visible = false
+			arena_ui.door_title.text = "Choose your path"
+			arena_ui.left_door_button.visible = true
+			arena_ui.right_door_button.visible = true
+			arena_ui.continue_button.visible = false
 		ArenaState.CLEARED:
-			door_title.text = "Zone cleared!"
+			arena_ui.door_title.text = "Zone cleared!"
 			var children: Array = ZONE_CHILDREN.get(zone, [])
 			if children.size() == 0:
-				door_title.text = "No exit..."
-				continue_button.visible = false
+				arena_ui.door_title.text = "No exit..."
+				arena_ui.continue_button.visible = false
 			elif children.size() == 1:
-				# Single exit — contract already auto-advanced, just poll for update
-				continue_button.visible = false
-				left_door_button.visible = false
-				right_door_button.visible = false
-				if not _auto_advancing:
-					_auto_advance_single_exit()
+				arena_ui.continue_button.visible = false
+				arena_ui.left_door_button.visible = false
+				arena_ui.right_door_button.visible = false
+				if not combat_controller.is_auto_advancing():
+					combat_controller._auto_advance_single_exit()
 			else:
-				left_door_button.visible = true
-				right_door_button.visible = true
-				continue_button.visible = false
+				arena_ui.left_door_button.visible = true
+				arena_ui.right_door_button.visible = true
+				arena_ui.continue_button.visible = false
 		ArenaState.PRE_FIGHT:
-			start_fight_button.text = "Begin Combat"
-			start_fight_button.disabled = false
-		ArenaState.FIGHTING:
-			_update_target_bar()
-			_update_mob_hp_bars()
+			arena_ui.start_fight_button.text = "Begin Combat"
+			arena_ui.start_fight_button.disabled = false
 		ArenaState.COMPLETED:
-			result_title.text = "Dungeon Cleared!"
-			_update_stats()
+			arena_ui.result_title.text = "Dungeon Cleared!"
 		ArenaState.FAILED:
-			result_title.text = "You Died"
-			_update_stats()
+			arena_ui.result_title.text = "You Died"
 
-	# Auto-transitions for fighting state
-	if current_state == ArenaState.FIGHTING and not _auto_finishing:
+	if current_state == ArenaState.FIGHTING and not combat_controller.is_auto_finishing():
 		if bool(game_state.fight.get("active", false)):
-			if _first_alive_mob() < 0:
-				_auto_finish("All mobs defeated!")
+			if combat_controller.first_alive_mob() < 0:
+				combat_controller._auto_finish("All mobs defeated!")
 			elif int(game_state.character.get("stamina", 0)) < AA_COST:
-				_auto_finish("Out of stamina — ending turn...")
+				combat_controller._auto_finish("Out of stamina — ending turn...")
 
-	# Targeting system activation
 	if current_state == ArenaState.FIGHTING and targeting_system != null:
 		if not targeting_system.active:
 			var mob_nodes: Array = []
@@ -220,191 +182,76 @@ func _refresh(_data: Dictionary = {}) -> void:
 	elif targeting_system != null and targeting_system.active:
 		targeting_system.deactivate()
 
-	# 3D visual sync
 	if current_state != prev_state and dungeon_view != null and dungeon_view.has_method("on_state_changed"):
 		dungeon_view.on_state_changed(current_state, zone, prev_state)
+
+	# Keep room controller trigger wiring in sync with active zone.
+	var room_ctrl := get_node_or_null("DungeonWorld/RoomTemplate")
+	if room_ctrl != null and room_ctrl.has_method("setup_for_zone") and _room_zone_setup != zone:
+		_room_zone_setup = zone
+		room_ctrl.setup_for_zone(zone)
+
+	# Sync room manager with contract state
+	match current_state:
+		ArenaState.FIGHTING:
+			if not room_manager.is_in_combat():
+				room_manager.start_combat()
+		ArenaState.CLEARED:
+			if room_manager.get_current_room_state() != RoomStateMachine.RoomState.CLEARED:
+				room_manager.clear_room()
+		ArenaState.FORK, ArenaState.PRE_FIGHT:
+			var room_state := room_manager.get_current_room_state()
+			if room_manager.visual_zone != zone or (room_state != RoomStateMachine.RoomState.EXPLORING and room_state != RoomStateMachine.RoomState.CLEARED):
+				room_manager.enter_room(zone)
+
+	# Handle zone divergence: contract zone advanced ahead of visual zone
+	if zone != room_manager.visual_zone:
+		room_manager.enter_room(zone)
 
 func _force_initial_visuals() -> void:
 	if dungeon_view != null and dungeon_view.has_method("on_state_changed"):
 		var zone := int(game_state.character.get("current_zone", 0))
 		dungeon_view.on_state_changed(current_state, zone, -1)
 
-func _update_player_bars() -> void:
-	var max_hp := int(game_state.character.get("max_health", 100))
-	var hp := int(game_state.character.get("health", 0))
-	var max_stamina := int(game_state.character.get("max_stamina", 100))
-	var stamina := int(game_state.character.get("stamina", 0))
-
-	hp_bar.max_value = max_hp
-	hp_bar.value = hp
-	hp_label.text = "HP %d / %d" % [hp, max_hp]
-
-	stamina_bar.max_value = max_stamina
-	stamina_bar.value = stamina
-	stamina_label.text = "Stamina %d / %d" % [stamina, max_stamina]
-
-func _show_combat_hud() -> void:
-	bottom_bar.modulate.a = 0.0
-	bottom_bar.visible = true
-	var tween := create_tween()
-	tween.tween_property(bottom_bar, "modulate:a", 1.0, 0.3)
-
-func _hide_combat_hud() -> void:
-	var tween := create_tween()
-	tween.tween_property(bottom_bar, "modulate:a", 0.0, 0.2)
-	tween.tween_callback(func(): bottom_bar.visible = false)
-
-func _set_target_visible(vis: bool) -> void:
-	target_name.visible = vis
-	target_hp_bar.visible = vis
-	target_hp_label.visible = vis
-
-func _update_target_bar() -> void:
-	var mob_idx := _first_alive_mob()
-	if mob_idx < 0:
-		target_name.text = ""
-		target_hp_bar.value = 0
-		target_hp_label.text = ""
-		return
-	var packed: int = _parse_int(game_state.fight.get("mob_healths", 0))
-	var mob_hp := _unpack_mob_hp(packed, mob_idx)
-	var max_hp := 20
-	target_name.text = _zone_mob_name(int(game_state.character.get("current_zone", 0)))
-	target_hp_bar.max_value = max_hp
-	target_hp_bar.value = mob_hp
-	target_hp_label.text = "%d / %d" % [mob_hp, max_hp]
-	attack_button.disabled = _first_alive_mob() < 0 or int(game_state.character.get("stamina", 0)) < AA_COST
-	end_turn_button.disabled = false
-
-func _update_mob_hp_bars() -> void:
-	if dungeon_view == null:
-		return
-	var mob_count := int(game_state.fight.get("mob_count", 0))
-	var packed: int = _parse_int(game_state.fight.get("mob_healths", 0))
-	for i in range(mob_count):
-		var hp := _unpack_mob_hp(packed, i)
-		if dungeon_view.has_method("update_mob_hp"):
-			dungeon_view.update_mob_hp(i, hp, 20)
-		if dungeon_view.has_method("update_mob_visual"):
-			dungeon_view.update_mob_visual(i, hp, 20)
-
-func _zone_mob_name(zone_id: int) -> String:
-	match zone_id:
-		1: return "Ember Fiend"
-		2: return "Aether Wraith"
-		3: return "Sunken Horror"
-		4: return "Crystal Guardian"
-		_: return "Creature"
-
-func _update_stats() -> void:
-	var hp := int(game_state.character.get("health", 0))
-	var max_hp := int(game_state.character.get("max_health", 100))
-	var zones_cleared := int(game_state.dungeon.get("zones_cleared", 0))
-	var cleared_count := 0
-	for i in range(5):
-		if (zones_cleared & (1 << i)) != 0:
-			cleared_count += 1
-	stats_label.text = "Zones cleared: %d / 5\nHP remaining: %d / %d" % [cleared_count, hp, max_hp]
-
-# --- Actions ---
-
 func _on_left_door_pressed() -> void:
-	audio_manager.play_sfx("click")
-	left_door_button.disabled = true
-	right_door_button.disabled = true
-	dojo_bridge.choose(game_state.get_game_id(), dojo_bridge.DIRECTION_LEFT)
+	combat_controller._on_left_door_pressed()
 
 func _on_right_door_pressed() -> void:
-	audio_manager.play_sfx("click")
-	left_door_button.disabled = true
-	right_door_button.disabled = true
-	dojo_bridge.choose(game_state.get_game_id(), dojo_bridge.DIRECTION_RIGHT)
+	combat_controller._on_right_door_pressed()
 
 func _on_continue_pressed() -> void:
-	continue_button.disabled = true
-	# For single-exit zones, the contract auto-advances on finish().
-	# If we're here, it means the zone was already cleared and auto-advanced.
-	# Re-pull to catch the updated zone.
-	dojo_bridge.pull_entities_snapshot()
+	combat_controller._on_continue_pressed()
 
 func _on_start_fight_pressed() -> void:
-	audio_manager.play_sfx("click")
-	start_fight_button.disabled = true
-	dojo_bridge.start(game_state.get_game_id())
+	combat_controller._on_start_fight_pressed()
 
 func _on_attack_pressed() -> void:
-	if current_state != ArenaState.FIGHTING or _action_in_flight:
-		return
-	var stamina := int(game_state.character.get("stamina", 0))
-	if stamina < AA_COST:
-		turn_info.text = "Not enough stamina"
-		attack_button.disabled = true
-		return
-	var target := -1
-	if targeting_system != null and targeting_system.active and targeting_system.current_target >= 0:
-		target = targeting_system.current_target
-	if target < 0:
-		target = _first_alive_mob()
-	if target < 0:
-		return
-	audio_manager.play_sfx("click")
-	_action_in_flight = true
-	attack_button.disabled = true
-	end_turn_button.disabled = true
-	turn_info.text = "Attacking..."
-	dojo_bridge.cast(game_state.get_game_id(), target, 0)
-	if dungeon_view != null and dungeon_view.has_method("play_attack"):
-		dungeon_view.play_attack(target)
-		var mob_pos: Vector3 = dungeon_view.get_mob_world_position(target) if dungeon_view.has_method("get_mob_world_position") else Vector3.ZERO
-		if mob_pos != Vector3.ZERO and dungeon_view.has_method("spawn_damage_number"):
-			dungeon_view.spawn_damage_number(mob_pos, int(game_state.character.get("power", 10)))
-	var camera_rig := get_node_or_null("CameraRig")
-	if camera_rig and camera_rig.has_method("shake"):
-		camera_rig.shake(0.15, 0.2)
-	var new_stamina := maxi(0, stamina - AA_COST)
-	stamina_bar.value = new_stamina
-	stamina_label.text = "Stamina %d / %d" % [new_stamina, int(game_state.character.get("max_stamina", 100))]
+	combat_controller._on_attack_pressed()
 
 func _on_end_turn_pressed() -> void:
-	if current_state != ArenaState.FIGHTING or _action_in_flight:
-		return
-	if not bool(game_state.fight.get("active", false)):
-		_refresh()
-		return
-	audio_manager.play_sfx("click")
-	_action_in_flight = true
-	attack_button.disabled = true
-	end_turn_button.disabled = true
-	turn_info.text = "Ending turn..."
-	dojo_bridge.finish(game_state.get_game_id())
-	if dungeon_view != null and dungeon_view.has_method("play_mob_turn"):
-		dungeon_view.play_mob_turn()
-		var player_pos: Vector3 = dungeon_view.get_player_world_position() if dungeon_view.has_method("get_player_world_position") else Vector3.ZERO
-		var alive_mobs := 0
-		var mob_count := int(game_state.fight.get("mob_count", 0))
-		var packed: int = _parse_int(game_state.fight.get("mob_healths", 0))
-		for i in range(mob_count):
-			if _unpack_mob_hp(packed, i) > 0:
-				alive_mobs += 1
-		if player_pos != Vector3.ZERO and alive_mobs > 0 and dungeon_view.has_method("spawn_damage_number"):
-			dungeon_view.spawn_damage_number(player_pos, alive_mobs * 5)
-	var camera_rig := get_node_or_null("CameraRig")
-	if camera_rig and camera_rig.has_method("shake"):
-		camera_rig.shake(0.25, 0.3)
+	combat_controller._on_end_turn_pressed()
 
 func _on_return_pressed() -> void:
-	# Archive current run to history before resetting
 	_archive_current_run()
 	game_state.reset()
 	return_to_menu.emit()
 
 func _unhandled_input(event: InputEvent) -> void:
-	if current_state != ArenaState.FIGHTING:
-		return
 	if event is InputEventKey and event.pressed:
 		match event.keycode:
-			KEY_1: _on_attack_pressed()
-			KEY_2: _on_end_turn_pressed()
+			KEY_1:
+				if current_state == ArenaState.FIGHTING:
+					_on_attack_pressed()
+			KEY_2:
+				if current_state == ArenaState.FIGHTING:
+					_on_end_turn_pressed()
+			KEY_F:
+				if room_manager.is_exploring() or room_manager.get_current_room_state() == RoomStateMachine.RoomState.CLEARED:
+					var room := get_node_or_null("DungeonWorld/RoomTemplate")
+					if room != null and room.has_method("get_active_door"):
+						var door: String = room.get_active_door()
+						if not door.is_empty():
+							_on_door_triggered(door)
 
 func _archive_current_run() -> void:
 	if game_state.character.is_empty():
@@ -426,124 +273,104 @@ func _archive_current_run() -> void:
 		"status": status,
 	})
 
-# --- Callbacks ---
-
 func _on_state_changed(_data: Dictionary = {}) -> void:
-	_action_in_flight = false
+	combat_controller.on_state_changed()
 	_refresh()
 
-func _on_tx_submitted(_action: String) -> void:
-	if current_state == ArenaState.FIGHTING:
-		turn_info.text = "Processing..."
-	_poll_after_delay(2.0)
-	_poll_after_delay(5.0)
-
-var _poll_timers: Array[Timer] = []
-
-func _poll_after_delay(delay: float) -> void:
-	var timer := Timer.new()
-	timer.one_shot = true
-	timer.wait_time = delay
-	timer.timeout.connect(func():
-		dojo_bridge.pull_entities_snapshot()
-		timer.queue_free()
-	)
-	add_child(timer)
-	timer.start()
-	_poll_timers.append(timer)
+func _on_tx_submitted(action: String) -> void:
+	combat_controller.on_tx_submitted(action)
 
 func _on_tx_failed(action: String, reason: String) -> void:
-	var short_reason := ""
-	var error_patterns := {
-		"mob already dead": "Target already defeated",
-		"no active fight": "No active fight",
-		"not enough stamina": "Not enough stamina",
-		"already cleared": "Zone already cleared",
-		"not active": "Fight not active",
-		"invalid": "Invalid action",
-		"insufficient": "Insufficient resources",
-	}
-	for pattern in error_patterns.keys():
-		if pattern in reason.to_lower():
-			short_reason = error_patterns[pattern]
-			break
-	if short_reason.is_empty():
-		short_reason = "Action failed"
-	turn_info.text = short_reason
-	push_warning("[arena] TX failed (%s): %s" % [action, reason])
-	_action_in_flight = false
-	attack_button.disabled = false
-	end_turn_button.disabled = false
-	start_fight_button.disabled = false
-	left_door_button.disabled = false
-	right_door_button.disabled = false
-	continue_button.disabled = false
+	combat_controller.on_tx_failed(action, reason)
 
-# --- Minimap drawing ---
+func _on_room_state_changed(new_state: int, _old_state: int) -> void:
+	var player_anchor := get_node_or_null("DungeonWorld/PlayerAnchor")
+	if player_anchor != null and player_anchor.has_method("enable_movement"):
+		if room_manager.is_exploring() or new_state == RoomStateMachine.RoomState.CLEARED:
+			player_anchor.enable_movement()
+		else:
+			player_anchor.disable_movement()
+
+	if camera_rig != null:
+		if new_state == RoomStateMachine.RoomState.COMBAT:
+			if camera_rig.has_method("move_to_battle_position"):
+				camera_rig.move_to_battle_position(Vector3.ZERO, 0.5)
+			else:
+				camera_rig.set_follow_target(null)
+				camera_rig.position = Vector3(0, 8, 14)
+		elif new_state == RoomStateMachine.RoomState.EXPLORING or new_state == RoomStateMachine.RoomState.CLEARED:
+			var pa := get_node_or_null("DungeonWorld/PlayerAnchor")
+			if pa != null and camera_rig.has_method("return_to_follow"):
+				camera_rig.return_to_follow(pa)
+			elif pa != null and camera_rig.has_method("set_follow_target"):
+				camera_rig.set_follow_target(pa)
+
+	if new_state == RoomStateMachine.RoomState.CLEARED:
+		_reveal_doors()
+
+func _on_room_changed(zone_id: int) -> void:
+	_fade_in()
+	var zone_name: String = ZONE_NAMES[zone_id] if zone_id < ZONE_NAMES.size() else "Zone %d" % zone_id
+	if arena_ui != null and arena_ui.has_method("show_zone_title"):
+		arena_ui.show_zone_title("Zone %d\n%s" % [zone_id, zone_name])
+
+func _fade_in() -> void:
+	var fade_rect := get_node_or_null("FadeLayer/FadeRect") as ColorRect
+	if fade_rect == null:
+		return
+	fade_rect.color.a = 1.0
+	var tween := create_tween()
+	tween.tween_property(fade_rect, "color:a", 0.0, 0.5).set_ease(Tween.EASE_IN)
+
+func _fade_out(on_complete: Callable = Callable()) -> void:
+	var fade_rect := get_node_or_null("FadeLayer/FadeRect") as ColorRect
+	if fade_rect == null:
+		if on_complete.is_valid():
+			on_complete.call()
+		return
+	var tween := create_tween()
+	tween.tween_property(fade_rect, "color:a", 1.0, 0.4).set_ease(Tween.EASE_OUT)
+	if on_complete.is_valid():
+		tween.tween_callback(on_complete)
+
+func _on_battle_trigger_hit() -> void:
+	if current_state == ArenaState.PRE_FIGHT:
+		combat_controller._on_start_fight_pressed()
+
+func _on_door_triggered(door_id: String) -> void:
+	if current_state != ArenaState.FORK and current_state != ArenaState.CLEARED:
+		return
+	match door_id:
+		"left":
+			combat_controller._on_left_door_pressed()
+		"right":
+			combat_controller._on_right_door_pressed()
+		"north", "south":
+			var zone := int(game_state.character.get("current_zone", 0))
+			var children: Array = ZONE_CHILDREN.get(zone, [])
+			if children.size() > 1:
+				if door_id == "north":
+					combat_controller._on_left_door_pressed()
+				else:
+					combat_controller._on_right_door_pressed()
+			else:
+				combat_controller._on_continue_pressed()
+
+func _reveal_doors() -> void:
+	var room := get_node_or_null("DungeonWorld/RoomTemplate")
+	if room == null:
+		return
+	for child in room.get_children():
+		if child.name.begins_with("Door") and child is Area3D:
+			var marker := child.get_node_or_null("DoorMarker")
+			if marker != null:
+				marker.visible = true
+				marker.scale = Vector3(0.01, 0.01, 0.01)
+				var tween := create_tween()
+				tween.tween_property(marker, "scale", Vector3.ONE, 0.5).set_ease(Tween.EASE_OUT)
 
 func _draw_minimap() -> void:
-	if minimap_draw == null:
-		return
-	var size := minimap_draw.size
-	var radius := 10.0
-
-	# Draw edges
-	for zone_id in ZONE_CHILDREN.keys():
-		var from_pos: Vector2 = MINIMAP_POS[zone_id] * size
-		var children: Array = ZONE_CHILDREN[zone_id]
-		for child_id in children:
-			if MINIMAP_POS.has(child_id):
-				var to_pos: Vector2 = MINIMAP_POS[child_id] * size
-				minimap_draw.draw_line(from_pos, to_pos, Color(0.3, 0.28, 0.22, 0.6), 2.0)
-
-	# Draw nodes
-	var current_zone := int(game_state.character.get("current_zone", 0))
-	var zones_cleared := int(game_state.dungeon.get("zones_cleared", 0))
-
-	for zone_id in MINIMAP_POS.keys():
-		var pos: Vector2 = MINIMAP_POS[zone_id] * size
-		var color: Color
-		if zone_id == current_zone:
-			color = Color(0.831, 0.659, 0.286, 1.0)  # Gold — current
-		elif (zones_cleared & (1 << zone_id)) != 0:
-			color = Color(0.25, 0.5, 0.3, 1.0)  # Green — cleared
-		else:
-			color = Color(0.2, 0.2, 0.24, 0.6)  # Dark — locked
-
-		minimap_draw.draw_circle(pos, radius, color)
-
-		# Zone number
-		minimap_draw.draw_string(
-			ThemeDB.fallback_font, pos + Vector2(-4, 5),
-			str(zone_id), HORIZONTAL_ALIGNMENT_CENTER, -1, 12,
-			Color(0.9, 0.9, 0.9, 0.8)
-		)
-
-# --- Helpers ---
-
-func _auto_finish(reason: String) -> void:
-	if _auto_finishing:
-		return
-	_auto_finishing = true
-	turn_info.text = reason
-	attack_button.disabled = true
-	end_turn_button.disabled = true
-	get_tree().create_timer(1.5).timeout.connect(func():
-		_auto_finishing = false
-		if current_state == ArenaState.FIGHTING and bool(game_state.fight.get("active", false)):
-			dojo_bridge.finish(game_state.get_game_id())
-		else:
-			dojo_bridge.pull_entities_snapshot()
-	)
-
-func _auto_advance_single_exit() -> void:
-	_auto_advancing = true
-	door_title.text = "Advancing..."
-	push_warning("[arena] Auto-advancing from single-exit zone")
-	get_tree().create_timer(1.0).timeout.connect(func():
-		_auto_advancing = false
-		dojo_bridge.pull_entities_snapshot()
-	)
+	arena_ui._draw_minimap()
 
 func _is_fork(zone_id: int) -> bool:
 	var children: Array = ZONE_CHILDREN.get(zone_id, [])
@@ -552,25 +379,3 @@ func _is_fork(zone_id: int) -> bool:
 func _is_zone_cleared(zone_id: int) -> bool:
 	var bitmap := int(game_state.dungeon.get("zones_cleared", 0))
 	return (bitmap & (1 << zone_id)) != 0
-
-func _first_alive_mob() -> int:
-	var mob_count := int(game_state.fight.get("mob_count", 0))
-	var packed: int = _parse_int(game_state.fight.get("mob_healths", 0))
-	for i in range(mob_count):
-		if _unpack_mob_hp(packed, i) > 0:
-			return i
-	return -1
-
-func _unpack_mob_hp(packed: int, mob_id: int) -> int:
-	return (packed >> (mob_id * 16)) & 0xFFFF
-
-func _parse_int(value: Variant) -> int:
-	if value is int:
-		return value
-	if value is String:
-		var text := String(value)
-		if text.begins_with("0x"):
-			return int("0x" + text.trim_prefix("0x"))
-		if text.is_valid_int():
-			return int(text)
-	return 0
