@@ -245,7 +245,7 @@ func on_state_changed(state: int, zone_id: int, prev_state: int) -> void:
 func _create_animated_sprite(frames: SpriteFrames, scale: Vector3) -> AnimatedSprite3D:
 	var sprite := AnimatedSprite3D.new()
 	sprite.sprite_frames = frames
-	sprite.pixel_size = 0.002
+	sprite.pixel_size = 0.004
 	sprite.scale = scale
 	sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS

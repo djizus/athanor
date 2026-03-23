@@ -1,52 +1,60 @@
 {
   "outputDir": "sprites",
-  "imageSize": { "width": 1024, "height": 1024 },
-  "style": "2D hand-painted fantasy game sprite, centered on canvas, transparent background, single character, no text, no UI, dramatic lighting, dark alchemical dungeon theme",
+  "resolution": "2K",
   "characters": [
     {
       "id": "hero",
-      "basePrompt": "armored alchemist warrior, medieval plate armor with golden alchemical symbols, hooded cloak, holding a glowing runic sword",
+      "gridSize": 4,
+      "basePrompt": "armored alchemist warrior, dark medieval plate armor etched with golden alchemical symbols, hooded dark cloak, wielding a glowing runic longsword, strong silhouette, isometric three-quarter view, dark fantasy hand-painted game art style",
       "animations": [
-        { "name": "idle", "frames": 2, "poseHints": ["standing upright relaxed, sword at side, slight breathing motion", "standing upright, sword at side, weight shifted slightly"] },
-        { "name": "attack", "frames": 2, "poseHints": ["winding up sword strike, sword raised behind head", "slashing forward, sword extended, motion blur arc"] },
-        { "name": "hit", "frames": 2, "poseHints": ["recoiling backward from impact, pain expression", "stumbling, hand on wound, recovering balance"] },
-        { "name": "death", "frames": 2, "poseHints": ["collapsing to knees, sword falling from hand", "lying on ground defeated, armor cracked"] }
+        { "name": "idle", "row": 0, "choreography": "breathing idle stance, sword held at right side pointing down, weight centered, cloak gently swaying, four phases of subtle weight shift" },
+        { "name": "attack", "row": 1, "choreography": "overhead sword slash sequence, first beat winds up with sword behind head, second and third swing forward with full body rotation, fourth beat follow-through with sword extended" },
+        { "name": "hit", "row": 2, "choreography": "impact reaction, first beat recoils backward with head snapping, second beat staggers with hand on chest, third beat stumbles catching balance, fourth beat recovering upright" },
+        { "name": "death", "row": 3, "choreography": "defeat collapse, first beat knees buckling sword dropping, second beat falling to one knee, third beat crumpling sideways, fourth beat lying flat on ground armor cracked" }
       ]
     },
     {
       "id": "mob_ember",
-      "basePrompt": "fire elemental creature, body made of molten rock and flames, ember eyes glowing orange, medium size humanoid",
+      "gridSize": 2,
+      "basePrompt": "fire elemental creature, body made of molten rock and living flame, smoldering ember eyes glowing orange, medium humanoid shape, cracks of magma across its rocky surface, isometric three-quarter view, dark fantasy hand-painted game art style",
       "animations": [
-        { "name": "idle", "frames": 1, "poseHints": ["hovering slightly, flames flickering around body"] },
-        { "name": "attack", "frames": 1, "poseHints": ["lunging forward with flaming fist, fire trail behind"] },
-        { "name": "death", "frames": 1, "poseHints": ["flames extinguishing, crumbling into cooling rocks"] }
+        { "name": "idle", "row": 0, "choreography": "hovering menacingly with flames rippling upward from shoulders, weight shifting left to right" },
+        { "name": "attack", "row": 0, "choreography": "lunging forward with both flaming fists extended, fire trail arcing behind, explosive impact pose" },
+        { "name": "hit", "row": 1, "choreography": "flinching backward as flames flicker and dim momentarily, cracks widening on rocky body" },
+        { "name": "death", "row": 1, "choreography": "flames extinguishing from top down, rocky body crumbling into cooling dark stone fragments" }
       ]
     },
     {
       "id": "mob_aether",
-      "basePrompt": "ethereal wraith creature, translucent purple body, glowing arcane runes floating around it, spectral claws",
+      "gridSize": 2,
+      "basePrompt": "ethereal wraith creature, translucent purple spectral body, glowing arcane runes orbiting around it, long spectral claws, flowing wispy form, isometric three-quarter view, dark fantasy hand-painted game art style",
       "animations": [
-        { "name": "idle", "frames": 1, "poseHints": ["floating eerily, runes orbiting slowly"] },
-        { "name": "attack", "frames": 1, "poseHints": ["slashing with spectral claws, purple energy wave"] },
-        { "name": "death", "frames": 1, "poseHints": ["dissolving into purple mist, runes shattering"] }
+        { "name": "idle", "row": 0, "choreography": "floating eerily, runes slowly orbiting, tendrils of purple mist curling from the edges of its form" },
+        { "name": "attack", "row": 0, "choreography": "lunging forward with spectral claws extended, purple energy wave rippling outward from the slash" },
+        { "name": "hit", "row": 1, "choreography": "form distorting and flickering like a disrupted hologram, runes scattering chaotically" },
+        { "name": "death", "row": 1, "choreography": "dissolving into purple mist from the extremities inward, runes shattering into sparks" }
       ]
     },
     {
       "id": "mob_sunken",
-      "basePrompt": "deep sea abomination, barnacle-covered humanoid, bioluminescent patches, dripping water, tentacle arms",
+      "gridSize": 2,
+      "basePrompt": "deep sea abomination, barnacle-encrusted humanoid with bioluminescent teal patches, dripping dark water, tentacle arms ending in hooked barbs, hunched posture, isometric three-quarter view, dark fantasy hand-painted game art style",
       "animations": [
-        { "name": "idle", "frames": 1, "poseHints": ["swaying slowly, tentacles writhing, bioluminescence pulsing"] },
-        { "name": "attack", "frames": 1, "poseHints": ["lashing out with tentacle arms, water spray"] },
-        { "name": "death", "frames": 1, "poseHints": ["deflating, collapsing into a puddle of dark water"] }
+        { "name": "idle", "row": 0, "choreography": "swaying slowly left and right, tentacles writhing independently, bioluminescent patches pulsing in sequence" },
+        { "name": "attack", "row": 0, "choreography": "lashing out with both tentacle arms in a wide sweeping strike, dark water spraying from the motion" },
+        { "name": "hit", "row": 1, "choreography": "recoiling with tentacles curling inward defensively, bioluminescence flaring bright then dimming" },
+        { "name": "death", "row": 1, "choreography": "deflating and collapsing, tentacles going limp, pooling into dark water on the ground" }
       ]
     },
     {
       "id": "mob_crystal",
-      "basePrompt": "crystal golem, body made of jagged green crystals, glowing core visible through translucent chest, heavy and angular",
+      "gridSize": 2,
+      "basePrompt": "crystal golem, body composed of jagged translucent green crystals, glowing emerald core visible through chest cavity, heavy angular limbs, geometric faceted surfaces catching light, isometric three-quarter view, dark fantasy hand-painted game art style",
       "animations": [
-        { "name": "idle", "frames": 1, "poseHints": ["standing still, core pulsing with green light, crystals refracting"] },
-        { "name": "attack", "frames": 1, "poseHints": ["slamming crystal fist down, shards flying from impact"] },
-        { "name": "death", "frames": 1, "poseHints": ["shattering into crystal fragments, core dimming"] }
+        { "name": "idle", "row": 0, "choreography": "standing rock-solid, core pulsing with slow green light, tiny crystal shards floating near the shoulders" },
+        { "name": "attack", "row": 0, "choreography": "raising massive crystal fist overhead then slamming down, shards and sparks erupting from the impact point" },
+        { "name": "hit", "row": 1, "choreography": "staggering as surface crystals crack and fracture, green light flickering through new fissures" },
+        { "name": "death", "row": 1, "choreography": "shattering explosively from the core outward, crystal fragments flying in all directions, core light dying" }
       ]
     }
   ]
