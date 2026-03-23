@@ -130,9 +130,9 @@ func clear_mobs() -> void:
 func update_mob_visual(mob_id: int, hp: int, _max_hp: int) -> void:
 	if mob_id < 0 or mob_id >= _mob_containers.size():
 		return
-	var container := _mob_containers[mob_id] as Node2D
-	if container == null or not is_instance_valid(container):
+	if not is_instance_valid(_mob_containers[mob_id]):
 		return
+	var container: Node2D = _mob_containers[mob_id]
 	if hp <= 0:
 		if mob_id < _mob_sprites.size() and is_instance_valid(_mob_sprites[mob_id]):
 			_play_sprite_anim(_mob_sprites[mob_id], "death")
@@ -223,9 +223,9 @@ func get_mob_node(mob_id: int) -> Node2D:
 func update_mob_hp(mob_index: int, current_hp: int, max_hp: int) -> void:
 	if mob_index < 0 or mob_index >= _mob_hp_bars.size():
 		return
-	var bar := _mob_hp_bars[mob_index] as ColorRect
-	if bar == null or not is_instance_valid(bar):
+	if not is_instance_valid(_mob_hp_bars[mob_index]):
 		return
+	var bar: ColorRect = _mob_hp_bars[mob_index]
 	var ratio := float(current_hp) / float(max_hp) if max_hp > 0 else 0.0
 	var mat := bar.material as ShaderMaterial
 	if mat != null:
