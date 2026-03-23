@@ -205,9 +205,7 @@ func _refresh(_data: Dictionary = {}) -> void:
 	if current_state == ArenaState.FIGHTING and not _auto_finishing:
 		if bool(game_state.fight.get("active", false)):
 			if _first_alive_mob() < 0:
-				turn_info.text = "All mobs defeated!"
-				attack_button.disabled = true
-				end_turn_button.disabled = true
+				_auto_finish("All mobs defeated!")
 			elif int(game_state.character.get("stamina", 0)) < AA_COST:
 				_auto_finish("Out of stamina — ending turn...")
 
@@ -530,12 +528,12 @@ func _auto_finish(reason: String) -> void:
 	turn_info.text = reason
 	attack_button.disabled = true
 	end_turn_button.disabled = true
-	get_tree().create_timer(1.0).timeout.connect(func():
+	get_tree().create_timer(1.5).timeout.connect(func():
+		_auto_finishing = false
 		if current_state == ArenaState.FIGHTING and bool(game_state.fight.get("active", false)):
 			dojo_bridge.finish(game_state.get_game_id())
 		else:
 			dojo_bridge.pull_entities_snapshot()
-		_auto_finishing = false
 	)
 
 func _auto_advance_single_exit() -> void:
