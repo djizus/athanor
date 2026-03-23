@@ -20,18 +20,17 @@ ground_energy_multiplier = 0.05
 sky_material = SubResource("sky_mat")
 
 [sub_resource type="Environment" id="env"]
-background_mode = 2
-sky = SubResource("sky")
-background_energy_multiplier = 0.5
-ambient_light_source = 2
-ambient_light_color = Color(0.25, 0.22, 0.30, 1)
-ambient_light_energy = 1.2
+background_mode = 1
+background_color = Color(0.08, 0.06, 0.12, 1)
+ambient_light_source = 1
+ambient_light_color = Color(0.55, 0.50, 0.60, 1)
+ambient_light_energy = 0.8
 tonemap_mode = 3
-tonemap_exposure = 1.0
+tonemap_exposure = 1.2
 glow_enabled = true
-glow_intensity = 0.4
-glow_bloom = 0.1
-glow_hdr_threshold = 0.8
+glow_intensity = 0.3
+glow_bloom = 0.08
+glow_hdr_threshold = 1.0
 fog_enabled = false
 
 [node name="Arena" type="Node3D"]
@@ -42,8 +41,8 @@ environment = SubResource("env")
 
 [node name="Sun" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.707107, -0.353553, 0.612372, 0, 0.866025, 0.5, -0.707107, -0.353553, 0.612372, 0, 0, 0)
-light_energy = 2.0
-light_color = Color(1, 0.97, 0.92, 1)
+light_energy = 3.0
+light_color = Color(1, 0.98, 0.94, 1)
 shadow_enabled = true
 shadow_bias = 0.03
 directional_shadow_mode = 1

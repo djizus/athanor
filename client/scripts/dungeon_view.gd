@@ -14,9 +14,11 @@ const MOB_POSITIONS := {
 	4: [Vector3(-2, 0, -2), Vector3(2, 0, -2), Vector3(-1, 0, -3.5), Vector3(1, 0, -3.5)],
 }
 
-const PLAYER_POSITION := Vector3(0, 0, 2)
+const PLAYER_POSITION := Vector3(0, 0, 3)
 const SPRITE_SCALE := Vector3.ONE
 const MOB_SPRITE_SCALE := Vector3(0.8, 0.8, 0.8)
+const MODEL_SCALE := Vector3(1.2, 1.2, 1.2)
+const MOB_MODEL_SCALE := Vector3(1.0, 1.0, 1.0)
 
 @onready var zone_anchor: Node3D = $ZoneAnchor
 @onready var player_anchor: Node3D = $PlayerAnchor
@@ -24,7 +26,9 @@ const MOB_SPRITE_SCALE := Vector3(0.8, 0.8, 0.8)
 
 var _current_zone_id: int = -1
 var _player_sprite: AnimatedSprite3D = null
+var _player_model: Node3D = null
 var _mob_sprites: Array[AnimatedSprite3D] = []
+var _mob_models: Array[Node3D] = []
 var _zone_scenes: Dictionary = {}
 
 const ZONE_PROPS := {
@@ -50,11 +54,14 @@ func _ready() -> void:
 		_hp_bar_shader = load("res://shaders/hp_bar_3d.gdshader")
 
 func _process(_delta: float) -> void:
-	for i in range(mini(_mob_sprites.size(), _mob_hp_bars.size())):
-		if is_instance_valid(_mob_sprites[i]) and is_instance_valid(_mob_hp_bars[i]):
-			_mob_hp_bars[i].position.x = _mob_sprites[i].position.x
-			_mob_hp_bars[i].position.z = _mob_sprites[i].position.z
-			_mob_hp_bars[i].position.y = _mob_sprites[i].position.y + 1.5
+	for i in range(_mob_hp_bars.size()):
+		if not is_instance_valid(_mob_hp_bars[i]):
+			continue
+		var mob_node := get_mob_node(i)
+		if mob_node != null:
+			_mob_hp_bars[i].position.x = mob_node.position.x
+			_mob_hp_bars[i].position.z = mob_node.position.z
+			_mob_hp_bars[i].position.y = mob_node.position.y + 2.2
 
 func load_zone(zone_id: int) -> void:
 	if zone_id == _current_zone_id:
@@ -72,18 +79,24 @@ func load_zone(zone_id: int) -> void:
 		_player_sprite.position = _get_zone_player_position()
 
 func spawn_hero() -> void:
-	if _player_sprite != null:
+	if _player_model != null or _player_sprite != null:
+		return
+	var glb_path := "res://assets/models/characters/hero.glb"
+	if ResourceLoader.exists(glb_path):
+		_player_model = (load(glb_path) as PackedScene).instantiate()
+		_player_model.scale = MODEL_SCALE
+		var hero_pos := _get_zone_player_position()
+		_player_model.position = hero_pos
+		_face_node_toward(_player_model, Vector3(0, 0, -2))
+		player_anchor.add_child(_player_model)
+		var shadow := _create_blob_shadow()
+		shadow.position.y = 0.05
+		_player_model.add_child(shadow)
 		return
 	var frames := sprite_loader.get_sprite_frames("hero")
 	if frames.get_animation_names().size() > 0:
 		_player_sprite = _create_animated_sprite(frames, SPRITE_SCALE)
 	else:
-		var glb_path := "res://assets/models/characters/hero.glb"
-		if ResourceLoader.exists(glb_path):
-			var model: Node3D = (load(glb_path) as PackedScene).instantiate()
-			player_anchor.add_child(model)
-			model.position = _get_zone_player_position()
-			return
 		_player_sprite = _create_animated_sprite(_make_placeholder_frames(Color(0.831, 0.659, 0.286)), SPRITE_SCALE)
 	var hero_pos := _get_zone_player_position()
 	_player_sprite.position = Vector3(hero_pos.x, 1.0, hero_pos.z)
@@ -99,28 +112,37 @@ func spawn_mobs(count: int, zone_id: int) -> void:
 	var mob_type := _get_mob_type(zone_id)
 
 	for i in range(count):
+		var marker_pos := Vector3(randf_range(-2, 2), 0, randf_range(-3, -1))
+		if i < positions.size():
+			marker_pos = positions[i]
+
+		var glb_path := "res://assets/models/characters/%s.glb" % mob_type
+		if ResourceLoader.exists(glb_path):
+			var model: Node3D = (load(glb_path) as PackedScene).instantiate()
+			model.name = "Mob%d" % i
+			model.scale = MOB_MODEL_SCALE
+			model.position = marker_pos
+			_face_node_toward(model, _get_zone_player_position())
+			mob_anchor.add_child(model)
+			_mob_models.append(model)
+			_mob_sprites.append(null)
+			var hp_bar := _create_mob_hp_bar()
+			hp_bar.position = marker_pos + Vector3(0, 2.2, 0)
+			mob_anchor.add_child(hp_bar)
+			_mob_hp_bars.append(hp_bar)
+			continue
+
 		var sprite: AnimatedSprite3D
 		var frames := sprite_loader.get_sprite_frames(mob_type)
 		if frames.get_animation_names().size() > 0:
 			sprite = _create_animated_sprite(frames, MOB_SPRITE_SCALE)
 		else:
-			var glb_path := "res://assets/models/characters/%s.glb" % mob_type
-			if ResourceLoader.exists(glb_path):
-				var model: Node3D = (load(glb_path) as PackedScene).instantiate()
-				model.name = "Mob%d" % i
-				if i < positions.size():
-					model.position = positions[i]
-				mob_anchor.add_child(model)
-				continue
 			sprite = _create_animated_sprite(_make_placeholder_frames(ZONE_COLORS.get(zone_id, Color.RED)), MOB_SPRITE_SCALE)
-
 		sprite.name = "Mob%d" % i
-		var marker_pos := Vector3(randf_range(-2, 2), 0, randf_range(-3, -1))
-		if i < positions.size():
-			marker_pos = positions[i]
 		sprite.position = Vector3(marker_pos.x, 1.0, marker_pos.z)
 		mob_anchor.add_child(sprite)
 		_mob_sprites.append(sprite)
+		_mob_models.append(null)
 		_play_sprite_anim(sprite, "idle")
 		var hp_bar := _create_mob_hp_bar()
 		hp_bar.position = Vector3(marker_pos.x, 2.5, marker_pos.z)
@@ -132,22 +154,34 @@ func clear_mobs() -> void:
 		if is_instance_valid(child):
 			child.queue_free()
 	_mob_sprites.clear()
+	_mob_models.clear()
 	_mob_hp_bars.clear()
 
 func update_mob_visual(mob_id: int, hp: int, _max_hp: int) -> void:
-	if mob_id >= _mob_sprites.size():
-		return
-	var sprite := _mob_sprites[mob_id]
-	if not is_instance_valid(sprite):
+	if mob_id >= _mob_sprites.size() and mob_id >= _mob_models.size():
 		return
 	if hp <= 0:
-		_play_sprite_anim(sprite, "death")
-		var tween := create_tween()
-		tween.tween_interval(0.5)
-		tween.tween_property(sprite, "modulate:a", 0.0, 0.3)
-		tween.tween_callback(sprite.queue_free)
+		var node: Node3D = null
+		if mob_id < _mob_models.size() and is_instance_valid(_mob_models[mob_id]):
+			node = _mob_models[mob_id]
+		elif mob_id < _mob_sprites.size() and is_instance_valid(_mob_sprites[mob_id]):
+			node = _mob_sprites[mob_id]
+			_play_sprite_anim(_mob_sprites[mob_id], "death")
+		if node != null:
+			var tween := create_tween()
+			tween.tween_interval(0.5)
+			tween.tween_property(node, "scale", Vector3(0.01, 0.01, 0.01), 0.5).set_ease(Tween.EASE_IN)
+			tween.tween_callback(node.queue_free)
+
+func _face_node_toward(node: Node3D, target_pos: Vector3) -> void:
+	var dir := target_pos - node.position
+	if dir.length_squared() > 0.01:
+		node.look_at(node.position + Vector3(dir.x, 0, dir.z).normalized(), Vector3.UP)
 
 func face_hero_toward(target_pos: Vector3) -> void:
+	if _player_model != null:
+		_face_node_toward(_player_model, target_pos)
+		return
 	if _player_sprite == null:
 		return
 	var hero_pos := _player_sprite.global_position
@@ -221,14 +255,25 @@ func spawn_damage_number(world_pos: Vector3, amount: int, is_heal: bool = false)
 	tween.tween_callback(label.queue_free)
 
 func get_mob_world_position(mob_id: int) -> Vector3:
+	if mob_id < _mob_models.size() and is_instance_valid(_mob_models[mob_id]):
+		return _mob_models[mob_id].global_position
 	if mob_id < _mob_sprites.size() and is_instance_valid(_mob_sprites[mob_id]):
 		return _mob_sprites[mob_id].global_position
 	return Vector3.ZERO
 
 func get_player_world_position() -> Vector3:
+	if _player_model != null:
+		return _player_model.global_position
 	if _player_sprite != null:
 		return _player_sprite.global_position
 	return player_anchor.global_position
+
+func get_mob_node(mob_id: int) -> Node3D:
+	if mob_id < _mob_models.size() and is_instance_valid(_mob_models[mob_id]):
+		return _mob_models[mob_id]
+	if mob_id < _mob_sprites.size() and is_instance_valid(_mob_sprites[mob_id]):
+		return _mob_sprites[mob_id]
+	return null
 
 func on_state_changed(state: int, zone_id: int, prev_state: int) -> void:
 	load_zone(zone_id)
@@ -416,7 +461,7 @@ func update_mob_hp(mob_index: int, current_hp: int, max_hp: int) -> void:
 	bar.visible = current_hp > 0
 
 func _decorate_zone(zone_id: int) -> void:
-	var radius: float = 6.0 + zone_id * 0.5
+	var radius: float = 10.0 + zone_id * 0.5
 	_add_arena_boundary(zone_id, radius)
 	_add_edge_props(zone_id, radius + 2.0)
 	_add_atmosphere_particles(zone_id, radius)

@@ -1,7 +1,7 @@
 extends Node3D
 
 const MOVE_SPEED := 5.0
-const ARENA_RADIUS := 6.5
+const ARENA_RADIUS := 12.0
 
 var _movement_enabled := true
 
