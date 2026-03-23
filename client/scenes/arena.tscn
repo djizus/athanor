@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://scripts/arena.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/dungeon_view.gd" id="dv"]
@@ -15,6 +15,9 @@ shader = ExtResource("ground")
 
 [sub_resource type="ShaderMaterial" id="vignette_mat"]
 shader = ExtResource("vignette")
+
+[sub_resource type="CircleShape2D" id="player_anchor_shape"]
+radius = 20.0
 
 [node name="Arena" type="Node2D"]
 script = ExtResource("1")
@@ -42,10 +45,16 @@ color = Color(0.18, 0.15, 0.12, 1)
 material = SubResource("ground_mat")
 z_index = -10
 
-[node name="PlayerAnchor" type="Node2D" parent="DungeonWorld"]
-script = ExtResource("pc")
+[node name="Entities" type="Node2D" parent="DungeonWorld"]
+y_sort_enabled = true
 
-[node name="MobAnchor" type="Node2D" parent="DungeonWorld"]
+[node name="PlayerAnchor" type="CharacterBody2D" parent="DungeonWorld/Entities"]
+script = ExtResource("pc")
+collision_layer = 2
+collision_mask = 1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="DungeonWorld/Entities/PlayerAnchor"]
+shape = SubResource("player_anchor_shape")
 
 [node name="TargetingSystem" type="Node2D" parent="."]
 script = ExtResource("ts")

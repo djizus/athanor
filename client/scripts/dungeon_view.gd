@@ -36,8 +36,8 @@ const ZONE_ATMOSPHERES := {
 }
 
 @onready var zone_background: ColorRect = $ZoneBackground
-@onready var player_anchor: Node2D = $PlayerAnchor
-@onready var mob_anchor: Node2D = $MobAnchor
+@onready var entities: Node2D = $Entities
+@onready var player_anchor: Node2D = $Entities/PlayerAnchor
 
 var _current_zone_id: int = -1
 var _player_sprite: AnimatedSprite2D = null
@@ -226,7 +226,7 @@ func spawn_mobs(count: int, zone_id: int) -> void:
 		mob_light.color = _get_mob_light_color(zone_id)
 		container.add_child(mob_light)
 
-		mob_anchor.add_child(container)
+		entities.add_child(container)
 
 		# Stagger spawn animation
 		container.scale = Vector2.ZERO
@@ -243,7 +243,9 @@ func spawn_mobs(count: int, zone_id: int) -> void:
 		_mob_hp_bars.append(hp)
 
 func clear_mobs() -> void:
-	for child in mob_anchor.get_children():
+	for child in entities.get_children():
+		if child.name == "PlayerAnchor":
+			continue
 		child.queue_free()
 	_mob_sprites.clear()
 	_mob_hp_bars.clear()

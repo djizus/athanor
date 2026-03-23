@@ -59,7 +59,7 @@ func _ready() -> void:
 	dojo_bridge.pull_entities_snapshot()
 
 	var camera_rig := get_node_or_null("GameCamera")
-	var player_anchor := get_node_or_null("DungeonWorld/PlayerAnchor")
+	var player_anchor := get_node_or_null("DungeonWorld/Entities/PlayerAnchor")
 	if camera_rig and camera_rig.has_method("set_follow_target") and player_anchor:
 		camera_rig.set_follow_target(player_anchor)
 	combat_ctrl = CombatControllerScript.new()
@@ -241,9 +241,14 @@ func _refresh(_data: Dictionary = {}) -> void:
 	if current_state == ArenaState.FIGHTING and targeting_system != null:
 		if not targeting_system.active:
 			var mob_nodes: Array = []
-			for child in dungeon_view.get_node("MobAnchor").get_children():
-				if child is AnimatedSprite2D:
-					mob_nodes.append(child)
+			for child in dungeon_view.entities.get_children():
+				if child.name == "PlayerAnchor":
+					continue
+				if child is Node2D:
+					for sub in child.get_children():
+						if sub is AnimatedSprite2D:
+							mob_nodes.append(sub)
+							break
 			targeting_system.activate(mob_nodes)
 	elif targeting_system != null and targeting_system.active:
 		targeting_system.deactivate()

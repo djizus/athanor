@@ -1,0 +1,86 @@
+class_name RoomConfig
+
+const CONFIGS := {
+	0: {
+		"name": "Entrance",
+		"bg_path": "res://assets/backgrounds/zone_0.png",
+		"size": Vector2(1600, 1000),
+		"mob_count": 0,
+		"mob_type": "",
+		"player_spawn": Vector2(800, 900),
+		"battle_pos_player": Vector2(800, 650),
+		"battle_pos_mobs": [],
+		"door_configs": [
+			{"position": Vector2(350, 120), "target_zone": 1, "label": "Left Cavern"},
+			{"position": Vector2(1250, 120), "target_zone": 2, "label": "Right Passage"},
+		],
+		"trigger_rect": Rect2(),
+		"is_fork": true,
+		"is_final": false,
+	},
+	1: {
+		"name": "Left Cavern",
+		"bg_path": "res://assets/backgrounds/zone_1.png",
+		"size": Vector2(1600, 1000),
+		"mob_count": 1,
+		"mob_type": "mob_ember",
+		"player_spawn": Vector2(800, 900),
+		"battle_pos_player": Vector2(600, 700),
+		"battle_pos_mobs": [Vector2(800, 300)],
+		"door_configs": [
+			{"position": Vector2(800, 80), "target_zone": 3, "label": "Deep Hall"},
+		],
+		"trigger_rect": Rect2(400, 450, 800, 100),
+		"is_fork": false,
+		"is_final": false,
+	},
+	2: {
+		"name": "Right Passage",
+		"bg_path": "res://assets/backgrounds/zone_2.png",
+		"size": Vector2(1600, 1000),
+		"mob_count": 1,
+		"mob_type": "mob_aether",
+		"player_spawn": Vector2(800, 900),
+		"battle_pos_player": Vector2(600, 700),
+		"battle_pos_mobs": [Vector2(800, 300)],
+		"door_configs": [
+			{"position": Vector2(800, 80), "target_zone": 3, "label": "Deep Hall"},
+		],
+		"trigger_rect": Rect2(400, 450, 800, 100),
+		"is_fork": false,
+		"is_final": false,
+	},
+	3: {
+		"name": "Deep Hall",
+		"bg_path": "res://assets/backgrounds/zone_3.png",
+		"size": Vector2(1600, 1000),
+		"mob_count": 2,
+		"mob_type": "mob_sunken",
+		"player_spawn": Vector2(800, 900),
+		"battle_pos_player": Vector2(600, 700),
+		"battle_pos_mobs": [Vector2(650, 280), Vector2(950, 280)],
+		"door_configs": [
+			{"position": Vector2(800, 80), "target_zone": 4, "label": "Final Chamber"},
+		],
+		"trigger_rect": Rect2(400, 450, 800, 100),
+		"is_fork": false,
+		"is_final": false,
+	},
+	4: {
+		"name": "Final Chamber",
+		"bg_path": "res://assets/backgrounds/zone_4.png",
+		"size": Vector2(1600, 1000),
+		"mob_count": 4,
+		"mob_type": "mob_crystal",
+		"player_spawn": Vector2(800, 900),
+		"battle_pos_player": Vector2(600, 700),
+		"battle_pos_mobs": [Vector2(500, 250), Vector2(800, 200), Vector2(1100, 250), Vector2(800, 350)],
+		"door_configs": [],
+		"trigger_rect": Rect2(400, 450, 800, 100),
+		"is_fork": false,
+		"is_final": true,
+	},
+}
+
+static func get_config(zone_id: int) -> Dictionary:
+	return CONFIGS.get(zone_id, CONFIGS[0])
