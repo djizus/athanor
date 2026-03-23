@@ -1,5 +1,7 @@
 extends Node2D
 
+const CollisionLayers = preload("res://scripts/collision_layers.gd")
+
 signal door_interacted(target_zone: int)
 signal battle_triggered()
 signal room_ready()

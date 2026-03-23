@@ -7,6 +7,8 @@ enum ArenaState { FORK, PRE_FIGHT, FIGHTING, CLEARED, COMPLETED, FAILED }
 const ZONE_NAMES := ["Entrance", "Left Cavern", "Right Passage", "Deep Hall", "Final Chamber"]
 const CombatControllerScript = preload("res://scripts/combat_controller.gd")
 const ArenaUIScript = preload("res://scripts/arena_ui.gd")
+const RoomControllerScript = preload("res://scripts/room_controller.gd")
+const RoomConfigScript = preload("res://scripts/room_config.gd")
 
 # Zone graph (mirrors contracts/src/constants.cairo)
 const ZONE_CHILDREN := {0: [1, 2], 1: [3], 2: [3], 3: [4], 4: []}
@@ -45,6 +47,8 @@ var current_state: ArenaState = ArenaState.FORK
 var _auto_advancing := false
 var combat_ctrl = null
 var arena_ui = null
+var room_ctrl = null
+var _player_controller = null
 
 @onready var dungeon_view: Node2D = $DungeonWorld
 @onready var targeting_system: Node2D = $TargetingSystem
@@ -62,6 +66,7 @@ func _ready() -> void:
 	var player_anchor := get_node_or_null("DungeonWorld/Entities/PlayerAnchor")
 	if camera_rig and camera_rig.has_method("set_follow_target") and player_anchor:
 		camera_rig.set_follow_target(player_anchor)
+	_player_controller = player_anchor
 	combat_ctrl = CombatControllerScript.new()
 	add_child(combat_ctrl)
 	combat_ctrl.dungeon_view = dungeon_view
@@ -100,9 +105,32 @@ func _ready() -> void:
 	if combat_ctrl.has_signal("request_refresh"):
 		combat_ctrl.request_refresh.connect(func() -> void: _refresh())
 	combat_ctrl.turn_status_label = arena_ui.turn_status_label
+
+	# Room system initialization
+	room_ctrl = RoomControllerScript.new()
+	room_ctrl.name = "RoomController"
+	add_child(room_ctrl)
+
+	var initial_zone := int(game_state.character.get("current_zone", 0))
+	room_manager.visual_zone = initial_zone
+	room_manager.contract_zone = initial_zone
+
+	var config: Dictionary = RoomConfigScript.get_config(initial_zone)
+	room_ctrl.configure(config)
+	if _player_controller != null:
+		room_ctrl.place_player(_player_controller)
+
+	room_ctrl.door_interacted.connect(_on_room_door_interacted)
+	room_ctrl.battle_triggered.connect(_on_room_battle_triggered)
+
+	room_ctrl.spawn_doors()
+	if config.get("mob_count", 0) > 0 and not _is_zone_cleared(initial_zone):
+		_clear_room_battle_trigger()
+		room_ctrl.create_battle_trigger()
 	set_process(true)
 
 	_refresh()
+	_sync_room_state_from_arena(current_state)
 	_force_initial_visuals()
 	audio_manager.play_music("game_loop_1")
 	dojo_bridge._schedule_entity_poll()
@@ -168,6 +196,35 @@ func _refresh(_data: Dictionary = {}) -> void:
 			ArenaState.PRE_FIGHT:
 				audio_manager.play_sfx("discovery")
 
+	# Room state machine sync + movement/camera control on state transitions
+	if current_state != prev_state:
+		_sync_room_state_from_arena(current_state)
+		if _player_controller:
+			match current_state:
+				ArenaState.FORK, ArenaState.PRE_FIGHT, ArenaState.CLEARED:
+					if _player_controller.has_method("enable_movement"):
+						_player_controller.enable_movement()
+				ArenaState.FIGHTING, ArenaState.COMPLETED, ArenaState.FAILED:
+					if _player_controller.has_method("disable_movement"):
+						_player_controller.disable_movement()
+
+		var camera_rig := get_node_or_null("GameCamera")
+		if camera_rig:
+			match current_state:
+				ArenaState.FIGHTING:
+					if camera_rig.has_method("set_fixed_mode"):
+						var battle_center: Vector2 = Vector2.ZERO
+						if _player_controller != null:
+							battle_center = _player_controller.position
+						camera_rig.set_fixed_mode(battle_center, 0.5)
+					if camera_rig.has_method("combat_zoom_in"):
+						camera_rig.combat_zoom_in()
+				ArenaState.CLEARED, ArenaState.FORK, ArenaState.PRE_FIGHT:
+					if camera_rig.has_method("set_follow_mode") and _player_controller:
+						camera_rig.set_follow_mode(_player_controller)
+					if camera_rig.has_method("combat_zoom_out"):
+						camera_rig.combat_zoom_out()
+
 	# Visibility
 	door_panel.visible = (current_state == ArenaState.FORK or current_state == ArenaState.CLEARED)
 	var in_combat := (current_state == ArenaState.FIGHTING)
@@ -200,6 +257,8 @@ func _refresh(_data: Dictionary = {}) -> void:
 		ArenaState.CLEARED:
 			door_title.text = "Zone cleared!"
 			var children: Array = ZONE_CHILDREN.get(zone, [])
+			if room_ctrl:
+				room_ctrl.show_exit_doors()
 			if children.size() == 0:
 				door_title.text = "No exit..."
 				continue_button.visible = false
@@ -217,6 +276,8 @@ func _refresh(_data: Dictionary = {}) -> void:
 		ArenaState.PRE_FIGHT:
 			start_fight_button.text = "Begin Combat"
 			start_fight_button.disabled = false
+			if room_ctrl:
+				room_ctrl.enable_battle_trigger()
 		ArenaState.FIGHTING:
 			arena_ui.update_target_bar(_zone_mob_name(int(game_state.character.get("current_zone", 0))))
 			arena_ui.update_mob_hp_bars()
@@ -374,6 +435,13 @@ func _on_state_changed(_data: Dictionary = {}) -> void:
 	combat_ctrl.action_in_flight = false
 	combat_ctrl.sync_mock_stamina()
 	arena_ui.set_turn_state(true, "Your Turn")
+
+	var new_zone := int(game_state.character.get("current_zone", 0))
+	if new_zone != room_manager.visual_zone and room_manager.visual_zone >= 0:
+		room_manager.contract_zone = new_zone
+		room_manager.visual_zone = new_zone
+		_reload_room_for_zone(new_zone)
+
 	_refresh()
 	var command_panel: PanelContainer = arena_ui.get_command_panel()
 	if current_state == ArenaState.FIGHTING and command_panel != null and command_panel.visible:
@@ -455,3 +523,64 @@ func _is_fork(zone_id: int) -> bool:
 func _is_zone_cleared(zone_id: int) -> bool:
 	var bitmap := int(game_state.dungeon.get("zones_cleared", 0))
 	return (bitmap & (1 << zone_id)) != 0
+
+func _on_room_door_interacted(target_zone: int) -> void:
+	audio_manager.play_sfx("click")
+	if room_ctrl == null:
+		return
+	var config: Dictionary = room_ctrl.config
+	var current_zone := int(game_state.character.get("current_zone", 0))
+	if current_zone == 0 and config.get("is_fork", false):
+		var door_configs: Array = config.get("door_configs", [])
+		var direction := 0
+		for i in range(door_configs.size()):
+			if int(door_configs[i].get("target_zone", -1)) == target_zone:
+				direction = i
+				break
+		dojo_bridge.choose(game_state.get_game_id(), direction)
+
+	room_manager.request_transition(target_zone)
+	_reload_room_for_zone(target_zone)
+
+func _on_room_battle_triggered() -> void:
+	audio_manager.play_sfx("discovery")
+	if _player_controller and _player_controller.has_method("disable_movement"):
+		_player_controller.disable_movement()
+	dojo_bridge.start(game_state.get_game_id())
+
+func _reload_room_for_zone(zone_id: int) -> void:
+	if room_ctrl == null:
+		return
+	var new_config: Dictionary = RoomConfigScript.get_config(zone_id)
+	room_ctrl.configure(new_config)
+	if _player_controller != null:
+		room_ctrl.place_player(_player_controller)
+	room_ctrl.spawn_doors()
+	_clear_room_battle_trigger()
+	if new_config.get("mob_count", 0) > 0 and not _is_zone_cleared(zone_id):
+		room_ctrl.create_battle_trigger()
+	if dungeon_view and dungeon_view.has_method("on_state_changed"):
+		dungeon_view.on_state_changed(current_state, zone_id, -1)
+
+func _clear_room_battle_trigger() -> void:
+	if room_ctrl == null:
+		return
+	var trigger: Node = room_ctrl.get_node_or_null("BattleTrigger")
+	if trigger != null:
+		trigger.queue_free()
+
+func _sync_room_state_from_arena(state: ArenaState) -> void:
+	if room_ctrl == null or room_ctrl.state_machine == null:
+		return
+	var sm = room_ctrl.state_machine
+	match state:
+		ArenaState.FORK, ArenaState.PRE_FIGHT:
+			sm.transition_to(sm.State.EXPLORING)
+		ArenaState.FIGHTING:
+			sm.transition_to(sm.State.COMBAT)
+		ArenaState.CLEARED:
+			sm.transition_to(sm.State.CLEARED)
+		ArenaState.COMPLETED:
+			sm.transition_to(sm.State.COMPLETED)
+		ArenaState.FAILED:
+			sm.transition_to(sm.State.FAILED)
