@@ -35,7 +35,9 @@ func _ready() -> void:
 	dojo_bridge.tx_submitted.connect(_on_tx_submitted)
 	dojo_bridge.tx_failed.connect(_on_tx_failed)
 
-	dojo_bridge.pull_entities_snapshot()
+	# Setup controllers BEFORE any entity pulls that trigger callbacks
+	arena_ui.setup(self)
+	combat_controller.setup(self, arena_ui)
 
 	var player_anchor := get_node_or_null("DungeonWorld/PlayerAnchor")
 	if camera_rig and camera_rig.has_method("set_follow_target") and player_anchor:
@@ -54,8 +56,7 @@ func _ready() -> void:
 		if room_ctrl.has_signal("door_triggered") and not room_ctrl.door_triggered.is_connected(_on_door_triggered):
 			room_ctrl.door_triggered.connect(_on_door_triggered)
 
-	arena_ui.setup(self)
-	combat_controller.setup(self, arena_ui)
+	dojo_bridge.pull_entities_snapshot()
 
 	_refresh()
 	_force_initial_visuals()

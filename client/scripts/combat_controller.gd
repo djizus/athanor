@@ -27,12 +27,16 @@ func on_state_changed() -> void:
 	_action_in_flight = false
 
 func on_tx_submitted(_action: String) -> void:
+	if _arena == null:
+		return
 	if _arena.current_state == _arena.ArenaState.FIGHTING:
 		_arena_ui.turn_info.text = "Processing..."
 	_poll_after_delay(2.0)
 	_poll_after_delay(5.0)
 
 func on_tx_failed(action: String, reason: String) -> void:
+	if _arena == null or _arena_ui == null:
+		return
 	var short_reason := ""
 	var error_patterns := {
 		"mob already dead": "Target already defeated",

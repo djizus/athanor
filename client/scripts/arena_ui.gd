@@ -36,6 +36,8 @@ func setup(arena: Node) -> void:
 	_arena = arena
 
 func refresh(state: int, _zone: int, _character: Dictionary, _fight: Dictionary, _dungeon: Dictionary) -> void:
+	if _arena == null:
+		return
 	_update_player_bars()
 	minimap_draw.queue_redraw()
 	if state == _arena.ArenaState.FIGHTING:
