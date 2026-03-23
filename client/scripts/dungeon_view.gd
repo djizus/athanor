@@ -85,10 +85,11 @@ func spawn_hero() -> void:
 	if ResourceLoader.exists(glb_path):
 		_player_model = (load(glb_path) as PackedScene).instantiate()
 		_player_model.scale = MODEL_SCALE
-		var hero_pos := _get_zone_player_position()
-		_player_model.position = hero_pos
-		_face_node_toward(_player_model, Vector3(0, 0, -2))
+		_player_model.position = Vector3.ZERO
+		player_anchor.position = _get_zone_player_position()
 		player_anchor.add_child(_player_model)
+		_setup_model_animations(_player_model)
+		_face_node_toward(_player_model, Vector3(0, 0, -2) - player_anchor.position)
 		var shadow := _create_blob_shadow()
 		shadow.position.y = 0.05
 		_player_model.add_child(shadow)
@@ -122,8 +123,9 @@ func spawn_mobs(count: int, zone_id: int) -> void:
 			model.name = "Mob%d" % i
 			model.scale = MOB_MODEL_SCALE
 			model.position = marker_pos
-			_face_node_toward(model, _get_zone_player_position())
 			mob_anchor.add_child(model)
+			_setup_model_animations(model)
+			_face_node_toward(model, player_anchor.position)
 			_mob_models.append(model)
 			_mob_sprites.append(null)
 			var hp_bar := _create_mob_hp_bar()
@@ -180,33 +182,45 @@ func _face_node_toward(node: Node3D, target_pos: Vector3) -> void:
 
 func face_hero_toward(target_pos: Vector3) -> void:
 	if _player_model != null:
-		_face_node_toward(_player_model, target_pos)
+		var dir := target_pos - _player_model.global_position
+		if dir.length_squared() > 0.01:
+			var target := _player_model.global_position + Vector3(dir.x, 0, dir.z).normalized()
+			_player_model.look_at(target, Vector3.UP)
 		return
 	if _player_sprite == null:
 		return
-	var hero_pos := _player_sprite.global_position
-	_player_sprite.flip_h = target_pos.x < hero_pos.x
+	_player_sprite.flip_h = target_pos.x < _player_sprite.global_position.x
 
 func play_attack(target_mob_id: int) -> void:
-	if _player_sprite != null:
-		if target_mob_id < _mob_sprites.size() and is_instance_valid(_mob_sprites[target_mob_id]):
-			face_hero_toward(_mob_sprites[target_mob_id].global_position)
+	var target_node := get_mob_node(target_mob_id)
+	if target_node != null:
+		face_hero_toward(target_node.global_position)
+
+	if _player_model != null:
+		_play_model_anim(_player_model, "attack")
+		_tween_attack_lunge(_player_model, target_node)
+	elif _player_sprite != null:
 		_play_sprite_anim(_player_sprite, "attack")
 		get_tree().create_timer(0.5).timeout.connect(func():
 			if is_instance_valid(_player_sprite):
 				_play_sprite_anim(_player_sprite, "idle")
 		)
-	if target_mob_id < _mob_sprites.size():
-		var mob := _mob_sprites[target_mob_id]
-		if is_instance_valid(mob):
-			_play_sprite_anim(mob, "hit")
-			_flash_sprite(mob, 0.15)
+
+	if target_node != null:
+		if target_mob_id < _mob_models.size() and is_instance_valid(_mob_models[target_mob_id]):
+			_play_model_anim(_mob_models[target_mob_id], "hit")
+		elif target_mob_id < _mob_sprites.size() and is_instance_valid(_mob_sprites[target_mob_id]):
+			_play_sprite_anim(_mob_sprites[target_mob_id], "hit")
+			_flash_sprite(_mob_sprites[target_mob_id], 0.15)
 			get_tree().create_timer(0.4).timeout.connect(func():
-				if is_instance_valid(mob):
-					_play_sprite_anim(mob, "idle")
+				if is_instance_valid(_mob_sprites[target_mob_id]):
+					_play_sprite_anim(_mob_sprites[target_mob_id], "idle")
 			)
 
 func play_mob_turn() -> void:
+	for i in range(_mob_models.size()):
+		if is_instance_valid(_mob_models[i]):
+			_play_model_anim(_mob_models[i], "attack")
 	for mob in _mob_sprites:
 		if is_instance_valid(mob):
 			_play_sprite_anim(mob, "attack")
@@ -214,7 +228,9 @@ func play_mob_turn() -> void:
 				if is_instance_valid(mob):
 					_play_sprite_anim(mob, "idle")
 			)
-	if _player_sprite != null:
+	if _player_model != null:
+		_play_model_anim(_player_model, "hit")
+	elif _player_sprite != null:
 		_play_sprite_anim(_player_sprite, "hit")
 		_flash_sprite(_player_sprite, 0.15)
 		get_tree().create_timer(0.4).timeout.connect(func():
@@ -223,11 +239,15 @@ func play_mob_turn() -> void:
 		)
 
 func play_player_death() -> void:
-	if _player_sprite != null:
+	if _player_model != null:
+		_play_model_anim(_player_model, "death")
+	elif _player_sprite != null:
 		_play_sprite_anim(_player_sprite, "death")
 
 func play_victory() -> void:
-	if _player_sprite != null:
+	if _player_model != null:
+		_play_model_anim(_player_model, "idle")
+	elif _player_sprite != null:
 		_play_sprite_anim(_player_sprite, "idle")
 
 func spawn_damage_number(world_pos: Vector3, amount: int, is_heal: bool = false) -> void:
@@ -292,11 +312,12 @@ func on_state_changed(state: int, zone_id: int, prev_state: int) -> void:
 			if camera_rig and camera_rig.has_method("combat_zoom_out"):
 				camera_rig.combat_zoom_out()
 		2:  # FIGHTING
-			if _mob_sprites.is_empty():
+			if _mob_sprites.is_empty() and _mob_models.is_empty():
 				var mob_count: int = {0: 0, 1: 1, 2: 1, 3: 2, 4: 4}.get(zone_id, 0)
 				spawn_mobs(mob_count, zone_id)
-			if not _mob_sprites.is_empty() and is_instance_valid(_mob_sprites[0]):
-				face_hero_toward(_mob_sprites[0].global_position)
+			var first_mob := get_mob_node(0)
+			if first_mob != null:
+				face_hero_toward(first_mob.global_position)
 			if camera_rig and camera_rig.has_method("combat_zoom_in"):
 				camera_rig.combat_zoom_in()
 		3:  # CLEARED
@@ -325,6 +346,63 @@ func _create_animated_sprite(frames: SpriteFrames, scale: Vector3) -> AnimatedSp
 	var shadow := _create_blob_shadow()
 	sprite.add_child(shadow)
 	return sprite
+
+func _setup_model_animations(model: Node3D) -> void:
+	var anim_player: AnimationPlayer = model.find_child("AnimationPlayer", true, false) as AnimationPlayer
+	if anim_player == null:
+		return
+	var anims := anim_player.get_animation_list()
+	if anims.is_empty():
+		return
+	for anim_name in anims:
+		if "idle" in anim_name.to_lower() or "loop" in anim_name.to_lower():
+			anim_player.play(anim_name)
+			return
+	anim_player.play(anims[0])
+
+func _play_model_anim(model: Node3D, anim_name: String) -> void:
+	if model == null or not is_instance_valid(model):
+		return
+	var anim_player: AnimationPlayer = model.find_child("AnimationPlayer", true, false) as AnimationPlayer
+	if anim_player != null:
+		var anims := anim_player.get_animation_list()
+		for a in anims:
+			if anim_name.to_lower() in a.to_lower():
+				anim_player.play(a)
+				if anim_name != "idle":
+					anim_player.animation_finished.connect(func(_n: StringName):
+						for idle_a in anim_player.get_animation_list():
+							if "idle" in idle_a.to_lower():
+								anim_player.play(idle_a)
+								return
+					, CONNECT_ONE_SHOT)
+				return
+	if anim_name == "attack":
+		_tween_attack_lunge(model, null)
+	elif anim_name == "hit":
+		_tween_hit_recoil(model)
+
+func _tween_attack_lunge(model: Node3D, target: Node3D) -> void:
+	if model == null or not is_instance_valid(model):
+		return
+	var original_pos := model.position
+	var lunge_dir := Vector3(0, 0, -0.5)
+	if target != null and is_instance_valid(target):
+		lunge_dir = (target.global_position - model.global_position).normalized() * 0.8
+		lunge_dir.y = 0
+	var tween := create_tween()
+	tween.tween_property(model, "position", original_pos + lunge_dir, 0.15).set_ease(Tween.EASE_OUT)
+	tween.tween_property(model, "position", original_pos, 0.25).set_ease(Tween.EASE_IN)
+
+func _tween_hit_recoil(model: Node3D) -> void:
+	if model == null or not is_instance_valid(model):
+		return
+	var original_pos := model.position
+	var recoil := -model.basis.z * 0.3
+	recoil.y = 0
+	var tween := create_tween()
+	tween.tween_property(model, "position", original_pos + recoil, 0.1)
+	tween.tween_property(model, "position", original_pos, 0.2).set_ease(Tween.EASE_OUT)
 
 func _create_blob_shadow() -> MeshInstance3D:
 	var mesh_inst := MeshInstance3D.new()
