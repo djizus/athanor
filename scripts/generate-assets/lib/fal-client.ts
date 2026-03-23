@@ -90,8 +90,8 @@ export async function generateImage(
 ): Promise<FalImageResult> {
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
-      const result = await fal.subscribe("fal-ai/flux/schnell", {
-        input: { prompt, image_size: { width, height }, num_images: 1, enable_safety_checker: false },
+      const result = await fal.subscribe("fal-ai/flux-2-pro", {
+        input: { prompt, image_size: { width, height }, safety_tolerance: "5", output_format: "png" },
       });
       const image = (result.data as any).images?.[0];
       if (!image?.url) throw new Error("No image URL in response");

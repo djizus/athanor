@@ -28,11 +28,11 @@ const ZONE_PALETTES := {
 }
 
 const ZONE_ATMOSPHERES := {
-	0: {"ambient": Color(0.40, 0.35, 0.30), "player_light": Color(1.0, 0.95, 0.85), "vignette": 0.35},
-	1: {"ambient": Color(0.35, 0.25, 0.20), "player_light": Color(1.0, 0.90, 0.80), "vignette": 0.40},
-	2: {"ambient": Color(0.30, 0.25, 0.35), "player_light": Color(0.90, 0.85, 1.0), "vignette": 0.40},
-	3: {"ambient": Color(0.20, 0.25, 0.35), "player_light": Color(0.85, 0.90, 1.0), "vignette": 0.45},
-	4: {"ambient": Color(0.20, 0.30, 0.25), "player_light": Color(0.85, 1.0, 0.90), "vignette": 0.45},
+	0: {"ambient": Color(0.22, 0.20, 0.18), "player_light": Color(1.0, 0.95, 0.85), "vignette": 0.5},
+	1: {"ambient": Color(0.20, 0.14, 0.12), "player_light": Color(1.0, 0.90, 0.80), "vignette": 0.55},
+	2: {"ambient": Color(0.16, 0.14, 0.22), "player_light": Color(0.90, 0.85, 1.0), "vignette": 0.55},
+	3: {"ambient": Color(0.12, 0.14, 0.22), "player_light": Color(0.85, 0.90, 1.0), "vignette": 0.6},
+	4: {"ambient": Color(0.12, 0.18, 0.14), "player_light": Color(0.85, 1.0, 0.90), "vignette": 0.6},
 }
 
 @onready var zone_background: ColorRect = $ZoneBackground
@@ -80,18 +80,21 @@ func load_zone(zone_id: int) -> void:
 	_current_zone_id = zone_id
 	var bg_path := "res://assets/backgrounds/zone_%d.png" % zone_id
 	var has_room_bg := false
-	if ResourceLoader.exists(bg_path):
-		var bg_tex := _load_texture_safe(bg_path)
-		if bg_tex != null:
-			if _room_bg == null:
-				_room_bg = Sprite2D.new()
-				_room_bg.z_index = -10
-				_room_bg.centered = true
-				add_child(_room_bg)
-				move_child(_room_bg, 0)
-			_room_bg.texture = bg_tex
-			_room_bg.visible = true
-			has_room_bg = true
+	var bg_tex := _load_texture_safe(bg_path)
+	if bg_tex != null:
+		if _room_bg == null:
+			_room_bg = Sprite2D.new()
+			_room_bg.z_index = -11
+			_room_bg.centered = true
+			add_child(_room_bg)
+			move_child(_room_bg, 0)
+		_room_bg.texture = bg_tex
+		var tex_w := bg_tex.get_width()
+		var tex_h := bg_tex.get_height()
+		if tex_w > 0 and tex_h > 0:
+			_room_bg.scale = Vector2(5000.0 / tex_w, 5000.0 / tex_h)
+		_room_bg.visible = true
+		has_room_bg = true
 	if has_room_bg:
 		zone_background.visible = false
 	else:
@@ -173,8 +176,8 @@ func spawn_hero() -> void:
 	var light_tex := _load_texture_safe("res://assets/vfx/light_gradient.png")
 	if light_tex != null:
 		player_light.texture = light_tex
-	player_light.texture_scale = 3.0
-	player_light.energy = 0.8
+	player_light.texture_scale = 4.0
+	player_light.energy = 1.2
 	player_light.color = Color(1.0, 0.95, 0.85)
 	player_light.blend_mode = Light2D.BLEND_MODE_ADD
 	_player_sprite.add_child(player_light)
@@ -217,8 +220,8 @@ func spawn_mobs(count: int, zone_id: int) -> void:
 		var light_tex_mob := _load_texture_safe("res://assets/vfx/light_gradient.png")
 		if light_tex_mob != null:
 			mob_light.texture = light_tex_mob
-		mob_light.texture_scale = 1.5
-		mob_light.energy = 0.4
+		mob_light.texture_scale = 2.0
+		mob_light.energy = 0.6
 		mob_light.blend_mode = Light2D.BLEND_MODE_ADD
 		mob_light.color = _get_mob_light_color(zone_id)
 		container.add_child(mob_light)
