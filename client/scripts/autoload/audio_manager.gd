@@ -49,6 +49,13 @@ var _sfx_paths := {
 }
 
 const REBINDABLE_ACTIONS := ["move_up", "move_down", "move_left", "move_right"]
+const DISPLAY_MODES := ["Windowed", "Borderless", "Fullscreen"]
+
+var display_mode: int = 1:
+	set(v):
+		display_mode = clampi(v, 0, 2)
+		_apply_display_mode()
+		save_settings()
 
 var _loaded_tracks := {}
 var _loaded_sfx := {}
@@ -115,6 +122,20 @@ func _stop_music() -> void:
 func _apply_music_volume() -> void:
 	_music_player.volume_db = linear_to_db(music_volume)
 
+func _apply_display_mode() -> void:
+	match display_mode:
+		0:
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+			DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_BORDERLESS, false)
+		1:
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+			DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_BORDERLESS, true)
+			var screen_size := DisplayServer.screen_get_size()
+			DisplayServer.window_set_size(screen_size)
+			DisplayServer.window_set_position(Vector2i.ZERO)
+		2:
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+
 func _on_music_finished() -> void:
 	# Loop current track
 	if music_enabled and not _current_track.is_empty():
@@ -155,6 +176,7 @@ func save_settings() -> void:
 		"music_enabled": music_enabled,
 		"sfx_enabled": sfx_enabled,
 		"keybinds": keybinds,
+		"display_mode": display_mode,
 	}))
 
 func load_settings() -> void:
@@ -173,6 +195,8 @@ func load_settings() -> void:
 	music_enabled = bool(data.get("music_enabled", true))
 	sfx_enabled = bool(data.get("sfx_enabled", true))
 	_apply_music_volume()
+	display_mode = int(data.get("display_mode", 1))
+	_apply_display_mode()
 	var keybinds: Variant = data.get("keybinds", {})
 	if keybinds is Dictionary:
 		for action in keybinds.keys():

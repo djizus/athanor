@@ -230,6 +230,9 @@ func on_state_changed(state: int, zone_id: int, prev_state: int) -> void:
 			if camera_rig and camera_rig.has_method("combat_zoom_out"):
 				camera_rig.combat_zoom_out()
 		2:  # FIGHTING
+			if _mob_sprites.is_empty():
+				var mob_count: int = {0: 0, 1: 1, 2: 1, 3: 2, 4: 4}.get(zone_id, 0)
+				spawn_mobs(mob_count, zone_id)
 			if camera_rig and camera_rig.has_method("combat_zoom_in"):
 				camera_rig.combat_zoom_in()
 		3:  # CLEARED
@@ -247,15 +250,33 @@ func _create_animated_sprite(frames: SpriteFrames, scale: Vector3) -> AnimatedSp
 	sprite.sprite_frames = frames
 	sprite.pixel_size = 0.004
 	sprite.scale = scale
-	sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	sprite.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
 	sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	sprite.shaded = true
 	sprite.transparent = true
 	sprite.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
-	sprite.alpha_scissor_threshold = 0.4
-	sprite.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	sprite.alpha_scissor_threshold = 0.3
+	sprite.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	sprite.position.y = 1.0
+	var shadow := _create_blob_shadow()
+	sprite.add_child(shadow)
 	return sprite
+
+func _create_blob_shadow() -> MeshInstance3D:
+	var mesh_inst := MeshInstance3D.new()
+	var disc := QuadMesh.new()
+	disc.size = Vector2(1.4, 0.7)
+	mesh_inst.mesh = disc
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0, 0, 0, 0.35)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mesh_inst.material_override = mat
+	mesh_inst.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mesh_inst.rotation.x = deg_to_rad(-90)
+	mesh_inst.position.y = -1.0
+	return mesh_inst
 
 func _play_sprite_anim(sprite: AnimatedSprite3D, anim_name: String) -> void:
 	if sprite == null or not is_instance_valid(sprite):
@@ -368,31 +389,62 @@ func _decorate_zone(zone_id: int) -> void:
 
 func _add_edge_props(zone_id: int, radius: float) -> void:
 	var prop_color := _zone_prop_color(zone_id)
-	for i in range(10):
-		var angle := (TAU / 10.0) * float(i) + randf_range(-0.2, 0.2)
-		var pos := Vector3(cos(angle) * radius, 0, sin(angle) * radius)
+	var zone_emission: Color = ZONE_COLORS.get(zone_id, Color.GRAY)
+	for i in range(12):
+		var angle := (TAU / 12.0) * float(i) + randf_range(-0.15, 0.15)
+		var dist := radius + randf_range(-0.5, 0.5)
+		var pos := Vector3(cos(angle) * dist, 0, sin(angle) * dist)
 		var pillar := MeshInstance3D.new()
-		var mesh := CylinderMesh.new()
-		if i % 3 == 0:
-			mesh.top_radius = randf_range(0.12, 0.2)
-			mesh.bottom_radius = randf_range(0.25, 0.4)
-			mesh.height = randf_range(1.5, 3.0)
-		else:
-			mesh.top_radius = randf_range(0.2, 0.45)
-			mesh.bottom_radius = randf_range(0.3, 0.55)
-			mesh.height = randf_range(0.5, 1.2)
+		var mesh: Mesh
+		var h: float
+		match i % 4:
+			0:
+				var cyl := CylinderMesh.new()
+				cyl.top_radius = randf_range(0.05, 0.12)
+				cyl.bottom_radius = randf_range(0.3, 0.5)
+				cyl.height = randf_range(2.0, 3.5)
+				h = cyl.height
+				mesh = cyl
+			1:
+				var prism := PrismMesh.new()
+				prism.size = Vector3(randf_range(0.4, 0.8), randf_range(1.5, 2.5), randf_range(0.4, 0.8))
+				h = prism.size.y
+				mesh = prism
+			2:
+				var box := BoxMesh.new()
+				box.size = Vector3(randf_range(0.3, 0.6), randf_range(0.8, 1.5), randf_range(0.3, 0.6))
+				h = box.size.y
+				mesh = box
+			_:
+				var cyl2 := CylinderMesh.new()
+				cyl2.top_radius = randf_range(0.15, 0.25)
+				cyl2.bottom_radius = randf_range(0.15, 0.25)
+				cyl2.height = randf_range(1.0, 2.0)
+				h = cyl2.height
+				mesh = cyl2
 		pillar.mesh = mesh
 		var mat := StandardMaterial3D.new()
-		mat.albedo_color = prop_color.darkened(randf_range(0.1, 0.4))
-		mat.roughness = 0.9
+		mat.albedo_color = prop_color.darkened(randf_range(0.1, 0.3))
+		mat.roughness = 0.85
 		mat.emission_enabled = true
-		mat.emission = ZONE_COLORS.get(zone_id, Color.GRAY)
-		mat.emission_energy_multiplier = 0.1
+		mat.emission = zone_emission
+		mat.emission_energy_multiplier = randf_range(0.05, 0.2)
 		pillar.material_override = mat
+		pillar.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 		pillar.position = pos
-		pillar.position.y = mesh.height * 0.5
+		pillar.position.y = h * 0.5
 		pillar.rotation.y = randf() * TAU
+		pillar.rotation.x = randf_range(-0.05, 0.05)
+		pillar.rotation.z = randf_range(-0.05, 0.05)
 		zone_anchor.add_child(pillar)
+
+		if i % 3 == 0:
+			var glow := OmniLight3D.new()
+			glow.light_color = zone_emission
+			glow.light_energy = 0.4
+			glow.omni_range = 2.0
+			glow.position = pos + Vector3(0, h + 0.3, 0)
+			zone_anchor.add_child(glow)
 
 func _add_atmosphere_particles(zone_id: int, radius: float) -> void:
 	var particles := GPUParticles3D.new()

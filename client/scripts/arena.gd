@@ -71,7 +71,14 @@ func _ready() -> void:
 	dojo_bridge.tx_failed.connect(_on_tx_failed)
 
 	dojo_bridge.pull_entities_snapshot()
+
+	var camera_rig := get_node_or_null("CameraRig")
+	var player_anchor := get_node_or_null("DungeonWorld/PlayerAnchor")
+	if camera_rig and camera_rig.has_method("set_follow_target") and player_anchor:
+		camera_rig.set_follow_target(player_anchor)
+
 	_refresh()
+	_force_initial_visuals()
 	audio_manager.play_music("game_loop_1")
 	dojo_bridge._schedule_entity_poll()
 
@@ -218,6 +225,11 @@ func _refresh(_data: Dictionary = {}) -> void:
 	# 3D visual sync
 	if current_state != prev_state and dungeon_view != null and dungeon_view.has_method("on_state_changed"):
 		dungeon_view.on_state_changed(current_state, zone, prev_state)
+
+func _force_initial_visuals() -> void:
+	if dungeon_view != null and dungeon_view.has_method("on_state_changed"):
+		var zone := int(game_state.character.get("current_zone", 0))
+		dungeon_view.on_state_changed(current_state, zone, -1)
 
 func _update_player_bars() -> void:
 	var max_hp := int(game_state.character.get("max_health", 100))

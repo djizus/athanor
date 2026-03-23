@@ -23,6 +23,7 @@ const ACTION_LABELS := {
 func _ready() -> void:
 	visible = false
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	_build_display_row()
 	_build_keybind_rows()
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -71,6 +72,25 @@ func _sync_sliders() -> void:
 		music_slider.value = audio_manager.music_volume
 	if sfx_slider:
 		sfx_slider.value = audio_manager.sfx_volume
+
+func _build_display_row() -> void:
+	if keybind_container == null:
+		return
+	var row := HBoxContainer.new()
+	var label := Label.new()
+	label.text = "Display"
+	label.custom_minimum_size = Vector2(100, 0)
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(label)
+	var btn := Button.new()
+	btn.text = audio_manager.DISPLAY_MODES[audio_manager.display_mode]
+	btn.custom_minimum_size = Vector2(120, 36)
+	btn.pressed.connect(func():
+		audio_manager.display_mode = (audio_manager.display_mode + 1) % 3
+		btn.text = audio_manager.DISPLAY_MODES[audio_manager.display_mode]
+	)
+	row.add_child(btn)
+	keybind_container.add_child(row)
 
 func _build_keybind_rows() -> void:
 	if keybind_container == null:
