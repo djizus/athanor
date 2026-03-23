@@ -60,8 +60,6 @@ func _ready() -> void:
 	dojo_bridge.tx_submitted.connect(_on_tx_submitted)
 	dojo_bridge.tx_failed.connect(_on_tx_failed)
 
-	dojo_bridge.pull_entities_snapshot()
-
 	var camera_rig := get_node_or_null("GameCamera")
 	var player_anchor := get_node_or_null("DungeonWorld/Entities/PlayerAnchor")
 	if camera_rig and camera_rig.has_method("set_follow_target") and player_anchor:
@@ -133,6 +131,9 @@ func _ready() -> void:
 	_sync_room_state_from_arena(current_state)
 	_force_initial_visuals()
 	audio_manager.play_music("game_loop_1")
+	# Pull entities AFTER all controllers are initialized to prevent
+	# _on_state_changed firing before combat_ctrl/arena_ui exist
+	dojo_bridge.pull_entities_snapshot()
 	dojo_bridge._schedule_entity_poll()
 
 func _exit_tree() -> void:
@@ -180,6 +181,8 @@ func _determine_state() -> ArenaState:
 	return ArenaState.CLEARED
 
 func _refresh(_data: Dictionary = {}) -> void:
+	if combat_ctrl == null or arena_ui == null:
+		return
 	var prev_state := current_state
 	current_state = _determine_state()
 	var zone := int(game_state.character.get("current_zone", 0))
@@ -432,6 +435,8 @@ func _archive_current_run() -> void:
 # --- Callbacks ---
 
 func _on_state_changed(_data: Dictionary = {}) -> void:
+	if combat_ctrl == null or arena_ui == null:
+		return
 	combat_ctrl.action_in_flight = false
 	combat_ctrl.sync_mock_stamina()
 	arena_ui.set_turn_state(true, "Your Turn")
