@@ -19,7 +19,7 @@ func _ready() -> void:
 			var a := 0.0
 			if d > 0.7 and d < 1.0:
 				a = smoothstep(1.0, 0.85, d) * smoothstep(0.7, 0.85, d) * 0.7
-			img.set_pixel(x, y, Color(1.0, 0.3, 0.2, a))
+			img.set_pixel(x, y, Color(1.0, 0.85, 0.3, a))
 	_ring.texture = ImageTexture.create_from_image(img)
 	_ring.scale = Vector2(2.5, 1.5)
 	_ring.visible = false
@@ -90,3 +90,6 @@ func _process(_delta: float) -> void:
 	if active and current_target >= 0 and current_target < _mob_nodes.size():
 		if is_instance_valid(_mob_nodes[current_target]):
 			_ring.global_position = _mob_nodes[current_target].global_position
+	if active and _ring.visible:
+		var pulse := (sin(Time.get_ticks_msec() * 0.005) + 1.0) * 0.5
+		_ring.modulate.a = 0.5 + pulse * 0.5

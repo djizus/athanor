@@ -92,8 +92,10 @@ func _load_texture(res_path: String) -> Texture2D:
 
 func _get_animation_fps(anim_name: String) -> float:
 	match anim_name:
-		"idle": return 2.0
-		"attack": return 6.0
-		"hit": return 6.0
-		"death": return 4.0
-		_: return 4.0
+		"idle": return 6.0
+		"attack": return 10.0
+		"hit": return 8.0
+		"death": return 6.0
+		"defend": return 6.0
+		"skill_cast": return 8.0
+		_: return 6.0

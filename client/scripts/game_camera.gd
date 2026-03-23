@@ -7,7 +7,8 @@ const FOLLOW_SPEED := 4.0
 
 var _follow_target: Node2D = null
 var _tween: Tween
-var _shake_tween: Tween
+var _shake_intensity: float = 0.0
+var _shake_decay: float = 8.0
 
 func _ready() -> void:
 	zoom = ZOOM_DEFAULT
@@ -17,6 +18,15 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	if _follow_target != null and is_instance_valid(_follow_target):
 		global_position = _follow_target.global_position
+	if _shake_intensity > 0:
+		offset = Vector2(
+			randf_range(-_shake_intensity, _shake_intensity),
+			randf_range(-_shake_intensity, _shake_intensity)
+		)
+		_shake_intensity = lerp(_shake_intensity, 0.0, _shake_decay * _delta)
+		if _shake_intensity < 0.1:
+			_shake_intensity = 0.0
+			offset = Vector2.ZERO
 
 func set_follow_target(target: Node2D) -> void:
 	_follow_target = target
@@ -24,17 +34,9 @@ func set_follow_target(target: Node2D) -> void:
 func clear_follow_target() -> void:
 	_follow_target = null
 
-func shake(intensity: float = 8.0, duration: float = 0.3) -> void:
-	if _shake_tween and _shake_tween.is_running():
-		_shake_tween.kill()
-	var base_offset := Vector2.ZERO
-	_shake_tween = create_tween()
-	var steps := int(duration / 0.04)
-	for i in range(steps):
-		var decay := 1.0 - (float(i) / float(steps))
-		var ofs := Vector2(randf_range(-intensity, intensity) * decay, randf_range(-intensity, intensity) * decay)
-		_shake_tween.tween_property(self, "offset", base_offset + ofs, 0.04)
-	_shake_tween.tween_property(self, "offset", Vector2.ZERO, 0.04)
+func shake(intensity: float = 8.0, decay: float = 8.0) -> void:
+	_shake_intensity = intensity
+	_shake_decay = decay
 
 func combat_zoom_in() -> void:
 	_tween_zoom(ZOOM_COMBAT, 0.5)

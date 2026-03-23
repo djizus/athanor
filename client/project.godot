@@ -31,8 +31,6 @@ window/stretch/aspect="expand"
 
 [rendering]
 
-anti_aliasing/quality/msaa_3d=1
-
 [dojo]
 
 config/katana_url="https://api.cartridge.gg/x/athanor-djizus-slot/katana"

@@ -5,6 +5,7 @@ signal transition_finished
 
 var _overlay: ColorRect
 var _tween: Tween
+var _title_label: Label = null
 var is_transitioning := false
 
 func _ready() -> void:
@@ -52,6 +53,25 @@ func fade_through(duration: float = 0.8) -> void:
 		_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		transition_finished.emit()
 	)
+
+func show_zone_title(zone_name: String, duration: float = 2.0) -> void:
+	if _title_label == null:
+		_title_label = Label.new()
+		_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_title_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_title_label.set_anchors_preset(Control.PRESET_CENTER)
+		_title_label.add_theme_font_size_override("font_size", 36)
+		_title_label.add_theme_color_override("font_color", Color(0.831, 0.659, 0.286))
+		_title_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(_title_label)
+	_title_label.text = zone_name
+	_title_label.modulate.a = 0.0
+	_title_label.visible = true
+	var tween := create_tween()
+	tween.tween_property(_title_label, "modulate:a", 1.0, 0.5)
+	tween.tween_interval(duration - 1.5)
+	tween.tween_property(_title_label, "modulate:a", 0.0, 1.0)
+	tween.tween_callback(func(): _title_label.visible = false)
 
 func _kill_tween() -> void:
 	if _tween and _tween.is_running():

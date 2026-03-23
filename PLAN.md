@@ -1,398 +1,427 @@
-# Athanor v2 — PoC Implementation Plan
+# Athanor — Visual & Gameplay Polish Implementation Plan
 
 ## Overview
 
-Onchain tactical dungeon crawler on Starknet. Players spawn a hero, navigate a branching diamond-shaped dungeon, and fight mobs in turn-based combat. Built with Dojo (Cairo contracts) and Godot 4 (3D client, fixed isometric camera). This plan covers the PoC: contracts first, then a minimal Godot client to prove the Dojo integration.
+Transform the working Athanor PoC (functional turn-based combat, zone navigation, onchain state) into a visually polished, game-feel-rich experience. This plan covers all 10 priorities from the design spec: atmosphere/lighting, shadows, backgrounds, combat juice, FF-style combat UI with mock skills, animations, UI polish, zone transitions, audio, and VFX. All work is client-side. New gameplay mechanics (skills, defend) are implemented as local-only mock logic — wired to contracts in a future phase.
 
 ## Goals
 
-- Prove the core gameplay loop: spawn → navigate → fight → clear dungeon
-- Validate Dojo + Godot 4 integration via `godot-dojo` SDK (gRPC streaming, session accounts)
-- Establish contract architecture for turn-based tactical combat onchain
-- Ship a playable PoC on Slot (Katana + Torii)
+- Atmospheric lighting system with per-zone presets (CanvasModulate + PointLight2D)
+- Full combat juice: hit freeze, particles, sequenced hit chain, enhanced damage numbers
+- FF-style command panel with Skills/Defend/Items (mock gameplay), stamina preview, turn order display
+- Unique AI-generated room backgrounds per zone (replacing procedural stone shader)
+- Multi-frame sprite animations for all characters (hero: 6 frames, mobs: 4 frames per animation)
+- Polished UI with NinePatchRect panels, textured bars, proper fonts
+- Complete audio: ambient drones, combat SFX, UI sounds
+- VFX particle system for attacks, skills, status effects
+- Clean 3D artifact removal (GLB models, unused zone scenes, spatial shaders)
 
 ## Non-Goals
 
-- MMO features (shared world, trading, PvP) — deferred
-- Multiple hero classes or skills beyond auto-attack
-- Loot, progression, leaderboard
-- Mobile/web export
-- Game-components (Provable Games) integration — deferred
-- Polished visuals or asset pipeline
+- Contract changes (no new Cairo actions — skills/defend are client-side mock)
+- Mobile/web export or platform-specific optimization
+- Multiplayer / shared world features
+- Procedural dungeon generation (zone graph stays hardcoded)
+- Controller/auth flow changes (CEF browser implementation is complete)
 
 ## Assumptions and Constraints
 
-- Dojo 1.8.0, Cairo 2.15.x, Scarb workspace
-- Godot 4.3+ (required by godot-dojo v0.7.4)
-- `lonewolftechnology/godot-dojo` v0.7.4 for Torii gRPC + Cartridge Controller
-- No VRF for PoC (no randomness needed — combat is deterministic)
-- No game-components wrapper — raw Dojo system
-- Repository migration (Phase 0) is already complete
-
----
+- Godot 4.5+ with Forward Plus renderer (can use PointLight2D, CanvasModulate)
+- GDScript only — no C#, no GDExtension beyond existing godot-dojo + godot-cef
+- Art pipeline available for AI-generated assets (fal.ai Nano Banana model)
+- Contract-locked values: stamina=100, AA_cost=30, mob_HP=20, power=10, mob_power=5
+- Existing autoloads preserved: game_state, dojo_bridge, audio_manager, sprite_loader, transition_manager
+- `arena.tscn` is the single gameplay scene — no per-zone scene switching
+- Y-sort not currently used (entities at fixed positions) — add if needed for depth
 
 ## Requirements
 
 ### Functional
 
-- Player spawns a hero with health=100, power=10, stamina=100
-- Diamond dungeon graph: spawn → fork (2a/2b) → converge (3) → final (4)
-- Turn-based combat: player casts 1-3 auto-attacks (30 stamina each), then finishes turn
-- Mobs attack simultaneously on finish: `total_damage = alive_mobs × 5`
-- Stamina fully resets on finish()
-- No health regen between zones (attrition across dungeon)
-- Auto-advance when zone has single exit; choose() only at forks
-- Player dies (HP ≤ 0) → dungeon failed
-- Clear zone 4 → dungeon complete
+- Player and enemies emit light (PointLight2D) in a globally darkened scene (CanvasModulate)
+- Each zone has a unique atmosphere preset (ambient color, light tint, vignette intensity)
+- Combat hits produce: freeze frame → white flash → camera shake → particles → damage number
+- Player can select: Attack (30 ST), Heavy Attack (50 ST), Defend (0 ST), End Turn
+- Defend reduces incoming damage by 50% for 1 turn and ends the player's turn (client-side mock)
+- Heavy Attack deals 2x damage (client-side mock — contract still does 10 damage, UI shows 20)
+- Turn order bar shows upcoming turns at top of screen
+- Stamina bar shows preview (ghost section) when hovering a skill
+- Enemy info panel shows name, HP, status effects
+- Zone transitions use fade-through with zone name title card
+- Each enemy type has 4+ frames per animation (idle, attack, hit, death)
+- Audio: zone ambient loops, hit/slash SFX, UI button sounds, turn transition sounds
+- VFX: slash particles, impact sparks, defend shield, skill-specific effects
 
 ### Non-Functional
 
-- Contracts compile and pass all tests via `sozo build && sozo test`
-- Full game loop verifiable via `sozo execute` on local Katana
-- Godot client connects to Torii, syncs state, sends transactions
-- Turn-based latency tolerance: 1-3s per action is acceptable
+- All visual changes pass `godot --headless --quit` (no parse errors)
+- Lighting/particle effects maintain 60 FPS at 1920×1080
+- UI panels and buttons use NinePatchRect for resolution-independent scaling
+- Shader uniforms tween smoothly during zone transitions (0.5s)
+- No `as any` / `@ts-ignore` equivalent — all GDScript must be type-safe where practical
 
 ---
 
 ## Technical Design
 
-### Data Model (Dojo ECS)
-
-```cairo
-// Key: (player_address, game_id)
-// game_id = per-player counter, incremented on each spawn
-#[dojo::model]
-struct Character {
-    #[key]
-    player: ContractAddress,
-    #[key]
-    game_id: u32,
-    class_id: u8,             // 0 for PoC (single class)
-    health: u16,              // Current HP, starts at 100
-    max_health: u16,          // 100
-    power: u16,               // 10 (damage per auto-attack)
-    stamina: u16,             // Current stamina, starts at 100
-    max_stamina: u16,         // 100
-    current_zone: u8,         // 0-4 (zone index)
-}
-
-#[dojo::model]
-struct Dungeon {
-    #[key]
-    player: ContractAddress,
-    #[key]
-    game_id: u32,
-    zones_cleared: u8,        // Bitmap: bit i = zone i cleared
-    completed: bool,          // All zones cleared
-    failed: bool,             // Player died
-}
-
-// Fight is per-zone, created on start(), destroyed on fight end
-#[dojo::model]
-struct Fight {
-    #[key]
-    player: ContractAddress,
-    #[key]
-    game_id: u32,
-    #[key]
-    zone_id: u8,
-    mob_count: u8,            // Number of mobs in this zone
-    mob_healths: u64,         // Packed: 4 mobs × 16 bits each (max 65535 HP)
-    mob_power: u16,           // 5 for PoC (same for all mobs)
-    active: bool,             // true while fight in progress
-}
-
-// Per-player game counter (to generate game_id)
-#[dojo::model]
-struct PlayerState {
-    #[key]
-    player: ContractAddress,
-    game_count: u32,          // Incremented on each spawn
-}
-```
-
-### Dungeon Graph (Hardcoded)
+### Architecture Changes
 
 ```
-Zone 0 (Spawn, 0 mobs)
-  ├─ left(0)  → Zone 1 (1 mob)
-  └─ right(1) → Zone 2 (1 mob)
-Zone 1 → auto-advance → Zone 3 (2 mobs)
-Zone 2 → auto-advance → Zone 3 (2 mobs)
-Zone 3 → auto-advance → Zone 4 (4 mobs, final)
-Zone 4 → dungeon complete
+Arena (arena.gd) — existing, extended
+├── LightingLayer (Node2D) — NEW
+│   └── CanvasModulate — NEW (ambient darkening)
+├── DungeonWorld (dungeon_view.gd) — existing, extended
+│   ├── RoomBackground (Sprite2D) — NEW (replaces ZoneBackground ColorRect)
+│   ├── PlayerAnchor (player_controller.gd) — existing
+│   │   ├── AnimatedSprite2D — existing
+│   │   ├── Sprite2D (blob shadow) — existing, polished
+│   │   └── PointLight2D — NEW (player light)
+│   └── MobAnchor — existing
+│       └── Mob0-3 (containers) — existing
+│           ├── AnimatedSprite2D — existing, more frames
+│           ├── Sprite2D (blob shadow) — existing
+│           ├── PointLight2D — NEW (enemy light)
+│           └── ColorRect (HP bar) — existing
+├── TargetingSystem — existing
+├── GameCamera — existing, enhanced
+├── VFXLayer (CanvasLayer, layer=1) — NEW
+│   └── VignetteRect (ColorRect + shader) — NEW
+├── UILayer (CanvasLayer, layer=2) — existing, overhauled
+│   └── UIRoot — existing
+│       ├── TurnOrderBar (HBoxContainer) — NEW
+│       ├── Minimap — existing, polished
+│       ├── TopBar — existing, extended with enemy info
+│       ├── CommandPanel (PanelContainer) — NEW (replaces BottomBar)
+│       │   ├── PlayerStatus (portrait, HP, ST, status icons)
+│       │   ├── CommandMenu (Attack, Skills, Defend, End Turn)
+│       │   ├── SkillSubmenu (hidden, slides in)
+│       │   └── ContextInfo (stamina preview, turn status)
+│       ├── DoorPanel — existing
+│       └── ResultPanel — existing
+└── OverlayLayer — existing (pause menu)
 ```
 
-```cairo
-// Constants
-const ZONE_COUNT: u8 = 5;
-const MOB_HEALTH: u16 = 20;
-const MOB_POWER: u16 = 5;
-const AA_COST: u16 = 30;
+### Mock Gameplay Design (Client-Side Only)
 
-// Zone mob counts: [0, 1, 1, 2, 4]
-fn zone_mob_count(zone_id: u8) -> u8 {
-    match zone_id {
-        0 => 0, 1 => 1, 2 => 1, 3 => 2, 4 => 4, _ => 0
-    }
-}
+**Skills** (local simulation — contract still processes auto-attack):
 
-// Graph edges: zone_id → (left, right), 0xFF = no child
-fn zone_children(zone_id: u8) -> (u8, u8) {
-    match zone_id {
-        0 => (1, 2),           // Fork: player chooses
-        1 => (3, 0xFF),        // Single exit: auto-advance
-        2 => (3, 0xFF),        // Single exit: auto-advance
-        3 => (4, 0xFF),        // Single exit: auto-advance
-        _ => (0xFF, 0xFF),     // Terminal
-    }
-}
+| Skill | Stamina Cost | Effect (Client Mock) | Notes |
+|-------|-------------|---------------------|-------|
+| Attack | 30 ST | 10 damage (contract real) | Existing behavior |
+| Heavy Attack | 50 ST | 20 damage (displayed, contract does 10) | Client shows 20, actual is 10 |
+| Defend | 0 ST | -50% incoming damage for 1 turn, ends turn | Client-side flag, doesn't affect contract `finish()` |
 
-fn is_fork(zone_id: u8) -> bool {
-    let (left, right) = zone_children(zone_id);
-    left != right && left != 0xFF && right != 0xFF
-}
-```
+**Implementation approach**: `arena.gd` tracks a `_mock_skills` dictionary. When Heavy Attack is used, client calls `dojo_bridge.cast()` (same as auto-attack) but displays double damage number. When Defend is used, client sets `_defending = true` and immediately calls `dojo_bridge.finish()` — damage number display is halved on next mob attack. The contract still processes normally; mock skills are purely visual sugar.
 
-### Action State Machine
+### Art Pipeline Requirements
 
-```
-[SPAWNED]                    ← spawn(class_id)
-    │
-    ▼
-[IN_ZONE: zone=0]           Player is in spawn zone (no combat)
-    │
-    │ choose(direction)      Only at forks (zone 0)
-    ▼
-[IN_ZONE: zone=1|2]         Entered zone with mobs
-    │
-    │ start()                Creates Fight entity
-    ▼
-[IN_FIGHT]                   Fight is active
-    │
-    │ cast(mob_id, AA)       Repeatable (1-3 times per turn)
-    │ ...
-    │ finish()               Mobs attack, stamina resets
-    │   ├─ mobs remain → back to [IN_FIGHT]
-    │   ├─ all mobs dead → zone cleared
-    │   │   ├─ single exit → auto-advance to next [IN_ZONE]
-    │   │   ├─ fork → wait for choose()
-    │   │   └─ zone 4 → [DUNGEON_COMPLETE]
-    │   └─ player HP ≤ 0 → [DUNGEON_FAILED]
-    ▼
-[DUNGEON_COMPLETE | DUNGEON_FAILED]
-```
+All assets generated via fal.ai Nano Banana model. Organized by priority:
 
-### Action Validation Rules
-
-| Action | Preconditions | Effects |
-|--------|---------------|---------|
-| `spawn(class_id)` | — | Create PlayerState (if first), increment game_count, create Character + Dungeon, place in zone 0 |
-| `choose(direction)` | Zone is fork, zone combat resolved (or no mobs), dungeon not completed/failed | Move to child zone. If child has 0 mobs and single exit, auto-advance recursively. |
-| `start()` | In zone with mobs, no active fight, zone not cleared | Create Fight with packed mob HPs |
-| `cast(mob_id, skill_id)` | Fight active, mob alive, stamina ≥ AA_COST, dungeon not failed | Spend stamina, deal power damage to mob. If mob HP ≤ 0, mark dead. |
-| `finish()` | Fight active, dungeon not failed | All alive mobs attack simultaneously. Stamina resets to max. If all mobs dead: end fight, mark zone cleared, auto-advance if single exit. If player HP ≤ 0: mark dungeon failed. |
-
-### Events
-
-| Event | Fields | Emitted When |
-|-------|--------|-------------|
-| `CharacterSpawned` | player, game_id, class_id, health, power, stamina | spawn() |
-| `DungeonCreated` | player, game_id | spawn() |
-| `ZoneEntered` | player, game_id, zone_id | choose() or auto-advance |
-| `FightStarted` | player, game_id, zone_id, mob_count | start() |
-| `MobDamaged` | player, game_id, zone_id, mob_id, damage, remaining_hp | cast() |
-| `MobDied` | player, game_id, zone_id, mob_id | cast() when mob HP → 0 |
-| `PlayerDamaged` | player, game_id, damage, remaining_hp | finish() |
-| `TurnEnded` | player, game_id, zone_id, turn_number | finish() |
-| `FightEnded` | player, game_id, zone_id | finish() when all mobs dead |
-| `DungeonCompleted` | player, game_id | finish() when zone 4 cleared |
-| `DungeonFailed` | player, game_id | finish() when player HP ≤ 0 |
-
-### Mob HP Packing
-
-```cairo
-// Pack up to 4 mob HPs into u64 (16 bits each)
-// mob 0 = bits 0-15, mob 1 = bits 16-31, mob 2 = bits 32-47, mob 3 = bits 48-63
-fn pack_mob_healths(healths: Span<u16>) -> u64 { ... }
-fn get_mob_health(packed: u64, mob_id: u8) -> u16 { ... }
-fn set_mob_health(packed: u64, mob_id: u8, hp: u16) -> u64 { ... }
-fn count_alive_mobs(packed: u64, mob_count: u8) -> u8 { ... }
-```
-
-### Client Architecture (Godot)
-
-```
-client/
-├── addons/godot-dojo/            # SDK (download from releases)
-├── scenes/
-│   ├── main.tscn                 # Entry: ToriiClient + DojoSessionAccount + scene switcher
-│   ├── connection.tscn           # Auth screen (connect wallet)
-│   ├── dungeon.tscn              # 3D dungeon view (zones, player, camera)
-│   └── combat_ui.tscn            # CanvasLayer: mob HP bars, action buttons, stamina bar, player HP
-├── scripts/
-│   ├── autoload/
-│   │   ├── game_state.gd         # Singleton: current Character/Dungeon/Fight state
-│   │   └── dojo_bridge.gd        # Singleton: ToriiClient wrapper, entity subscriptions, tx helpers
-│   ├── connection.gd             # Auth flow (Controller session)
-│   ├── dungeon_view.gd           # 3D zone rendering, player movement, zone highlights
-│   ├── combat_ui.gd              # Combat HUD logic
-│   └── camera_rig.gd             # Fixed isometric camera
-├── resources/
-│   └── (placeholder materials/meshes)
-└── project.godot
-```
-
-**Torii sync flow:**
-1. On connect: subscribe to `Character`, `Dungeon`, `Fight` entities where `player = my_address`
-2. On entity update callback → `dojo_bridge.gd` parses Dictionary → updates `game_state.gd` singleton
-3. `game_state.gd` emits signals (`character_updated`, `fight_updated`, `dungeon_updated`)
-4. Scene scripts connect to signals and update visuals
+**Batch 1 — Backgrounds (P3)**: 5 room backgrounds (2048×2048 PNG)
+**Batch 2 — Sprites (P6)**: 4 mobs × 4 animations × 3 additional frames = 48 new PNGs
+**Batch 3 — UI (P7)**: Panel frame, button states (3), bar frame = 5 UI textures
+**Batch 4 — VFX (P10)**: Slash, fire burst, shield glow, impact sparks = 4 particle textures
+**Batch 5 — Misc**: Light gradient texture, vignette texture (can be procedural)
 
 ---
 
 ## Implementation Plan
 
-All phases are **serial** — contracts first, client second.
-
-### Phase 1: Contract Foundation
+### Phase 0: Cleanup & Asset Generation (Serial — Foundation)
 
 **Prerequisite for:** All subsequent phases
 
-| Task | Description | Output | Verify |
-|------|-------------|--------|--------|
-| 1.1 | Initialize Scarb workspace: `Scarb.toml` (workspace), `contracts/Scarb.toml` (package with dojo deps), `dojo_dev.toml` | `sozo build` runs (even if empty lib.cairo) |
-| 1.2 | Define `contracts/src/lib.cairo` module tree: models, types, systems, events, helpers, store, constants | `sozo build` compiles |
-| 1.3 | Define types: enums for `Direction` (Left/Right), `ClassType` (Warrior for PoC), `SkillType` (AutoAttack) | Types compile |
-| 1.4 | Define constants: `ZONE_COUNT`, `MOB_HEALTH`, `MOB_POWER`, `AA_COST`, `MAX_HEALTH`, `MAX_STAMINA`, `POWER`, zone_mob_count(), zone_children(), is_fork() | Constants compile |
-| 1.5 | Define models: `Character`, `Dungeon`, `Fight`, `PlayerState` with keys and fields per Technical Design | Models compile |
-| 1.6 | Implement packing helpers: `pack_mob_healths`, `get_mob_health`, `set_mob_health`, `count_alive_mobs` | Helpers compile |
-| 1.7 | Define all 11 events per Technical Design | Events compile |
-| 1.8 | Implement Store: typed read/write for all models, event emit helpers | Store compiles |
+| Task | Description | Output | Files Affected |
+|------|-------------|--------|----------------|
+| 0.1 | Delete 3D model assets: `client/assets/models/` directory (15 GLB files) | Clean asset tree | assets/models/ removed |
+| 0.2 | Delete unused 3D zone scenes: `client/scenes/zones/zone_0.tscn` through `zone_4.tscn` | No orphan scenes | scenes/zones/ removed |
+| 0.3 | Delete spatial shader: `client/shaders/emissive_pulse.gdshader` + `.uid` | No 3D shaders | shaders/emissive_pulse.* removed |
+| 0.4 | Remove `msaa_3d=1` from `project.godot` rendering section | Clean project config | project.godot |
+| 0.5 | Generate PointLight2D texture: white-to-transparent radial gradient, 512×512 PNG | `assets/vfx/light_gradient.png` | New file |
+| 0.6 | **Art Pipeline — Batch 1**: Generate 5 room backgrounds (see prompts below) | `assets/backgrounds/zone_0.png` through `zone_4.png` | New files |
+| 0.7 | **Art Pipeline — Batch 2**: Generate mob sprite frames (see prompts below) | 48 new PNGs in `assets/sprites/mob_*/` | New files |
+| 0.8 | **Art Pipeline — Batch 3**: Generate UI textures (panel frame, button states, bar frame) | PNGs in `assets/ui/` | New files |
+| 0.9 | **Art Pipeline — Batch 4**: Generate VFX particle textures (slash, fire, shield, sparks) | PNGs in `assets/vfx/` | New files |
 
-### Phase 2: Contract Actions
+**Art Pipeline Prompts:**
 
-**Dependencies:** Phase 1
+Background prompts (2048×2048):
+- Zone 0 (Entrance): `"dark dungeon entrance floor seen from above, top-down view, hand-painted style, golden amber and dark grey palette, crumbling archway stones, torch sconces, atmospheric lighting, Hades game art style, 2048x2048"`
+- Zone 1 (Left Cavern): `"volcanic cavern floor from above, top-down perspective, hand-painted, deep red and burnt orange palette, lava cracks with glowing embers, obsidian stone, Hades Supergiant art style, 2048x2048"`
+- Zone 2 (Right Passage): `"arcane passage floor from above, top-down view, hand-painted, purple and dark mauve palette, runic inscriptions glowing faintly, crystal formations, Hades art style, 2048x2048"`
+- Zone 3 (Deep Hall): `"underwater temple floor seen from above, top-down, hand-painted, dark blue and teal palette, wet stone with barnacles and coral, bioluminescent accents, Hades art style, 2048x2048"`
+- Zone 4 (Final Chamber): `"dark ritual chamber floor from above, top-down, hand-painted, deep green and black, cracked obsidian with glowing emerald veins, crystal throne platform, Hades art style, 2048x2048"`
 
-| Task | Description | Output | Verify |
-|------|-------------|--------|--------|
-| 2.1 | Implement `spawn(class_id)` — create/increment PlayerState, create Character (100/10/100), create Dungeon, emit CharacterSpawned + DungeonCreated | `sozo build` passes |
-| 2.2 | Implement `choose(direction)` — validate fork, validate combat resolved, move to child zone, emit ZoneEntered | `sozo build` passes |
-| 2.3 | Implement `start()` — validate in zone with mobs + no active fight + zone not cleared, create Fight with packed mob HPs, emit FightStarted | `sozo build` passes |
-| 2.4 | Implement `cast(mob_id, skill_id)` — validate fight active + mob alive + stamina ≥ AA_COST, deal damage, update packed HPs, emit MobDamaged (+ MobDied if HP=0) | `sozo build` passes |
-| 2.5 | Implement `finish()` — calculate total mob damage, apply to player, reset stamina. If player dead: set dungeon.failed, emit DungeonFailed. If all mobs dead: end fight, mark zone cleared. If single exit: auto-advance (emit ZoneEntered). If zone 4: set dungeon.completed, emit DungeonCompleted. Emit TurnEnded + FightEnded + PlayerDamaged as appropriate. | `sozo build` passes |
+Mob sprite prompts (512×512, transparent background):
+- Pattern: `"sprite sheet, [mob description], [animation] pose, top-down isometric view, hand-painted dark fantasy style, transparent background, game asset, consistent proportions, single frame"`
+- Generate frames 1-3 for each existing animation (frame 0 already exists)
 
-### Phase 3: Contract Tests & Local Deployment
+UI prompts:
+- Panel: `"dark ornate game UI panel frame, gold and bronze border, dark semi-transparent center, gothic fantasy style, Hades game interface aesthetic, rectangular horizontal, 512x128"`
+- Button normal: `"dark fantasy game button, gold trim, rectangular, gothic style, game UI element, Hades Supergiant style, 256x64"`
+- Button hover: Same but `"brighter, glowing gold edges"`
+- Button disabled: Same but `"desaturated, dark, grey tones"`
+- Bar frame: `"game UI health bar frame, ornate dark metal, horizontal, game interface element, 256x32"`
 
-**Dependencies:** Phase 2
+VFX prompts (256×256, transparent):
+- Slash: `"white energy slash arc VFX, transparent background, game particle effect, stylized, 256x256"`
+- Fire burst: `"orange flame burst VFX sprite, transparent background, game particle, 256x256"`
+- Shield: `"golden shield aura VFX, transparent background, game particle, 256x256"`
+- Sparks: `"white impact sparks VFX, transparent background, game particle, 256x256"`
 
-| Task | Description | Output | Verify |
-|------|-------------|--------|--------|
-| 3.1 | Write unit tests: spawn creates correct state, choose validates fork, start creates fight with right mob count, cast deals damage + spends stamina + reverts on dead mob, finish applies mob damage + resets stamina + handles zone clear + auto-advance + dungeon completion + player death | `sozo test` all pass |
-| 3.2 | Write integration test: full dungeon run — spawn → choose(0) → start → cast×2 → finish → (auto-advance to zone 3) → start → cast×4 → finish×2 → (auto-advance to zone 4) → start → cast×8 → finish×3 → DungeonCompleted | `sozo test` passes |
-| 3.3 | Write failure test: player gets killed in zone 4 (e.g., finish without killing mobs for several turns) → DungeonFailed | `sozo test` passes |
-| 3.4 | Deploy to local Katana: `katana --dev` + `sozo migrate --dev` | Clean deployment |
-| 3.5 | Manual E2E via sozo execute: run through full dungeon, verify events in Torii | All events appear correctly |
+**Verification**: `cd client && godot --headless --quit` — no errors after cleanup
 
-### Phase 4: Godot Client — Foundation
+---
 
-**Dependencies:** Phase 3 (contracts deployed to Katana)
+### Parallel Workstreams (After Phase 0)
 
-| Task | Description | Output | Verify |
-|------|-------------|--------|--------|
-| 4.1 | Initialize Godot 4 project: `project.godot` in `client/`, window 1280×720, input actions (click, hotkeys) | `godot --headless --quit` no errors |
-| 4.2 | Install godot-dojo v0.7.4: download release, place in `client/addons/godot-dojo/` | Plugin visible in editor |
-| 4.3 | Create `main.tscn`: ToriiClient + DojoSessionAccount nodes, scene switcher script | Scene loads without errors |
-| 4.4 | Create `connection.tscn` + `connection.gd`: Controller auth flow (generate key, open session URL, create session) | Wallet connects to local Katana |
-| 4.5 | Create `dojo_bridge.gd` autoload: ToriiClient wrapper, entity subscriptions for Character/Dungeon/Fight, tx calldata helpers for all 5 actions | Autoload registers, connects to Torii |
-| 4.6 | Create `game_state.gd` autoload: parsed entity state, signals (character_updated, dungeon_updated, fight_updated) | Autoload registers, signals defined |
+---
 
-### Phase 5: Godot Client — Game Scenes
+#### Workstream A: Atmosphere & Lighting (Priority 1)
 
-**Dependencies:** Phase 4
-
-| Task | Description | Output | Verify |
-|------|-------------|--------|--------|
-| 5.1 | Create `dungeon.tscn`: 3D scene with 5 zone platforms in diamond layout (MeshInstance3D boxes), path lines between zones, fixed isometric Camera3D | Scene renders dungeon layout |
-| 5.2 | Create `dungeon_view.gd`: player capsule mesh on current zone, zone highlight on cleared/active/locked states, player movement tween on zone change | Player visually moves between zones |
-| 5.3 | Create `combat_ui.tscn` + `combat_ui.gd`: CanvasLayer with mob HP bars (ProgressBar), Attack button, End Turn button, stamina bar, player HP bar | UI renders over 3D scene |
-| 5.4 | Wire `dojo_bridge.gd` signals to `dungeon_view.gd` and `combat_ui.gd`: entity updates → visual state changes | Health bars update on Fight entity changes |
-| 5.5 | Wire UI buttons to `dojo_bridge.gd` tx helpers: Spawn button → spawn(), zone click → choose(), Attack → cast(), End Turn → finish() | Buttons execute transactions |
-| 5.6 | Add dungeon completion/failure overlay: simple Label + "Play Again" button on DungeonCompleted / DungeonFailed | End state displayed |
-
-### Phase 6: Integration & Deployment
-
-**Dependencies:** Phase 5
+**Dependencies:** Phase 0 (light texture, cleanup)
+**Can parallelize with:** Workstreams B, C (different files)
+**Primary files:** `arena.tscn`, `dungeon_view.gd` (new nodes only)
 
 | Task | Description | Output | Verify |
 |------|-------------|--------|--------|
-| 6.1 | Full playtest on local Katana: spawn → choose → fight through all zones → complete dungeon | Game plays from start to finish |
-| 6.2 | Test failure path: intentionally lose (finish without attacking) → DungeonFailed overlay | Death handled correctly |
-| 6.3 | Deploy contracts to Slot: `sozo migrate --profile slot` | Clean deployment on Slot |
-| 6.4 | Start Torii on Slot, point client to Slot RPC + Torii | Client connects to Slot |
-| 6.5 | Smoke test on Slot: full dungeon run with Cartridge Controller | PoC validated on Slot |
+| A.1 | Add `LightingLayer` (Node2D) as first child of Arena in `arena.tscn`. Add `CanvasModulate` child with default color `Color(0.35, 0.35, 0.45, 1.0)` | Global ambient darkening visible | Scene loads |
+| A.2 | In `dungeon_view.gd:spawn_hero()`: add `PointLight2D` child to `_player_sprite`. Texture = `light_gradient.png`, scale=3.0, energy=0.8, color=`Color(1.0, 0.95, 0.85)`, blend_mode=Add | Player emits warm light | Light visible around player |
+| A.3 | In `dungeon_view.gd:spawn_mobs()`: add `PointLight2D` per mob container. Per-zone colors: ember=`Color(1.0, 0.5, 0.2)`, aether=`Color(0.6, 0.4, 0.7)`, sunken=`Color(0.3, 0.9, 0.8)`, crystal=`Color(0.2, 0.7, 0.5)`. Energy=0.4, scale=1.5 | Enemies glow with type-appropriate color | Lights visible |
+| A.4 | Add `VFXLayer` (CanvasLayer, layer=1) to `arena.tscn`. Add `VignetteRect` (ColorRect, full screen) with vignette shader (see spec). Set `mouse_filter = IGNORE` | Screen edges darkened | Vignette visible, doesn't block input |
+| A.5 | Create `zone_atmospheres` dictionary in `dungeon_view.gd` mapping zone_id to `{ambient_color, player_light_color, vignette_intensity, enemy_light_energy}`. Extend `load_zone()` to tween CanvasModulate color and vignette intensity over 0.5s when zone changes | Smooth atmosphere transitions between zones | Zone change triggers color tween |
+| A.6 | **Polish**: Review and tune all light values in-game. Ensure: dark areas feel dark, lit areas feel warm, enemy lights don't overpower, vignette isn't too aggressive | Balanced atmosphere | Visual review |
+
+**Vignette shader** (`shaders/vignette.gdshader`):
+```gdshader
+shader_type canvas_item;
+uniform float vignette_intensity : hint_range(0.0, 1.0) = 0.4;
+uniform float vignette_softness : hint_range(0.0, 1.0) = 0.5;
+
+void fragment() {
+    float dist = distance(UV, vec2(0.5));
+    float vignette = smoothstep(vignette_softness, vignette_softness - 0.3, dist);
+    COLOR = vec4(0.0, 0.0, 0.0, (1.0 - vignette) * vignette_intensity);
+}
+```
+
+**Zone atmosphere presets**:
+```gdscript
+const ZONE_ATMOSPHERES := {
+    0: {ambient = Color(0.40, 0.35, 0.30), player_light = Color(1.0, 0.95, 0.85), vignette = 0.35},
+    1: {ambient = Color(0.35, 0.25, 0.20), player_light = Color(1.0, 0.90, 0.80), vignette = 0.40},
+    2: {ambient = Color(0.30, 0.25, 0.35), player_light = Color(0.90, 0.85, 1.0), vignette = 0.40},
+    3: {ambient = Color(0.20, 0.25, 0.35), player_light = Color(0.85, 0.90, 1.0), vignette = 0.45},
+    4: {ambient = Color(0.20, 0.30, 0.25), player_light = Color(0.85, 1.0, 0.90), vignette = 0.45},
+}
+```
+
+---
+
+#### Workstream B: Environment & Animations (Priority 2, 3, 6)
+
+**Dependencies:** Phase 0 (backgrounds, sprite frames)
+**Can parallelize with:** Workstreams A, C
+**Primary files:** `dungeon_view.gd`, `sprite_loader.gd`
+
+| Task | Description | Output | Verify |
+|------|-------------|--------|--------|
+| B.1 | **Polish shadows**: In `_create_blob_shadow()`, make shadow scale configurable per entity type. Player=`Vector2(1.2, 0.7)`, small mob=`Vector2(1.0, 0.6)`, large mob=`Vector2(1.5, 0.9)`. Pass entity type to function | Shadows sized proportionally | Visual check |
+| B.2 | Replace `ZoneBackground` ColorRect with `Sprite2D` for room backgrounds. Load from `res://assets/backgrounds/zone_X.png`. Keep `ground_stone.gdshader` as fallback if background not found. Set z_index=-10, centered=true | Unique painted background per zone | Background visible |
+| B.3 | Add edge treatment: create a `ColorRect` frame around the room background that fades to void color `Color(0.05, 0.05, 0.08)`. Or use a gradient shader on the background edges | Room edges blend into darkness | No hard cutoff |
+| B.4 | Import new mob sprite frames into `assets/sprites/mob_*/`. Verify naming convention: `{mob_type}_{animation}_{frame}.png` | sprite_loader auto-detects new frames | Mobs have multi-frame animations |
+| B.5 | Update `sprite_loader.gd` FPS values: idle=6 (was 2), attack=10 (was 6), hit=8 (was 6), death=6 (was 4). These speeds better suit 4-frame animations | Smoother animations | Animations play at correct speed |
+| B.6 | Add hero `defend` and `skill_cast` animations: generate 4 frames each via pipeline, import to `assets/sprites/hero/`. Add to ANIM_ALIASES in dungeon_view.gd | Hero has defend and cast poses | Animations play |
+| B.7 | Add `face_toward()` calls during combat: hero faces first alive mob during player turn, mobs face player during mob turn. Already partially implemented — verify and polish | Entities face correct direction | Visual check |
+
+---
+
+#### Workstream C: Combat Juice (Priority 4)
+
+**Dependencies:** Phase 0 (VFX textures)
+**Can parallelize with:** Workstreams A, B
+**Primary files:** `dungeon_view.gd`, `game_camera.gd`, new `combat_fx.gd`
+
+| Task | Description | Output | Verify |
+|------|-------------|--------|--------|
+| C.1 | **Polish hit flash**: Modify `hit_flash.gdshader` to use `flash_amount` (float 0-1) instead of `flash_active` (bool). Add tween-based fade: set to 0.8, tween to 0.0 over 0.08s. More controlled than on/off | Smoother flash effect | Flash fades instead of snapping |
+| C.2 | **Polish camera shake**: Modify `game_camera.gd:shake()` to use exponential decay instead of linear steps. Add `shake_intensity` parameter scaling: normal hit=4.0, heavy=6.0, mob turn=3.0 per alive mob | Better shake feel | Shake decays naturally |
+| C.3 | **Polish damage numbers**: Add color coding in `spawn_damage_number()`: white=normal, yellow=heavy attack, red=damage to player, green=heal. Add font size variation: normal=24, heavy=32, crit=36. Add slight random rotation (-5° to 5°) | Damage numbers are expressive | Colors match damage type |
+| C.4 | **New: Hit freeze frame**. Create `combat_fx.gd` utility script (autoload or child of Arena). Add `hit_freeze(duration: float = 0.04)` that pauses scene tree briefly. Timer uses `process_always = true` to ignore pause | Brief pause on hit impact | Game pauses ~40ms on hit |
+| C.5 | **New: Hit particles**. In `combat_fx.gd`, add `spawn_hit_particles(pos: Vector2, color: Color)`. Create `GPUParticles2D` at position: one_shot=true, amount=8, lifetime=0.3, explosiveness=0.9, gravity=0. Load slash texture from `assets/vfx/slash.png` | Particle burst on hit | Particles visible at hit location |
+| C.6 | **New: Attack slide enhancement**. Extend `play_attack()` in `dungeon_view.gd`: increase lunge distance from 26px to 40px. Add return ease: `EASE_OUT_BACK` for a slight overshoot on return | Attack feels weightier | Lunge is more dramatic |
+| C.7 | **Wire full hit sequence**. In `arena.gd:_on_attack_pressed()`, orchestrate: (1) attack slide starts → (2) at peak: hit_freeze(0.04) → (3) flash_white(target) → (4) camera.shake(4.0) → (5) spawn_hit_particles → (6) spawn_damage_number → (7) slide return. Use `await` chain or timer callbacks | Complete hit sequence feels impactful | All 7 steps execute in order |
+| C.8 | **Wire mob turn sequence**. In `arena.gd:_on_end_turn_pressed()`, orchestrate: (1) all mobs play attack → (2) 0.3s delay → (3) hit_freeze(0.03) → (4) flash player → (5) shake(mob_count * 2.0) → (6) damage number on player → (7) mobs return to idle | Mob attacks feel threatening | Sequence plays correctly |
+| C.9 | **Polish targeting ring**. In `targeting_system.gd`: add pulsing animation (modulate alpha oscillates 0.5-1.0 via sine wave in `_process`). Change ring color to gold `Color(1.0, 0.85, 0.3)` | Target indicator pulses | Ring pulses smoothly |
+
+---
+
+### Merge Phase 1: Visual Integration
+
+**Dependencies:** Workstreams A, B, C all complete
+
+| Task | Description | Output | Verify |
+|------|-------------|--------|--------|
+| M1.1 | Integration test: load each zone (0-4), verify lighting + background + atmosphere tween together. Check that PointLight2D interacts correctly with CanvasModulate | All zones visually distinct and atmospheric | Manual playthrough |
+| M1.2 | Integration test: run full combat sequence in zone 3 (2 mobs). Verify hit sequence (freeze + flash + shake + particles + number) fires correctly for both attack and mob turn | Combat feels complete | No visual glitches |
+| M1.3 | Performance test: check FPS in zone 4 (4 mobs, 4 lights + player light + particles). Must maintain 60 FPS | No performance regression | FPS counter |
+| M1.4 | Fix any file conflicts between workstreams (dungeon_view.gd touched by A, B, C) | Clean merge | `godot --headless --quit` passes |
+
+---
+
+#### Workstream D: Combat UI Overhaul (Priority 5)
+
+**Dependencies:** Merge Phase 1 (needs combat juice wired for animation timing)
+**Can parallelize with:** Workstream E
+**Primary files:** `arena.gd`, `arena.tscn` (heavy UI changes)
+
+| Task | Description | Output | Verify |
+|------|-------------|--------|--------|
+| D.1 | **Turn order display**. Add `TurnOrderBar` (HBoxContainer) to UIRoot top area. Show 6-8 upcoming turn slots as small panels (48×48). Current turn highlighted gold (player) or red (enemy). Since combat is "player acts freely then ends turn," show: [Player → All Enemies → Player → ...] pattern. Update on turn start/end | Turn order visible at top | Bar updates on turn change |
+| D.2 | **Command panel layout**. Replace existing `BottomBar` with new `CommandPanel` (PanelContainer). Layout: LeftSection (player portrait/HP/ST/status), CenterSection (command buttons), RightSection (stamina preview, turn status) | New command panel visible | Panel renders correctly |
+| D.3 | **Player status section**. In CommandPanel left: portrait frame (TextureRect 64×64, placeholder), name label, HP bar (TextureProgressBar), ST bar (TextureProgressBar), status icon row (HBoxContainer) | Player stats always visible | HP/ST bars update |
+| D.4 | **Command buttons**. Create reusable `CmdButton` scene: PanelContainer with icon (TextureRect 32×32), name (Label), cost (Label). Four commands: ⚔ Attack (30 ST), ⚡ Heavy Attack (50 ST), 🛡 Defend (0 ST), ⏭ End Turn. States: available (full color), cannot-afford (greyed, red cost), disabled (dark) | Four styled command buttons | Buttons show correct states |
+| D.5 | **Skill submenu placeholder**. Add a "Skills" button that shows a submenu with Heavy Attack. The submenu slides up (tween 0.15s) when opened, has a "← Back" button. Skills that cost more than current stamina are greyed out | Submenu opens/closes smoothly | Grey-out works |
+| D.6 | **Mock skill execution: Heavy Attack**. When Heavy Attack selected + target confirmed: call `dojo_bridge.cast()` (same as attack) but `spawn_damage_number()` shows `power * 2` (20). Deduct 50 stamina from display. Client-side tracking in `arena.gd:_mock_stamina` | Heavy Attack appears to do double damage | Stamina deducted correctly |
+| D.7 | **Mock skill execution: Defend**. When Defend selected: set `_defending = true` in `arena.gd`. Play defend animation on hero. Immediately call `dojo_bridge.finish()`. On next mob attack, display damage number as `(mob_damage / 2)`. Play shield VFX. Reset `_defending` after mob turn | Defend halves displayed damage | Shield VFX visible |
+| D.8 | **Targeting mode**. After selecting Attack/Heavy Attack, enter targeting state: "Select Target" text, valid targets get pulsing highlight (extend targeting_system.gd), click confirms, right-click/Escape cancels back to command select. For Defend/End Turn, skip targeting | Targeting works for attack skills | Cancel returns to command select |
+| D.9 | **Stamina cost preview**. When hovering any command button: show cost in RightSection ("Cost: 30 ST"), show remaining ("Remaining: 70 ST"). On actual ST bar, overlay a darker section showing projected cost. Use a second ProgressBar or shader trick | Ghost stamina visible on hover | Preview disappears on unhover |
+| D.10 | **Enemy info panel**. Extend TopBar: show hovered/selected enemy name, HP bar (with numeric), and status effect icons. When targeting, update as mouse moves between enemies | Enemy details visible during targeting | Updates on hover |
+| D.11 | **Status effect icons** (visual only). Create small icon textures (20×20): shield (blue, for Defend), attack_up (red sword, unused for now), stun (yellow stars, unused). Show active statuses on player and enemies with turn count. Only Defend status is functional in this phase | Defend icon shows with "1" turn count | Icon appears/disappears correctly |
+| D.12 | **Turn state visuals**. Player's turn: command panel lit, "Your Turn" in RightSection, gold pulse on panel border. Enemy turn: panel greyed out (modulate 0.4), buttons disabled, "Enemy Turn" text. Animating: all input disabled | Clear whose turn it is | States match combat phase |
+| D.13 | **Turn start/end juice**. On player turn start: brief flash/pulse on command panel (modulate 1.2→1.0 over 0.3s), enable buttons, refresh stamina. On player turn end: grey out panel (tween 0.3s), disable buttons | Turn transitions feel responsive | Pulse visible on turn start |
+| D.14 | **Multiple actions loop**. After each action resolves (attack/heavy attack), return to COMMAND_SELECT state — do NOT end turn. Grey out commands that cost more than remaining stamina. End Turn always available. This already works for Attack; verify it works with the new UI flow for Heavy Attack too | Multiple actions per turn work | Can attack twice then end turn |
+| D.15 | **Keyboard shortcuts**. Map: 1=Attack, 2=Heavy Attack, 3=Defend, 4=End Turn. Tab=cycle targets (existing). Enter=confirm target. Escape=cancel targeting | All commands keyboard-accessible | Shortcuts work |
+
+---
+
+#### Workstream E: Audio & Transitions (Priority 8, 9)
+
+**Dependencies:** Merge Phase 1
+**Can parallelize with:** Workstream D
+**Primary files:** `audio_manager.gd`, `transition_manager.gd`, `arena.gd` (minimal touches)
+
+| Task | Description | Output | Verify |
+|------|-------------|--------|--------|
+| E.1 | **Audio bus setup**. In Godot project settings, create audio buses: Master → Music (-6dB), SFX (0dB), UI (-3dB), Ambient (-6dB). Update `audio_manager.gd` to assign players to correct buses | Audio properly routed | Bus assignments correct |
+| E.2 | **Source/generate combat SFX**. Acquire via freesound.org or AI generation: `sword_slash.mp3`, `heavy_hit.mp3`, `shield_block.mp3`, `enemy_attack.mp3`, `player_hurt.mp3`, `enemy_death.mp3`. Place in `assets/sounds/effects/` | 6 new SFX files | Files load in audio_manager |
+| E.3 | **Source/generate UI SFX**. Acquire: `button_hover.mp3`, `turn_start.mp3`, `enemy_turn.mp3`, `skill_select.mp3`. Place in `assets/sounds/effects/` | 4 new SFX files | Files load |
+| E.4 | **Source/generate ambient drones**. Acquire 2-3 ambient loops: `ambient_dungeon.mp3` (default), `ambient_deep.mp3` (zones 3-4). Place in `assets/sounds/music/` | Ambient audio files | Files load |
+| E.5 | **Wire combat SFX**. In `arena.gd` and `dungeon_view.gd`: play `sword_slash` when attack animation starts, `heavy_hit` on hit impact, `shield_block` on defend, `enemy_attack` when mobs attack, `player_hurt` when player takes damage, `enemy_death` when mob dies | SFX play at correct moments | Audio synced to animations |
+| E.6 | **Wire UI SFX**. Add `button_hover` SFX on command button hover (connect `mouse_entered` signal). Play `turn_start` on player turn begin, `enemy_turn` on enemy turn begin, `skill_select` when choosing a skill | UI has audio feedback | Sounds on hover/select |
+| E.7 | **Zone ambient music**. In `dungeon_view.gd:load_zone()`, crossfade ambient track based on zone. Zones 0-2 use `ambient_dungeon`, zones 3-4 use `ambient_deep`. Crossfade over 1.0s | Ambient changes per zone | Smooth crossfade |
+| E.8 | **Polish zone transitions**. Extend `transition_manager.gd`: during fade-to-black, play `zone_transition` SFX. On fade-from-black, show zone name title card (large Label, centered, fades in over 0.5s then fades out over 1.0s) | Zone name appears on entry | Title card visible |
+| E.9 | **Enemy spawn animation**. In `dungeon_view.gd:spawn_mobs()`, spawn each mob with 0.1s stagger delay, scale from 0.0→1.0 (0.3s ease-out), and fade from 0.0→1.0 alpha | Enemies appear dramatically | Staggered entrance |
+
+---
+
+### Merge Phase 2: UI + Audio Integration
+
+**Dependencies:** Workstreams D, E complete
+
+| Task | Description | Output | Verify |
+|------|-------------|--------|--------|
+| M2.1 | Integration test: full combat loop with new UI. Spawn → choose path → begin combat → Attack → Heavy Attack → Defend → End Turn → mob turn → continue | All commands work end-to-end | No crashes or stuck states |
+| M2.2 | Verify audio sync: attack SFX fires at animation peak (not start), damage number appears after flash, turn start sound plays before panel lights up | Audio matches visuals | Timing feels right |
+| M2.3 | Verify stamina tracking: mock stamina deduction for Heavy Attack stays in sync with contract state after Torii update | No stamina desync | Bars match contract values |
+| M2.4 | Verify keyboard shortcuts work with new command panel | All 4 commands + Tab + Enter + Esc work | Keyboard-only playable |
+
+---
+
+#### Workstream F: Final Polish (Priority 7, 10)
+
+**Dependencies:** Merge Phase 2 (needs final UI layout)
+**Primary files:** `arena.tscn`, `athanor_theme.tres`, `dungeon_view.gd`
+
+| Task | Description | Output | Verify |
+|------|-------------|--------|--------|
+| F.1 | **NinePatchRect panels**. Replace PanelContainer backgrounds for CommandPanel, DoorPanel, ResultPanel with NinePatchRect using generated `panel_frame.png`. Set patch margins for proper scaling | Ornate panel frames | Panels scale correctly |
+| F.2 | **Button textures**. Apply generated button textures to CmdButton scene: normal, hover, disabled states. Override theme for command buttons specifically | Styled buttons with states | Hover/disabled visible |
+| F.3 | **Bar textures**. Replace ProgressBar theme overrides for HP and Stamina with TextureProgressBar using generated `bar_frame.png`. HP fill = red gradient, ST fill = cyan gradient | Textured health/stamina bars | Bars fill correctly |
+| F.4 | **Font setup**. Import Cinzel (headers) and Inter/Lato (body) as `.ttf`. Set in `athanor_theme.tres`: HeaderLabel = Cinzel 24pt, default = Inter 16pt, SubtitleLabel = Inter 12pt | Consistent typography | Fonts render |
+| F.5 | **Minimap polish**. Add semi-transparent dark panel behind minimap (NinePatchRect). Make current zone node glow (pulsing modulate). Use different colors for cleared (dim green) vs locked (dark grey) vs current (gold). Add small zone type icons if feasible | Minimap feels integrated | Zone states distinguishable |
+| F.6 | **VFX: skill-specific particles**. For Heavy Attack: use `fire_burst.png` particle texture, orange tint. For Defend: use `shield_glow.png`, spawn shield particle at player position. For regular attack: use `slash.png`, white | Skills have unique VFX | Particles match skill type |
+| F.7 | **VFX: hit screen flash**. On heavy hits (Heavy Attack, mob turn with 3+ mobs): briefly overlay white ColorRect at alpha 0.08 on VFXLayer for 2 frames, then fade to 0 | Subtle screen flash on big hits | Flash visible but not obnoxious |
+| F.8 | **VFX: death smoke**. When mob dies: spawn dark purple smoke particles (`CPUParticles2D`, amount=12, one_shot, 0.5s lifetime) at mob position, in addition to existing scale-to-zero animation | Death feels more dramatic | Smoke visible |
+| F.9 | **Polish pass: theme consistency**. Review all UI elements for consistent colors: gold `Color(0.831, 0.659, 0.286)` for highlights, dark panel backgrounds, proper label colors. Ensure new CommandPanel matches existing TopBar/Minimap style | Visual consistency | Cohesive look |
+
+---
+
+### Merge Phase 3: Final Integration & Testing
+
+**Dependencies:** Workstream F complete
+
+| Task | Description | Output | Verify |
+|------|-------------|--------|--------|
+| M3.1 | Full playthrough test: main menu → spawn → zone 0 → choose left → zone 1 combat (use all skills) → cleared → zone 3 combat → cleared → zone 4 combat → complete dungeon | Game plays start to finish | No errors |
+| M3.2 | Full playthrough test: death path. Zone 4 with 4 mobs, intentionally use only Defend to lose. Verify death screen, mob turn VFX, damage display | Death handled correctly | Death screen shows |
+| M3.3 | Headless validation: `cd client && timeout 60 godot --headless --quit 2>&1` — must exit clean | No parse errors | Exit code 0 |
+| M3.4 | Performance: zone 4 (4 mobs, 5 lights, particles, full UI). Measure FPS. Target: stable 60 FPS | No performance issues | FPS ≥ 60 |
+| M3.5 | Cleanup: remove any temporary debug code, ensure all placeholder textures have been replaced by pipeline art, verify no orphan files | Clean codebase | No TODOs left |
 
 ---
 
 ## Testing and Validation
 
-### Contract Tests (sozo test)
-- spawn: creates Character with correct stats, Dungeon with zones_cleared=0, increments PlayerState.game_count
-- spawn: second call creates game_id=2, doesn't interfere with game_id=1
-- choose(0) at zone 0: moves to zone 1, emits ZoneEntered
-- choose(1) at zone 0: moves to zone 2, emits ZoneEntered
-- choose at non-fork zone: reverts
-- choose before clearing zone combat: reverts
-- start at zone with mobs: creates Fight with correct mob_count and packed HPs
-- start at zone 0 (no mobs): reverts
-- start when fight already active: reverts
-- cast(0, AA): deals 10 damage, spends 30 stamina, emits MobDamaged
-- cast when mob dead: reverts
-- cast when insufficient stamina: reverts
-- cast when no active fight: reverts
-- finish: mobs deal simultaneous damage, stamina resets to 100, emits PlayerDamaged + TurnEnded
-- finish when all mobs dead: ends fight, marks zone cleared, auto-advances if single exit
-- finish when player HP ≤ 0: marks dungeon failed, emits DungeonFailed
-- finish when zone 4 cleared: marks dungeon complete, emits DungeonCompleted
-- full run: spawn → choose(0) → start → [cast×2 → finish] → auto-advance → start → [cast + finish]×2 → auto-advance → start → [cast + finish]×3 → DungeonCompleted
+### Automated
+- `cd client && timeout 60 godot --headless --quit` — GDScript parse check (run after every workstream)
+- `sozo build && sozo test` — contract regression (run once at start, should be 19/19 pass)
 
-### Client Tests
-- `godot --headless --quit`: no parse errors
-- ToriiClient connects to local Torii instance
-- Entity subscription fires on sozo execute spawn
-- UI buttons trigger correct transaction calldata
+### Manual Test Matrix
+
+| Scenario | Steps | Expected |
+|----------|-------|----------|
+| Zone atmosphere | Enter each zone (0-4) | Unique ambient color, player light tint, vignette intensity |
+| Hit sequence | Attack a mob | Freeze → flash → shake → particles → number (in order) |
+| Heavy Attack | Select Heavy Attack → target mob | 50 ST cost, double damage number, fire particles |
+| Defend | Select Defend | Shield VFX, end turn, next mob damage halved (display only) |
+| Stamina exhaustion | Use Attack + Heavy Attack (80 ST), try Heavy Attack again | Heavy Attack greyed out (need 50, have 20) |
+| Mob death | Kill mob with attack | Death anim → smoke particles → scale to zero |
+| Turn order | Watch top bar during combat | Accurate turn order, highlights current actor |
+| Zone transition | Clear zone 1 → auto-advance to zone 3 | Fade → title card "Zone 3 — Deep Hall" → fade in |
+| Audio sync | Attack during combat | Slash SFX at animation peak, not at button press |
+| Keyboard combat | Use 1/2/3/4 keys + Tab + Enter | Full combat without mouse |
+| Resume from death | Die → Return to Menu → Spawn new game | Clean state reset |
 
 ---
 
 ## Verification Checklist
 
 ```bash
-# Phase 1-2: Contracts compile
-sozo build
+# 1. GDScript parse check
+cd client && timeout 60 godot --headless --quit 2>&1
+# Expected: clean exit, no errors
 
-# Phase 3: Tests pass
-sozo test
+# 2. Contract regression
+sozo build && sozo test
+# Expected: 19 passed, 0 failed
 
-# Phase 3: Deploy locally
-katana --dev &
-sozo migrate --dev
+# 3. 3D cleanup verification
+ls client/assets/models/ 2>&1
+# Expected: "No such file or directory"
 
-# Phase 3: Start Torii
-torii --world <WORLD_ADDRESS> --rpc http://localhost:5050 &
+ls client/scenes/zones/ 2>&1
+# Expected: "No such file or directory"
 
-# Phase 3: Manual E2E (example sozo execute calls)
-sozo execute <actions_address> spawn -c 0
-sozo execute <actions_address> choose -c 0
-sozo execute <actions_address> start
-sozo execute <actions_address> cast -c 0,0
-sozo execute <actions_address> cast -c 0,0
-sozo execute <actions_address> finish
+ls client/shaders/emissive_pulse.gdshader 2>&1
+# Expected: "No such file or directory"
 
-# Phase 4-5: Client compiles
-cd client && godot --headless --quit
+# 4. New assets present
+ls client/assets/backgrounds/zone_*.png | wc -l
+# Expected: 5
 
-# Phase 6: Full playtest
-# Manual: open Godot, connect wallet, play through dungeon
+ls client/assets/vfx/*.png | wc -l
+# Expected: 5+ (slash, fire, shield, sparks, light_gradient)
+
+ls client/assets/ui/*.png | wc -l
+# Expected: 5+ (panel_frame, button_normal, button_hover, button_disabled, bar_frame)
+
+# 5. New shader present
+ls client/shaders/vignette.gdshader
+# Expected: file exists
+
+# 6. Manual: full playthrough
+# Open Godot editor → F5 → connect → spawn → play through entire dungeon
 ```
 
 ---
@@ -401,12 +430,23 @@ cd client && godot --headless --quit
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
-| godot-dojo SDK Dictionary API is brittle for complex models | High | Medium | Build typed wrapper early (Phase 4.5). Keep model fields simple (no nested structs). |
-| Packed mob HP bit manipulation bugs in Cairo | Medium | High | Write exhaustive packing unit tests (Phase 3.1). Use 16-bit per mob for headroom. |
-| Auto-advance logic creates unexpected state transitions | Medium | Medium | Explicit state machine in contract. Test each transition path. |
-| Torii doesn't index compound-key models correctly | Low | High | Test entity subscription with compound keys in Phase 4.5. Fallback: use felt252 hash key. |
-| Godot 4.3 + godot-dojo crash on entity callback | Medium | Medium | Test early in Phase 4.4. SDK is stable on 4.3 per docs. |
-| Combat is too easy (25 HP total damage for full clear) | Low | Low | PoC validates the loop. Tune numbers (mob HP, mob power, mob count) later. |
+| Mock skills confuse players (display ≠ contract reality) | Medium | Medium | Clear UI labels ("Preview" or visual-only indicator). Document as PoC limitation. |
+| Art pipeline generates inconsistent style across assets | Medium | Medium | Use consistent prompt templates. Generate in batches. Review before import. |
+| PointLight2D performance with 4+ lights | Low | Medium | Lights are simple (no shadows). Reduce texture_scale if needed. Test in zone 4. |
+| Hit freeze (`get_tree().paused`) conflicts with timer-based animations | Medium | High | Use `process_always = true` on freeze timer. Test carefully with all concurrent tweens. |
+| New CommandPanel layout breaks on different resolutions | Medium | Medium | Use anchors and containers. Test at 1280×720 and 1920×1080. Stretch mode = `canvas_items`. |
+| Stamina desync between mock display and contract state | High | Medium | On every `fight_updated` signal, reset displayed stamina to contract value. Mock only between tx send and confirmation. |
+| sprite_loader frame naming conflicts with new art | Low | Low | Verify naming convention matches `{id}_{anim}_{frame}.png` before import. |
+| Audio latency on hit SFX | Low | Medium | Use `AudioStreamPlayer` (non-positional) for combat SFX. Preload all streams. |
+
+---
+
+## Open Questions
+
+- [ ] Exact asset generation prompts may need iteration — pipeline output quality varies. Budget 2-3 rounds per batch.
+- [ ] Defend skill: should stamina regen faster on the following turn (bonus), or just standard reset? (Currently: standard reset via `finish()`)
+- [ ] Turn order bar design: since combat is "player acts freely → all enemies," the turn order is always `[P, E, E, E, E, P, E, E, E, E, ...]`. Is a simpler "Phase Indicator" (Your Turn / Enemy Turn) better than fake individual slots?
+- [ ] Heavy Attack damage: should contract `cast()` eventually support `skill_id=1` (heavy attack) with actual 2x damage, or keep it as permanent visual mock?
 
 ---
 
@@ -414,463 +454,12 @@ cd client && godot --headless --quit
 
 | Decision | Rationale | Alternatives Considered |
 |----------|-----------|------------------------|
-| Stamina full reset on finish() | Simpler for PoC. 3 attacks per turn is consistent. Future skills with different costs will create resource pressure naturally. | Partial regen (+50) — adds tactical depth but complicates PoC |
-| No health regen between zones | Attrition is the primary difficulty mechanic. Efficient play in early zones matters for zone 4. | Partial heal (+20) — too forgiving for 4-zone dungeon |
-| Multi-cast before finish | Matches bal7hazar's design. Player dumps 1-3 actions then mobs respond. Natural turn rhythm. | Strict 1 action per finish — too slow, more tx overhead |
-| Simultaneous mob attack | Sum damage, one HP check. Simplest implementation. Which mob "killed" the player doesn't matter for PoC. | Sequential — more events but same outcome |
-| Player address + game counter keys | Multiple dungeons per player (history). game_count in PlayerState is cheap. | Player address only (1 active) — blocks replay. Auto-increment global ID — no player scoping. |
-| Auto-advance on single exit | Reduces unnecessary choose() calls (Zone 1→3, 2→3, 3→4). choose() only at actual forks (Zone 0). | Always require choose() — 4 extra transactions per run for no tactical value |
-| Skip game-components for PoC | No NFT minting overhead, simpler contract surface. Add structured settings/lifecycle in v2.1. | Include — proven in v1 but adds pre_action/post_action complexity |
-| Contracts first, then client | Client needs real Torii data to test against. No mock layer to maintain. | Parallel — faster but higher integration risk with untested SDK |
-| 16-bit mob HP packing (u64) | 4 mobs × 16 bits = 64 bits. Fits in u64 cleanly. Headroom for mobs with >255 HP in future. | 8-bit (u32) — caps at 255 HP per mob. felt252 — overkill for 4 mobs. |
-
----
-
-# Cartridge In-Client Authentication (No External Browser) Implementation Plan
-
-## Overview
-
-Replace the current `OS.shell_open(session_url)` browser-based Controller authorization with an in-client authentication flow in Godot 4.6. The primary target is a pure in-game onboarding path using controller.c capabilities exposed by the existing godot-dojo GDExtension (`DojoController`), while keeping a fallback path for compatibility.
-
-## Goals
-
-- Eliminate the external browser popup from the default player authentication flow.
-- Validate whether `DojoController` exposes headless account/session APIs needed for fully in-client auth.
-- Keep compatibility with existing transaction flow (`DojoSessionAccount.execute`) and policy model.
-- Define a funding/paymaster path so newly created headless accounts can transact immediately.
-
-## Non-Goals
-
-- Rewriting gameplay state sync, Torii subscriptions, or combat flow.
-- Building a full social/passkey identity migration UX in this iteration.
-- Guaranteeing Cartridge identity continuity if the selected mode is headless account creation.
-
-## Assumptions and Constraints
-
-- Godot client uses `godot-dojo` v0.7.4 GDExtension with `DojoSessionAccount`, `ControllerHelper`, and `DojoController` classes.
-- Current auth flow in `client/scripts/autoload/dojo_bridge.gd` uses `create_from_subscribe` + external browser URL approval.
-- Game currently targets Slot/Katana URLs; production target may include Sepolia and possibly mainnet.
-- Player preference questions were asked and are currently unresolved; plan includes decision gates for both outcomes.
-
-## Requirements
-
-### Functional
-
-- In-client auth flow must not call `OS.shell_open()` in the primary path.
-- Auth flow must produce a usable account/session for executing `spawn`, `choose`, `start`, `cast`, `finish`.
-- Session/account metadata must still be persisted in `user://controller_session.json` (extended schema allowed).
-- Existing resume flow must continue to work after app restart.
-
-### Non-Functional
-
-- First-time auth UX should complete in <10 seconds on healthy network.
-- Clear on-screen status/error states for: creating account, funding check, signup, session ready, retry.
-- Safe fallback if headless flow unsupported on a platform build.
-
-## Technical Design
-
-### Approach Analysis (Three Options)
-
-| Approach | Browser Needed | Keeps Existing Cartridge Account | Complexity | Recommended Use |
-|---|---:|---:|---:|---|
-| 1. Headless `ControllerAccount::new_headless` via `DojoController` | No | No (new account model) | Medium | **Recommended default** for “no popup ever” UX |
-| 2. `create_from_subscribe` (current) | Yes (first time) | Yes | Low | Keep as fallback/legacy mode |
-| 3. `SessionAccount::init/create` with externally obtained session data | No | Depends on source | High (needs external broker/QR/backend) | Phase-2 optional enhancement |
-
-### Recommendation
-
-Implement a **dual-mode architecture** with **Headless-first** and **Subscribe fallback**:
-
-1. **Primary:** Headless in-client account creation via `DojoController` (Approach 1) to fully remove browser popup.
-2. **Fallback:** Existing `create_from_subscribe` path kept behind a feature flag for platforms/builds where headless APIs are unavailable.
-3. **Future Optional:** External session-broker path (Approach 3) if product later requires existing Cartridge identity continuity without browser.
-
-### Architecture
-
-```text
-Connection UI
-  -> dojo_bridge.start_auth(mode)
-      -> HeadlessAuthProvider (new)
-          -> DojoController (introspected API)
-          -> create/load owner key
-          -> create controller account
-          -> signup if needed
-          -> build session/account object for tx execution
-      -> SessionCacheStore (extended metadata)
-      -> dojo_bridge.current_player + session_ready signal
-
-Fallback path:
-  -> Existing ControllerHelper + DojoSessionAccount.create_from_subscribe
-```
-
-### UX Flow (No Browser)
-
-1. Player taps **Connect**.
-2. UI shows: “Creating secure local account…”
-3. If no account exists: generate/store owner keypair and (optional) prompt username.
-4. UI shows: “Registering account on Starknet…”
-5. If funding required: show “Funding required / Sponsoring transaction…” with retry.
-6. On success: “Connected” and transition to dungeon.
-
----
-
-## Implementation Plan
-
-### Serial Dependencies (Must Complete First)
-
-#### Phase 0: API Discovery and Decision Gate
-**Prerequisite for:** All implementation workstreams
-
-| Task | Description | Output |
-|------|-------------|--------|
-| 0.1 | Introspect `DojoController` methods in runtime using `ClassDB.class_get_method_list("DojoController")` (debug script/tool scene) and document signatures/return shapes | `docs/controller-dojocontroller-api.md` with callable method map |
-| 0.2 | Confirm whether methods cover headless lifecycle (owner init/new_headless/signup/execute/get_address/info) and whether they map to `controller.c` capabilities | Feasibility verdict: Headless Supported / Partial / Unsupported |
-| 0.3 | Resolve product decision gate from user prefs: headless-only vs existing Cartridge continuity, network scope (Sepolia/mainnet), account style (guest vs username) | Decision record added to PLAN Decision Log |
-
----
-
-### Parallel Workstreams
-
-#### Workstream A: Auth Domain Refactor in `dojo_bridge.gd`
-**Dependencies:** Phase 0
-**Can parallelize with:** Workstreams B, C
-
-| Task | Description | Output |
-|------|-------------|--------|
-| A.1 | Introduce `auth_mode` enum/config (`headless`, `subscribe_fallback`) and `start_auth()` orchestrator | Browser-independent auth entrypoint |
-| A.2 | Implement `_auth_headless_start()` path using `DojoController` methods discovered in 0.1; remove direct `OS.shell_open()` from primary path | In-client auth implementation |
-| A.3 | Keep `_auth_subscribe_start()` as fallback behind feature flag; default off in production | Backward-compatible fallback |
-| A.4 | Extend cache schema to include headless account metadata (`auth_mode`, `username`, `owner_key_version`, optional `controller_address`) and migrate old cache safely | Versioned session/account cache |
-
-#### Workstream B: Connection UX and Error Recovery
-**Dependencies:** Phase 0
-**Can parallelize with:** Workstreams A, C
-
-| Task | Description | Output |
-|------|-------------|--------|
-| B.1 | Replace browser-oriented labels in `connection.gd` with in-client auth states/progress | Updated status machine and copy |
-| B.2 | Add explicit transient states: `creating_account`, `registering`, `funding_check`, `ready`, `failed_retryable` | Better UX and diagnosability |
-| B.3 | Add optional username capture UI (if chosen by decision gate) and guest autogeneration fallback | Player onboarding UI branch |
-
-#### Workstream C: Funding + Paymaster Integration
-**Dependencies:** Phase 0
-**Can parallelize with:** Workstreams A, B
-
-| Task | Description | Output |
-|------|-------------|--------|
-| C.1 | Define account activation strategy for headless signup tx (self-funded vs sponsored) per environment (local, Slot Sepolia, mainnet) | `docs/headless-funding-matrix.md` |
-| C.2 | Integrate Slot paymaster configuration (if available) for signup + gameplay tx sponsorship; add runtime checks and clear errors when unavailable | Paymaster-aware tx submission flow |
-| C.3 | Add preflight “can transact” check before entering gameplay | Prevents post-connect transaction failures |
-
----
-
-### Merge Phase
-
-#### Phase 4: Integration, Compatibility, and Cleanup
-**Dependencies:** Workstreams A, B, C
-
-| Task | Description | Output |
-|------|-------------|--------|
-| 4.1 | Integrate all auth/funding states and ensure `session_ready` signal semantics stay stable for scene switcher | End-to-end connect flow |
-| 4.2 | Remove legacy focus-return auth completion hooks (`focus_entered` browser return coupling) when headless mode is active | Cleaner auth lifecycle |
-| 4.3 | Add telemetry/logging tags for auth steps and failures (`[auth][headless]`, `[auth][funding]`) | Faster issue triage |
-
----
-
-## Testing and Validation
-
-- Unit-style script tests for cache migration and auth mode switching.
-- Manual E2E scenarios:
-  - Fresh install, no cache -> connect -> spawn -> cast/finish txs succeed.
-  - Restart app -> resume session/account without re-auth.
-  - Simulate funding/paymaster unavailable -> user gets actionable retry/error.
-  - Fallback mode enabled -> existing browser flow still works.
-- Network matrix:
-  - Local Katana (dev)
-  - Slot Sepolia deployment
-  - (Optional) Mainnet dry-run config validation
-
-## Rollout and Migration
-
-- Stage 1: Ship behind `auth_mode=headless` feature flag defaulting to fallback on unknown platforms.
-- Stage 2: Enable headless by default on validated platforms (Linux/macOS/Windows).
-- Stage 3: Decide whether to remove subscribe flow entirely or keep as identity-continuity option.
-- Rollback: flip config to `subscribe_fallback` without reverting gameplay code.
-
-## Verification Checklist
-
-```bash
-# 1) Godot script parse check
-cd client && godot --headless --quit
-
-# 2) Auth smoke (manual in editor/runtime)
-# - Connect shows no external browser launch
-# - Account/session becomes valid
-# - session cache file updated
-
-# 3) Transaction smoke
-# - spawn/start/cast/finish succeed from connected account
-
-# 4) Resume smoke
-# - Restart client; auth resumes without popup
-```
-
-Success criteria:
-- No `OS.shell_open(...)` invocation on default auth path.
-- Player reaches connected state and can submit transactions.
-- Resume path works with new cache schema.
-
-## Risk Assessment
-
-| Risk | Likelihood | Impact | Mitigation |
-|------|------------|--------|------------|
-| `DojoController` lacks required headless bindings in v0.7.4 | Medium | High | Phase 0 hard-gate; retain subscribe fallback |
-| Headless signup requires funds and blocks onboarding | High | High | Slot paymaster sponsorship + preflight funding checks |
-| Cross-platform extension behavior differs (desktop/mobile/web) | Medium | Medium | Enable per-platform rollout flags |
-| Loss of existing Cartridge identity continuity | Medium | Medium | Keep fallback mode and communicate account model clearly |
-
-## Open Questions
-
-- [ ] Product choice: headless-first (new accounts) vs identity continuity with existing Cartridge accounts.
-- [ ] Network scope at launch: Sepolia-only or Sepolia+mainnet.
-- [ ] Onboarding preference: guest auto-generated only or username/recovery UX at connect.
-
-## Decision Log (Auth Track)
-
-| Decision | Rationale | Alternatives Considered |
-|----------|-----------|------------------------|
-| Use headless as primary path when supported | Only approach that guarantees no external browser popup | Keep `create_from_subscribe` only (fails UX requirement) |
-| Preserve browser-based subscribe as fallback initially | Limits rollout risk while validating DojoController coverage | Hard cutover immediately |
-| Add explicit funding/paymaster workstream | Headless accounts fail without activation/gas strategy | Defer funding concerns to later (creates broken first-run UX) |
-
----
-
-## In-Client Controller Authentication
-
-### Overview
-
-Implement embedded Cartridge authentication inside the Godot client using a CEF webview so players keep using existing Cartridge identities (passkeys/social login) without leaving the game window. The current session architecture remains intact (`ControllerHelper` URL generation + `DojoSessionAccount.create_from_subscribe` + session cache); only the browser surface changes from external (`OS.shell_open`) to in-app (`CefTexture`/CEF browser scene).
-
-### Goals
-
-- Eliminate external browser popups on desktop platforms (Linux/macOS/Windows).
-- Preserve existing Cartridge account reuse (no headless/new account flow).
-- Support both Sepolia and Mainnet from day one.
-- Keep current auth/session APIs and transaction path unchanged after approval.
-- Provide a polished embedded auth UX with clear states and recovery.
-
-### Non-Goals
-
-- Adopting `DojoController` headless mode (creates new accounts; rejected by product decision).
-- Reworking Torii sync, gameplay systems, or transaction encoding.
-- Solving mobile in-app webview parity with CEF (desktop-first scope).
-
-### Assumptions and Constraints
-
-- Preferred plugin: `dsh0416/godot-cef` (Godot 4.6 support, OSR texture rendering, MIT, prebuilt binaries).
-- CEF is desktop-only and increases distribution size (~100MB+).
-- WebAuthn platform authenticators are expected to work; cross-device QR has known CEF popup issues.
-- Existing `controller_session.json` resume model remains valid.
-
-### Requirements
-
-#### Functional
-
-- Replace `OS.shell_open(session_url)` with in-client browser presentation on desktop.
-- Detect auth completion from CEF navigation/callback instead of window focus return.
-- Trigger the same completion step: `DojoSessionAccount.create_from_subscribe(...)`.
-- Keep session persistence/resume behavior unchanged.
-- Provide mobile fallback to external browser where CEF is unavailable.
-
-#### Non-Functional
-
-- Auth panel opens within 300ms after Connect click (desktop target).
-- Failed auth attempts are retryable without app restart.
-- Logs provide enough detail to diagnose auth failure causes quickly.
-
-### Technical Design
-
-#### Data Model
-
-- No new gameplay/contract models.
-- Optional small auth cache extension fields (backward compatible):
-  - `auth_transport`: `cef` or `external`
-  - `last_auth_network`: `sepolia` or `mainnet`
-
-#### API Design
-
-- Keep existing SDK API usage:
-  - `ControllerHelper.generate_private_key()`
-  - `ControllerHelper.create_session_registration_url(...)`
-  - `DojoSessionAccount.create_from_subscribe(...)`
-  - `DojoSessionAccount.create(...)` (resume)
-- Add bridge-level orchestration methods:
-  - `start_embedded_auth()`
-  - `on_embedded_auth_url_changed(url)`
-  - `cancel_embedded_auth()`
-
-#### Architecture
-
-```text
-connection.gd
-  -> dojo_bridge.initiate_controller_auth()
-      -> build session URL (existing)
-      -> auth_browser.show(url) [NEW CEF scene]
-          -> CEF emits URL/navigation signals
-              -> dojo_bridge.complete_controller_auth() [existing]
-                  -> session_account.create_from_subscribe(...)
-                  -> cache session info
-                  -> emit session_ready
-      -> hide auth_browser on success/failure/cancel
-```
-
-`DojoController` is intentionally not used in this feature because it targets headless/new-account workflows.
-
-#### UX Flow
-
-1. Player clicks **Connect**.
-2. Fullscreen/modal auth panel appears with embedded Cartridge page.
-3. Player completes passkey/social login and approves session.
-4. Auth panel closes automatically on detected completion.
-5. Connection screen shows success state and transitions to game.
-6. On failure/cancel: user sees retry + “Open in browser” fallback action.
-
----
-
-### Implementation Plan
-
-### Serial Dependencies (Must Complete First)
-
-These tasks create foundations that other work depends on. Complete in order.
-
-#### Phase 0: CEF Foundation
-**Prerequisite for:** All subsequent phases
-
-| Task | Description | Output |
-|------|-------------|--------|
-| 0.1 | Add CEF plugin (`dsh0416/godot-cef`) to `client/addons/` and register in project settings | Plugin loads in Godot 4.6 editor/runtime |
-| 0.2 | Validate desktop startup with plugin enabled and no scene changes | `godot --headless --quit` and editor start both stable |
-| 0.3 | Create `client/scenes/auth_browser.tscn` scaffold with `CefTexture` + spinner + close button + error label | Reusable auth browser scene |
-| 0.4 | Create `client/scripts/auth_browser.gd` wrapper exposing signals (`url_changed`, `auth_completed_candidate`, `closed`, `error`) | Browser component contract for bridge/connection |
-
----
-
-### Parallel Workstreams
-
-These workstreams can be executed independently after Phase 0.
-
-#### Workstream A: Bridge Authentication Orchestration (`dojo_bridge.gd`)
-**Dependencies:** Phase 0
-**Can parallelize with:** Workstreams B, C
-
-| Task | Description | Output |
-|------|-------------|--------|
-| A.1 | Replace `OS.shell_open()` branch with desktop embedded-browser launch | No external browser call on desktop path |
-| A.2 | Add callback-driven completion path wired from `auth_browser` URL/navigation signals | `complete_controller_auth()` invoked without focus polling |
-| A.3 | Preserve existing create/resume/cache semantics and policy generation | Backward-compatible session behavior |
-| A.4 | Add transport fallback (`external`) for unsupported platforms (Android/iOS/Web) | Reliable cross-platform behavior |
-
-#### Workstream B: Connection UX State Machine (`connection.gd` + scene)
-**Dependencies:** Phase 0
-**Can parallelize with:** Workstreams A, C
-
-| Task | Description | Output |
-|------|-------------|--------|
-| B.1 | Remove focus-based completion logic (`focus_entered`) and replace with auth-browser signal handling | Deterministic in-app auth lifecycle |
-| B.2 | Add explicit states: `opening_auth`, `awaiting_approval`, `verifying_session`, `connected`, `retryable_error` | Clear user feedback |
-| B.3 | Add controls: retry embedded, open system browser fallback, cancel | Better recovery UX |
-
-#### Workstream C: Auth Browser Component (`auth_browser.gd` + `auth_browser.tscn`)
-**Dependencies:** Phase 0
-**Can parallelize with:** Workstreams A, B
-
-| Task | Description | Output |
-|------|-------------|--------|
-| C.1 | Implement URL load/start/end callbacks and loading/error overlays | Stable embedded browser component |
-| C.2 | Implement auth-completion candidate detection rules (redirect URL patterns + optional query markers) | Trigger point for session completion |
-| C.3 | Implement secure lifecycle controls (clear close behavior, timeout, visibility reset) | Reusable and leak-free UI component |
-
----
-
-### Merge Phase
-
-After parallel workstreams complete, these tasks integrate the work.
-
-#### Phase 3: Integration and Network Validation
-**Dependencies:** Workstreams A, B, C
-
-| Task | Description | Output |
-|------|-------------|--------|
-| 3.1 | Wire `connection.gd` ↔ `dojo_bridge.gd` ↔ `auth_browser.gd` end-to-end | Complete embedded auth flow |
-| 3.2 | Validate Sepolia and Mainnet configuration paths (URLs, chain labels, cache resume) | Dual-network-ready auth path |
-| 3.3 | Run desktop matrix tests (Linux/macOS/Windows) + fallback path tests on non-CEF targets | Platform acceptance report |
-
----
-
-### Testing and Validation
-
-- Unit/logic tests (script-level where possible):
-  - URL completion matcher correctness
-  - bridge state transitions for success/cancel/error
-  - cache backward compatibility
-- Manual E2E desktop tests:
-  - Fresh user login via passkey/social in embedded panel
-  - Session approval -> tx execution (`spawn`, `start`, `cast`, `finish`)
-  - Restart and resume from cache without relogin
-  - Cancel midway and recover with retry
-- Network tests:
-  - Sepolia auth flow + tx submission
-  - Mainnet auth flow + tx submission (or safe dry-run validation environment)
-
-### Rollout and Migration
-
-- Stage 1: Ship behind config flag `auth.embedded_enabled=true` on desktop builds only.
-- Stage 2: Promote embedded auth to default on desktop after matrix validation.
-- Stage 3: Keep browser fallback available behind explicit user action.
-- Rollback: disable embedded flag and revert to existing `OS.shell_open()` flow.
-
-### Verification Checklist
-
-```bash
-# Verify project still parses
-cd client && godot --headless --quit
-
-# Manual desktop checks
-# 1) Click Connect -> embedded auth panel opens in-game
-# 2) Complete Cartridge auth in panel (passkey/social)
-# 3) Panel closes, session becomes valid, user enters game
-# 4) spawn/start/cast/finish transactions succeed
-# 5) Restart game -> session resumes without auth prompt
-
-# Platform fallback checks
-# Android/iOS/Web path uses OS.shell_open() fallback
-```
-
-### Risk Assessment
-
-| Risk | Likelihood | Impact | Mitigation |
-|------|------------|--------|------------|
-| CEF plugin compatibility regression with future Godot versions | Medium | High | Pin plugin version, test against each engine upgrade |
-| Large binary size increase from Chromium bundle | High | Medium | Separate desktop distribution channel notes; optional download packaging |
-| Cross-device QR WebAuthn popup bug in CEF OSR | Medium | Medium | Provide “Open in system browser” fallback CTA |
-| Desktop-only capability causes inconsistent platform UX | High | Medium | Explicit platform policy + fallback strategy in product UX |
-| Incorrect auth completion URL detection causes false positives/negatives | Medium | High | Harden matcher with allowlist patterns and timeout-safe retries |
-
-### Open Questions
-
-- [x] ~~Final plugin choice~~ → Resolved: lock `dsh0416/godot-cef`
-- [ ] Canonical auth completion URL pattern from Cartridge session page (exact redirect markers) — discover during Phase 0 by inspecting CEF navigation on the live session page.
-- [x] ~~Mobile fallback UX policy~~ → Resolved: prompt confirmation dialog, then `OS.shell_open()`
-- [x] ~~Mainnet safety policy~~ → Resolved: Slot-first (default), Sepolia/Mainnet secondary via config
-
-### Decision Log
-
-| Decision | Rationale | Alternatives Considered |
-|----------|-----------|------------------------|
-| Reuse existing Cartridge accounts only | Product requirement for account continuity | Headless/new-account via `DojoController` |
-| Desktop embedded auth via CEF | Meets "same process but in-app" requirement | External browser popup, native webview overlays |
-| Keep `DojoSessionAccount.create_from_subscribe` | Preserves proven session architecture and cache resume | Rebuild auth stack around controller.c headless mode |
-| Slot as primary network, Sepolia/Mainnet secondary | Currently deployed to Slot (`api.cartridge.gg/x/athanor-djizus-slot`) | Sepolia-first, Mainnet day-one |
-| Lock `dsh0416/godot-cef` without bake-off | GPU-accelerated, Godot 4.6 native, 46 releases, MIT, actively maintained | `Lecrapouille/gdcef` (more stars but software-rendered) |
-| URL redirect detection for auth completion | Simple, reliable — monitor CEF navigation for redirect pattern | GraphQL subscription only, or belt-and-suspenders |
-| Mobile fallback: prompt then open | Better UX than silent browser launch — user knows what's happening | Auto-open (current behavior) |
+| Mock skills as client-side only | Avoids contract migration. Proves UI/UX before committing onchain. Can wire to contracts later. | Full contract rewrite (too much scope), skip skills entirely (loses FF feel) |
+| Simple 3-skill set (Attack, Heavy, Defend) | Minimum viable to demonstrate command panel + stamina economy. Fewer VFX needed. | 5+ skills (too many VFX), skill-less UI (doesn't test the pattern) |
+| Remove 3D assets | Eliminates confusion. Plan is 100% Node2D. 3D code paths are dead weight. | Keep for later (tech debt), hybrid 3D/2D (complexity) |
+| Art pipeline for ALL generated assets | Consistent style. No manual art editing. Batch-friendly. | Manual art (slow, inconsistent), marketplace assets (wrong style), pure procedural (limited) |
+| CanvasModulate for ambient darkening | Simplest approach. Works with PointLight2D out of the box. Per-zone tweening. | Custom shader (complex), WorldEnvironment (3D only), manual darkening (tedious) |
+| Hit freeze via `get_tree().paused` | Matches Hades-style weight. Simple implementation. Short duration (40ms) is imperceptible lag. | Engine time_scale (affects physics), manual animation pause (complex) |
+| Stamina mock with contract reconciliation | Allows instant UI response. Contract is source of truth on Torii update. Brief visual-only window. | Wait for contract confirmation (slow), pure local state (desync risk) |
+| Single arena.tscn for all zones | Current architecture works. Zone switching is palette/background swap, not scene change. | Per-zone scenes (complex transitions, state management overhead) |
+| Generate 4 frames per mob animation | Meaningful improvement over 1 frame. 48 new assets is pipeline-manageable. 6 frames would be 96. | Keep 1 frame (too static), 6 frames (too many assets), skeletal animation (wrong approach for pixel art) |
