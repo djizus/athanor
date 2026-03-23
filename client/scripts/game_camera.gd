@@ -5,10 +5,13 @@ const ZOOM_COMBAT := Vector2(0.65, 0.65)
 const ZOOM_WIDE := Vector2(0.4, 0.4)
 const FOLLOW_SPEED := 4.0
 
+enum CameraMode { FOLLOW, FIXED }
+
 var _follow_target: Node2D = null
 var _tween: Tween
 var _shake_intensity: float = 0.0
 var _shake_decay: float = 8.0
+var _mode: CameraMode = CameraMode.FOLLOW
 
 func _ready() -> void:
 	zoom = ZOOM_DEFAULT
@@ -16,8 +19,12 @@ func _ready() -> void:
 	position_smoothing_speed = FOLLOW_SPEED
 
 func _process(_delta: float) -> void:
-	if _follow_target != null and is_instance_valid(_follow_target):
-		global_position = _follow_target.global_position
+	match _mode:
+		CameraMode.FOLLOW:
+			if _follow_target != null and is_instance_valid(_follow_target):
+				global_position = _follow_target.global_position
+		CameraMode.FIXED:
+			pass
 	if _shake_intensity > 0:
 		offset = Vector2(
 			randf_range(-_shake_intensity, _shake_intensity),
@@ -29,6 +36,17 @@ func _process(_delta: float) -> void:
 			offset = Vector2.ZERO
 
 func set_follow_target(target: Node2D) -> void:
+	_mode = CameraMode.FOLLOW
+	_follow_target = target
+
+func set_fixed_mode(pos: Vector2, tween_duration: float = 0.5) -> void:
+	_mode = CameraMode.FIXED
+	_follow_target = null
+	var tween := create_tween()
+	tween.tween_property(self, "global_position", pos, tween_duration).set_ease(Tween.EASE_IN_OUT)
+
+func set_follow_mode(target: Node2D) -> void:
+	_mode = CameraMode.FOLLOW
 	_follow_target = target
 
 func clear_follow_target() -> void:
