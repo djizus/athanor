@@ -154,6 +154,7 @@ func spawn_mobs(count: int, zone_id: int) -> void:
 func clear_mobs() -> void:
 	for child in mob_anchor.get_children():
 		if is_instance_valid(child):
+			_anim_data.erase(str(child.get_instance_id()))
 			child.queue_free()
 	_mob_sprites.clear()
 	_mob_models.clear()
@@ -347,6 +348,17 @@ func _create_animated_sprite(frames: SpriteFrames, scale: Vector3) -> AnimatedSp
 	sprite.add_child(shadow)
 	return sprite
 
+const ANIM_ALIASES := {
+	"idle": ["idle", "Idle", "combat_stance", "Combat_Stance", "CombatStance"],
+	"attack": ["attack", "Attack", "AttackingwithWeapon"],
+	"hit": ["hit", "Hit_Reaction", "hit_reaction", "BeHit_FlyUp"],
+	"death": ["death", "Dead", "dead", "Dying"],
+	"walk": ["walk", "Walking", "walking", "Casual_Walk"],
+	"run": ["run", "Running", "running", "RunFast"],
+}
+
+var _anim_data: Dictionary = {}
+
 func _setup_model_animations(model: Node3D) -> void:
 	var anim_player: AnimationPlayer = model.find_child("AnimationPlayer", true, false) as AnimationPlayer
 	if anim_player == null:
@@ -354,29 +366,88 @@ func _setup_model_animations(model: Node3D) -> void:
 	var anims := anim_player.get_animation_list()
 	if anims.is_empty():
 		return
-	for anim_name in anims:
-		if "idle" in anim_name.to_lower() or "loop" in anim_name.to_lower():
-			anim_player.play(anim_name)
-			return
-	anim_player.play(anims[0])
+
+	var ek := str(model.get_instance_id())
+	var resolved := {}
+	for game_name in ANIM_ALIASES:
+		for alias in ANIM_ALIASES[game_name]:
+			for a in anims:
+				if alias.to_lower() == a.to_lower() or alias.to_lower() in a.to_lower():
+					resolved[game_name] = a
+					break
+			if game_name in resolved:
+				break
+
+	_anim_data[ek] = { "player": anim_player, "resolved": resolved, "playback": null }
+
+	if resolved.size() >= 2 and "idle" in resolved:
+		_build_animation_tree(model, anim_player, ek, resolved)
+	elif "idle" in resolved:
+		anim_player.play(resolved["idle"])
+	elif anims.size() > 0:
+		anim_player.play(anims[0])
+
+func _build_animation_tree(model: Node3D, anim_player: AnimationPlayer,
+		ek: String, resolved: Dictionary) -> void:
+	var tree := AnimationTree.new()
+	tree.name = "AnimTree"
+	model.add_child(tree)
+	tree.anim_player = anim_player.get_path()
+	var sm := AnimationNodeStateMachine.new()
+	tree.tree_root = sm
+
+	for game_name in resolved:
+		var node := AnimationNodeAnimation.new()
+		node.animation = resolved[game_name]
+		sm.add_node(game_name, node)
+
+	for target in ["attack", "hit", "walk"]:
+		if target in resolved and "idle" in resolved:
+			var t := AnimationNodeStateMachineTransition.new()
+			t.xfade_time = 0.1
+			t.switch_mode = AnimationNodeStateMachineTransition.SWITCH_MODE_IMMEDIATE
+			sm.add_transition("idle", target, t)
+			var t_back := AnimationNodeStateMachineTransition.new()
+			t_back.xfade_time = 0.15
+			t_back.advance_mode = AnimationNodeStateMachineTransition.ADVANCE_MODE_AUTO
+			sm.add_transition(target, "idle", t_back)
+
+	if "death" in resolved:
+		for from_state in resolved:
+			if from_state != "death":
+				var t := AnimationNodeStateMachineTransition.new()
+				t.xfade_time = 0.0
+				t.switch_mode = AnimationNodeStateMachineTransition.SWITCH_MODE_IMMEDIATE
+				sm.add_transition(from_state, "death", t)
+
+	tree.active = true
+	var playback: AnimationNodeStateMachinePlayback = tree.get("parameters/playback")
+	_anim_data[ek]["playback"] = playback
+	if "idle" in resolved:
+		playback.travel("idle")
 
 func _play_model_anim(model: Node3D, anim_name: String) -> void:
 	if model == null or not is_instance_valid(model):
 		return
-	var anim_player: AnimationPlayer = model.find_child("AnimationPlayer", true, false) as AnimationPlayer
-	if anim_player != null:
-		var anims := anim_player.get_animation_list()
-		for a in anims:
-			if anim_name.to_lower() in a.to_lower():
-				anim_player.play(a)
-				if anim_name != "idle":
-					anim_player.animation_finished.connect(func(_n: StringName):
-						for idle_a in anim_player.get_animation_list():
-							if "idle" in idle_a.to_lower():
-								anim_player.play(idle_a)
-								return
-					, CONNECT_ONE_SHOT)
-				return
+	var ek := str(model.get_instance_id())
+	var data: Dictionary = _anim_data.get(ek, {})
+	var resolved: Dictionary = data.get("resolved", {})
+	var playback = data.get("playback")
+
+	if playback != null and anim_name in resolved:
+		playback.travel(anim_name)
+		return
+
+	var anim_player: AnimationPlayer = data.get("player")
+	if anim_player != null and anim_name in resolved:
+		anim_player.play(resolved[anim_name])
+		if anim_name != "idle" and anim_name != "walk" and anim_name != "run":
+			anim_player.animation_finished.connect(func(_n: StringName):
+				if "idle" in resolved:
+					anim_player.play(resolved["idle"])
+			, CONNECT_ONE_SHOT)
+		return
+
 	if anim_name == "attack":
 		_tween_attack_lunge(model, null)
 	elif anim_name == "hit":
