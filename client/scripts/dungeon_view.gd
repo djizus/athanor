@@ -9,14 +9,14 @@ const ZONE_COLORS := {
 }
 
 const MOB_POSITIONS := {
-	1: [Vector2(0, -180)],
-	2: [Vector2(-160, -180), Vector2(160, -180)],
-	4: [Vector2(-220, -140), Vector2(220, -140), Vector2(-110, -280), Vector2(110, -280)],
+	1: [Vector2(0, -120)],
+	2: [Vector2(-100, -120), Vector2(100, -120)],
+	4: [Vector2(-140, -100), Vector2(140, -100), Vector2(-70, -200), Vector2(70, -200)],
 }
 
-const PLAYER_POSITION := Vector2(0, 150)
-const SPRITE_SCALE := Vector2(0.45, 0.45)
-const MOB_SPRITE_SCALE := Vector2(0.38, 0.38)
+const PLAYER_POSITION := Vector2(0, 100)
+const SPRITE_SCALE := Vector2(0.25, 0.25)
+const MOB_SPRITE_SCALE := Vector2(0.2, 0.2)
 const ZONE_MOB_COUNT := {0: 0, 1: 1, 2: 1, 3: 2, 4: 4}
 
 const ZONE_PALETTES := {

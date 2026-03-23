@@ -115,8 +115,8 @@ func _ready() -> void:
 
 	var config: Dictionary = RoomConfigScript.get_config(initial_zone)
 	room_ctrl.configure(config)
-	if _player_controller != null:
-		room_ctrl.place_player(_player_controller)
+	# Don't call room_ctrl.place_player() — dungeon_view.spawn_hero() handles positioning
+	room_ctrl._player_ref = _player_controller
 
 	room_ctrl.door_interacted.connect(_on_room_door_interacted)
 	room_ctrl.battle_triggered.connect(_on_room_battle_triggered)
@@ -213,18 +213,14 @@ func _refresh(_data: Dictionary = {}) -> void:
 
 		var camera_rig := get_node_or_null("GameCamera")
 		if camera_rig:
+			# Always follow player — dungeon_view handles all positioning
+			if camera_rig.has_method("set_follow_mode") and _player_controller:
+				camera_rig.set_follow_mode(_player_controller)
 			match current_state:
 				ArenaState.FIGHTING:
-					if camera_rig.has_method("set_fixed_mode"):
-						var battle_center: Vector2 = Vector2.ZERO
-						if _player_controller != null:
-							battle_center = _player_controller.position
-						camera_rig.set_fixed_mode(battle_center, 0.5)
 					if camera_rig.has_method("combat_zoom_in"):
 						camera_rig.combat_zoom_in()
 				ArenaState.CLEARED, ArenaState.FORK, ArenaState.PRE_FIGHT:
-					if camera_rig.has_method("set_follow_mode") and _player_controller:
-						camera_rig.set_follow_mode(_player_controller)
 					if camera_rig.has_method("combat_zoom_out"):
 						camera_rig.combat_zoom_out()
 
@@ -558,8 +554,7 @@ func _reload_room_for_zone(zone_id: int) -> void:
 		return
 	var new_config: Dictionary = RoomConfigScript.get_config(zone_id)
 	room_ctrl.configure(new_config)
-	if _player_controller != null:
-		room_ctrl.place_player(_player_controller)
+	room_ctrl._player_ref = _player_controller
 	room_ctrl.spawn_doors()
 	_clear_room_battle_trigger()
 	if new_config.get("mob_count", 0) > 0 and not _is_zone_cleared(zone_id):
