@@ -279,12 +279,16 @@ func _update_target_bar() -> void:
 	end_turn_button.disabled = false
 
 func _update_mob_hp_bars() -> void:
-	if dungeon_view == null or not dungeon_view.has_method("update_mob_hp"):
+	if dungeon_view == null:
 		return
 	var mob_count := int(game_state.fight.get("mob_count", 0))
 	var packed: int = _parse_int(game_state.fight.get("mob_healths", 0))
 	for i in range(mob_count):
-		dungeon_view.update_mob_hp(i, _unpack_mob_hp(packed, i), 20)
+		var hp := _unpack_mob_hp(packed, i)
+		if dungeon_view.has_method("update_mob_hp"):
+			dungeon_view.update_mob_hp(i, hp, 20)
+		if dungeon_view.has_method("update_mob_visual"):
+			dungeon_view.update_mob_visual(i, hp, 20)
 
 func _zone_mob_name(zone_id: int) -> String:
 	match zone_id:

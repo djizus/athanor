@@ -56,6 +56,7 @@ func load_zone(zone_id: int) -> void:
 		child.queue_free()
 	if _zone_scenes.has(zone_id):
 		zone_anchor.add_child(_zone_scenes[zone_id].instantiate())
+		_add_extended_ground(zone_id)
 	else:
 		_create_fallback_platform(zone_id)
 	_decorate_zone(zone_id)
@@ -138,8 +139,16 @@ func update_mob_visual(mob_id: int, hp: int, _max_hp: int) -> void:
 		tween.tween_property(sprite, "modulate:a", 0.0, 0.3)
 		tween.tween_callback(sprite.queue_free)
 
+func face_hero_toward(target_pos: Vector3) -> void:
+	if _player_sprite == null:
+		return
+	var hero_pos := _player_sprite.global_position
+	_player_sprite.flip_h = target_pos.x < hero_pos.x
+
 func play_attack(target_mob_id: int) -> void:
 	if _player_sprite != null:
+		if target_mob_id < _mob_sprites.size() and is_instance_valid(_mob_sprites[target_mob_id]):
+			face_hero_toward(_mob_sprites[target_mob_id].global_position)
 		_play_sprite_anim(_player_sprite, "attack")
 		get_tree().create_timer(0.5).timeout.connect(func():
 			if is_instance_valid(_player_sprite):
@@ -233,6 +242,8 @@ func on_state_changed(state: int, zone_id: int, prev_state: int) -> void:
 			if _mob_sprites.is_empty():
 				var mob_count: int = {0: 0, 1: 1, 2: 1, 3: 2, 4: 4}.get(zone_id, 0)
 				spawn_mobs(mob_count, zone_id)
+			if not _mob_sprites.is_empty() and is_instance_valid(_mob_sprites[0]):
+				face_hero_toward(_mob_sprites[0].global_position)
 			if camera_rig and camera_rig.has_method("combat_zoom_in"):
 				camera_rig.combat_zoom_in()
 		3:  # CLEARED
@@ -340,7 +351,7 @@ func _get_mob_type(zone_id: int) -> String:
 func _create_fallback_platform(zone_id: int) -> void:
 	var mesh_inst := MeshInstance3D.new()
 	var box := BoxMesh.new()
-	box.size = Vector3(8, 0.3, 8)
+	box.size = Vector3(14, 0.3, 14)
 	mesh_inst.mesh = box
 	var mat := StandardMaterial3D.new()
 	var color: Color = ZONE_COLORS.get(zone_id, Color(0.2, 0.2, 0.2))
@@ -352,6 +363,21 @@ func _create_fallback_platform(zone_id: int) -> void:
 	mesh_inst.material_override = mat
 	mesh_inst.position = Vector3(0, -0.15, 0)
 	zone_anchor.add_child(mesh_inst)
+	_add_extended_ground(zone_id)
+
+func _add_extended_ground(zone_id: int) -> void:
+	var ground := MeshInstance3D.new()
+	var plane := PlaneMesh.new()
+	plane.size = Vector2(80, 80)
+	ground.mesh = plane
+	var mat := StandardMaterial3D.new()
+	var color: Color = ZONE_COLORS.get(zone_id, Color(0.1, 0.1, 0.1))
+	mat.albedo_color = color * 0.12
+	mat.roughness = 1.0
+	ground.material_override = mat
+	ground.position = Vector3(0, -0.3, 0)
+	ground.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	zone_anchor.add_child(ground)
 
 func _create_mob_hp_bar() -> MeshInstance3D:
 	var mesh_inst := MeshInstance3D.new()
@@ -385,7 +411,6 @@ func _decorate_zone(zone_id: int) -> void:
 	var radius: float = 6.0 + zone_id * 0.5
 	_add_edge_props(zone_id, radius)
 	_add_atmosphere_particles(zone_id, radius)
-	_add_edge_darkness(radius)
 
 func _add_edge_props(zone_id: int, radius: float) -> void:
 	var prop_color := _zone_prop_color(zone_id)

@@ -1,6 +1,7 @@
 extends Node3D
 
 const MOVE_SPEED := 5.0
+const ARENA_RADIUS := 6.5
 
 var _movement_enabled := true
 
@@ -27,4 +28,7 @@ func _process(delta: float) -> void:
 	input_dir = input_dir.normalized()
 	var iso_x := (input_dir.x - input_dir.y) * 0.7071
 	var iso_z := (input_dir.x + input_dir.y) * 0.7071
-	position += Vector3(iso_x, 0, iso_z) * MOVE_SPEED * delta
+	var new_pos := position + Vector3(iso_x, 0, iso_z) * MOVE_SPEED * delta
+	var flat_dist := Vector2(new_pos.x, new_pos.z).length()
+	if flat_dist <= ARENA_RADIUS:
+		position = new_pos

@@ -3,7 +3,7 @@
 [ext_resource type="Shader" path="res://shaders/ground_stone.gdshader" id="gs"]
 
 [sub_resource type="PlaneMesh" id="floor"]
-size = Vector2(16, 16)
+size = Vector2(22, 22)
 
 [sub_resource type="ShaderMaterial" id="floor_mat"]
 shader = ExtResource("gs")
