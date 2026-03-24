@@ -128,6 +128,7 @@ func _center_camera() -> void:
 		return
 	var center_cell:Vector2i = Vector2i(GRID_SIZE / 2, GRID_SIZE / 2)
 	camera.global_position = _iso_to_world(center_cell)
+	camera.zoom = Vector2(4.0, 4.0)
 	camera.enabled = true
 
 func _start_combat() -> void:

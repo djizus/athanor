@@ -632,8 +632,9 @@ func _focus_camera_to_grid() -> void:
 
 	var bounds_size:Vector2 = Vector2(max_x - min_x + 64.0, max_y - min_y + 48.0)
 	var viewport_size:Vector2 = get_viewport().get_visible_rect().size
-	var zoom_factor:float = maxf(bounds_size.x / maxf(viewport_size.x, 1.0), bounds_size.y / maxf(viewport_size.y, 1.0))
-	var target_zoom:Vector2 = Vector2.ONE * maxf(1.0, zoom_factor)
+	var zoom_x:float = viewport_size.x / maxf(bounds_size.x, 1.0)
+	var zoom_y:float = viewport_size.y / maxf(bounds_size.y, 1.0)
+	var target_zoom:Vector2 = Vector2.ONE * minf(zoom_x, zoom_y) * 0.85
 	var target_center:Vector2 = Vector2((min_x + max_x) * 0.5, (min_y + max_y) * 0.5)
 
 	var tween:Tween = create_tween()

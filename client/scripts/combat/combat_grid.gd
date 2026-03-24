@@ -116,7 +116,7 @@ func _draw_tile_cost_labels() -> void:
 	if fallback_font == null:
 		return
 
-	var font_size:int = max(10, ThemeDB.fallback_font_size)
+	var font_size:int = 6
 	for cell_key in _tile_costs.keys():
 		var cell:Vector2i = cell_key
 		if !_is_in_current_bounds(cell):
@@ -126,12 +126,12 @@ func _draw_tile_cost_labels() -> void:
 		var center:Vector2 = to_local(grid_to_world(cell))
 		draw_string(
 			fallback_font,
-			center + Vector2(0.0, 4.0),
+			center + Vector2(-4.0, 2.0),
 			str(stamina_cost),
 			HORIZONTAL_ALIGNMENT_CENTER,
-			-1.0,
+			16.0,
 			font_size,
-			Color(1.0, 1.0, 1.0, 0.95)
+			Color(1.0, 1.0, 1.0, 0.5)
 		)
 
 func _is_in_current_bounds(pos:Vector2i) -> bool:

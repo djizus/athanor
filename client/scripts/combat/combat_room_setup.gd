@@ -125,8 +125,8 @@ func _enable_realtime_systems() -> void:
 		_enemy_wave_manager.set_process(false)
 		_enemy_wave_manager.set_physics_process(false)
 
-func _spawn_encounter_enemies() -> Array[Node2D]:
-	var enemies:Array[Node2D] = []
+func _spawn_encounter_enemies() -> Array[Node]:
+	var enemies:Array[Node] = []
 	var names:PackedStringArray = PackedStringArray(["BruteEnemy", "CasterEnemy", "FlankerEnemy"])
 	for i in enemy_spawn_cells.size():
 		var enemy_node:Node2D = enemy_scene.instantiate() as Node2D
