@@ -167,7 +167,9 @@ func _create_ui() -> void:
 	add_child(bottom_bar)
 
 	_hp_bar = ProgressBar.new()
-	_hp_bar.custom_minimum_size = Vector2(180, 20)
+	_hp_bar.custom_minimum_size = Vector2(120, 16)
+	_hp_bar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_hp_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_hp_bar.max_value = 1
 	_hp_bar.value = 1
 	_hp_bar.show_percentage = false
@@ -177,7 +179,9 @@ func _create_ui() -> void:
 	bottom_bar.add_child(_hp_bar)
 
 	_stamina_bar = ProgressBar.new()
-	_stamina_bar.custom_minimum_size = Vector2(180, 20)
+	_stamina_bar.custom_minimum_size = Vector2(120, 16)
+	_stamina_bar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_stamina_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_stamina_bar.max_value = 1
 	_stamina_bar.value = 1
 	_stamina_bar.show_percentage = false
@@ -192,7 +196,7 @@ func _create_ui() -> void:
 
 	_end_turn_button = Button.new()
 	_end_turn_button.text = "End Turn"
-	_end_turn_button.custom_minimum_size = Vector2(120, 72)
+	_end_turn_button.custom_minimum_size = Vector2(88, 56)
 	_end_turn_button.pressed.connect(_on_end_turn_pressed)
 	bottom_bar.add_child(_end_turn_button)
 
@@ -226,7 +230,7 @@ func _connect_runtime_signals() -> void:
 
 func _create_ability_button(index: int) -> Button:
 	var button: Button = Button.new()
-	button.custom_minimum_size = Vector2(112, 72)
+	button.custom_minimum_size = Vector2(88, 56)
 	button.clip_contents = true
 	button.pressed.connect(func() -> void: _on_ability_pressed(index))
 
