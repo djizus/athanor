@@ -28,8 +28,10 @@ func update()->void:
 	
 	match state:
 		WallState.ON:
-			animation_player.play(animation_on)
+			if animation_player.has_animation(animation_on):
+				animation_player.play(animation_on)
 			astargrid_resource.value.set_point_solid(_tile_pos, true)
 		WallState.OFF:
-			animation_player.play(animation_off)
+			if animation_player.has_animation(animation_off):
+				animation_player.play(animation_off)
 			astargrid_resource.value.set_point_solid(_tile_pos, false)
