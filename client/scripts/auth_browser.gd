@@ -6,33 +6,52 @@ signal auth_error(message: String)
 
 const CARTRIDGE_HOST := "x.cartridge.gg"
 
-@onready var browser_container: MarginContainer = %BrowserContainer
-@onready var close_button: Button = %CloseButton
-@onready var loading_label: Label = %LoadingLabel
-@onready var error_label: Label = %ErrorLabel
+var browser_container: MarginContainer
+var close_button: Button
+var loading_label: Label
+var error_label: Label
 
 var _cef_texture: Control
 var _seen_cartridge_domain := false
 var _completion_emitted := false
+var _initialized := false
 
 func _ready() -> void:
 	visible = false
+	_try_init()
+
+func _try_init() -> void:
+	if _initialized:
+		return
+	browser_container = _find("BrowserContainer") as MarginContainer
+	close_button = _find("CloseButton") as Button
+	loading_label = _find("LoadingLabel") as Label
+	error_label = _find("ErrorLabel") as Label
+	if browser_container == null or close_button == null or loading_label == null or error_label == null:
+		return
+	_initialized = true
 	error_label.visible = false
 	loading_label.visible = false
 	close_button.pressed.connect(_on_close_pressed)
 
+func _find(node_name: String) -> Node:
+	return find_child(node_name, true, false)
+
 func show_auth(url: String) -> void:
+	_try_init()
 	_completion_emitted = false
 	_seen_cartridge_domain = false
-	error_label.visible = false
-	error_label.text = ""
-	loading_label.visible = true
-	loading_label.text = "Loading authentication..."
+	if error_label != null:
+		error_label.visible = false
+		error_label.text = ""
+	if loading_label != null:
+		loading_label.visible = true
+		loading_label.text = "Loading authentication..."
 	visible = true
 
 	if not _ensure_browser():
-		_show_error("Embedded browser is unavailable. Install godot-cef or use external browser.")
-		auth_error.emit(error_label.text)
+		_show_error("Embedded browser unavailable. Install godot-cef or use external browser.")
+		auth_error.emit(error_label.text if error_label else "Browser unavailable")
 		return
 
 	_cef_texture.set("url", url)
@@ -41,8 +60,10 @@ func hide_auth() -> void:
 	if _cef_texture != null and _cef_texture.has_method("stop_loading"):
 		_cef_texture.call("stop_loading")
 	visible = false
-	loading_label.visible = false
-	error_label.visible = false
+	if loading_label != null:
+		loading_label.visible = false
+	if error_label != null:
+		error_label.visible = false
 
 func is_showing() -> bool:
 	return visible
@@ -59,13 +80,9 @@ func _ensure_browser() -> bool:
 
 	_cef_texture = created as Control
 	_cef_texture.name = "CefTexture"
-	_cef_texture.layout_mode = 1
-	_cef_texture.anchors_preset = Control.PRESET_FULL_RECT
-	_cef_texture.anchor_right = 1.0
-	_cef_texture.anchor_bottom = 1.0
-	_cef_texture.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	_cef_texture.grow_vertical = Control.GROW_DIRECTION_BOTH
-	browser_container.add_child(_cef_texture)
+	_cef_texture.set_anchors_preset(Control.PRESET_FULL_RECT)
+	if browser_container != null:
+		browser_container.add_child(_cef_texture)
 
 	if _cef_texture.has_signal("url_changed"):
 		_cef_texture.connect("url_changed", Callable(self, "_on_url_changed"))
@@ -99,21 +116,26 @@ func _is_completion_url(lowered_url: String) -> bool:
 	return false
 
 func _on_load_started(_url: String) -> void:
-	loading_label.visible = true
-	error_label.visible = false
+	if loading_label != null:
+		loading_label.visible = true
+	if error_label != null:
+		error_label.visible = false
 
 func _on_load_finished(_url: String, _http_status_code: int) -> void:
-	loading_label.visible = false
+	if loading_label != null:
+		loading_label.visible = false
 
 func _on_load_error(_url: String, _error_code: int, error_text: String) -> void:
 	_show_error("Authentication page failed to load: %s" % error_text)
-	auth_error.emit(error_label.text)
+	auth_error.emit(error_label.text if error_label else error_text)
 
 func _on_close_pressed() -> void:
 	hide_auth()
 	auth_closed.emit()
 
 func _show_error(message: String) -> void:
-	loading_label.visible = false
-	error_label.text = message
-	error_label.visible = true
+	if loading_label != null:
+		loading_label.visible = false
+	if error_label != null:
+		error_label.text = message
+		error_label.visible = true

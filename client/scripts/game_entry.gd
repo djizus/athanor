@@ -159,7 +159,7 @@ func _on_auth_browser_closed() -> void:
 	_connect_button.disabled = false
 	_set_status("Authentication cancelled")
 
-func _on_auth_browser_error(msg: String) -> void:
+func _on_auth_browser_error(_msg: String) -> void:
 	if _auth_browser_node != null:
 		_auth_browser_node.call("hide_auth")
 	DojoBridge.initiate_controller_auth()
@@ -447,7 +447,7 @@ func _set_status(message: String) -> void:
 	if _status_label != null:
 		_status_label.text = message
 
-func _set_game_status(message: String) -> void:
+func _set_game_status(_message: String) -> void:
 	pass
 
 func _show_result(message: String, allow_retry: bool) -> void:
