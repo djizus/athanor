@@ -43,3 +43,4 @@ scripts/generate-assets/node_modules/
 .sisyphus/
 skills-lock.json
 references/
+client/screenshots/
