@@ -37,7 +37,7 @@ Thumbs.db
 .idea/
 
 # === Version managers ===
-.tool-versions
+# .tool-versions is tracked — ensures consistent toolchain versions
 
 # === Node (for npx skill tooling) ===
 node_modules/
