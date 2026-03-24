@@ -14,8 +14,8 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 
 [application]
 
-config/name="Game Template"
-run/main_scene="res://addons/top_down/scenes/ui/screens/boot_load.tscn"
+config/name="Athanor"
+run/main_scene="res://scenes/game_entry.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
 config/icon="res://icon.svg"
 
@@ -26,6 +26,9 @@ SoundManager="*res://addons/top_down/scenes/autoloads/sound_manager.tscn"
 Music="*res://addons/top_down/scenes/autoloads/music.tscn"
 Transition="*res://addons/top_down/scenes/autoloads/transition.tscn"
 PersistentData="*res://addons/top_down/scenes/autoloads/persistent_data.tscn"
+DojoBridge="*res://scripts/autoload/dojo_bridge.gd"
+game_state="*res://scripts/autoload/game_state.gd"
+AudioManager="*res://scripts/autoload/audio_manager.gd"
 
 [display]
 
