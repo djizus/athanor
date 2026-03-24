@@ -21,13 +21,13 @@ anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_top = -112.0
+offset_top = -72.0
 grow_horizontal = 2
 grow_vertical = 0
-theme_override_constants/margin_left = 12
-theme_override_constants/margin_top = 4
-theme_override_constants/margin_right = 12
-theme_override_constants/margin_bottom = 12
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 2
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 4
 
 [node name="Panel" type="PanelContainer" parent="Root/BottomMargin"]
 layout_mode = 2
@@ -36,7 +36,7 @@ size_flags_vertical = 0
 
 [node name="VBox" type="VBoxContainer" parent="Root/BottomMargin/Panel"]
 layout_mode = 2
-theme_override_constants/separation = 6
+theme_override_constants/separation = 2
 
 [node name="TopRow" type="HBoxContainer" parent="Root/BottomMargin/Panel/VBox"]
 layout_mode = 2
@@ -45,17 +45,19 @@ layout_mode = 2
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
 text = "YOUR TURN"
 
 [node name="TurnCounter" type="Label" parent="Root/BottomMargin/Panel/VBox/TopRow"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_override_font_sizes/font_size = 12
 text = "Turn 1"
 horizontal_alignment = 2
 
 [node name="StaminaBar" type="ProgressBar" parent="Root/BottomMargin/Panel/VBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(120, 16)
+custom_minimum_size = Vector2(200, 8)
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 4
@@ -69,9 +71,11 @@ size_flags_horizontal = 4
 theme_override_constants/separation = 8
 
 [node name="AbilityButton1" type="Button" parent="Root/BottomMargin/Panel/VBox/AbilityBar"]
-custom_minimum_size = Vector2(120, 40)
+custom_minimum_size = Vector2(80, 28)
 layout_mode = 2
-text = "Strike\nCost 20"
+theme_override_font_sizes/font_size = 11
+text = "Strike
+Cost 20"
 
 [node name="CooldownOverlay" type="ColorRect" parent="Root/BottomMargin/Panel/VBox/AbilityBar/AbilityButton1"]
 visible = false
@@ -100,9 +104,11 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="AbilityButton2" type="Button" parent="Root/BottomMargin/Panel/VBox/AbilityBar"]
-custom_minimum_size = Vector2(120, 40)
+custom_minimum_size = Vector2(80, 28)
 layout_mode = 2
-text = "Dash\nCost 25"
+theme_override_font_sizes/font_size = 11
+text = "Dash
+Cost 25"
 
 [node name="CooldownOverlay" type="ColorRect" parent="Root/BottomMargin/Panel/VBox/AbilityBar/AbilityButton2"]
 visible = false
@@ -131,9 +137,11 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="AbilityButton3" type="Button" parent="Root/BottomMargin/Panel/VBox/AbilityBar"]
-custom_minimum_size = Vector2(120, 40)
+custom_minimum_size = Vector2(80, 28)
 layout_mode = 2
-text = "Guard\nCost 15"
+theme_override_font_sizes/font_size = 11
+text = "Guard
+Cost 15"
 
 [node name="CooldownOverlay" type="ColorRect" parent="Root/BottomMargin/Panel/VBox/AbilityBar/AbilityButton3"]
 visible = false
@@ -167,4 +175,5 @@ layout_mode = 2
 [node name="EndTurnButton" type="Button" parent="Root/BottomMargin/Panel/VBox/BottomRow"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_override_font_sizes/font_size = 11
 text = "End Turn"
