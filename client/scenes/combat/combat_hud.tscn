@@ -1,0 +1,170 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/combat_hud.gd" id="1_rldoq"]
+
+[node name="CombatHUD" type="CanvasLayer"]
+visible = false
+script = ExtResource("1_rldoq")
+
+[node name="Root" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="BottomMargin" type="MarginContainer" parent="Root"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -112.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="Panel" type="PanelContainer" parent="Root/BottomMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 0
+
+[node name="VBox" type="VBoxContainer" parent="Root/BottomMargin/Panel"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="TopRow" type="HBoxContainer" parent="Root/BottomMargin/Panel/VBox"]
+layout_mode = 2
+
+[node name="PhaseIndicator" type="Label" parent="Root/BottomMargin/Panel/VBox/TopRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "YOUR TURN"
+
+[node name="TurnCounter" type="Label" parent="Root/BottomMargin/Panel/VBox/TopRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Turn 1"
+horizontal_alignment = 2
+
+[node name="StaminaBar" type="ProgressBar" parent="Root/BottomMargin/Panel/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 16)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+show_percentage = false
+value = 100.0
+
+[node name="AbilityBar" type="HBoxContainer" parent="Root/BottomMargin/Panel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 8
+
+[node name="AbilityButton1" type="Button" parent="Root/BottomMargin/Panel/VBox/AbilityBar"]
+custom_minimum_size = Vector2(120, 40)
+layout_mode = 2
+text = "Strike\nCost 20"
+
+[node name="CooldownOverlay" type="ColorRect" parent="Root/BottomMargin/Panel/VBox/AbilityBar/AbilityButton1"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0.65)
+
+[node name="CooldownLabel" type="Label" parent="Root/BottomMargin/Panel/VBox/AbilityBar/AbilityButton1/CooldownOverlay"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -18.0
+offset_top = -9.0
+offset_right = 18.0
+offset_bottom = 9.0
+text = "CD 1"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="AbilityButton2" type="Button" parent="Root/BottomMargin/Panel/VBox/AbilityBar"]
+custom_minimum_size = Vector2(120, 40)
+layout_mode = 2
+text = "Dash\nCost 25"
+
+[node name="CooldownOverlay" type="ColorRect" parent="Root/BottomMargin/Panel/VBox/AbilityBar/AbilityButton2"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0.65)
+
+[node name="CooldownLabel" type="Label" parent="Root/BottomMargin/Panel/VBox/AbilityBar/AbilityButton2/CooldownOverlay"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -18.0
+offset_top = -9.0
+offset_right = 18.0
+offset_bottom = 9.0
+text = "CD 1"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="AbilityButton3" type="Button" parent="Root/BottomMargin/Panel/VBox/AbilityBar"]
+custom_minimum_size = Vector2(120, 40)
+layout_mode = 2
+text = "Guard\nCost 15"
+
+[node name="CooldownOverlay" type="ColorRect" parent="Root/BottomMargin/Panel/VBox/AbilityBar/AbilityButton3"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0.65)
+
+[node name="CooldownLabel" type="Label" parent="Root/BottomMargin/Panel/VBox/AbilityBar/AbilityButton3/CooldownOverlay"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -18.0
+offset_top = -9.0
+offset_right = 18.0
+offset_bottom = 9.0
+text = "CD 1"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="BottomRow" type="HBoxContainer" parent="Root/BottomMargin/Panel/VBox"]
+layout_mode = 2
+
+[node name="EndTurnButton" type="Button" parent="Root/BottomMargin/Panel/VBox/BottomRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "End Turn"

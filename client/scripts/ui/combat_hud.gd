@@ -1,0 +1,189 @@
+class_name CombatHUD
+extends CanvasLayer
+
+@onready var stamina_bar:ProgressBar = %StaminaBar
+@onready var ability_bar:HBoxContainer = %AbilityBar
+@onready var end_turn_button:Button = %EndTurnButton
+@onready var phase_indicator:Label = %PhaseIndicator
+@onready var turn_counter:Label = %TurnCounter
+
+var _turn_manager:TurnManager
+var _ability_manager:AbilityManager
+var _stamina:StaminaResource
+
+var _ability_buttons:Array[Button] = []
+var _selected_button:int = -1
+
+var _default_style:StyleBoxFlat
+var _selected_style:StyleBoxFlat
+
+func _ready() -> void:
+	_build_styles()
+	for child in ability_bar.get_children():
+		if child is Button:
+			var button:Button = child
+			_ability_buttons.push_back(button)
+			button.pressed.connect(_on_ability_button_pressed.bind(_ability_buttons.size() - 1))
+	end_turn_button.pressed.connect(_on_end_turn_pressed)
+	visible = false
+
+func bind_combat_manager(combat_manager:Node) -> void:
+	_disconnect_current()
+	if combat_manager == null:
+		visible = false
+		return
+
+	_turn_manager = combat_manager.get("turn_manager")
+	_ability_manager = combat_manager.get("ability_manager")
+	var player_data:Dictionary = combat_manager.get("player")
+	_stamina = player_data.get("stamina", null)
+
+	if _turn_manager != null:
+		_turn_manager.phase_changed.connect(_on_phase_changed)
+		_turn_manager.player_turn_started.connect(_refresh)
+		_turn_manager.enemy_turn_started.connect(_refresh)
+		_turn_manager.resolve_started.connect(_refresh)
+
+	if _ability_manager != null:
+		_ability_manager.ability_selected.connect(_on_ability_selected)
+		_ability_manager.ability_cancelled.connect(_on_ability_cancelled)
+		_ability_manager.ability_used.connect(_on_ability_used)
+
+	if _stamina != null:
+		_stamina.updated.connect(_refresh_stamina)
+
+	visible = true
+	_refresh()
+
+func clear_bindings() -> void:
+	_disconnect_current()
+	visible = false
+
+func _disconnect_current() -> void:
+	if _turn_manager != null:
+		if _turn_manager.phase_changed.is_connected(_on_phase_changed):
+			_turn_manager.phase_changed.disconnect(_on_phase_changed)
+		if _turn_manager.player_turn_started.is_connected(_refresh):
+			_turn_manager.player_turn_started.disconnect(_refresh)
+		if _turn_manager.enemy_turn_started.is_connected(_refresh):
+			_turn_manager.enemy_turn_started.disconnect(_refresh)
+		if _turn_manager.resolve_started.is_connected(_refresh):
+			_turn_manager.resolve_started.disconnect(_refresh)
+
+	if _ability_manager != null:
+		if _ability_manager.ability_selected.is_connected(_on_ability_selected):
+			_ability_manager.ability_selected.disconnect(_on_ability_selected)
+		if _ability_manager.ability_cancelled.is_connected(_on_ability_cancelled):
+			_ability_manager.ability_cancelled.disconnect(_on_ability_cancelled)
+		if _ability_manager.ability_used.is_connected(_on_ability_used):
+			_ability_manager.ability_used.disconnect(_on_ability_used)
+
+	if _stamina != null && _stamina.updated.is_connected(_refresh_stamina):
+		_stamina.updated.disconnect(_refresh_stamina)
+
+	_turn_manager = null
+	_ability_manager = null
+	_stamina = null
+	_selected_button = -1
+	_apply_selection_style()
+
+func _refresh() -> void:
+	_refresh_stamina()
+	_refresh_phase()
+	_refresh_turn_counter()
+	_refresh_abilities()
+
+func _refresh_stamina() -> void:
+	if _stamina == null:
+		stamina_bar.value = 0
+		stamina_bar.max_value = 100
+		stamina_bar.tooltip_text = "Stamina"
+		return
+	stamina_bar.max_value = _stamina.max_value
+	stamina_bar.value = _stamina.value
+	stamina_bar.tooltip_text = "Stamina %d/%d" % [_stamina.value, _stamina.max_value]
+
+func _refresh_phase() -> void:
+	if _turn_manager == null:
+		phase_indicator.text = "IDLE"
+		return
+	_on_phase_changed(_turn_manager.phase)
+
+func _refresh_turn_counter() -> void:
+	if _turn_manager == null:
+		turn_counter.text = "Turn 0"
+		return
+	turn_counter.text = "Turn %d" % maxi(1, _turn_manager.turn_count + 1)
+
+func _refresh_abilities() -> void:
+	for i in range(_ability_buttons.size()):
+		var button:Button = _ability_buttons[i]
+		var ability:AbilityResource = _ability_manager.abilities[i] if _ability_manager != null && i < _ability_manager.abilities.size() else null
+		var overlay:ColorRect = button.get_node_or_null("CooldownOverlay")
+		var overlay_label:Label = button.get_node_or_null("CooldownOverlay/CooldownLabel")
+		if ability == null:
+			button.text = "--"
+			button.disabled = true
+			if overlay != null:
+				overlay.visible = false
+			continue
+
+		button.text = "%s\nCost %d" % [ability.ability_name, ability.stamina_cost]
+		var on_cooldown:bool = ability.current_cooldown > 0
+		if overlay != null:
+			overlay.visible = on_cooldown
+		if overlay_label != null:
+			overlay_label.text = "CD %d" % ability.current_cooldown
+		button.disabled = false
+	_apply_selection_style()
+
+func _on_end_turn_pressed() -> void:
+	if _turn_manager != null:
+		_turn_manager.end_player_turn()
+
+func _on_ability_button_pressed(index:int) -> void:
+	if _ability_manager == null:
+		return
+	_ability_manager.select_ability(index)
+
+func _on_ability_selected(ability:AbilityResource) -> void:
+	if _ability_manager == null:
+		return
+	_selected_button = _ability_manager.abilities.find(ability)
+	_apply_selection_style()
+
+func _on_ability_cancelled() -> void:
+	_selected_button = -1
+	_apply_selection_style()
+
+func _on_ability_used(_ability:AbilityResource, _target_data:Dictionary) -> void:
+	_refresh()
+
+func _apply_selection_style() -> void:
+	for i in range(_ability_buttons.size()):
+		var button:Button = _ability_buttons[i]
+		button.add_theme_stylebox_override("normal", _selected_style if i == _selected_button else _default_style)
+
+func _on_phase_changed(phase:int) -> void:
+	match phase:
+		CombatEnums.Phase.PLAYER_TURN:
+			phase_indicator.text = "YOUR TURN"
+		CombatEnums.Phase.ENEMY_TURN:
+			phase_indicator.text = "ENEMY TURN"
+		CombatEnums.Phase.RESOLVE:
+			phase_indicator.text = "RESOLVING"
+		CombatEnums.Phase.COMBAT_OVER:
+			phase_indicator.text = "COMBAT OVER"
+		_:
+			phase_indicator.text = "IDLE"
+
+func _build_styles() -> void:
+	_default_style = StyleBoxFlat.new()
+	_default_style.bg_color = Color(0.15, 0.15, 0.2, 0.85)
+	_default_style.border_color = Color(0.35, 0.35, 0.45)
+	_default_style.set_border_width_all(1)
+	_default_style.set_corner_radius_all(2)
+
+	_selected_style = _default_style.duplicate()
+	_selected_style.border_color = Color(1.0, 0.86, 0.2)
+	_selected_style.set_border_width_all(2)

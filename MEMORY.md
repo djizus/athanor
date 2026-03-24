@@ -21,3 +21,9 @@
 
 - `GridMovement.set_blocked_cells(cells:Array[Vector2i])` and similar typed-array APIs require typed locals in tests (`var blocked:Array[Vector2i] = [...]`); inline literals can raise runtime argument type errors.
 - `TurnManager` coroutine can stay await-based by awaiting only player-end signals and performing enemy/resolve synchronously in the same resume cycle, making headless SceneTree tests deterministic without extra frame waits.
+
+## 2026-03-24 — Merge phase integration notes
+
+- `CombatManager` now owns the tactical loop wiring and should be started with `start_combat(player_node, enemy_nodes, combat_grid)`; it creates all subsystem nodes internally (turn/move/ability/targeting/telegraph/enemy resolver) and emits `combat_finished(player_won)`.
+- Telegraph visuals are easy to accidentally clear because `GridMovement.refresh_reachable()` calls `combat_grid.clear_overlay()`; re-apply active telegraph highlights after movement/ability refresh if both overlays must coexist.
+- For template integration, attaching `CombatRoomSetup` to an inherited room scene (`scenes/combat/room_combat_01.tscn`) avoids editing addon room templates while still wiring `fight_mode` transitions.
