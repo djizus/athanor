@@ -147,6 +147,16 @@ func try_resume_controller_session() -> bool:
 	if cached.is_empty():
 		push_warning("[dojo_bridge] resume: no cached session at %s" % SESSION_CACHE_PATH)
 		return false
+	var cached_world := String(cached.get("world_address", ""))
+	var cached_actions := String(cached.get("actions_address", ""))
+	if not cached_world.is_empty() and cached_world != world_address:
+		push_warning("[dojo_bridge] resume: world changed (%s → %s), clearing stale session" % [cached_world, world_address])
+		_clear_session_cache()
+		return false
+	if not cached_actions.is_empty() and cached_actions != actions_address:
+		push_warning("[dojo_bridge] resume: actions contract changed, clearing stale session")
+		_clear_session_cache()
+		return false
 	var cached_key := String(cached.get("private_key", ""))
 	var cached_address := String(cached.get("address", ""))
 	var cached_owner_guid := String(cached.get("owner_guid", ""))
@@ -490,7 +500,9 @@ func _save_session_info(key: String, info: Dictionary) -> void:
 		"address": String(info.get("address", "")),
 		"owner_guid": String(info.get("owner_guid", "")),
 		"chain_id": String(info.get("chain_id", "")),
-		"expires_at": int(info.get("expires_at", 0))
+		"expires_at": int(info.get("expires_at", 0)),
+		"world_address": world_address,
+		"actions_address": actions_address,
 	}))
 
 func _load_session_info() -> Dictionary:
