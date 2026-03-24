@@ -1,0 +1,9 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://addons/top_down/scenes/levels/room_0.tscn" id="1_2h34x"]
+[ext_resource type="Script" path="res://scripts/combat/combat_room_setup.gd" id="2_k1gx5"]
+
+[node name="RoomTactical01" instance=ExtResource("1_2h34x")]
+
+[node name="CombatRoomSetup" type="Node" parent="."]
+script = ExtResource("2_k1gx5")

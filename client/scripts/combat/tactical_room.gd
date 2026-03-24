@@ -71,7 +71,6 @@ func _spawn_combat_runtime() -> void:
 	_combat_hud = COMBAT_HUD_SCENE.instantiate() as CombatHUD
 	_combat_hud.name = "CombatHUD"
 	add_child(_combat_hud)
-	_configure_hud_layout()
 
 func _spawn_actor(node_name:String, grid_pos:Vector2i, is_player:bool) -> Node2D:
 	var actor:Node2D = ACTOR_SCENE.instantiate() as Node2D
@@ -124,18 +123,6 @@ func _start_combat() -> void:
 	_combat_manager.start_combat(_player, _enemies, _combat_grid)
 	if _combat_hud != null:
 		_combat_hud.bind_combat_manager(_combat_manager)
-
-func _configure_hud_layout() -> void:
-	if _combat_hud == null:
-		return
-	var bottom_margin:MarginContainer = _combat_hud.get_node_or_null("Root/BottomMargin") as MarginContainer
-	if bottom_margin != null:
-		bottom_margin.offset_top = -156.0
-
-	var stamina_bar:ProgressBar = _combat_hud.get_node_or_null("Root/BottomMargin/Panel/VBox/StaminaBar") as ProgressBar
-	if stamina_bar != null:
-		stamina_bar.custom_minimum_size = Vector2(120.0, 20.0)
-		stamina_bar.show_percentage = true
 
 func _iso_to_world(grid_pos:Vector2i) -> Vector2:
 	return Vector2((grid_pos.x - grid_pos.y) * 16.0, (grid_pos.x + grid_pos.y) * 8.0)
