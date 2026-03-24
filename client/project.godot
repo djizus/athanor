@@ -14,9 +14,9 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 
 [application]
 
-config/name="Athanor"
-run/main_scene="res://scenes/game_entry.tscn"
-config/features=PackedStringArray("4.5", "Forward Plus")
+config/name="Game Template"
+run/main_scene="res://addons/top_down/scenes/ui/screens/boot_load.tscn"
+config/features=PackedStringArray("4.6", "Forward Plus")
 config/icon="res://icon.svg"
 
 [autoload]
@@ -26,9 +26,6 @@ SoundManager="*res://addons/top_down/scenes/autoloads/sound_manager.tscn"
 Music="*res://addons/top_down/scenes/autoloads/music.tscn"
 Transition="*res://addons/top_down/scenes/autoloads/transition.tscn"
 PersistentData="*res://addons/top_down/scenes/autoloads/persistent_data.tscn"
-DojoBridge="*res://scripts/autoload/dojo_bridge.gd"
-game_state="*res://scripts/autoload/game_state.gd"
-AudioManager="*res://scripts/autoload/audio_manager.gd"
 
 [display]
 
@@ -38,26 +35,6 @@ window/size/window_width_override=1280
 window/size/window_height_override=720
 window/stretch/mode="canvas_items"
 window/stretch/aspect="keep_height"
-
-[dojo]
-
-config/fixed_point/default=128
-config/fixed_point/64=40
-config/fixed_point/128=60
-config/fixed_point/256=123
-config/debug/error=true
-config/debug/warning=true
-config/debug/info=false
-config/debug/debug=false
-config/debug/success=true
-; dojo/config runtime values (patched by deploy scripts)
-config/katana_url="http://localhost:5050"
-config/torii/torii_url="http://localhost:8080"
-config/world_address="0x0"
-config/actions_address="0x0"
-config/account/address="0x0"
-config/account/private_key="0x0"
-config/disable_embedded_browser=true
 
 [editor]
 
