@@ -9,6 +9,7 @@ NAMESPACE="athanor_v2"
 CONTRACT_TAG="${NAMESPACE}-actions_v2"
 MANIFEST="$ROOT_DIR/manifest_${PROFILE}.json"
 DOJO_BRIDGE="$ROOT_DIR/client/scripts/autoload/dojo_bridge.gd"
+PROJECT_GODOT="$ROOT_DIR/client/project.godot"
 DOJO_TOML="$ROOT_DIR/dojo_${PROFILE}.toml"
 TORII_TOML="$ROOT_DIR/torii_${PROFILE}.toml"
 RPC_URL="https://api.cartridge.gg/x/${SLOT_NAME}/katana"
@@ -119,6 +120,17 @@ if [ -f "$DOJO_BRIDGE" ]; then
     sed -i "s|@export var torii_url := \"[^\"]*\"|@export var torii_url := \"$TORII_URL\"|" "$DOJO_BRIDGE"
     sed -i "s|@export var rpc_url := \"[^\"]*\"|@export var rpc_url := \"$RPC_URL\"|" "$DOJO_BRIDGE"
     info "dojo_bridge.gd updated for Slot."
+fi
+
+if [ -f "$PROJECT_GODOT" ]; then
+    info "Updating project.godot dojo/config for Slot..."
+    sed -i "s|config/katana_url=\"[^\"]*\"|config/katana_url=\"$RPC_URL\"|" "$PROJECT_GODOT"
+    sed -i "s|config/torii/torii_url=\"[^\"]*\"|config/torii/torii_url=\"$TORII_URL\"|" "$PROJECT_GODOT"
+    sed -i "s|config/world_address=\"0x[0-9a-fA-F]*\"|config/world_address=\"$WORLD_ADDRESS\"|" "$PROJECT_GODOT"
+    sed -i "s|config/actions_address=\"0x[0-9a-fA-F]*\"|config/actions_address=\"$ACTIONS_ADDRESS\"|" "$PROJECT_GODOT"
+    sed -i "s|config/account/address=\"0x[0-9a-fA-F]*\"|config/account/address=\"$ACCOUNT_ADDRESS\"|" "$PROJECT_GODOT"
+    sed -i "s|config/account/private_key=\"0x[0-9a-fA-F]*\"|config/account/private_key=\"$PRIVATE_KEY\"|" "$PROJECT_GODOT"
+    info "project.godot dojo/config updated for Slot."
 fi
 
 info "Done."

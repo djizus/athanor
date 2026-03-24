@@ -448,6 +448,12 @@ func _instantiate_dojo_class(type_name: String) -> Variant:
 	return ClassDB.instantiate(type_name)
 
 func _sozo_execute(entrypoint: String, calldata: Array) -> void:
+	var sozo_path := _find_binary("sozo")
+	if sozo_path.is_empty():
+		push_error("[dojo_bridge] sozo binary not found")
+		tx_failed.emit(entrypoint, "sozo not found in PATH")
+		return
+
 	var args: PackedStringArray = PackedStringArray([
 		"execute", ACTIONS_CONTRACT_TAG, entrypoint,
 	])
@@ -461,10 +467,9 @@ func _sozo_execute(entrypoint: String, calldata: Array) -> void:
 		"--profile", "v2",
 	]))
 
-	var project_root := ProjectSettings.globalize_path("res://").trim_suffix("/").get_base_dir()
 	var output: Array = []
-	push_warning("[dojo_bridge] sozo %s (cwd: %s)" % [" ".join(args), project_root])
-	var exit_code := OS.execute("bash", PackedStringArray(["-c", "cd %s && sozo %s" % [project_root, " ".join(args)]]), output, true)
+	push_warning("[dojo_bridge] sozo %s" % " ".join(args))
+	var exit_code := OS.execute(sozo_path, args, output, true)
 	var stdout: String = "\n".join(output)
 
 	if exit_code == 0:

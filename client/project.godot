@@ -50,6 +50,14 @@ config/debug/warning=true
 config/debug/info=false
 config/debug/debug=false
 config/debug/success=true
+; dojo/config runtime values (patched by deploy scripts)
+config/katana_url="http://localhost:5050"
+config/torii/torii_url="http://localhost:8080"
+config/world_address="0x0"
+config/actions_address="0x0"
+config/account/address="0x0"
+config/account/private_key="0x0"
+config/disable_embedded_browser=false
 
 [editor]
 
