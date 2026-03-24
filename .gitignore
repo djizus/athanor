@@ -1,54 +1,43 @@
-# === Dojo / Cairo ===
+# Dojo / Cairo
 target/
 manifest_*.json
 
-# === Godot ===
+# Godot
 .godot/
 *.import
 *.uid
-screenshots/
 export_presets.cfg
 
-# === Godot addons (downloaded via setup.sh, see README) ===
+# Godot addons (installed via setup.sh)
 client/addons/godot-dojo/
 client/addons/godot_cef/
 
-
-
-# === Environment ===
+# Environment
 .env
 client/.env
-scripts/generate-assets/.env
-scripts/generate-assets/output/
-scripts/generate-assets/node_modules/
 
-# === Build artifacts ===
+# Build artifacts
 *.o
 *.so
 *.dylib
 *.dll
 
-# === OS ===
+# OS
 .DS_Store
 Thumbs.db
 
-# === IDE ===
+# IDE
 .vscode/
 .idea/
 
-# === Version managers ===
-# .tool-versions is tracked — ensures consistent toolchain versions
-
-# === Node (for npx skill tooling) ===
+# Node
 node_modules/
 
-# === Skills: bootstrapped locally by ensure_doc_api.sh ===
-skills/godot-task/doc_source/
-skills/godot-task/doc_api/*.md
-!skills/godot-task/doc_api/_common.md
-!skills/godot-task/doc_api/_other.md
+# Generated assets (v1 pipeline output)
+scripts/generate-assets/output/
+scripts/generate-assets/node_modules/
 
-# === Agent state ===
+# Agent state
 .claude/
 .agents/
 .sisyphus/
