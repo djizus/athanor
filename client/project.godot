@@ -16,7 +16,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 
 config/name="Athanor"
 run/main_scene="res://scenes/game_entry.tscn"
-config/features=PackedStringArray("4.6", "Forward Plus")
+config/features=PackedStringArray("4.5", "Forward Plus")
 config/icon="res://icon.svg"
 
 [autoload]
@@ -38,6 +38,18 @@ window/size/window_width_override=1280
 window/size/window_height_override=720
 window/stretch/mode="canvas_items"
 window/stretch/aspect="keep_height"
+
+[dojo]
+
+config/fixed_point/default=128
+config/fixed_point/64=40
+config/fixed_point/128=60
+config/fixed_point/256=123
+config/debug/error=true
+config/debug/warning=true
+config/debug/info=false
+config/debug/debug=false
+config/debug/success=true
 
 [editor]
 

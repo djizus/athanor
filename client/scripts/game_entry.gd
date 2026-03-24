@@ -70,11 +70,14 @@ func _bootstrap_dojo_nodes_if_available() -> void:
 		DojoBridge.configure_nodes(torii_node, session_node)
 
 func _attempt_local_burner_auth() -> void:
-	# Optional local dev auth. Set these env vars when running against Katana.
 	var burner_key: String = OS.get_environment("ATHANOR_BURNER_PRIVATE_KEY")
 	var burner_address: String = OS.get_environment("ATHANOR_BURNER_ADDRESS")
 	if burner_key.is_empty() or burner_address.is_empty():
-		return
+		if DojoBridge.rpc_url.contains("localhost") or DojoBridge.rpc_url.contains("127.0.0.1"):
+			burner_address = "0x2af9427c5a277474c079a1283c880ee8a6f0f8fbf73ce969c08d88befec1bba"
+			burner_key = "0x1800000000300000180000000000030000000000003006001800006600"
+		else:
+			return
 	DojoBridge.setup_burner(burner_key, burner_address)
 
 func _on_torii_connected(success: bool) -> void:
@@ -85,9 +88,7 @@ func _on_torii_connected(success: bool) -> void:
 	_request_spawn()
 
 func _on_session_ready(_address: String) -> void:
-	if _spawn_requested:
-		return
-	_request_spawn()
+	pass
 
 func _request_spawn() -> void:
 	if _spawn_requested:

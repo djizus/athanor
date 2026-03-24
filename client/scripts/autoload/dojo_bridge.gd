@@ -17,8 +17,8 @@ const ACTIONS_CONTRACT_TAG := "athanor_v2-actions_v2"
 @export var rpc_url := "http://localhost:5050"
 @export var relay_url := "https://api.cartridge.gg"
 @export var session_base_url := "https://x.cartridge.gg/session"
-@export var world_address := "0x0"
-@export var actions_address := "0x0"
+@export var world_address := "0x07655efdd32b7d904aa2b49195810ec3584336d32c5534bbb1feb4a3ec83e07f"
+@export var actions_address := "0x0a0193997b3f8439270aa187afd926c1600aa8b3030719f7d17d0457cb1e019"
 
 var torii_client: Node
 var session_account: Node
@@ -448,7 +448,7 @@ func _sozo_execute(entrypoint: String, calldata: Array) -> void:
 		"--account-address", _burner_address,
 		"--private-key", _burner_private_key,
 		"--world", world_address,
-		"--profile", "dev",
+		"--profile", "v2",
 	]))
 
 	var project_root := ProjectSettings.globalize_path("res://").trim_suffix("/").get_base_dir()
