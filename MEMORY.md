@@ -27,3 +27,9 @@
 - `CombatManager` now owns the tactical loop wiring and should be started with `start_combat(player_node, enemy_nodes, combat_grid)`; it creates all subsystem nodes internally (turn/move/ability/targeting/telegraph/enemy resolver) and emits `combat_finished(player_won)`.
 - Telegraph visuals are easy to accidentally clear because `GridMovement.refresh_reachable()` calls `combat_grid.clear_overlay()`; re-apply active telegraph highlights after movement/ability refresh if both overlays must coexist.
 - For template integration, attaching `CombatRoomSetup` to an inherited room scene (`scenes/combat/room_combat_01.tscn`) avoids editing addon room templates while still wiring `fight_mode` transitions.
+
+## 2026-03-24 — Standalone tactical room activation notes
+
+- `actor.tscn` is not directly safe for runtime tactical spawn with its default `CharacterStates` node; it errors on missing `idle` animation in this project setup. Remove `CharacterStates` before adding actor to tree, and use `child.free()` (not `queue_free()`) for pre-tree stripping.
+- In Godot 4.5, `Camera2D` activation should use `enabled = true`; setting `current` on `Camera2D` throws invalid assignment.
+- `combat_hud.tscn` default bottom margin can clip the stamina bar in 1280x720 captures; expanding `Root/BottomMargin.offset_top` (e.g. `-156`) and enabling percentage text makes stamina visibility explicit for QA screenshots.
