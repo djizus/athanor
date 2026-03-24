@@ -91,7 +91,9 @@ func _setup_subsystems() -> void:
 	ability_manager = AbilityManager.new()
 	ability_manager.abilities = [ABILITY_STRIKE.duplicate(), ABILITY_DASH.duplicate(), ABILITY_GUARD.duplicate()]
 	add_child(ability_manager)
+	ability_manager.ability_selected.connect(_on_ability_selected)
 	ability_manager.ability_used.connect(_on_ability_used)
+	ability_manager.ability_cancelled.connect(_on_ability_cancelled)
 
 	ability_targeting = AbilityTargeting.new()
 	add_child(ability_targeting)
@@ -218,6 +220,9 @@ func _infer_enemy_archetype(node_name:String) -> int:
 	return CombatEnums.Archetype.BRUTE
 
 func _on_player_turn_started() -> void:
+	if ability_manager.get_selected() != null:
+		ability_manager.cancel_selection()
+
 	var stamina:StaminaResource = player.get("stamina", null)
 	if stamina != null:
 		stamina.refill()
@@ -231,6 +236,9 @@ func _on_player_turn_started() -> void:
 	_enable_player_input(true)
 
 func _on_enemy_turn_started() -> void:
+	if ability_manager.get_selected() != null:
+		ability_manager.cancel_selection()
+
 	_enable_player_input(false)
 	_refresh_grid_state()
 	var intents:Array[Dictionary] = enemy_turn_resolver.execute_enemy_turn(
@@ -240,7 +248,7 @@ func _on_enemy_turn_started() -> void:
 		grid_state,
 		turn_manager.turn_count
 	)
-	_animate_enemy_intents(intents)
+	await _animate_enemy_intents(intents)
 	_sync_enemy_positions_from_data()
 	_refresh_grid_state()
 
@@ -275,6 +283,41 @@ func _on_grid_tile_clicked(tile:Vector2i) -> void:
 	})
 	if used:
 		ability_manager.cancel_selection()
+
+func _on_ability_selected(ability:AbilityResource) -> void:
+	if !_input_enabled || combat_grid == null || ability == null:
+		return
+
+	var player_stats:CombatStatsResource = player.get("combat_stats", null)
+	if player_stats == null:
+		return
+
+	var blocked:Array[Vector2i] = _ability_blocked_cells_for_targeting()
+	var valid:Array[Vector2i] = ability_targeting.get_valid_targets(
+		ability,
+		player_stats.grid_pos,
+		blocked,
+		int(grid_state.get("grid_size", 8))
+	)
+
+	_clear_grid_overlay()
+	_draw_active_telegraphs()
+	combat_grid.highlight_cells(valid, CombatGrid.STATE_ABILITY_RANGE)
+
+func _on_ability_cancelled() -> void:
+	if combat_grid == null:
+		return
+
+	if !_input_enabled:
+		_clear_grid_overlay()
+		_draw_active_telegraphs()
+		return
+
+	_refresh_grid_state()
+	grid_movement.set_blocked_cells(grid_state.get("blocked_cells", Array([], TYPE_VECTOR2I, "", null)))
+	grid_movement.set_occupied_cells(_occupied_cells_without_player())
+	grid_movement.refresh_reachable()
+	_draw_active_telegraphs()
 
 func _on_ability_used(ability:AbilityResource, target_data:Dictionary) -> void:
 	var actors_on_grid:Dictionary = _build_actors_grid_context()
@@ -427,9 +470,8 @@ func _animate_enemy_intents(intents:Array[Dictionary]) -> void:
 	if intents.is_empty():
 		return
 
-	var tween:Tween = create_tween()
-	tween.set_parallel(true)
-	for intent in intents:
+	for i in intents.size():
+		var intent:Dictionary = intents[i]
 		var enemy_id:Variant = intent.get("enemy_id", -1)
 		var enemy_data:Dictionary = _find_enemy_by_id(enemy_id)
 		if enemy_data.is_empty():
@@ -438,7 +480,11 @@ func _animate_enemy_intents(intents:Array[Dictionary]) -> void:
 		if enemy_node == null:
 			continue
 		var moved_to:Vector2i = intent.get("moved_to", enemy_data.get("combat_stats").grid_pos)
-		tween.tween_property(enemy_node, "global_position", combat_grid.grid_to_world(moved_to), 0.22)
+		var tween:Tween = create_tween()
+		tween.tween_property(enemy_node, "global_position", combat_grid.grid_to_world(moved_to), 0.2)
+		await tween.finished
+		if i < intents.size() - 1:
+			await get_tree().create_timer(0.06).timeout
 
 func _find_enemy_by_id(enemy_id:Variant) -> Dictionary:
 	for enemy_data in enemies:
@@ -453,6 +499,24 @@ func _check_win_lose() -> void:
 	if _are_enemies_defeated():
 		turn_manager.queue_combat_end(true)
 
+func _unhandled_input(event:InputEvent) -> void:
+	if !_input_enabled || ability_manager == null:
+		return
+	if ability_manager.get_selected() == null:
+		return
+
+	var should_cancel:bool = false
+	if event is InputEventMouseButton:
+		var mouse_event:InputEventMouseButton = event
+		should_cancel = mouse_event.pressed && mouse_event.button_index == MOUSE_BUTTON_RIGHT
+	elif event is InputEventKey:
+		var key_event:InputEventKey = event
+		should_cancel = key_event.pressed && !key_event.echo && key_event.keycode == KEY_ESCAPE
+
+	if should_cancel:
+		ability_manager.cancel_selection()
+		get_viewport().set_input_as_handled()
+
 func _is_player_dead() -> bool:
 	var health:HealthResource = player.get("health", null)
 	return health != null && health.hp <= 0.0
@@ -466,6 +530,7 @@ func _are_enemies_defeated() -> bool:
 
 func _enable_player_input(enabled:bool) -> void:
 	_input_enabled = enabled
+	set_process_unhandled_input(enabled)
 	if grid_cursor != null:
 		grid_cursor.set_process(enabled)
 		grid_cursor.set_process_unhandled_input(enabled)

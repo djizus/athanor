@@ -30,16 +30,23 @@ func _remove_connections(health_resource:HealthResource)->void:
 	health_resource.dead.disconnect(_play_dead)
 
 func _play_damaged()->void:
-	flash_animation_player.stop()
-	flash_animation_player.play(flash_animation)
-	sound_resource_damage.play_managed()
+	if flash_animation_player != null:
+		flash_animation_player.stop()
+		flash_animation_player.play(flash_animation)
+	if sound_resource_damage != null:
+		sound_resource_damage.play_managed()
 
 func _play_dead()->void:
-	sound_resource_dead.play_managed()
+	if sound_resource_dead != null:
+		sound_resource_dead.play_managed()
 	
+	if dead_vfx_instance_resource == null:
+		actor_died.emit()
+		return
+
 	var _config_callback:Callable = func (inst:Node2D)->void:
-		inst.global_position = owner.global_position
-		inst.scale.x = sprite_flip.dir
+		inst.global_position = owner.global_position if owner != null else inst.global_position
+		inst.scale.x = sprite_flip.dir if sprite_flip != null else inst.scale.x
 	
 	dead_vfx_instance_resource.instance.call_deferred(_config_callback)
 	actor_died.emit()

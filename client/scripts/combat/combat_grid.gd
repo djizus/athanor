@@ -24,6 +24,7 @@ var grid_origin:Vector2i = Vector2i.ZERO
 var grid_size:Vector2i = Vector2i(8, 8)
 var _grid_visible:bool = false
 var _cell_states:Dictionary = {}
+var _tile_costs:Dictionary = {}
 
 func show_grid(origin:Vector2i, size:Vector2i) -> void:
 	grid_origin = origin
@@ -43,6 +44,16 @@ func set_cell_state(pos:Vector2i, state:int) -> void:
 
 func clear_overlay() -> void:
 	_cell_states.clear()
+	_tile_costs.clear()
+	queue_redraw()
+
+func show_tile_costs(costs:Dictionary) -> void:
+	_tile_costs.clear()
+	for cell_key in costs.keys():
+		var cell:Vector2i = cell_key
+		if !_is_in_current_bounds(cell):
+			continue
+		_tile_costs[cell] = int(costs[cell_key])
 	queue_redraw()
 
 func highlight_cells(cells:Array[Vector2i], state:int) -> void:
@@ -85,6 +96,8 @@ func _draw() -> void:
 		var color:Color = STATE_COLORS.get(state, STATE_COLORS[STATE_WALKABLE])
 		_draw_cell(cell, color)
 
+	_draw_tile_cost_labels()
+
 func _draw_cell(cell:Vector2i, color:Color) -> void:
 	var center:Vector2 = to_local(grid_to_world(cell))
 	var points:PackedVector2Array = PackedVector2Array([
@@ -94,6 +107,32 @@ func _draw_cell(cell:Vector2i, color:Color) -> void:
 		center + Vector2(-HALF_W, 0.0),
 	])
 	draw_colored_polygon(points, color)
+
+func _draw_tile_cost_labels() -> void:
+	if _tile_costs.is_empty():
+		return
+
+	var fallback_font:Font = ThemeDB.fallback_font
+	if fallback_font == null:
+		return
+
+	var font_size:int = max(10, ThemeDB.fallback_font_size)
+	for cell_key in _tile_costs.keys():
+		var cell:Vector2i = cell_key
+		if !_is_in_current_bounds(cell):
+			continue
+		var tile_steps:int = int(_tile_costs[cell])
+		var stamina_cost:int = tile_steps * 10
+		var center:Vector2 = to_local(grid_to_world(cell))
+		draw_string(
+			fallback_font,
+			center + Vector2(0.0, 4.0),
+			str(stamina_cost),
+			HORIZONTAL_ALIGNMENT_CENTER,
+			-1.0,
+			font_size,
+			Color(1.0, 1.0, 1.0, 0.95)
+		)
 
 func _is_in_current_bounds(pos:Vector2i) -> bool:
 	if pos.x < grid_origin.x || pos.y < grid_origin.y:

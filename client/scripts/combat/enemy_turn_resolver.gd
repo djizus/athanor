@@ -17,7 +17,12 @@ func execute_enemy_turn(
 	for i in enemies.size():
 		var enemy:Dictionary = enemies[i]
 		var enemy_id:Variant = enemy.get("enemy_id", enemy.get("id", i))
-		var self_pos:Vector2i = enemy.get("position", enemy.get("grid_pos", enemy.get("pos", Vector2i.ZERO)))
+		var combat_stats:CombatStatsResource = enemy.get("combat_stats", null)
+		var self_pos:Vector2i = Vector2i.ZERO
+		if combat_stats != null:
+			self_pos = combat_stats.grid_pos
+		else:
+			self_pos = enemy.get("position", enemy.get("grid_pos", enemy.get("pos", Vector2i.ZERO)))
 		var ai:EnemyGridAI = enemy.get("ai", null)
 		if ai == null:
 			continue
@@ -40,6 +45,9 @@ func execute_enemy_turn(
 		enemy["position"] = moved_to
 		enemy["grid_pos"] = moved_to
 		enemy["pos"] = moved_to
+		if combat_stats != null:
+			combat_stats.grid_pos = moved_to
+			enemy["combat_stats"] = combat_stats
 		enemies[i] = enemy
 
 		telegraph_system.add_telegraph(telegraph_cells, telegraph_damage, enemy_id, turn)

@@ -33,3 +33,16 @@
 - `actor.tscn` is not directly safe for runtime tactical spawn with its default `CharacterStates` node; it errors on missing `idle` animation in this project setup. Remove `CharacterStates` before adding actor to tree, and use `child.free()` (not `queue_free()`) for pre-tree stripping.
 - In Godot 4.5, `Camera2D` activation should use `enabled = true`; setting `current` on `Camera2D` throws invalid assignment.
 - `combat_hud.tscn` default bottom margin can clip the stamina bar in 1280x720 captures; expanding `Root/BottomMargin.offset_top` (e.g. `-156`) and enabling percentage text makes stamina visibility explicit for QA screenshots.
+
+## 2026-03-24 — Tactical room sprite/wall fixes
+
+- `tactical_room.gd` enemy spawns should pass scene-specific `PackedScene`s (zombie/slime/zombie_crawler) into `_spawn_actor()`; reusing `actor.tscn` for all combatants makes enemies visually identical to the player.
+- Enemy template scenes include runtime nodes not present in `actor.tscn` (`ZombieInput`, `SlashAttack`, `ActiveEnemy`, `SlimeSplit`, `BloodTrail`, `PoolNode`); strip these before adding spawned tactical actors to avoid template AI/weapon logic running in turn-based mode.
+- For tactical obstacle visuals, `tileset_isometric_walls.tres` with `source_id=0` and atlas `(1,1)` produces raised block-like walls, while `(0,0)` appears too flat for room obstacles.
+
+## 2026-03-24 — Ability targeting + death crash fixes
+
+- `CombatManager` did not wire `AbilityManager.ability_selected/ability_cancelled`; result was no ability range overlay despite selection in HUD. Restoring these signal handlers and drawing `CombatGrid.STATE_ABILITY_RANGE` fixes target feedback.
+- Movement overlay is destructive (`grid_movement.refresh_reachable()` clears grid overlay). When cancelling ability targeting, re-run movement overlay refresh then redraw telegraphs to restore normal player-turn view.
+- Right-click/Esc cancel for targeting can be handled centrally in `CombatManager._unhandled_input`; gate it by `_input_enabled` and non-null selected ability.
+- `ActorDamage` in `addons/top_down` can call `play_managed()` on null exported sound resources in stripped/variant actor setups. Guard `sound_resource_damage`/`sound_resource_dead` (and optional death VFX dependencies) to prevent Nil method calls during death.

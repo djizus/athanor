@@ -4,13 +4,16 @@ const GRID_SIZE:int = 8
 const FLOOR_TILESET:TileSet = preload("res://addons/top_down/resources/tilesets/tileset_isometric_floors.tres")
 const WALL_TILESET:TileSet = preload("res://addons/top_down/resources/tilesets/tileset_isometric_walls.tres")
 const ACTOR_SCENE:PackedScene = preload("res://addons/top_down/scenes/actors/actor.tscn")
+const ZOMBIE_SCENE:PackedScene = preload("res://addons/top_down/scenes/actors/zombie.tscn")
+const SLIME_SCENE:PackedScene = preload("res://addons/top_down/scenes/actors/slime.tscn")
+const CRAWLER_SCENE:PackedScene = preload("res://addons/top_down/scenes/actors/zombie_crawler.tscn")
 const COMBAT_GRID_SCENE:PackedScene = preload("res://scenes/combat/combat_grid.tscn")
 const COMBAT_HUD_SCENE:PackedScene = preload("res://scenes/combat/combat_hud.tscn")
 
 const FLOOR_SOURCE_ID:int = 1
 const FLOOR_ATLAS:Vector2i = Vector2i(1, 3)
 const WALL_SOURCE_ID:int = 0
-const WALL_ATLAS:Vector2i = Vector2i(0, 0)
+const WALL_ATLAS:Vector2i = Vector2i(1, 1)
 
 var _combat_grid:CombatGrid
 var _combat_manager:CombatManager
@@ -56,12 +59,12 @@ func _spawn_combat_runtime() -> void:
 	add_child(_combat_grid)
 	_combat_grid.show_grid(Vector2i.ZERO, Vector2i(GRID_SIZE, GRID_SIZE))
 
-	_player = _spawn_actor("Player", Vector2i(1, 1), true)
+	_player = _spawn_actor(ACTOR_SCENE, "Player", Vector2i(1, 1), true)
 
 	_enemies = [
-		_spawn_actor("BruteEnemy", Vector2i(6, 1), false),
-		_spawn_actor("CasterEnemy", Vector2i(5, 6), false),
-		_spawn_actor("FlankerEnemy", Vector2i(1, 5), false),
+		_spawn_actor(ZOMBIE_SCENE, "BruteEnemy", Vector2i(6, 1), false),
+		_spawn_actor(SLIME_SCENE, "CasterEnemy", Vector2i(5, 6), false),
+		_spawn_actor(CRAWLER_SCENE, "FlankerEnemy", Vector2i(1, 5), false),
 	]
 
 	_combat_manager = CombatManager.new()
@@ -72,8 +75,8 @@ func _spawn_combat_runtime() -> void:
 	_combat_hud.name = "CombatHUD"
 	add_child(_combat_hud)
 
-func _spawn_actor(node_name:String, grid_pos:Vector2i, is_player:bool) -> Node2D:
-	var actor:Node2D = ACTOR_SCENE.instantiate() as Node2D
+func _spawn_actor(actor_scene:PackedScene, node_name:String, grid_pos:Vector2i, is_player:bool) -> Node2D:
+	var actor:Node2D = actor_scene.instantiate() as Node2D
 	actor.name = node_name
 	_strip_realtime_children(actor, is_player)
 	actor.position = _iso_to_world(grid_pos)
@@ -88,6 +91,13 @@ func _strip_realtime_children(actor:Node, is_player:bool) -> void:
 		"EnemyWaveManager",
 		"PlayerInput",
 		"BotInput",
+		"ZombieInput",
+		"SlashAttack",
+		"ActiveEnemy",
+		"CriticalDamageReplace",
+		"SlimeSplit",
+		"BloodTrail",
+		"PoolNode",
 		"DebugInput",
 		"CharacterStates",
 	])
@@ -104,6 +114,9 @@ func _strip_realtime_children(actor:Node, is_player:bool) -> void:
 			continue
 		var script_path:String = script.resource_path.to_lower()
 		if script_path.contains("weapon") || script_path.contains("projectile") || script_path.contains("bot"):
+			child.free()
+			continue
+		if script_path.contains("enemy_ai") || script_path.contains("activeenemy") || script_path.contains("slimesplit") || script_path.contains("bloodtrail"):
 			child.free()
 			continue
 		if is_player && script_path.contains("playerinput"):

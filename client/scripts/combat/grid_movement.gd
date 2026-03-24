@@ -24,6 +24,8 @@ func _ready() -> void:
 func refresh_reachable() -> void:
 	if combat_stats == null || stamina == null:
 		reachable_cells.clear()
+		if combat_grid != null && combat_grid.has_method("show_tile_costs"):
+			combat_grid.call("show_tile_costs", {})
 		return
 
 	var max_cost:int = stamina.value / 10
@@ -131,6 +133,8 @@ func _draw_reachable_overlay() -> void:
 	for cell_key in reachable_cells.keys():
 		cells.push_back(cell_key)
 	combat_grid.highlight_cells(cells, CombatGrid.STATE_MOVE_RANGE)
+	if combat_grid.has_method("show_tile_costs"):
+		combat_grid.call("show_tile_costs", reachable_cells)
 
 func _grid_to_world(cell:Vector2i) -> Vector2:
 	if combat_grid != null && combat_grid.has_method("grid_to_world"):
