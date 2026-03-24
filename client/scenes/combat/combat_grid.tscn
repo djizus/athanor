@@ -1,0 +1,11 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/combat_grid.gd" id="1_8a15a"]
+[ext_resource type="Script" path="res://scripts/combat/grid_cursor.gd" id="2_e92yp"]
+
+[node name="CombatGrid" type="Node2D"]
+script = ExtResource("1_8a15a")
+
+[node name="GridCursor" type="Sprite2D" parent="."]
+script = ExtResource("2_e92yp")
+centered = false
