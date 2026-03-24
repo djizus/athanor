@@ -57,7 +57,7 @@ config/world_address="0x0"
 config/actions_address="0x0"
 config/account/address="0x0"
 config/account/private_key="0x0"
-config/disable_embedded_browser=false
+config/disable_embedded_browser=true
 
 [editor]
 
