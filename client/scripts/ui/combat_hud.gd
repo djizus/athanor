@@ -151,11 +151,16 @@ func _create_ui() -> void:
 	_enemy_hp_bar = ProgressBar.new()
 	_enemy_hp_bar.max_value = 1
 	_enemy_hp_bar.value = 0
+	_enemy_hp_bar.show_percentage = false
 	_enemy_hp_bar.custom_minimum_size = Vector2(220, 18)
+	var enemy_hp_fill: StyleBoxFlat = StyleBoxFlat.new()
+	enemy_hp_fill.bg_color = Color(0.85, 0.3, 0.2, 1.0)
+	_enemy_hp_bar.add_theme_stylebox_override("fill", enemy_hp_fill)
 	_enemy_panel.add_child(_enemy_hp_bar)
 
 	var bottom_bar: HBoxContainer = HBoxContainer.new()
 	bottom_bar.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	bottom_bar.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	bottom_bar.offset_bottom = -16.0
 	bottom_bar.alignment = BoxContainer.ALIGNMENT_CENTER
 	bottom_bar.add_theme_constant_override("separation", 10)
@@ -165,6 +170,7 @@ func _create_ui() -> void:
 	_hp_bar.custom_minimum_size = Vector2(180, 20)
 	_hp_bar.max_value = 1
 	_hp_bar.value = 1
+	_hp_bar.show_percentage = false
 	var hp_fill: StyleBoxFlat = StyleBoxFlat.new()
 	hp_fill.bg_color = Color(0.84, 0.22, 0.22, 1.0)
 	_hp_bar.add_theme_stylebox_override("fill", hp_fill)
@@ -174,6 +180,7 @@ func _create_ui() -> void:
 	_stamina_bar.custom_minimum_size = Vector2(180, 20)
 	_stamina_bar.max_value = 1
 	_stamina_bar.value = 1
+	_stamina_bar.show_percentage = false
 	var stamina_fill: StyleBoxFlat = StyleBoxFlat.new()
 	stamina_fill.bg_color = Color(0.22, 0.46, 0.86, 1.0)
 	_stamina_bar.add_theme_stylebox_override("fill", stamina_fill)

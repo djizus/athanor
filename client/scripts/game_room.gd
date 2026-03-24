@@ -56,8 +56,22 @@ class GridContainerNode extends Node2D:
 				draw_polyline(PackedVector2Array([poly[0], poly[1], poly[2], poly[3], poly[0]]), Color(1.0, 1.0, 1.0, 0.25), 1.0)
 
 class PlayerVisualNode extends Node2D:
-	func _draw() -> void:
-		draw_rect(Rect2(Vector2(-10.0, -14.0), Vector2(20.0, 20.0)), Color(0.2, 0.75, 1.0, 1.0), true)
+	const _HERO_TEXTURE := "res://addons/top_down/assets/images/characters/plumber_16x16_strip8.png"
+	var _sprite: Sprite2D
+	var _anim_timer: float = 0.0
+
+	func _ready() -> void:
+		_sprite = Sprite2D.new()
+		_sprite.texture = load(_HERO_TEXTURE)
+		_sprite.hframes = 8
+		_sprite.position = Vector2(0.0, -8.0)
+		add_child(_sprite)
+
+	func _process(delta: float) -> void:
+		_anim_timer += delta
+		if _anim_timer >= 0.12:
+			_anim_timer -= 0.12
+			_sprite.frame = (_sprite.frame + 1) % _sprite.hframes
 
 class RuntimeHealthResource extends Resource:
 	signal hp_changed
