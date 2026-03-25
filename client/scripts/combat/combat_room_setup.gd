@@ -56,6 +56,15 @@ func _suppress_shooter_systems() -> void:
 		for child in enemy_mgr.get_children():
 			if child.name != "EnemyWaveManager" and child.name != "EnemySpawner" and child.name != "EnemySpawnPoints":
 				child.queue_free()
+	var hole_obstacle:Node2D = _room_root.get_node_or_null("Behind/HoleObstacle") as Node2D
+	if hole_obstacle != null:
+		for child in hole_obstacle.get_children():
+			if child is Area2D:
+				(child as Area2D).monitoring = false
+				(child as Area2D).monitorable = false
+				for shape in child.get_children():
+					if shape is CollisionShape2D:
+						(shape as CollisionShape2D).disabled = true
 
 func _on_fight_mode_enabled() -> void:
 	if _room_root == null:
