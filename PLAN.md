@@ -1,360 +1,521 @@
-# Turn-Based Tactical Combat System — Client Implementation Plan
+# Athanor — Tactical RPG Implementation Plan
+
+> **Last updated**: 2026-03-26 — Gap analysis + remaining work prioritization
+>
+> **Status**: Phase 0 + Workstreams A/B/C + Merge M.1–M.4 COMPLETE (57 tests passing).
+> Game is partially playable via standalone `tactical_room.tscn`. Main game flow
+> (menu → exploration → combat → victory) has integration gaps. This plan tracks
+> remaining work to reach a fully playable demo.
+
+---
+
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Implementation Status](#implementation-status)
+3. [Known Bugs & Issues](#known-bugs--issues)
+4. [Remaining Work — P0 Playable](#remaining-work--p0-playable-critical-path)
+5. [Remaining Work — P1 Complete Loop](#remaining-work--p1-complete-loop)
+6. [Remaining Work — P2 Polish](#remaining-work--p2-polish)
+7. [Verification Approach](#verification-approach)
+8. [Commit Strategy](#commit-strategy)
+9. [Technical Design Reference](#technical-design-reference)
+10. [Decision Log](#decision-log)
+
+---
 
 ## Overview
 
 Convert the nezvers/Godot-GameTemplate real-time arena shooter into an Into the Breach–style turn-based tactical combat system running locally in Godot 4.6. When the player enters an arena (`fight_mode` BoolResource becomes true), the game switches from real-time WASD exploration to an 8×8 isometric grid where movement and abilities cost stamina. Enemies telegraph their attacks 1 turn ahead, giving the player one full turn to reposition. All combat logic runs locally in GDScript (offline-first); future onchain integration via Dojo contracts is out of scope for this plan.
 
-## Goals
-
-- Implement complete turn-based combat loop: PLAYER_TURN → ENEMY_TURN → RESOLVE
-- Build 8×8 isometric grid overlay aligned with existing 32×16 tile system
-- Replace weapon system with 3 abilities: Strike (melee), Dash (movement+damage), Guard (defensive)
-- Convert template enemies: Zombie→Brute (melee), Slime→Caster (ranged), create Flanker (from zombie_crawler base)
-- Implement Into the Breach–style telegraph system (enemy intents visible 1 turn ahead)
-- Implement stamina economy: 100 max, refills each turn, movement=10/tile, abilities=15–30
-- Preserve real-time WASD exploration outside combat
-- Follow template patterns: ValueResource signals, ResourceNode composition, InstanceResource pooling
-- TDD approach: write tests before implementation for all logic systems
-
-## Non-Goals
-
-- Onchain/Dojo contract integration (future plan)
-- Dojo bridge, Torii subscriptions, or Cartridge auth
-- More than 3 abilities (Cleave and Fireball deferred to post-M1)
-- Procedural room generation or multi-room dungeon flow
-- Production art pipeline (use existing template sprites + recolors)
-- Multiplayer or leaderboard systems
-- Save/load of combat state
-- Modifying `great_games_library` addon scripts
-
-## Assumptions and Constraints
-
-- **Engine**: Godot 4.6, GDScript only
-- **Branch**: `offline` — all combat runs locally
-- **Tile system**: 32×16px isometric diamond tiles (TileShape=ISOMETRIC, TileLayout=STAGGERED)
-- **Grid size**: 8×8 = 64 tiles. Obstacles cover ~20 tiles (~30% coverage)
-- **Addon rules**: Do NOT modify `great_games_library`. MAY modify `top_down` addon scripts where necessary (it's the game template, not a library)
-- **No new autoloads**: Follow template convention of passing resources through scenes
-- **fight_mode BoolResource**: Existing combat trigger; ArenaStarter sets true on body_entered
-- **Damage chain**: All damage flows through DamageDataResource.process() → HealthResource.add_hp()
-- **AStarGrid2D**: Available via template's AstarGridResource wrapper
-- **Task granularity**: Each task completable in 1–3 file operations with concrete outputs
-- **Collision polygon**: Isometric diamond `PackedVector2Array(-16, 0, 0, 8, 16, 0, 0, -8)`
-
-## Requirements
-
-### Functional
-
-- Player can move on grid tiles during PLAYER_TURN (click or WASD), costing 10 stamina per tile (Manhattan distance)
-- Player can use 3 abilities with distinct targeting modes:
-  - **Strike**: melee, range=1, adjacent tiles only, costs 20 stamina, deals 15 damage
-  - **Dash**: line movement up to 3 tiles + hit at destination, costs 25 stamina, deals 10 damage
-  - **Guard**: self-buff, costs 15 stamina, reduces next incoming damage by 50% for 1 turn
-- Stamina (100 max) refills fully at start of each player turn
-- Player can perform multiple actions per turn as long as stamina allows
-- "End Turn" button (or key) advances to ENEMY_TURN
-- Enemies telegraph attack zones during ENEMY_TURN (red overlay tiles)
-- Telegraphed attacks resolve at start of NEXT ENEMY_TURN
-- Enemy AI is deterministic:
-  - Brute: move 1 tile toward player (shorter axis, X tiebreak), telegraph melee if adjacent
-  - Caster: if distance < 3 retreat 1 tile, else stay; telegraph 3×3 AOE on player position
-  - Flanker: move toward position behind player (opposite of player's last move), telegraph melee if adjacent
-- Combat ends when all enemies are dead → fight_mode=false, doors open
-- Combat fails when player HP reaches 0 → game over screen
-- Real-time WASD exploration preserved outside combat
-
-### Non-Functional
-
-- Grid overlay renders at 60fps with no visual hitching during turns
-- Turn transitions complete within 0.5s (no long waits)
-- All combat logic is deterministic (same state → same outcome, no randomness in AI)
-- Ability damage uses template DamageDataResource chain (compatibility with existing VFX/SFX)
-- Each phase of implementation produces a runnable game (incremental buildability)
-- Code follows template naming conventions (PascalCase classes, snake_case files)
-
-## Technical Design
-
-### Data Model — New Resources
+### Target Game Flow
 
 ```
-StaminaResource (extends ValueResource)
-├── value: int = 100
-├── max_value: int = 100
-├── Signals: stamina_spent(cost), stamina_refilled, stamina_depleted
-├── Methods: spend(cost) → bool, can_spend(cost) → bool, refill()
-└── Pattern: mirrors IntResource but with clamping + spend/refill semantics
-
-CombatStatsResource (extends SaveableResource)
-├── grid_pos: Vector2i = Vector2i(-1, -1)  # current grid position
-├── faction: int = 0  # 0=player, 1=enemy
-├── archetype: int = 0  # 0=player, 1=brute, 2=caster, 3=flanker
-├── move_range: int = 10  # max tiles per turn (stamina/10)
-├── is_guarding: bool = false  # Guard active?
-├── guard_reduction: float = 0.5  # damage reduction when guarding
-├── Signals: position_changed(old, new), guard_changed(active)
-└── Pattern: attached to each actor via ResourceNode
-
-AbilityResource (extends Resource)
-├── ability_name: String
-├── ability_id: int  # 0=Strike, 1=Dash, 2=Guard
-├── stamina_cost: int
-├── cooldown_turns: int
-├── current_cooldown: int = 0
-├── target_mode: int  # 0=ADJACENT, 1=LINE, 2=SELF
-├── range_tiles: int
-├── base_damage: float
-├── icon: Texture2D
-├── description: String
-└── Methods: can_use(stamina) → bool, start_cooldown(), tick_cooldown()
-```
-
-### Architecture — Scene Tree During Combat
-
-```
-Room (existing room_template.tscn instance)
-├── Background/
-│   ├── FloorLayer (existing TileMapLayer, 32×16 iso)
-│   └── ObstacleLayer (existing TileMapLayer + StaticBody2D)
-├── CombatGrid (NEW — Node2D, added as child of Room)
-│   ├── GridOverlay (TileMapLayer — walkable/danger/selected/range tiles)
-│   ├── GridCursor (Sprite2D — hover highlight on current mouse tile)
-│   └── TelegraphOverlay (TileMapLayer — enemy intent zones, red with pulse)
-├── YSortedLayer/
-│   ├── Player (existing CharacterBody2D, MoverTopDown2D DISABLED)
-│   └── Enemies (existing actors, BotInput DISABLED, GridAI ENABLED)
-├── CombatManager (NEW — Node, added as child of Room)
-│   ├── TurnManager (NEW — Node, phase state machine)
-│   ├── GridMovement (NEW — Node, handles player grid movement)
-│   ├── AbilityManager (NEW — Node, holds 3 abilities)
-│   ├── AbilityTargeting (NEW — Node, tile selection + preview)
-│   ├── TelegraphSystem (NEW — Node, computes + displays telegraphs)
-│   └── EnemyTurnResolver (NEW — Node, executes AI + resolves telegraphs)
-├── CombatTransition (NEW — Node, hooks fight_mode → enable/disable systems)
-├── GameHUD (existing CanvasLayer)
-│   └── CombatHUD (NEW — Control, ability buttons + stamina bar + phase indicator)
-└── [existing nodes: MainCamera, ScreenEffects, EnemyManager, etc.]
-```
-
-### Key Integration Points
-
-| Existing System | Integration Method | Notes |
-|---|---|---|
-| `fight_mode` BoolResource | CombatTransition listens to `changed_true`/`changed_false` | Entry/exit hook for combat mode |
-| `MoverTopDown2D` | Call `set_enabled_process(false)` on combat enter, `(true)` on exit | Disables real-time movement |
-| `PlayerInput` | Call `set_enabled(false)` on combat enter, `(true)` on exit | Disables real-time input |
-| `BotInput` | Call `set_enabled(false)` on combat enter | Disables real-time AI |
-| `HealthResource` | Reuse directly — abilities deal damage via `add_hp(-dmg)` | Signals: `damaged`, `dead`, `hp_changed` |
-| `DamageDataResource` | Create instances per ability, call `.process(target_resource_node)` | Preserves flash VFX, damage numbers, knockback |
-| `ActorDamage` | Already listens to `health_resource.damaged`/`.dead` | Plays damage VFX/sounds automatically |
-| `ActiveEnemy` | Reuse for enemy lifecycle tracking | `remove_self()` on death decrements enemy_count |
-| `EnemyWaveManager` | Reuse `enemy_count_resource` for combat end detection | When count=0 → sets fight_mode=false |
-| `AstarGridResource` | Reuse wrapper for pathfinding within 8×8 grid | Set solid cells for obstacles + occupied tiles |
-| `ResourceNode` | Add `stamina` and `combat_stats` resources to player/enemy ResourceNodes | Follow existing pattern: `resource_node.get_resource("stamina")` |
-
-### UX Flow
-
-```
-EXPLORATION (real-time WASD)
-    │
-    ▼ [Player enters ArenaStarter Area2D]
-    │
-fight_mode = true → CombatTransition activates
-    │
-    ├── Disable MoverTopDown2D, PlayerInput, BotInput
-    ├── Snap player to nearest grid tile center
-    ├── Spawn CombatGrid overlay (8×8)
-    ├── Place enemies on grid tiles
-    ├── Show CombatHUD (hide weapon HUD)
-    └── Start TurnManager
-          │
-          ▼
-    ┌─────────────────────────────────┐
-    │         PLAYER_TURN             │
-    │  • Stamina refills to 100       │
-    │  • Resolve previous telegraphs  │
-    │  • Show reachable tiles (blue)  │
-    │  • Player clicks to move / aim  │
-    │  • Player uses abilities        │
-    │  • "End Turn" → next phase      │
-    └────────────┬────────────────────┘
-                 ▼
-    ┌─────────────────────────────────┐
-    │         ENEMY_TURN              │
-    │  • Each enemy computes AI move  │
-    │  • Enemies animate movement     │
-    │  • Enemies create telegraphs    │
-    │  • Show danger zones (red)      │
-    │  • Auto-advance when done       │
-    └────────────┬────────────────────┘
-                 ▼
-    ┌─────────────────────────────────┐
-    │         RESOLVE                 │
-    │  • Check win: all enemies dead? │
-    │  • Check lose: player dead?     │
-    │  • Tick cooldowns               │
-    │  • Increment turn counter       │
-    │  • → PLAYER_TURN (loop)         │
-    └────────────┬────────────────────┘
-                 ▼
-    [Combat ends]
-    │
-    ├── fight_mode = false
-    ├── Remove CombatGrid overlay
-    ├── Re-enable MoverTopDown2D, PlayerInput
-    ├── Restore exploration HUD
-    └── Open arena doors
+1. Main Menu (Enter Dungeon / Settings / Quit)     ← EXISTS
+2. Isometric dungeon room, WASD exploration         ← EXISTS (room_tactical_01)
+3. Walk into arena trigger → doors close            ← PARTIAL (fight_mode hooks work)
+4. TACTICAL COMBAT: 8×8 grid, turn-based            ← EXISTS (tactical_room)
+   - Player turn: move (stamina), abilities, end turn
+   - Enemy turn: move, telegraph attacks
+   - Resolve: telegraphed damage applies
+   - Repeat until win/lose
+5. Combat ends → grid removed, doors open           ← NOT VERIFIED E2E
+6. Victory → next room / Game Over → retry/menu     ← MISSING
 ```
 
 ---
 
-## Implementation Plan
+## Implementation Status
 
-### Task Contract
+### ✅ COMPLETE — Phase 0: Foundation (9/9 tasks)
 
-Every task in this plan follows these rules:
-- **1–3 tool calls** maximum (file write/edit operations)
-- **Concrete file outputs** listed explicitly
-- **TDD**: logic tasks start with a test file; test runs RED first, then GREEN after implementation
-- **Verification**: every task has a command to confirm success
-- **Atomic commit**: one commit per task with a descriptive message
-- **Incremental**: each phase produces a runnable project (`godot --headless --quit` exits 0)
+| # | Task | Status | Files |
+|---|------|--------|-------|
+| 0.1 | Folder structure | ✅ DONE | `scripts/combat/`, `tests/`, `resources/combat/` |
+| 0.2 | CombatEnums | ✅ DONE | `scripts/combat/combat_enums.gd` |
+| 0.3 | StaminaResource | ✅ DONE | `scripts/resources/stamina_resource.gd` |
+| 0.4 | StaminaResource tests | ✅ DONE | `tests/test_stamina.gd` (12 assertions) |
+| 0.5 | CombatStatsResource | ✅ DONE | `scripts/resources/combat_stats_resource.gd` |
+| 0.6 | AbilityResource | ✅ DONE | `scripts/resources/ability_resource.gd` |
+| 0.7 | Ability .tres instances | ✅ DONE | `resources/combat/ability_{strike,dash,guard}.tres` |
+| 0.8 | GridUtils | ✅ DONE | `scripts/combat/grid_utils.gd` |
+| 0.9 | GridUtils tests | ✅ DONE | `tests/test_grid_utils.gd` (14 assertions) |
 
-### Test Harness Pattern
+### ✅ COMPLETE — Workstream A: Combat Grid + Turn System (7/7 tasks)
 
-All logic tests use this pattern (no external test framework):
-```gdscript
-# tests/test_example.gd
-extends SceneTree
-func _init() -> void:
-    var pass_count := 0
-    var fail_count := 0
-    # --- Test 1 ---
-    if condition:
-        pass_count += 1; print("  PASS: description")
-    else:
-        fail_count += 1; print("  FAIL: description — expected X, got Y")
-    # --- Summary ---
-    print("\n%d passed, %d failed" % [pass_count, fail_count])
-    quit(1 if fail_count > 0 else 0)
+| # | Task | Status | Files |
+|---|------|--------|-------|
+| A.1 | CombatGrid scene | ✅ DONE | `scripts/combat/combat_grid.gd`, `scenes/combat/combat_grid.tscn` |
+| A.2 | GridCursor | ✅ DONE | `scripts/combat/grid_cursor.gd` |
+| A.3 | TurnManager | ✅ DONE | `scripts/combat/turn_manager.gd` |
+| A.4 | TurnManager tests | ✅ DONE | `tests/test_turn_manager.gd` (18 assertions) |
+| A.5 | GridMovement | ✅ DONE | `scripts/combat/grid_movement.gd` |
+| A.6 | GridMovement tests | ✅ DONE | `tests/test_grid_movement.gd` (14 assertions) |
+| A.7 | CombatTransition | ✅ DONE | `scripts/combat/combat_transition.gd` |
+
+### ✅ COMPLETE — Workstream B: Ability System (7/7 tasks)
+
+| # | Task | Status | Files |
+|---|------|--------|-------|
+| B.1 | AbilityManager | ✅ DONE | `scripts/combat/ability_manager.gd` |
+| B.2 | AbilityManager tests | ✅ DONE | `tests/test_ability_manager.gd` (18 assertions) |
+| B.3 | AbilityTargeting | ✅ DONE | `scripts/combat/ability_targeting.gd` |
+| B.4 | AbilityTargeting tests | ✅ DONE | `tests/test_ability_targeting.gd` (8 assertions) |
+| B.5 | Strike effect | ✅ DONE | `scripts/combat/abilities/ability_strike.gd` |
+| B.6 | Dash effect | ✅ DONE | `scripts/combat/abilities/ability_dash.gd` |
+| B.7 | Guard effect | ✅ DONE | `scripts/combat/abilities/ability_guard.gd` |
+
+### ✅ COMPLETE — Workstream C: Enemy AI + Telegraphs (10/10 tasks)
+
+| # | Task | Status | Files |
+|---|------|--------|-------|
+| C.1 | EnemyGridAI base | ✅ DONE | `scripts/combat/enemy_grid_ai.gd` |
+| C.2 | BruteAI | ✅ DONE | `scripts/combat/ai/brute_ai.gd` |
+| C.3 | BruteAI tests | ✅ DONE | `tests/test_brute_ai.gd` (10 assertions) |
+| C.4 | CasterAI | ✅ DONE | `scripts/combat/ai/caster_ai.gd` |
+| C.5 | CasterAI tests | ✅ DONE | `tests/test_caster_ai.gd` (10 assertions) |
+| C.6 | FlankerAI | ✅ DONE | `scripts/combat/ai/flanker_ai.gd` |
+| C.7 | FlankerAI tests | ✅ DONE | `tests/test_flanker_ai.gd` (10 assertions) |
+| C.8 | TelegraphSystem | ✅ DONE | `scripts/combat/telegraph_system.gd` |
+| C.9 | TelegraphSystem tests | ✅ DONE | `tests/test_telegraph_system.gd` (12 assertions) |
+| C.10 | EnemyTurnResolver | ✅ DONE | `scripts/combat/enemy_turn_resolver.gd` |
+
+### ✅ COMPLETE — Merge Phase (4/6 tasks)
+
+| # | Task | Status | Files |
+|---|------|--------|-------|
+| M.1 | CombatHUD | ✅ DONE | `scripts/ui/combat_hud.gd`, `scenes/combat/combat_hud.tscn` |
+| M.2 | CombatManager orchestrator | ✅ DONE | `scripts/combat/combat_manager.gd` (655 lines) |
+| M.3 | First encounter room | ✅ DONE | `scenes/combat/room_combat_01.tscn`, `room_tactical_01.tscn`, `tactical_room.tscn` |
+| M.4 | Camera transitions | ✅ DONE | Integrated in `combat_manager.gd` lines 603–655 |
+| M.5 | SFX + VFX hooks | ⚠️ PARTIAL | Tile flash VFX exist (`_spawn_tile_vfx`, `_flash_screen`), **no audio wired** |
+| M.6 | Balance tuning pass | ⚠️ PARTIAL | Values set in .tres files, **no formal tuning** |
+
+### Additional Work Completed (Not In Original Plan)
+
+| Item | Status | Files |
+|------|--------|-------|
+| Main menu (Enter Dungeon / Settings / Quit) | ✅ DONE | `scripts/main_menu.gd`, `scenes/main_menu.tscn` |
+| CombatRoomSetup (room_0 integration) | ✅ DONE | `scripts/combat/combat_room_setup.gd` |
+| Standalone tactical room (direct combat test) | ✅ DONE | `scripts/combat/tactical_room.gd`, `scenes/combat/tactical_room.tscn` |
+| Tactical launcher (dev shortcut) | ✅ DONE | `scripts/combat/tactical_launcher.gd` |
+| Interactive QA harness | ✅ DONE | `tests/test_interactive_qa.gd` (13 assertions) |
+| Full flow QA harness | ✅ DONE | `tests/test_full_flow_qa.gd` |
+| Visual combat QA | ✅ DONE | `tests/test_visual_combat.gd` |
+| WASD input actions (was missing) | ✅ FIXED | `project.godot` — up=W, down=S, left=A, right=D |
+| Distinct enemy sprites in tactical_room | ✅ FIXED | `tactical_room.gd` uses zombie/slime/crawler scenes |
+| Death crash null guards | ✅ FIXED | `ActorDamage` guards on nil sound/VFX resources |
+| 480×270 viewport with 4× upscale | ✅ FIXED | `project.godot` display settings |
+| Compact bottom-bar HUD | ✅ FIXED | `combat_hud.tscn` 72px bottom margin |
+
+---
+
+## Known Bugs & Issues
+
+### 🔴 BUG-1: CombatRoomSetup spawns identical enemies (HIGH)
+- **File**: `scripts/combat/combat_room_setup.gd` line 7–8, line 134
+- **Issue**: `@export var enemy_scene` defaults to `actor.tscn`. All 3 spawned enemies use this same scene, making them visually identical to the player.
+- **Impact**: The main game flow (Main Menu → Enter Dungeon → room_tactical_01) shows 3 identical actors. The zombie/slime/crawler fix in `tactical_room.gd` does NOT apply to this code path.
+- **Fix**: Replace single `enemy_scene` export with per-archetype scene exports (zombie, slime, crawler). Mirror the stripping logic from `tactical_room.gd` lines 87–123.
+
+### 🟡 BUG-2: HUD ability buttons show cramped two-line text (MEDIUM)
+- **File**: `scripts/ui/combat_hud.gd` line 131, `scenes/combat/combat_hud.tscn` lines 73–144
+- **Issue**: Button text is `"%s\nCost %d"` (e.g. "Strike\nCost 20") crammed into 80×28px at 11pt font. The user reported "Cost 0" labels — likely from an earlier build or from poor readability at small size.
+- **Impact**: Abilities are hard to identify at a glance.
+- **Fix**: Show only ability name on button, move cost to tooltip.
+
+### 🟡 BUG-3: No victory/defeat screen (MEDIUM)
+- **File**: `scripts/combat/combat_manager.gd` line 368–372
+- **Issue**: `combat_finished(player_won)` signal emits but no UI reacts. `CombatRoomSetup._on_combat_finished` sets `fight_mode=false`, but no visual feedback.
+- **Impact**: No sense of accomplishment or failure. No path to retry or continue.
+
+### 🟡 BUG-4: Template weapon HUD visible during exploration (MEDIUM)
+- **File**: `scenes/combat/room_tactical_01.tscn` (inherits room_0.tscn)
+- **Issue**: room_0 includes WeaponManager and weapon HUD elements. These remain visible during exploration. CombatRoomSetup does not hide them.
+- **Impact**: Confusing — player sees ammo/weapon indicators for a turn-based tactical game.
+
+### 🟢 BUG-5: Exploration → combat → exploration loop not E2E tested (LOW)
+- **Files**: `combat_room_setup.gd`, `combat_transition.gd`
+- **Issue**: The full signal chain (fight_mode=true → combat → fight_mode=false → exploration restored) has all hooks wired but has never been verified end-to-end.
+
+---
+
+## Remaining Work — P0: PLAYABLE (Critical Path)
+
+> Goal: A player can launch the game, click Enter Dungeon, walk to the arena,
+> fight enemies with abilities, win or lose, and see feedback. No crashes.
+
+### P0.1 — Fix CombatRoomSetup enemy scene variety
+
+**Problem**: `combat_room_setup.gd` uses single `enemy_scene` export (actor.tscn) for all enemies.
+
+**Changes**:
+- Edit `scripts/combat/combat_room_setup.gd`:
+  - Replace `@export var enemy_scene:PackedScene` with three exports:
+    ```gdscript
+    @export var brute_scene:PackedScene = preload("res://addons/top_down/scenes/actors/zombie.tscn")
+    @export var caster_scene:PackedScene = preload("res://addons/top_down/scenes/actors/slime.tscn")
+    @export var flanker_scene:PackedScene = preload("res://addons/top_down/scenes/actors/zombie_crawler.tscn")
+    ```
+  - Update `_spawn_encounter_enemies()` to select scene by index:
+    ```gdscript
+    var scenes:Array[PackedScene] = [brute_scene, caster_scene, flanker_scene]
+    var enemy_node:Node2D = scenes[min(i, scenes.size() - 1)].instantiate()
+    ```
+  - Add stripping for zombie/slime-specific nodes (ZombieInput, SlashAttack, ActiveEnemy, SlimeSplit, BloodTrail, PoolNode) matching `tactical_room.gd` lines 87–123
+
+**Output files**: `scripts/combat/combat_room_setup.gd`
+**Verification**: `cd client && godot --headless --export-release "Web" export/web/index.html` then Playwright screenshot of combat showing 3 distinct enemy sprites.
+**Commit**: `fix(combat): use distinct enemy scenes in CombatRoomSetup`
+
+---
+
+### P0.2 — Verify WASD exploration works in room_tactical_01
+
+**Problem**: The main game flow loads `room_tactical_01.tscn` (room_0 + CombatRoomSetup). WASD exploration must work before combat triggers.
+
+**Changes**: Verification only — Playwright test.
+- Export HTML5
+- Playwright: navigate to localhost:8090, click "Enter Dungeon" button
+- Wait for room to load
+- Screenshot exploration state
+- Verify player sprite is visible, HUD is not in combat mode
+
+**Output files**: Playwright test script
+**Verification**: Playwright screenshot shows exploration room with player visible.
+**Commit**: `test(e2e): verify WASD exploration loads correctly`
+
+---
+
+### P0.3 — Verify arena trigger starts combat
+
+**Problem**: ArenaStarter trigger zone should activate combat. Never tested via main game flow.
+
+**Changes**: Extend P0.2 Playwright test.
+- After entering dungeon, dispatch keyboard events (WASD) to move toward arena center
+- Wait for combat to start (detect "YOUR TURN" text or grid overlay)
+- Screenshot combat state
+
+**Output files**: Extends P0.2 test
+**Verification**: Playwright screenshot shows combat grid, "YOUR TURN" indicator, stamina bar, ability buttons.
+**Commit**: `test(e2e): verify arena trigger starts combat mode`
+
+---
+
+### P0.4 — Verify ability targeting and execution
+
+**Problem**: Ability targeting was reported as "unplayable" in earlier builds. Signal wiring was fixed but not re-verified.
+
+**Changes**: Run `test_interactive_qa.gd` headless + extend Playwright test.
+- In combat: click an ability button (Strike)
+- Verify purple target tiles appear
+- Click a target tile
+- Verify stamina decreases
+- Screenshot each state
+
+**Output files**: Extends P0.3 test
+**Verification**: `cd client && godot --headless --script res://tests/test_interactive_qa.gd` exits 0. Playwright screenshots show ability targeting.
+**Commit**: `test(e2e): verify ability targeting and execution`
+
+---
+
+### P0.5 — Verify combat end restores exploration
+
+**Problem**: After all enemies die, combat should end and exploration should resume. Never tested E2E.
+
+**Changes**: Extend Playwright test or create headless scenario.
+- After combat ends verify: grid overlay removed, "YOUR TURN" gone, player can move with WASD
+- Screenshot post-combat state
+
+**Output files**: Extends P0.4 test
+**Verification**: Playwright screenshot shows exploration room without combat grid.
+**Commit**: `test(e2e): verify combat end restores exploration`
+
+---
+
+### P0.6 — Run all existing unit tests (regression gate)
+
+**Problem**: Need to verify all existing tests still pass before adding new features.
+
+**Changes**: None — verification only.
+
+**Verification**:
+```bash
+cd client
+for test in tests/test_stamina.gd tests/test_grid_utils.gd tests/test_turn_manager.gd \
+  tests/test_grid_movement.gd tests/test_ability_manager.gd tests/test_ability_targeting.gd \
+  tests/test_brute_ai.gd tests/test_caster_ai.gd tests/test_flanker_ai.gd \
+  tests/test_telegraph_system.gd; do
+  echo "=== $test ==="
+  godot --headless --script "res://$test"
+  if [ $? -ne 0 ]; then echo "FAIL"; exit 1; fi
+done
+echo "All passed"
 ```
-Run: `cd client && godot --headless --script res://tests/test_example.gd`
+**Commit**: No commit (gate check only)
 
 ---
 
-### Serial Dependencies (Must Complete First)
+## Remaining Work — P1: COMPLETE LOOP
 
-#### Phase 0: Foundation
-**Prerequisite for:** All subsequent workstreams
+> Goal: The game has a clear win/lose state, the player can retry or continue,
+> ability buttons are readable, and the template HUD doesn't leak through.
 
-| # | Description | Output Files | Verification | Commit |
-|---|-------------|-------------|--------------|--------|
-| 0.1 | Create game-specific folder structure. All new code lives outside addons. | Directories: `scripts/combat/`, `scripts/combat/abilities/`, `scripts/combat/ai/`, `scripts/resources/`, `scripts/ui/`, `scenes/combat/`, `resources/combat/`, `tests/` | `ls client/scripts/combat client/tests client/resources/combat` — all exist | `chore: scaffold combat folder structure` |
-| 0.2 | Create combat enums: Phase, Faction, Archetype, TargetMode, AbilityID. Standalone autoload-free const class. | `scripts/combat/combat_enums.gd` | `godot --headless --quit` exits 0 | `feat(combat): add combat enum constants` |
-| 0.3 | Create StaminaResource extending ValueResource. Properties: `value:int`, `max_value:int`. Methods: `spend(cost)->bool`, `can_spend(cost)->bool`, `refill()`. Signals: `stamina_spent(cost)`, `stamina_refilled`, `stamina_depleted`. Clamps value to [0, max_value]. | `scripts/resources/stamina_resource.gd` | `godot --headless --quit` exits 0 | `feat(combat): add StaminaResource with spend/refill` |
-| 0.4 | Write TDD tests for StaminaResource: initial value=100, spend(20)→value=80, spend(90)→false (insufficient), refill()→100, signals emitted correctly. | `tests/test_stamina.gd` | `godot --headless --script res://tests/test_stamina.gd` exits 0, prints "X passed, 0 failed" | `test(combat): add StaminaResource unit tests` |
-| 0.5 | Create CombatStatsResource extending SaveableResource. Properties: `grid_pos:Vector2i`, `faction:int`, `archetype:int`, `move_range:int`, `is_guarding:bool`, `guard_reduction:float`. Signals: `position_changed(old_pos, new_pos)`, `guard_changed(active)`. | `scripts/resources/combat_stats_resource.gd` | `godot --headless --quit` exits 0 | `feat(combat): add CombatStatsResource for grid actors` |
-| 0.6 | Create AbilityResource extending Resource. Properties: `ability_name:String`, `ability_id:int`, `stamina_cost:int`, `cooldown_turns:int`, `current_cooldown:int`, `target_mode:int`, `range_tiles:int`, `base_damage:float`, `description:String`. Methods: `can_use(current_stamina)->bool`, `start_cooldown()`, `tick_cooldown()`. | `scripts/resources/ability_resource.gd` | `godot --headless --quit` exits 0 | `feat(combat): add AbilityResource data class` |
-| 0.7 | Create 3 ability .tres instances using AbilityResource. Strike: cost=20, cooldown=0, target_mode=ADJACENT, range=1, damage=15. Dash: cost=25, cooldown=1, target_mode=LINE, range=3, damage=10. Guard: cost=15, cooldown=2, target_mode=SELF, range=0, damage=0. | `resources/combat/ability_strike.tres`, `resources/combat/ability_dash.tres`, `resources/combat/ability_guard.tres` | `godot --headless --quit` exits 0 (resources load) | `feat(combat): add Strike, Dash, Guard ability resources` |
-| 0.8 | Create GridUtils static class. Methods: `world_to_grid(world_pos, tile_map_layer)->Vector2i` (wraps `local_to_map`), `grid_to_world(grid_pos, tile_map_layer)->Vector2` (wraps `map_to_local`), `manhattan_distance(a, b)->int`, `get_adjacent_cells(pos)->Array[Vector2i]`, `is_in_bounds(pos, grid_size)->bool`, `flood_fill_reachable(start, max_cost, blocked_cells, grid_size)->Dictionary` (returns {cell: cost}). | `scripts/combat/grid_utils.gd` | `godot --headless --quit` exits 0 | `feat(combat): add GridUtils static coordinate/pathfinding helpers` |
-| 0.9 | Write TDD tests for GridUtils: manhattan_distance((0,0),(3,4))=7, is_in_bounds((7,7), 8)=true, is_in_bounds((8,0), 8)=false, get_adjacent_cells((3,3)) returns 4 cells, flood_fill with no obstacles from center reaches correct tile count, flood_fill with blocked cell excludes it. | `tests/test_grid_utils.gd` | `godot --headless --script res://tests/test_grid_utils.gd` exits 0 | `test(combat): add GridUtils unit tests` |
+### P1.1 — Create GameResultScreen UI
 
----
+**Problem**: No victory or defeat screen exists. Combat just ends silently.
 
-### Parallel Workstreams
+**Changes**:
+- Create `scripts/ui/game_result_screen.gd`:
+  - Extends CanvasLayer
+  - Shows "VICTORY" (green) or "DEFEAT" (red) centered text
+  - 3 buttons: "Continue" (hidden on defeat), "Retry", "Menu"
+  - Signals: `continue_pressed`, `retry_pressed`, `menu_pressed`
+  - Method: `show_result(player_won:bool)` — sets text, shows/hides Continue
+  - Fade-in animation (0.3s)
+- Create `scenes/combat/game_result_screen.tscn`:
+  - CanvasLayer > Control (full screen) > VBoxContainer centered
+  - Large label (result text), 3 buttons in HBoxContainer
+  - Semi-transparent dark overlay behind content
 
-These workstreams can be executed independently after Phase 0.
-
-#### Workstream A: Combat Grid + Turn System
-**Dependencies:** Phase 0 (all tasks)
-**Can parallelize with:** Workstreams B, C
-
-This workstream builds the spatial grid, turn state machine, and mode transition.
-
-| # | Description | Output Files | Verification | Commit |
-|---|-------------|-------------|--------------|--------|
-| A.1 | **CombatGrid scene**: Node2D with a child TileMapLayer (`GridOverlay`) configured to match existing isometric settings (32×16, diamond, staggered). The overlay uses 5 tile source IDs drawn programmatically at runtime via `_draw()` (colored diamonds): 0=walkable(blue,0.3α), 1=selected(yellow,0.5α), 2=danger(red,0.4α), 3=move_range(green,0.3α), 4=ability_range(purple,0.3α). Methods: `show_grid(origin:Vector2i, size:Vector2i)`, `hide_grid()`, `set_cell_state(pos, state)`, `clear_overlay()`, `highlight_cells(cells:Array[Vector2i], state:int)`. Stores grid_origin and grid_size. | `scripts/combat/combat_grid.gd`, `scenes/combat/combat_grid.tscn` | `godot --headless --quit` exits 0; scene instantiates without error | `feat(combat): add CombatGrid with isometric overlay` |
-| A.2 | **GridCursor**: Sprite2D child of CombatGrid. Follows mouse position snapped to grid tiles via `GridUtils.world_to_grid()`. Shows yellow diamond highlight on hovered tile. Emits `tile_hovered(pos:Vector2i)` and `tile_clicked(pos:Vector2i)` signals. Respects grid bounds (only highlights valid tiles). Uses `_unhandled_input` for click detection. | `scripts/combat/grid_cursor.gd` (attached to Sprite2D in combat_grid.tscn) | Create `scenes/combat/test_grid_cursor.tscn` with CombatGrid + floor tilemap. Launch: `godot scenes/combat/test_grid_cursor.tscn`. Mouse hover shows yellow tile, click prints pos. | `feat(combat): add GridCursor with tile hover/click` |
-| A.3 | **TurnManager**: Await-based coroutine state machine. Enum: IDLE, PLAYER_TURN, ENEMY_TURN, RESOLVE, COMBAT_OVER. Signals: `phase_changed(phase)`, `player_turn_started`, `enemy_turn_started`, `resolve_started`, `combat_ended(player_won)`. Methods: `start_combat()` begins the loop, `end_player_turn()` called by player (emits internal signal to advance), `_run_combat_loop()` async coroutine cycling phases. On RESOLVE: checks win/loss, ticks cooldowns, increments turn_count, loops or ends. | `scripts/combat/turn_manager.gd` | `godot --headless --script res://tests/test_turn_manager.gd` exits 0 | `feat(combat): add TurnManager with phase coroutine loop` |
-| A.4 | **TurnManager TDD tests**: Test phase transitions: start→PLAYER_TURN, end_player_turn→ENEMY_TURN, after enemy phase→RESOLVE, resolve loops to PLAYER_TURN. Test combat_ended emitted when win/lose conditions met. Test turn_count increments each cycle. | `tests/test_turn_manager.gd` | `godot --headless --script res://tests/test_turn_manager.gd` exits 0 | `test(combat): add TurnManager phase transition tests` |
-| A.5 | **GridMovement**: Handles player movement on grid. On PLAYER_TURN: computes reachable cells via `GridUtils.flood_fill_reachable()` using remaining stamina÷10. Highlights reachable cells (green overlay). On tile_clicked: if reachable, animates player to target (tween lerp 0.15s per tile along path), deducts stamina (manhattan_distance×10), updates CombatStatsResource.grid_pos, clears/recomputes overlay. Uses AStarGrid2D for path smoothing. Signals: `move_completed(from, to)`, `move_cancelled`. | `scripts/combat/grid_movement.gd` | `godot --headless --script res://tests/test_grid_movement.gd` exits 0 | `feat(combat): add GridMovement with stamina-based reachability` |
-| A.6 | **GridMovement TDD tests**: Test reachable cells with 100 stamina (10 tiles in each direction from center), reachable shrinks with 30 stamina (3 tiles), blocked cells excluded, occupied cells excluded, stamina deducted correctly (move 3 tiles = 30 stamina), can't move with 0 stamina. | `tests/test_grid_movement.gd` | `godot --headless --script res://tests/test_grid_movement.gd` exits 0 | `test(combat): add GridMovement reachability tests` |
-| A.7 | **CombatTransition**: Listens to `fight_mode` BoolResource. On `changed_true`: (1) find player node → call `MoverTopDown2D.set_enabled_process(false)` and `PlayerInput.set_enabled(false)`, (2) snap player to nearest grid tile, (3) instance CombatGrid as child of Room, (4) find enemies → disable `BotInput`, place on grid tiles, (5) instance CombatManager, (6) show CombatHUD, (7) call `TurnManager.start_combat()`. On `changed_false`: reverse all — destroy CombatGrid + CombatManager, re-enable real-time systems. | `scripts/combat/combat_transition.gd` | Add to existing room scene. Walk into ArenaStarter → verify: movement stops, grid appears, combat starts. Walk-through verification in editor. | `feat(combat): add CombatTransition hooking fight_mode` |
-
-#### Workstream B: Ability System
-**Dependencies:** Phase 0 (all tasks)
-**Can parallelize with:** Workstreams A, C
-
-This workstream replaces the weapon system with grid-targeted abilities.
-
-| # | Description | Output Files | Verification | Commit |
-|---|-------------|-------------|--------------|--------|
-| B.1 | **AbilityManager**: Holds Array[AbilityResource] (3 abilities). Methods: `select_ability(index)`, `get_selected()->AbilityResource`, `use_ability(target_data:Dictionary)->bool` (checks stamina, applies cooldown, returns success), `tick_cooldowns()` (called at RESOLVE phase). Signals: `ability_selected(ability)`, `ability_used(ability, target_data)`, `ability_cancelled`. Reads StaminaResource from player's ResourceNode. | `scripts/combat/ability_manager.gd` | `godot --headless --script res://tests/test_ability_manager.gd` exits 0 | `feat(combat): add AbilityManager with selection and stamina` |
-| B.2 | **AbilityManager TDD tests**: Test: select_ability(0) sets selected, use_ability deducts stamina, use_ability with insufficient stamina returns false, cooldown prevents use for N turns, tick_cooldowns reduces cooldown, all 3 abilities have correct costs. | `tests/test_ability_manager.gd` | `godot --headless --script res://tests/test_ability_manager.gd` exits 0 | `test(combat): add AbilityManager unit tests` |
-| B.3 | **AbilityTargeting**: Computes valid target tiles per ability's target_mode. ADJACENT: 4 tiles around player within range (exclude blocked/OOB). LINE: 4 directional lines from player up to range (stop at blocked). SELF: player's own tile only. Highlights valid tiles (purple overlay). On mouse hover: shows preview shape. On click in valid tile: emits `target_confirmed(ability, cells:Array[Vector2i])`. On right-click/Esc: `target_cancelled`. | `scripts/combat/ability_targeting.gd` | Create test scene with grid + player + ability selection. Verify: selecting Strike shows 4 adjacent tiles, Dash shows 4 lines, Guard shows own tile. | `feat(combat): add AbilityTargeting with valid tile computation` |
-| B.4 | **AbilityTargeting TDD tests**: Test valid tiles for each mode: ADJACENT at (4,4) returns [(3,4),(5,4),(4,3),(4,5)], ADJACENT at (0,0) returns only (1,0) and (0,1) (bounds check), LINE at (4,4) range=3 returns 4 lines of 3 cells each, LINE blocked at (4,2) stops north line at (4,3), SELF at (4,4) returns [(4,4)]. | `tests/test_ability_targeting.gd` | `godot --headless --script res://tests/test_ability_targeting.gd` exits 0 | `test(combat): add AbilityTargeting valid tile tests` |
-| B.5 | **Strike ability effect**: On target_confirmed with Strike → deal 15 damage to enemy occupying target cell. Create DamageDataResource with base_damage=[{type=0, value=15}], critical_chance=0. Find enemy at cell via CombatStatsResource.grid_pos lookup. Call `damage_data.process(enemy_resource_node)`. This triggers the full template damage chain (flash, sounds, HP bar update, death). Emit `ability_resolved(ability, targets_hit)`. | `scripts/combat/abilities/ability_strike.gd` | Test in scene: Strike adjacent enemy → floating damage number appears, HP decreases by 15. | `feat(combat): implement Strike ability with template damage chain` |
-| B.6 | **Dash ability effect**: On target_confirmed with Dash (directional line) → move player along the line to the farthest unoccupied tile (tween 0.1s/tile). If an enemy occupies the destination+1 cell, deal 10 damage to it. Update CombatStatsResource.grid_pos. If line is fully blocked (first tile occupied), dash fails (refund stamina). Uses same DamageDataResource.process() for damage. | `scripts/combat/abilities/ability_dash.gd` | Test: Dash north 3 tiles → player moves, enemy at end takes 10 damage. Dash into wall → stops at wall. | `feat(combat): implement Dash ability with movement + impact` |
-| B.7 | **Guard ability effect**: On use → set player's `CombatStatsResource.is_guarding = true`. During damage resolution, if `is_guarding`, multiply incoming damage by `(1.0 - guard_reduction)` = 0.5. Guard clears at start of next PLAYER_TURN. Integration: modify damage flow to check `is_guarding` before applying — hook into HealthResource or create a DamageModifier node that intercepts `DamageResource.report_damage`. | `scripts/combat/abilities/ability_guard.gd` | Test: Guard → take 20 damage → only 10 HP lost. Next turn: Guard expires → take 20 → lose 20 HP. | `feat(combat): implement Guard ability with damage reduction` |
-
-#### Workstream C: Enemy AI + Telegraphs
-**Dependencies:** Phase 0 (all tasks)
-**Can parallelize with:** Workstreams A, B
-
-This workstream implements deterministic enemy behavior and the telegraph preview system.
-
-| # | Description | Output Files | Verification | Commit |
-|---|-------------|-------------|--------------|--------|
-| C.1 | **EnemyGridAI base**: Abstract class for grid-based enemy decision-making. Method: `compute_intent(self_pos:Vector2i, player_pos:Vector2i, grid_state:Dictionary) -> Dictionary`. Returns `{move_to: Vector2i, telegraph_cells: Array[Vector2i], telegraph_damage: float}`. Grid state dictionary includes: blocked_cells, occupied_cells, grid_size. Each archetype subclass overrides `compute_intent`. | `scripts/combat/enemy_grid_ai.gd` | `godot --headless --quit` exits 0 | `feat(combat): add EnemyGridAI base class` |
-| C.2 | **BruteAI** (Zombie→Brute): HP=50, move_range=1. `compute_intent`: (1) find closest tile toward player (manhattan, pick shorter axis, X-axis tiebreak), (2) if new position adjacent to player → telegraph = [player_pos], damage=20, (3) else telegraph = [] (didn't reach). Move toward player by reducing the axis with larger distance first. | `scripts/combat/ai/brute_ai.gd` | `godot --headless --script res://tests/test_brute_ai.gd` exits 0 | `feat(combat): implement BruteAI (chase + melee telegraph)` |
-| C.3 | **BruteAI TDD tests**: Brute at (0,0), player at (3,4) → moves to (1,0) (X shorter). Brute at (1,0), player at (2,0) → moves to (2,0)? No — occupied. moves to (1,1) or stays. Brute at (1,0), player at (0,0) → adjacent → telegraph [(0,0)]. Brute blocked all sides → stays, no telegraph. | `tests/test_brute_ai.gd` | `godot --headless --script res://tests/test_brute_ai.gd` exits 0 | `test(combat): add BruteAI decision tests` |
-| C.4 | **CasterAI** (Slime→Caster): HP=30, move_range=1, attack_range=5, AOE=3×3. `compute_intent`: (1) if manhattan_distance < 3 → retreat 1 tile away from player (opposite direction), (2) if distance ≥ 3 → stay, (3) telegraph = 3×3 area centered on player_pos (9 cells, clamped to grid bounds), damage=12. | `scripts/combat/ai/caster_ai.gd` | `godot --headless --script res://tests/test_caster_ai.gd` exits 0 | `feat(combat): implement CasterAI (kite + AOE telegraph)` |
-| C.5 | **CasterAI TDD tests**: Caster at (4,4), player at (4,2) (distance=2<3) → retreats to (4,5). Caster at (4,4), player at (4,0) (distance=4≥3) → stays, telegraphs 3×3 around (4,0). Caster at (0,0), player at (0,4) → retreats OOB? → clamps to (0,0) stay. Telegraph near edge clips to grid bounds. | `tests/test_caster_ai.gd` | `godot --headless --script res://tests/test_caster_ai.gd` exits 0 | `test(combat): add CasterAI decision tests` |
-| C.6 | **FlankerAI** (zombie_crawler→Flanker): HP=40, move_range=2. `compute_intent`: (1) compute flank_target = player_pos + (player_pos - player_last_move_direction) (behind player), (2) move up to 2 tiles toward flank_target, (3) if adjacent to player after move → telegraph = [player_pos], damage=18 (backstab bonus: +50% if attacking from behind). Fallback: if flank unreachable, behave like Brute (move toward player). | `scripts/combat/ai/flanker_ai.gd` | `godot --headless --script res://tests/test_flanker_ai.gd` exits 0 | `feat(combat): implement FlankerAI (flank + backstab telegraph)` |
-| C.7 | **FlankerAI TDD tests**: Player at (4,4) last moved right→(4,4). Flank target is (3,4) (behind). Flanker at (1,4) → moves to (3,4). Now adjacent → telegraphs [(4,4)]. Flanker at (6,4) → flank at (3,4) → moves 2 tiles to (4,4)? Occupied by player → moves to (5,4), not adjacent → no telegraph. Fallback to Brute behavior. | `tests/test_flanker_ai.gd` | `godot --headless --script res://tests/test_flanker_ai.gd` exits 0 | `test(combat): add FlankerAI decision tests` |
-| C.8 | **TelegraphSystem**: Manages telegraph display lifecycle. Stores Array of `{cells, damage, source_enemy, turn_created}`. Methods: `add_telegraph(cells, damage, source, turn)`, `get_active_telegraphs()->Array`, `resolve_telegraphs(current_turn)->Array` (returns telegraphs where turn_created < current_turn, removes them), `clear_all()`. Rendering: highlights telegraph cells on CombatGrid's TelegraphOverlay (red, 0.4 alpha for pending, pulses to 1.0 alpha when resolving). | `scripts/combat/telegraph_system.gd` | `godot --headless --script res://tests/test_telegraph_system.gd` exits 0 | `feat(combat): add TelegraphSystem with N→N+1 lifecycle` |
-| C.9 | **TelegraphSystem TDD tests**: Add telegraph at turn 1 → active. Resolve at turn 1 → returns nothing (same turn). Resolve at turn 2 → returns telegraph, removes from active. Multiple telegraphs: only resolves matching turn. Clear removes all. | `tests/test_telegraph_system.gd` | `godot --headless --script res://tests/test_telegraph_system.gd` exits 0 | `test(combat): add TelegraphSystem lifecycle tests` |
-| C.10 | **EnemyTurnResolver**: Orchestrates enemy phase. Method: `execute_enemy_turn(enemies, turn_manager, telegraph_system, combat_grid) -> void` (async). Steps: (1) resolve previous telegraphs — apply damage to actors standing in telegraph cells, (2) for each living enemy: compute_intent → animate move (tween) → add telegraph to system, (3) update grid overlay with new danger zones, (4) signal `enemy_turn_complete`. Processes enemies sequentially with 0.3s delay between each for visual clarity. | `scripts/combat/enemy_turn_resolver.gd` | Test scene: enemies take turns, damage applies, telegraphs appear. | `feat(combat): add EnemyTurnResolver with sequential execution` |
+**Output files**: `scripts/ui/game_result_screen.gd`, `scenes/combat/game_result_screen.tscn`
+**Verification**: `cd client && godot --headless --quit` exits 0; scene loads without errors.
+**Commit**: `feat(ui): add GameResultScreen for victory/defeat`
 
 ---
 
-### Merge Phase
+### P1.2 — Wire GameResultScreen into combat flow
 
-After parallel workstreams complete, these tasks integrate all systems.
+**Problem**: `combat_finished(player_won)` signal is emitted but no UI reacts.
 
-#### Phase M: Integration + HUD + Polish
-**Dependencies:** Workstreams A, B, C (all tasks)
+**Changes**:
+- Edit `scripts/combat/tactical_room.gd`:
+  - Preload GameResultScreen scene
+  - Connect `_combat_manager.combat_finished` → `_show_result(player_won)`
+  - `continue_pressed` / `retry_pressed` → reload current scene
+  - `menu_pressed` → `get_tree().change_scene_to_file("res://scenes/main_menu.tscn")`
+- Edit `scripts/combat/combat_room_setup.gd`:
+  - Same pattern: preload screen, connect `_combat_manager.combat_finished`
+  - `continue_pressed` → set `fight_mode=false` and remove result screen
+  - `retry_pressed` → reload full scene
+  - `menu_pressed` → change to main menu
 
-| # | Description | Output Files | Verification | Commit |
-|---|-------------|-------------|--------------|--------|
-| M.1 | **CombatHUD**: Control node with: (1) StaminaBar (TextureProgressBar bound to StaminaResource.updated), (2) AbilityBar (HBoxContainer with 3 AbilityButton — shows icon, cost, cooldown overlay, selected highlight; click → AbilityManager.select_ability), (3) EndTurnButton (Button → TurnManager.end_player_turn), (4) PhaseIndicator (Label showing "YOUR TURN" / "ENEMY TURN" / "RESOLVING" bound to TurnManager.phase_changed), (5) TurnCounter (Label showing turn number). Positioned at bottom of screen. | `scripts/ui/combat_hud.gd`, `scenes/combat/combat_hud.tscn` | Launch test combat scene → HUD visible, stamina updates on move, abilities clickable, End Turn works, phase text changes. | `feat(ui): add CombatHUD with abilities, stamina, phase indicator` |
-| M.2 | **CombatManager** (orchestrator): Composes TurnManager + GridMovement + AbilityManager + AbilityTargeting + TelegraphSystem + EnemyTurnResolver. Wires signals between them. On `player_turn_started`: refill stamina, compute reachable, enable grid input. On `ability_used`: execute effect, update grid. On `enemy_turn_started`: call EnemyTurnResolver.execute_enemy_turn(). On `resolve_started`: tick cooldowns, check win/lose. On `combat_ended`: signal CombatTransition. Manages the grid_state Dictionary (blocked/occupied cells) as single source of truth. | `scripts/combat/combat_manager.gd` | Create `scenes/combat/test_full_combat.tscn` — room with grid, player, 2 enemies. Full combat loop: move, strike, end turn, enemies act, telegraphs show, loop. | `feat(combat): add CombatManager orchestrator wiring all systems` |
-| M.3 | **First encounter room**: Duplicate `room_0.tscn` as `room_combat_01.tscn`. Configure: 8×8 grid area within the existing room floor, ~20 obstacle tiles, 3 enemies (1 Brute at grid (6,1), 1 Caster at (5,6), 1 Flanker at (1,5)), player starts at (1,1). Add CombatTransition node. Wire fight_mode_resource. Adjust ArenaStarter trigger area to cover room entry. | `scenes/combat/room_combat_01.tscn` (or modify existing room) | Launch room scene → walk into trigger → combat starts → play full loop → kill all enemies → combat ends → can walk again. | `feat(combat): create first tactical encounter room` |
-| M.4 | **Camera + transitions**: On combat start: tween camera to center of 8×8 grid, set zoom to fit entire grid on screen (calculate from grid_size × tile_size vs viewport). On combat end: tween camera back to follow player. Add screen flash on telegraph resolution (reuse template's ScreenEffects). Add 0.3s fade between exploration and combat. | Modify `combat_transition.gd`, add camera logic | Combat start: camera smoothly zooms to grid. Combat end: camera smoothly returns to player follow. | `feat(combat): add camera snap and transition effects` |
-| M.5 | **SFX + VFX hooks**: On ability use: play attack VFX at target tile (reuse template's slash/explosion sprites from `addons/top_down/assets/`). On enemy telegraph resolve: play impact VFX + screen shake. On movement: play step sound. On guard: play shield VFX. Wire through template's SoundResource pattern. | Modify ability effect scripts + combat_manager.gd | Abilities play visual and audio feedback. Telegraph resolution has screen shake. | `feat(combat): wire SFX and VFX into combat actions` |
-| M.6 | **Balance tuning pass**: Adjust all numeric values in .tres files based on playtesting. Document final values. Target: combat should last 4–6 turns with skilled play. Player should survive 2 unmitigated telegraphs. Each enemy should die in 3–4 Strikes. Stamina should allow ~2 moves + 1 ability per turn. | Modify .tres resource files | Play 5 combat encounters. Verify: game feels fair but challenging, stamina creates meaningful choices. | `chore(combat): balance pass on stamina costs, HP, and damage` |
+**Output files**: `scripts/combat/tactical_room.gd`, `scripts/combat/combat_room_setup.gd`
+**Verification**: Playwright: kill all enemies → "VICTORY" screen appears → click "Menu" → returns to main menu.
+**Commit**: `feat(combat): wire GameResultScreen to combat completion`
 
 ---
 
-## Testing and Validation
+### P1.3 — Fix HUD ability button readability
 
-### Unit Tests (headless, automated)
-| Test File | What It Tests | Run Command |
-|-----------|--------------|-------------|
-| `tests/test_stamina.gd` | StaminaResource: spend, refill, can_spend, signals, clamping | `godot --headless --script res://tests/test_stamina.gd` |
-| `tests/test_grid_utils.gd` | GridUtils: manhattan, bounds, adjacency, flood_fill, blocked cells | `godot --headless --script res://tests/test_grid_utils.gd` |
-| `tests/test_turn_manager.gd` | TurnManager: phase transitions, turn counting, win/lose | `godot --headless --script res://tests/test_turn_manager.gd` |
-| `tests/test_grid_movement.gd` | GridMovement: reachable tiles, stamina cost, blocked cells | `godot --headless --script res://tests/test_grid_movement.gd` |
-| `tests/test_ability_manager.gd` | AbilityManager: selection, stamina check, cooldowns | `godot --headless --script res://tests/test_ability_manager.gd` |
-| `tests/test_ability_targeting.gd` | AbilityTargeting: valid tiles per mode, bounds, blocking | `godot --headless --script res://tests/test_ability_targeting.gd` |
-| `tests/test_brute_ai.gd` | BruteAI: chase, melee telegraph, tiebreak, blocked | `godot --headless --script res://tests/test_brute_ai.gd` |
-| `tests/test_caster_ai.gd` | CasterAI: kite, retreat, AOE telegraph, edge clamping | `godot --headless --script res://tests/test_caster_ai.gd` |
-| `tests/test_flanker_ai.gd` | FlankerAI: flank position, backstab, fallback to brute | `godot --headless --script res://tests/test_flanker_ai.gd` |
-| `tests/test_telegraph_system.gd` | TelegraphSystem: add, resolve N+1, clear, multiple | `godot --headless --script res://tests/test_telegraph_system.gd` |
+**Problem**: Buttons show "Strike\nCost 20" in cramped 80×28px. Hard to read.
 
-### Run All Tests
+**Changes**:
+- Edit `scripts/ui/combat_hud.gd` line 131:
+  - Change: `button.text = "%s\nCost %d" % [ability.ability_name, ability.stamina_cost]`
+  - To: `button.text = ability.ability_name`
+  - Add: `button.tooltip_text = "%s — %d stamina\n%s" % [ability.ability_name, ability.stamina_cost, ability.description]`
+- Edit `scenes/combat/combat_hud.tscn`:
+  - Update default button text to just ability names: "Strike", "Dash", "Guard"
+
+**Output files**: `scripts/ui/combat_hud.gd`, `scenes/combat/combat_hud.tscn`
+**Verification**: Playwright screenshot of HUD showing readable single-word ability names.
+**Commit**: `fix(ui): show ability names on buttons, move cost to tooltip`
+
+---
+
+### P1.4 — Hide template weapon HUD during tactical mode
+
+**Problem**: room_0.tscn includes weapon HUD elements (ammo, weapon icon) irrelevant for tactical combat.
+
+**Changes**:
+- Edit `scripts/combat/combat_room_setup.gd`:
+  - In `_disable_realtime_systems()`, find and hide weapon-related HUD nodes:
+    ```gdscript
+    var game_hud:CanvasLayer = _room_root.get_node_or_null("GameHUD")
+    if game_hud != null:
+        game_hud.visible = false
+    ```
+  - In `_enable_realtime_systems()`: restore visibility if needed (or leave hidden)
+- Alternative: In `room_tactical_01.tscn`, override GameHUD visibility
+
+**Output files**: `scripts/combat/combat_room_setup.gd`
+**Verification**: Playwright screenshot of exploration phase showing no weapon indicators.
+**Commit**: `fix(ui): hide template weapon HUD in tactical rooms`
+
+---
+
+### P1.5 — Write TDD test for GameResultScreen
+
+**Problem**: Need automated verification that result screen shows correctly.
+
+**Changes**:
+- Create `tests/test_game_result_screen.gd`:
+  - Test: instantiate GameResultScreen
+  - Call `show_result(true)` → verify text contains "VICTORY"
+  - Call `show_result(false)` → verify text contains "DEFEAT"
+  - Verify "Continue" button hidden on defeat, visible on victory
+  - Verify all 3 signals exist
+
+**Output files**: `tests/test_game_result_screen.gd`
+**Verification**: `cd client && godot --headless --script res://tests/test_game_result_screen.gd` exits 0.
+**Commit**: `test(ui): add GameResultScreen unit tests`
+
+---
+
+### P1.6 — E2E Playwright test: full game loop
+
+**Problem**: Need automated verification of the complete game flow.
+
+**Changes**:
+- Create Playwright test script that:
+  1. Navigate to HTML5 export
+  2. Click "Enter Dungeon"
+  3. Wait for room to load
+  4. Verify exploration state (screenshot)
+  5. Send WASD keys to move toward arena
+  6. Wait for combat to start
+  7. Screenshot combat grid
+  8. Click ability buttons, verify targeting
+  9. Click "End Turn", verify enemy turn
+  10. Repeat until combat ends (or timeout)
+  11. Verify result screen appears
+  12. Click "Menu", verify return to main menu
+
+**Output files**: Playwright test file
+**Verification**: Playwright test completes with all screenshots captured.
+**Commit**: `test(e2e): add full game loop Playwright test`
+
+---
+
+## Remaining Work — P2: POLISH
+
+> Goal: The game feels complete — multiple rooms, healing, sound effects, tuning.
+
+### P2.1 — Health pickup between combats
+
+**Problem**: Player HP carries over from combat with no way to heal.
+
+**Changes**:
+- Create `scripts/combat/health_pickup.gd`:
+  - Extends Area2D
+  - On body_entered: find player's HealthResource, heal 30 HP, queue_free()
+  - Visual: pulsing green diamond sprite
+- Create `scenes/combat/health_pickup.tscn`
+- Place 1-2 pickups in room_tactical_01 exploration area
+
+**Output files**: `scripts/combat/health_pickup.gd`, `scenes/combat/health_pickup.tscn`
+**Verification**: Playwright: walk over pickup → HP increases.
+**Commit**: `feat(gameplay): add health pickup for between-combat healing`
+
+---
+
+### P2.2 — Room transition to second encounter
+
+**Problem**: After combat victory, no progression.
+
+**Changes**:
+- Create `scenes/combat/room_tactical_02.tscn` (inherit room_0 or room_1, add CombatRoomSetup with different enemy composition: 2 Brutes + 1 Caster)
+- Edit GameResultScreen "Continue" handler to load next room scene
+
+**Output files**: `scenes/combat/room_tactical_02.tscn`, modified `scripts/ui/game_result_screen.gd`
+**Verification**: Playwright: win combat in room 1 → click Continue → loads room 2.
+**Commit**: `feat(levels): add second tactical room with room transition`
+
+---
+
+### P2.3 — SFX hooks for combat actions
+
+**Problem**: Combat is silent — no audio feedback.
+
+**Changes**:
+- Edit `scripts/combat/combat_manager.gd`:
+  - On ability use: play attack sound (reuse template SoundResource)
+  - On telegraph resolve: play impact sound
+  - On guard: play shield sound
+  - On damage/death: reuse template sounds
+
+**Output files**: Modified `scripts/combat/combat_manager.gd`
+**Verification**: Manual audio check or Playwright with audio detection.
+**Commit**: `feat(combat): wire SFX into combat actions`
+
+---
+
+### P2.4 — Balance tuning pass
+
+**Problem**: Combat values have not been formally tuned.
+
+**Changes**:
+- Target: combat lasts 4–6 turns, player survives 2 unmitigated telegraphs, each enemy dies in 3–4 Strikes, stamina allows ~2 moves + 1 ability per turn
+- Update .tres resource files with tuned values
+
+**Output files**: Modified `resources/combat/ability_*.tres`
+**Verification**: Play 5 encounters. All feel fair but challenging.
+**Commit**: `chore(combat): balance pass on stamina costs, HP, and damage`
+
+---
+
+### P2.5 — Stamina cost display scaling
+
+**Problem**: Stamina cost numbers on grid tiles may be hard to read at combat zoom.
+
+**Changes**:
+- Edit `scripts/combat/combat_grid.gd` `show_tile_costs()`:
+  - Scale font size for readability at combat zoom level
+
+**Output files**: `scripts/combat/combat_grid.gd`
+**Verification**: Playwright screenshot shows readable cost numbers.
+**Commit**: `fix(ui): scale stamina cost display for combat zoom level`
+
+---
+
+## Verification Approach
+
+### HTML5 Export + Playwright Pipeline
+
+```bash
+# 1. Export to HTML5
+cd client && godot --headless --export-release "Web" export/web/index.html
+
+# 2. Serve locally
+python3 -m http.server 8090 --bind 127.0.0.1 --directory export/web &
+SERVER_PID=$!
+
+# 3. Run Playwright tests
+npx playwright test tests/e2e/
+
+# 4. Cleanup
+kill $SERVER_PID
+```
+
+### Headless Unit Tests
+
 ```bash
 cd client
 for test in tests/test_*.gd; do
+  case "$test" in
+    *full_flow*|*interactive*|*visual*) continue ;;
+  esac
   echo "=== Running $test ==="
   godot --headless --script "res://$test"
   if [ $? -ne 0 ]; then echo "FAILED: $test"; exit 1; fi
@@ -362,147 +523,144 @@ done
 echo "All tests passed"
 ```
 
-### Integration Tests (manual, scene-based)
-| Scene | What It Validates |
-|-------|-------------------|
-| `scenes/combat/test_grid_cursor.tscn` | Grid renders, cursor follows mouse, clicks register |
-| `scenes/combat/test_full_combat.tscn` | Full combat loop: move, ability, end turn, enemy turn, telegraphs |
-| `scenes/combat/room_combat_01.tscn` | Exploration → combat → win → exploration transition |
+### Test Inventory
 
-### Project Integrity Check
-```bash
-cd client && godot --headless --quit
-# Must exit 0 at every phase of implementation
-```
+| Test File | Assertions | What It Tests |
+|-----------|-----------|---------------|
+| `test_stamina.gd` | 12 | StaminaResource spend/refill/signals |
+| `test_grid_utils.gd` | 14 | Manhattan distance, bounds, flood fill |
+| `test_turn_manager.gd` | 18 | Phase transitions, turn counting |
+| `test_grid_movement.gd` | 14 | Reachable tiles, stamina cost, blocking |
+| `test_ability_manager.gd` | 18 | Selection, cooldowns, stamina checks |
+| `test_ability_targeting.gd` | 8 | ADJACENT/LINE/SELF targeting modes |
+| `test_brute_ai.gd` | 10 | Chase, melee telegraph, blocked paths |
+| `test_caster_ai.gd` | 10 | Kite, retreat, AOE telegraph |
+| `test_flanker_ai.gd` | 10 | Flank position, fallback, telegraph |
+| `test_telegraph_system.gd` | 12 | Add, resolve N+1, clear |
+| `test_interactive_qa.gd` | 13 | Movement, targeting, guard, enemy turn |
+| `test_full_flow_qa.gd` | — | Menu → dungeon → combat (frame-based) |
+| `test_visual_combat.gd` | — | Visual capture of tactical room |
+| **TOTAL** | **139+** | **10 unit + 3 integration** |
 
-## Verification Checklist
-
-After all tasks complete, verify these end-to-end:
-
-- [ ] `cd client && godot --headless --quit` exits 0
-- [ ] All 10 unit test files pass (run all tests script)
-- [ ] Launch room_combat_01.tscn → walk freely with WASD
-- [ ] Walk into ArenaStarter → combat mode activates
-- [ ] Grid overlay appears (8×8 blue tiles, obstacles visible)
-- [ ] Reachable tiles highlight green based on stamina
-- [ ] Click reachable tile → player lerps to tile, stamina decreases
-- [ ] Select Strike → adjacent tiles highlight purple → click enemy → damage applies
-- [ ] Select Dash → directional lines show → click → player dashes + hits
-- [ ] Select Guard → player tile highlights → click → guard icon appears
-- [ ] Stamina bar in HUD updates correctly
-- [ ] Ability cooldowns display and decrement properly
-- [ ] End Turn → enemies move and telegraph danger zones (red tiles)
-- [ ] Next turn: previous telegraphs resolve (damage to actors in zones)
-- [ ] Brute chases player, Caster kites, Flanker flanks
-- [ ] Kill all enemies → combat ends → grid disappears → WASD restored
-- [ ] Player death → game over triggers (existing GameOverDetect)
-- [ ] Camera centers on grid during combat, returns to follow on exit
-
-## Risk Assessment
-
-| Risk | Likelihood | Impact | Mitigation |
-|------|------------|--------|------------|
-| Isometric tile alignment issues (grid overlay doesn't match floor tiles) | Medium | High | Use same TileSet configuration as FloorLayer; test A.1 verifies alignment visually |
-| Player position desync between grid and world coordinates | Medium | High | Single source of truth in CombatStatsResource.grid_pos; world position derived via GridUtils.grid_to_world() |
-| DamageDataResource chain incompatible with grid-based targeting | Low | High | Damage chain is node-agnostic (works with ResourceNode); test B.5 validates early |
-| TurnManager await chain breaks on rapid input | Medium | Medium | Disable input processing during phase transitions; TurnManager ignores input outside PLAYER_TURN |
-| Enemy AI edge cases (corner positions, all paths blocked) | Medium | Medium | TDD tests cover edge cases explicitly; fallback behavior = stay in place |
-| Performance with 64-tile grid overlay redraws | Low | Low | TileMapLayer is GPU-optimized; only redraw changed cells, not full grid |
-| Template addon updates break integration | Low | Medium | Pin template version; don't modify great_games_library; minimize top_down changes |
+---
 
 ## Commit Strategy
 
-### Commit Order (Linear)
-Execute in this order for a clean, bisectable history:
+### Remaining Commits (Ordered)
 
 ```
-Phase 0 (serial, 9 commits):
-  0.1  chore: scaffold combat folder structure
-  0.2  feat(combat): add combat enum constants
-  0.3  feat(combat): add StaminaResource with spend/refill
-  0.4  test(combat): add StaminaResource unit tests
-  0.5  feat(combat): add CombatStatsResource for grid actors
-  0.6  feat(combat): add AbilityResource data class
-  0.7  feat(combat): add Strike, Dash, Guard ability resources
-  0.8  feat(combat): add GridUtils static coordinate/pathfinding helpers
-  0.9  test(combat): add GridUtils unit tests
+P0 — Playable (5 commits):
+  P0.1  fix(combat): use distinct enemy scenes in CombatRoomSetup
+  P0.2  test(e2e): verify WASD exploration loads correctly
+  P0.3  test(e2e): verify arena trigger starts combat mode
+  P0.4  test(e2e): verify ability targeting and execution
+  P0.5  test(e2e): verify combat end restores exploration
 
-Workstream A (7 commits, can interleave with B/C):
-  A.1  feat(combat): add CombatGrid with isometric overlay
-  A.2  feat(combat): add GridCursor with tile hover/click
-  A.3  feat(combat): add TurnManager with phase coroutine loop
-  A.4  test(combat): add TurnManager phase transition tests
-  A.5  feat(combat): add GridMovement with stamina-based reachability
-  A.6  test(combat): add GridMovement reachability tests
-  A.7  feat(combat): add CombatTransition hooking fight_mode
+P1 — Complete Loop (6 commits):
+  P1.1  feat(ui): add GameResultScreen for victory/defeat
+  P1.2  feat(combat): wire GameResultScreen to combat completion
+  P1.3  fix(ui): show ability names on buttons, move cost to tooltip
+  P1.4  fix(ui): hide template weapon HUD in tactical rooms
+  P1.5  test(ui): add GameResultScreen unit tests
+  P1.6  test(e2e): add full game loop Playwright test
 
-Workstream B (7 commits, can interleave with A/C):
-  B.1  feat(combat): add AbilityManager with selection and stamina
-  B.2  test(combat): add AbilityManager unit tests
-  B.3  feat(combat): add AbilityTargeting with valid tile computation
-  B.4  test(combat): add AbilityTargeting valid tile tests
-  B.5  feat(combat): implement Strike ability with template damage chain
-  B.6  feat(combat): implement Dash ability with movement + impact
-  B.7  feat(combat): implement Guard ability with damage reduction
-
-Workstream C (10 commits, can interleave with A/B):
-  C.1   feat(combat): add EnemyGridAI base class
-  C.2   feat(combat): implement BruteAI (chase + melee telegraph)
-  C.3   test(combat): add BruteAI decision tests
-  C.4   feat(combat): implement CasterAI (kite + AOE telegraph)
-  C.5   test(combat): add CasterAI decision tests
-  C.6   feat(combat): implement FlankerAI (flank + backstab telegraph)
-  C.7   test(combat): add FlankerAI decision tests
-  C.8   feat(combat): add TelegraphSystem with N→N+1 lifecycle
-  C.9   test(combat): add TelegraphSystem lifecycle tests
-  C.10  feat(combat): add EnemyTurnResolver with sequential execution
-
-Merge Phase (6 commits, serial after workstreams):
-  M.1  feat(ui): add CombatHUD with abilities, stamina, phase indicator
-  M.2  feat(combat): add CombatManager orchestrator wiring all systems
-  M.3  feat(combat): create first tactical encounter room
-  M.4  feat(combat): add camera snap and transition effects
-  M.5  feat(combat): wire SFX and VFX into combat actions
-  M.6  chore(combat): balance pass on stamina costs, HP, and damage
+P2 — Polish (5 commits):
+  P2.1  feat(gameplay): add health pickup for between-combat healing
+  P2.2  feat(levels): add second tactical room with room transition
+  P2.3  feat(combat): wire SFX into combat actions
+  P2.4  chore(combat): balance pass on stamina costs, HP, and damage
+  P2.5  fix(ui): scale stamina cost display for combat zoom level
 ```
 
-### Parallelization Guide for Agents
+### Parallelization Guide
 
-Workstreams A, B, C can be assigned to 3 parallel agents after Phase 0 completes:
-- **Agent 1**: Workstream A (grid + turns) — foundational spatial systems
-- **Agent 2**: Workstream B (abilities) — player action system
-- **Agent 3**: Workstream C (enemy AI + telegraphs) — enemy behavior system
-
-Merge Phase M requires all three to complete first. Assign to a single agent.
+```
+P0 tasks are serial (each verifies a prerequisite for the next).
+P1.1 + P1.3 + P1.4 can parallelize (independent UI tasks).
+P1.2 depends on P1.1 (wires the screen created in P1.1).
+P1.5 depends on P1.1 (tests the screen created in P1.1).
+P1.6 depends on P1.1 + P1.2 (needs result screen for full loop).
+P2 tasks can mostly parallelize after P1 completes.
+```
 
 ### Bisectability
 
-Every commit must pass: `cd client && godot --headless --quit` (project loads without errors).
-Test commits must also pass their specific test: `godot --headless --script res://tests/test_X.gd`.
+Every commit must pass: `cd client && godot --headless --quit` (exits 0).
+Test commits must pass their specific test command.
+
+---
+
+## Technical Design Reference
+
+### Architecture — Scene Tree During Combat
+
+```
+Room (room_tactical_01.tscn = room_0.tscn + CombatRoomSetup)
+├── Background/
+│   ├── FloorLayer (existing TileMapLayer, 32×16 iso)
+│   └── ObstacleLayer (existing TileMapLayer + StaticBody2D)
+├── CombatGrid (spawned by CombatRoomSetup)
+│   ├── GridOverlay (TileMapLayer — walkable/danger/selected/range tiles)
+│   ├── GridCursor (Sprite2D — hover highlight on current mouse tile)
+│   └── CostLabels (stamina costs on reachable tiles)
+├── YSortedLayer/
+│   ├── Player (CharacterBody2D, MoverTopDown2D DISABLED in combat)
+│   └── Enemies (spawned by CombatRoomSetup, realtime nodes stripped)
+├── CombatManager (spawned by CombatRoomSetup)
+│   ├── TurnManager (phase state machine)
+│   ├── GridMovement (player grid movement)
+│   ├── AbilityManager (holds 3 abilities)
+│   ├── AbilityTargeting (tile selection + preview)
+│   ├── TelegraphSystem (computes + displays telegraphs)
+│   ├── EnemyTurnResolver (executes AI + resolves telegraphs)
+│   └── AbilityStrike / AbilityDash / AbilityGuard (effect scripts)
+├── CombatRoomSetup (hooks fight_mode transitions)
+├── CombatHUD (CanvasLayer — ability buttons, stamina bar, phase indicator)
+├── GameResultScreen (CanvasLayer — victory/defeat overlay) ← NEW P1.1
+└── [existing template nodes: MainCamera, ScreenEffects, GameHUD, etc.]
+```
+
+### Combat Values (Current)
+
+| Parameter | Value | Notes |
+|-----------|-------|-------|
+| Grid size | 8×8 | 64 tiles, ~4 obstacles |
+| Stamina max | 100 | Refills each player turn |
+| Move cost | 10/tile | Manhattan distance |
+| Strike | cost=20, dmg=15, range=1, CD=0 | Adjacent melee |
+| Dash | cost=25, dmg=10, range=3, CD=1 | Line move + hit |
+| Guard | cost=15, dmg=0, range=self, CD=2 | 50% damage reduction 1 turn |
+| Brute HP | 50 | Chase AI, 20 dmg melee |
+| Caster HP | 30 | Kite AI, 12 dmg 3×3 AOE |
+| Flanker HP | 40 | Flank AI, 18 dmg melee |
+| Player HP | 100 | Set in CombatManager._build_player_data() |
+
+---
 
 ## Decision Log
 
-| Decision | Rationale | Alternatives Considered |
-|----------|-----------|------------------------|
-| 3 abilities for first pass (not 5) | Covers all 3 targeting modes (adjacent, line, self) with minimum scope. Cleave + Fireball deferred to post-M1. | 5 abilities (too much for initial integration), 1 ability (insufficient variety) |
-| Offline-first (no Dojo) | Fastest path to playable combat. Onchain authority can be layered later since all game logic is in well-defined manager classes. | Start with contracts first (blocked on tooling), hybrid online/offline (complexity) |
-| 8×8 grid (not 12×12) | Into the Breach density — tight positioning, every tile matters. Fits single screen without zoom. u64 bitmap compatible. | 10×10 (middle ground), 12×12 (too sparse for 3-4 enemies + 1 player) |
-| Await-based TurnManager (not FSM polling) | Code reads linearly matching mental model. No _process() polling overhead. Clean async animation handling. | State machine with _process (polling overhead), signals-only (spaghetti) |
-| DamageDataResource reuse (not custom damage) | Template's damage chain gives us free VFX (flash, shake), damage numbers, death handling, knockback. Zero new damage code. | Custom damage system (loses template VFX), direct HP modification (no signals) |
-| New code in client/scripts/ (not modifying addons) | Keeps template addon clean. Game-specific code separated. Easier to diff against upstream template. | Modify addons directly (pollutes template), create new addon (overkill) |
-| TileMapLayer overlays (not Polygon2D draws) | Aligns with existing isometric tile system. Automatic coordinate conversion. GPU-optimized batch rendering. | Polygon2D _draw() calls (manual coordinate math, slower), Sprite2D per cell (too many nodes) |
-| Deterministic AI (no randomness) | Into the Breach model — player can fully predict enemy behavior. Enables strategic depth. Easier to test. | Weighted random (less predictable), behavior trees (overkill for simple rules) |
-| Stamina 100 max, move=10, abilities=15-30 | Nice round numbers for UI. Allows ~2 moves + 1 ability per turn, or 1 move + 2 abilities. Creates meaningful trade-offs. | AP-based (2-3 pips — less granular), mana+movement separate (more complex) |
-| Sequential enemy execution (0.3s delay) | Visual clarity — player sees each enemy act individually. Matches Into the Breach pacing. | Simultaneous (confusing visually), instant (no feedback) |
-| Zombie_crawler base for Flanker (not new from scratch) | Reuses existing scene structure, sprites, and animation framework. Only AI logic differs. | New enemy scene (more work), modify skeleton (doesn't exist) |
-| Player snaps to nearest tile on combat enter | Clean transition. No ambiguous "between tiles" state. Simple implementation. | Free placement within tile (precision issues), choose your starting tile (extra UX step) |
+| Decision | Rationale |
+|----------|-----------|
+| Two combat entry points (tactical_room + combat_room_setup) | tactical_room for rapid iteration/testing; combat_room_setup for real game flow. Keep both. |
+| Main menu loads room_tactical_01 (room_0 + CombatRoomSetup) | Preserves template exploration → combat transition. |
+| Distinct enemy scenes per archetype | zombie=Brute, slime=Caster, zombie_crawler=Flanker. Visual clarity. |
+| GameResultScreen as CanvasLayer overlay | Doesn't require scene change. Can layer over combat or exploration. |
+| Ability name only on buttons (not cost) | Readability at small sizes. Cost visible via tooltip and stamina bar context. |
+| 480×270 viewport + 4× upscale | Pixel-art friendly. Matches template's intended resolution. |
+| Hide weapon HUD (not remove) | Reversible. May want exploration weapons in future. |
+| Health pickup as Area2D | Simplest implementation. Template already has AreaTransmitter pattern. |
+| 3 abilities first (not 5) | Covers all targeting modes. Cleave + Fireball deferred to post-P2. |
+| Deterministic AI (no randomness) | Into the Breach model. Player can predict enemy behavior. Easier to test. |
+| 8×8 grid (not 12×12) | Tight positioning. Every tile matters. Fits single screen. u64 bitmap compatible. |
+| Await-based TurnManager (not FSM polling) | Linear code flow. No _process() polling. Clean async animation handling. |
 
 ## Open Questions
 
-- [ ] Should Flanker backstab bonus apply based on player facing direction or last move direction?
-  - **Default**: Last move direction (simpler to compute, no facing concept needed)
-- [ ] How should overlapping telegraphs display? Stack colors or show highest-damage zone?
-  - **Default**: Additive alpha (overlapping areas appear brighter/more dangerous)
-- [ ] Should guard expire at start of PLAYER_TURN or at start of ENEMY_TURN?
-  - **Default**: Start of next PLAYER_TURN (protects for exactly 1 enemy phase)
-- [ ] Post-M1: Add Cleave (cone AOE, cost=25, damage=12) and Fireball (radius AOE, cost=30, damage=18)?
+- [x] ~~Should WASD input actions be defined?~~ — Yes, FIXED in project.godot
+- [x] ~~Should enemies use distinct sprites?~~ — Yes, FIXED in tactical_room.gd. Still needs CombatRoomSetup fix (P0.1).
+- [ ] Should "Continue" after victory load a new room or replay the same room?
+  - **Default**: Reload same room for now (P1.2). New room in P2.2.
+- [ ] Should stamina cost numbers be visible during targeting (not just movement)?
+  - **Default**: Only during movement. Ability cost shown in tooltip.
+- [ ] Post-P2: Add Cleave (cone AOE, cost=25, damage=12) and Fireball (radius AOE, cost=30, damage=18)?
+  - **Deferred**: Focus on making 3 abilities polished first.
