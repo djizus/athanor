@@ -56,6 +56,9 @@ func _suppress_shooter_systems() -> void:
 		for child in enemy_mgr.get_children():
 			if child.name != "EnemyWaveManager" and child.name != "EnemySpawner" and child.name != "EnemySpawnPoints":
 				child.queue_free()
+	var game_hud:CanvasLayer = _room_root.get_node_or_null("GameHud") as CanvasLayer
+	if game_hud != null:
+		game_hud.visible = false
 	var hole_obstacle:Node2D = _room_root.get_node_or_null("Behind/HoleObstacle") as Node2D
 	if hole_obstacle != null:
 		for child in hole_obstacle.get_children():
