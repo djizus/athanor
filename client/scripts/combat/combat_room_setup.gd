@@ -37,7 +37,8 @@ func _on_fight_mode_enabled() -> void:
 
 	_fade_transition()
 	_disable_realtime_systems()
-	_spawn_combat_runtime()
+	# Must wait for tree to finish processing before adding children
+	get_tree().create_timer(0.05).timeout.connect(_spawn_combat_runtime)
 
 func _on_fight_mode_disabled() -> void:
 	_cleanup_combat_runtime()
@@ -58,6 +59,7 @@ func _spawn_combat_runtime() -> void:
 	_spawned_enemies = _spawn_encounter_enemies()
 
 	_combat_manager = CombatManager.new()
+	_combat_manager.name = "CombatManager"
 	_room_root.add_child(_combat_manager)
 	_combat_manager.combat_finished.connect(_on_combat_finished)
 	_combat_manager.start_combat(player_node, _spawned_enemies, _combat_grid)
@@ -146,9 +148,14 @@ func _on_combat_finished(_player_won:bool) -> void:
 		fight_mode.set_value(false)
 
 func _fade_transition() -> void:
+	if _room_root == null || !is_instance_valid(_room_root):
+		return
 	var layer:CanvasLayer = CanvasLayer.new()
 	layer.layer = 127
-	_room_root.add_child(layer)
+	if _room_root.is_inside_tree():
+		_room_root.add_child.call_deferred(layer)
+	else:
+		return
 
 	var rect:ColorRect = ColorRect.new()
 	rect.anchor_right = 1.0
