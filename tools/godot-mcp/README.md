@@ -13,8 +13,8 @@ npm install
 
 ```bash
 # Windows (Godot in PATH)
-set GODOT_PATH=C:\path\to\Godot_v4.5.2-stable_win64.exe
-set PROJECT_PATH=C:\path\to\athanor\client
+set GODOT_PATH=C:\Users\mehrj\Desktop\Godot_v4.6.1-stable_win64.exe
+set PROJECT_PATH=\\wsl.localhost\Ubuntu\home\djizus\athanor\client
 node server.js
 
 # Linux/Mac

@@ -18,8 +18,8 @@ import { randomUUID } from "node:crypto";
 import { spawn, execSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, unlinkSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { McpServer } from "@modelcontextprotocol/server";
-import { NodeStreamableHTTPServerTransport } from "@modelcontextprotocol/node";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
 
 // --- Config ---
@@ -517,7 +517,7 @@ const httpServer = createServer(async (req, res) => {
           }
 
           // New session
-          const transport = new NodeStreamableHTTPServerTransport({
+          const transport = new StreamableHTTPServerTransport({
             sessionIdGenerator: () => randomUUID(),
             onsessioninitialized: (id) => {
               transports[id] = transport;
