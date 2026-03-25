@@ -14,7 +14,7 @@ var _combat_grid:CombatGrid
 var _combat_manager:CombatManager
 var _combat_hud:CombatHUD
 
-var _spawned_enemies:Array[Node2D] = []
+var _spawned_enemies:Array[Node] = []
 
 var _player_mover:MoverTopDown2D
 var _player_input:PlayerInput
