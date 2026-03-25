@@ -46,3 +46,10 @@
 - Movement overlay is destructive (`grid_movement.refresh_reachable()` clears grid overlay). When cancelling ability targeting, re-run movement overlay refresh then redraw telegraphs to restore normal player-turn view.
 - Right-click/Esc cancel for targeting can be handled centrally in `CombatManager._unhandled_input`; gate it by `_input_enabled` and non-null selected ability.
 - `ActorDamage` in `addons/top_down` can call `play_managed()` on null exported sound resources in stripped/variant actor setups. Guard `sound_resource_damage`/`sound_resource_dead` (and optional death VFX dependencies) to prevent Nil method calls during death.
+
+## 2026-03-25 — Interactive QA harness notes
+
+- `SceneTree` scripts cannot call `get_viewport()` directly in this setup; use `root.get_camera_2d()` / `root.get_visible_rect()` for input-coordinate conversion helpers.
+- Runtime combat nodes in `tactical_room.tscn` (`CombatManager`, `CombatGrid`, `CombatHUD`) are created in room `_ready()`, so a harness resolving them in `_initialize()` may see nulls; re-resolve during early `_process()` frames.
+- Clicking grid tiles via scripted mouse events may not target intended cells if camera transform assumptions are off; in observed run, click choreographed for `(2,2)` actually moved player to `(4,4)` and consumed 60 stamina total before frame 30.
+- Current turn loop can present `PLAYER_TURN` by frame 80 after `End Turn` because enemy+resolve phases complete quickly within the loop; frame-based assertions for `ENEMY_TURN` should be sampled earlier or polled over a short window.
