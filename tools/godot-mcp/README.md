@@ -5,7 +5,7 @@ Remote MCP server that exposes Godot engine operations as tools. Run on a machin
 ## Setup
 
 ```bash
-cd tools/godot-mcp
+cd ~/athanor/tools/godot-mcp
 npm install
 ```
 
@@ -14,20 +14,32 @@ npm install
 ```bash
 cd ~/athanor/tools/godot-mcp
 
-GODOT_PATH="C:\Users\mehrj\Desktop\Godot_v4.6.1-stable_win64.exe" \
-PROJECT_PATH="\\\\wsl.localhost\\Ubuntu\\home\\djizus\\athanor\\client" \
+GODOT_PATH="/mnt/c/Users/mehrj/Desktop/Godot_v4.6.1-stable_win64.exe" \
+PROJECT_PATH="/home/djizus/athanor/client" \
+node server.js
+```
+
+If Godot needs Windows-style project path:
+
+```bash
+GODOT_PATH="/mnt/c/Users/mehrj/Desktop/Godot_v4.6.1-stable_win64.exe" \
+PROJECT_PATH="$(wslpath -w /home/djizus/athanor/client)" \
 node server.js
 ```
 
 ## SSH Tunnel
 
-From WSL to the remote opencode server:
+From a **separate WSL terminal** to the remote opencode server:
 
 ```bash
-ssh -R 8080:localhost:8080 -p 16422 -i /mnt/c/Users/mehrj/.ssh/djizus_key djizus@135.181.18.52
+chmod 600 ~/.ssh/djizus_key
+ssh -R 8080:localhost:8080 -p 16422 -i ~/.ssh/djizus_key djizus@135.181.18.52
 ```
 
 This forwards remote port 8080 → local port 8080 where the MCP server runs.
+Keep this terminal open — closing it kills the tunnel.
+
+Note: `AllowTcpForwarding yes` must be set in `/etc/ssh/sshd_config.d/hardening.conf` on the server.
 
 ## OpenCode Config
 
@@ -43,6 +55,22 @@ On the server (`opencode.jcmehr.com`), add to `~/.config/opencode/opencode.jsonc
     }
   }
 }
+```
+
+## Quick Start (all 3 terminals)
+
+```bash
+# Terminal 1: MCP server
+cd ~/athanor/tools/godot-mcp
+GODOT_PATH="/mnt/c/Users/mehrj/Desktop/Godot_v4.6.1-stable_win64.exe" \
+PROJECT_PATH="/home/djizus/athanor/client" \
+node server.js
+
+# Terminal 2: SSH tunnel
+ssh -R 8080:localhost:8080 -p 16422 -i ~/.ssh/djizus_key djizus@135.181.18.52
+
+# Terminal 3: Verify
+curl http://localhost:8080/health
 ```
 
 ## Tools
