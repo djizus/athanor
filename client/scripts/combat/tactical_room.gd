@@ -9,6 +9,7 @@ const SLIME_SCENE:PackedScene = preload("res://addons/top_down/scenes/actors/sli
 const CRAWLER_SCENE:PackedScene = preload("res://addons/top_down/scenes/actors/zombie_crawler.tscn")
 const COMBAT_GRID_SCENE:PackedScene = preload("res://scenes/combat/combat_grid.tscn")
 const COMBAT_HUD_SCENE:PackedScene = preload("res://scenes/combat/combat_hud.tscn")
+const GAME_RESULT_SCREEN_SCENE:PackedScene = preload("res://scenes/combat/game_result_screen.tscn")
 
 const FLOOR_SOURCE_ID:int = 1
 const FLOOR_ATLAS:Vector2i = Vector2i(1, 3)
@@ -18,6 +19,7 @@ const WALL_ATLAS:Vector2i = Vector2i(1, 1)
 var _combat_grid:CombatGrid
 var _combat_manager:CombatManager
 var _combat_hud:CombatHUD
+var _game_result_screen:GameResultScreen
 var _player:Node2D
 var _enemies:Array[Node] = []
 
@@ -70,6 +72,7 @@ func _spawn_combat_runtime() -> void:
 	_combat_manager = CombatManager.new()
 	_combat_manager.name = "CombatManager"
 	add_child(_combat_manager)
+	_combat_manager.combat_finished.connect(_on_combat_finished)
 
 	_combat_hud = COMBAT_HUD_SCENE.instantiate() as CombatHUD
 	_combat_hud.name = "CombatHUD"
@@ -137,6 +140,26 @@ func _start_combat() -> void:
 	_combat_manager.start_combat(_player, _enemies, _combat_grid)
 	if _combat_hud != null:
 		_combat_hud.bind_combat_manager(_combat_manager)
+
+func _on_combat_finished(player_won:bool) -> void:
+	if _game_result_screen != null && is_instance_valid(_game_result_screen):
+		_game_result_screen.queue_free()
+
+	_game_result_screen = GAME_RESULT_SCREEN_SCENE.instantiate() as GameResultScreen
+	add_child(_game_result_screen)
+	_game_result_screen.continue_pressed.connect(_on_result_continue_pressed)
+	_game_result_screen.retry_pressed.connect(_on_result_retry_pressed)
+	_game_result_screen.menu_pressed.connect(_on_result_menu_pressed)
+	_game_result_screen.show_result(player_won)
+
+func _on_result_continue_pressed() -> void:
+	get_tree().reload_current_scene()
+
+func _on_result_retry_pressed() -> void:
+	get_tree().reload_current_scene()
+
+func _on_result_menu_pressed() -> void:
+	get_tree().change_scene_to_file("res://scenes/main_menu.tscn")
 
 func _iso_to_world(grid_pos:Vector2i) -> Vector2:
 	return Vector2((grid_pos.x - grid_pos.y) * 16.0, (grid_pos.x + grid_pos.y) * 8.0)

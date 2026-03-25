@@ -4,7 +4,10 @@ extends Node
 @export var fight_mode:BoolResource = preload("res://addons/top_down/resources/arena_resources/fight_mode_resource.tres")
 @export var combat_grid_scene:PackedScene = preload("res://scenes/combat/combat_grid.tscn")
 @export var combat_hud_scene:PackedScene = preload("res://scenes/combat/combat_hud.tscn")
-@export var enemy_scene:PackedScene = preload("res://addons/top_down/scenes/actors/actor.tscn")
+@export var game_result_screen_scene:PackedScene = preload("res://scenes/combat/game_result_screen.tscn")
+@export var brute_scene:PackedScene = preload("res://addons/top_down/scenes/actors/zombie.tscn")
+@export var caster_scene:PackedScene = preload("res://addons/top_down/scenes/actors/slime.tscn")
+@export var flanker_scene:PackedScene = preload("res://addons/top_down/scenes/actors/zombie_crawler.tscn")
 @export var grid_size:Vector2i = Vector2i(8, 8)
 @export var player_start_cell:Vector2i = Vector2i(1, 1)
 @export var enemy_spawn_cells:Array[Vector2i] = [Vector2i(6, 1), Vector2i(5, 6), Vector2i(1, 5)]
@@ -13,6 +16,7 @@ var _room_root:Node
 var _combat_grid:CombatGrid
 var _combat_manager:CombatManager
 var _combat_hud:CombatHUD
+var _game_result_screen:GameResultScreen
 
 var _spawned_enemies:Array[Node] = []
 
@@ -28,6 +32,30 @@ func _ready() -> void:
 		return
 	fight_mode.changed_true.connect(_on_fight_mode_enabled)
 	fight_mode.changed_false.connect(_on_fight_mode_disabled)
+	_suppress_shooter_systems()
+	get_tree().process_frame.connect(_suppress_shooter_systems, CONNECT_ONE_SHOT)
+
+func _suppress_shooter_systems() -> void:
+	if _room_root == null:
+		return
+	_enemy_wave_manager = _room_root.get_node_or_null("EnemyManager/EnemyWaveManager")
+	if _enemy_wave_manager != null:
+		_enemy_wave_manager.set_process(false)
+		_enemy_wave_manager.set_physics_process(false)
+	_enemy_spawner = _room_root.get_node_or_null("EnemyManager/EnemySpawner")
+	if _enemy_spawner != null:
+		_enemy_spawner.set_process(false)
+	for bot_node in _find_nodes_of_type(_room_root, BotInput):
+		if bot_node is BotInput:
+			(bot_node as BotInput).set_enabled(false)
+	for enemy_node in get_tree().get_nodes_in_group(&"enemy"):
+		if is_instance_valid(enemy_node):
+			enemy_node.queue_free()
+	var enemy_mgr:Node = _room_root.get_node_or_null("EnemyManager")
+	if enemy_mgr != null:
+		for child in enemy_mgr.get_children():
+			if child.name != "EnemyWaveManager" and child.name != "EnemySpawner" and child.name != "EnemySpawnPoints":
+				child.queue_free()
 
 func _on_fight_mode_enabled() -> void:
 	if _room_root == null:
@@ -76,6 +104,8 @@ func _cleanup_combat_runtime() -> void:
 		_combat_manager.queue_free()
 	if _combat_grid != null && is_instance_valid(_combat_grid):
 		_combat_grid.queue_free()
+	if _game_result_screen != null && is_instance_valid(_game_result_screen):
+		_game_result_screen.queue_free()
 
 	for enemy_node in _spawned_enemies:
 		if is_instance_valid(enemy_node):
@@ -85,6 +115,7 @@ func _cleanup_combat_runtime() -> void:
 	_combat_hud = null
 	_combat_manager = null
 	_combat_grid = null
+	_game_result_screen = null
 
 func _disable_realtime_systems() -> void:
 	_player_mover = _find_first_node_in_room(MoverTopDown2D) as MoverTopDown2D
@@ -129,10 +160,16 @@ func _enable_realtime_systems() -> void:
 
 func _spawn_encounter_enemies() -> Array[Node]:
 	var enemies:Array[Node] = []
-	var names:PackedStringArray = PackedStringArray(["BruteEnemy", "CasterEnemy", "FlankerEnemy"])
+	var enemy_configs:Array[Dictionary] = [
+		{"name": "BruteEnemy", "scene": brute_scene},
+		{"name": "CasterEnemy", "scene": caster_scene},
+		{"name": "FlankerEnemy", "scene": flanker_scene},
+	]
 	for i in enemy_spawn_cells.size():
-		var enemy_node:Node2D = enemy_scene.instantiate() as Node2D
-		enemy_node.name = names[min(i, names.size() - 1)]
+		var config:Dictionary = enemy_configs[min(i, enemy_configs.size() - 1)]
+		var scene:PackedScene = config["scene"] as PackedScene
+		var enemy_node:Node2D = scene.instantiate() as Node2D
+		enemy_node.name = String(config["name"])
 		_strip_realtime_enemy_nodes(enemy_node)
 		_room_root.add_child(enemy_node)
 		enemy_node.global_position = _combat_grid.grid_to_world(enemy_spawn_cells[i])
@@ -143,9 +180,31 @@ func _spawn_encounter_enemies() -> Array[Node]:
 func _position_player(player_node:Node2D) -> void:
 	player_node.global_position = _combat_grid.grid_to_world(player_start_cell)
 
-func _on_combat_finished(_player_won:bool) -> void:
+func _on_combat_finished(player_won:bool) -> void:
+	if _room_root == null || !is_instance_valid(_room_root):
+		return
+	if _game_result_screen != null && is_instance_valid(_game_result_screen):
+		_game_result_screen.queue_free()
+
+	_game_result_screen = game_result_screen_scene.instantiate() as GameResultScreen
+	_room_root.add_child(_game_result_screen)
+	_game_result_screen.continue_pressed.connect(_on_result_continue_pressed)
+	_game_result_screen.retry_pressed.connect(_on_result_retry_pressed)
+	_game_result_screen.menu_pressed.connect(_on_result_menu_pressed)
+	_game_result_screen.show_result(player_won)
+
+func _on_result_continue_pressed() -> void:
 	if fight_mode != null && fight_mode.value:
 		fight_mode.set_value(false)
+	if _game_result_screen != null && is_instance_valid(_game_result_screen):
+		_game_result_screen.queue_free()
+	_game_result_screen = null
+
+func _on_result_retry_pressed() -> void:
+	get_tree().reload_current_scene()
+
+func _on_result_menu_pressed() -> void:
+	get_tree().change_scene_to_file("res://scenes/main_menu.tscn")
 
 func _fade_transition() -> void:
 	if _room_root == null || !is_instance_valid(_room_root):

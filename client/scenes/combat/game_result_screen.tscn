@@ -1,0 +1,80 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/game_result_screen.gd" id="1_kg37w"]
+
+[node name="GameResultScreen" type="CanvasLayer"]
+visible = false
+layer = 100
+script = ExtResource("1_kg37w")
+
+[node name="Root" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Overlay" type="ColorRect" parent="Root"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.7)
+
+[node name="Center" type="CenterContainer" parent="Root"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Content" type="PanelContainer" parent="Root/Center"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(420, 220)
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="Root/Center/Content"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="TitleLabel" type="Label" parent="Root/Center/Content/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 48
+text = "VICTORY"
+horizontal_alignment = 1
+
+[node name="MessageLabel" type="Label" parent="Root/Center/Content/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "All enemies defeated!"
+horizontal_alignment = 1
+
+[node name="Buttons" type="HBoxContainer" parent="Root/Center/Content/VBox"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 10
+
+[node name="ContinueButton" type="Button" parent="Root/Center/Content/VBox/Buttons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(110, 42)
+layout_mode = 2
+text = "Continue"
+
+[node name="RetryButton" type="Button" parent="Root/Center/Content/VBox/Buttons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(110, 42)
+layout_mode = 2
+text = "Retry"
+
+[node name="MenuButton" type="Button" parent="Root/Center/Content/VBox/Buttons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(110, 42)
+layout_mode = 2
+text = "Menu"

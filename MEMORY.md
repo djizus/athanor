@@ -53,3 +53,9 @@
 - Runtime combat nodes in `tactical_room.tscn` (`CombatManager`, `CombatGrid`, `CombatHUD`) are created in room `_ready()`, so a harness resolving them in `_initialize()` may see nulls; re-resolve during early `_process()` frames.
 - Clicking grid tiles via scripted mouse events may not target intended cells if camera transform assumptions are off; in observed run, click choreographed for `(2,2)` actually moved player to `(4,4)` and consumed 60 stamina total before frame 30.
 - Current turn loop can present `PLAYER_TURN` by frame 80 after `End Turn` because enemy+resolve phases complete quickly within the loop; frame-based assertions for `ENEMY_TURN` should be sampled earlier or polled over a short window.
+
+## 2026-03-26 — Combat result overlay integration notes
+
+- Added reusable `GameResultScreen` as `CanvasLayer` scene/script (`scenes/combat/game_result_screen.tscn`, `scripts/ui/game_result_screen.gd`) with `show_result(player_won)` API and `continue/retry/menu` signals; starts hidden and fades in overlay/content.
+- `tactical_room.gd` now listens to `CombatManager.combat_finished` and spawns the result overlay; continue/retry both reload current scene, menu changes to `res://scenes/main_menu.tscn`.
+- `combat_room_setup.gd` now spawns the same overlay on `combat_finished`; continue exits fight mode (`fight_mode=false`) and clears overlay, retry reloads scene, menu returns to main menu.

@@ -21,7 +21,7 @@ anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_top = -72.0
+offset_top = -80.0
 grow_horizontal = 2
 grow_vertical = 0
 theme_override_constants/margin_left = 8
@@ -71,9 +71,9 @@ size_flags_horizontal = 4
 theme_override_constants/separation = 8
 
 [node name="AbilityButton1" type="Button" parent="Root/BottomMargin/Panel/VBox/AbilityBar"]
-custom_minimum_size = Vector2(80, 28)
+custom_minimum_size = Vector2(100, 36)
 layout_mode = 2
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 text = "Strike
 Cost 20"
 
@@ -104,9 +104,9 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="AbilityButton2" type="Button" parent="Root/BottomMargin/Panel/VBox/AbilityBar"]
-custom_minimum_size = Vector2(80, 28)
+custom_minimum_size = Vector2(100, 36)
 layout_mode = 2
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 text = "Dash
 Cost 25"
 
@@ -137,9 +137,9 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="AbilityButton3" type="Button" parent="Root/BottomMargin/Panel/VBox/AbilityBar"]
-custom_minimum_size = Vector2(80, 28)
+custom_minimum_size = Vector2(100, 36)
 layout_mode = 2
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 text = "Guard
 Cost 15"
 
@@ -174,6 +174,7 @@ layout_mode = 2
 
 [node name="EndTurnButton" type="Button" parent="Root/BottomMargin/Panel/VBox/BottomRow"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(100, 36)
 layout_mode = 2
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 text = "End Turn"
