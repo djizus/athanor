@@ -9,29 +9,29 @@ cd tools/godot-mcp
 npm install
 ```
 
-## Run
+## Run (WSL on JC-LEGION)
 
 ```bash
-# Windows (Godot in PATH)
-set GODOT_PATH=C:\Users\mehrj\Desktop\Godot_v4.6.1-stable_win64.exe
-set PROJECT_PATH=\\wsl.localhost\Ubuntu\home\djizus\athanor\client
-node server.js
+cd ~/athanor/tools/godot-mcp
 
-# Linux/Mac
-GODOT_PATH=/usr/local/bin/godot PROJECT_PATH=./client node server.js
+GODOT_PATH="C:\Users\mehrj\Desktop\Godot_v4.6.1-stable_win64.exe" \
+PROJECT_PATH="\\\\wsl.localhost\\Ubuntu\\home\\djizus\\athanor\\client" \
+node server.js
 ```
 
 ## SSH Tunnel
 
-From your local machine to the remote server:
+From WSL to the remote opencode server:
 
 ```bash
-ssh -R 8080:localhost:8080 djizus@your-server
+ssh -R 8080:localhost:8080 -p 16422 -i /mnt/c/Users/mehrj/.ssh/djizus_key djizus@135.181.18.52
 ```
+
+This forwards remote port 8080 → local port 8080 where the MCP server runs.
 
 ## OpenCode Config
 
-On the server, add to `~/.config/opencode/opencode.jsonc`:
+On the server (`opencode.jcmehr.com`), add to `~/.config/opencode/opencode.jsonc`:
 
 ```jsonc
 {
