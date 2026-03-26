@@ -191,7 +191,8 @@ func _build_player_data(player_node:Node2D) -> Dictionary:
 
 func _build_enemy_data(enemy_nodes:Array[Node]) -> Array[Dictionary]:
 	var result:Array[Dictionary] = []
-	for enemy_node in enemy_nodes:
+	for i in range(enemy_nodes.size()):
+		var enemy_node:Node = enemy_nodes[i]
 		if !(enemy_node is Node2D):
 			continue
 
@@ -199,12 +200,15 @@ func _build_enemy_data(enemy_nodes:Array[Node]) -> Array[Dictionary]:
 		var health:HealthResource = HealthResource.new()
 		var ai:EnemyGridAI = _assign_enemy_ai(enemy_node as Node2D, combat_stats, health)
 
+		# contract_actor_id matches the contract's ENEMY_ACTOR_ID_N (1-indexed).
+		# Order in ROOM_CONFIGS enemies array == contract spawn order.
 		result.push_back({
 			"node": enemy_node,
 			"combat_stats": combat_stats,
 			"health": health,
 			"ai": ai,
 			"enemy_id": enemy_node.get_instance_id(),
+			"contract_actor_id": i + 1,
 		})
 	return result
 
@@ -870,17 +874,52 @@ func _flash_screen() -> void:
 	tween.tween_property(rect, "color:a", 0.0, 0.16)
 	tween.tween_callback(flash_layer.queue_free)
 
+# Contract target_mode constants (must match phase.cairo)
+const DOJO_TARGET_SINGLE:int = 0
+const DOJO_TARGET_DIRECTIONAL:int = 1
+const DOJO_TARGET_SELF:int = 3
+
+# Contract direction constants (must match actions.cairo)
+const DOJO_DIR_NORTH:int = 0
+const DOJO_DIR_EAST:int = 1
+const DOJO_DIR_SOUTH:int = 2
+const DOJO_DIR_WEST:int = 3
+
 func _build_dojo_ability_payload(ability: AbilityResource, target_data: Dictionary) -> Dictionary:
-	var target_cell: Vector2i = target_data.get("target_cell", player.get("combat_stats").grid_pos)
-	var mode: int = 0
-	if int(ability.ability_id) == CombatEnums.AbilityID.HEAL:
-		target_cell = player.get("combat_stats").grid_pos
-		mode = 1
-	return {
-		"mode": mode,
-		"a": target_cell.x,
-		"b": target_cell.y,
-	}
+	var aid:int = int(ability.ability_id)
+	match aid:
+		CombatEnums.AbilityID.STRIKE, CombatEnums.AbilityID.SHOVE:
+			# Contract expects: mode=TARGET_SINGLE, a=actor_id, b=0
+			var target_cell:Vector2i = target_data.get("target_cell", Vector2i(-1, -1))
+			var actor_id:int = _contract_actor_id_at(target_cell)
+			return {"mode": DOJO_TARGET_SINGLE, "a": actor_id, "b": 0}
+		CombatEnums.AbilityID.DASH:
+			# Contract expects: mode=TARGET_DIRECTIONAL, a=direction(0-3), b=0
+			var dir_vec:Vector2i = target_data.get("target_direction", Vector2i.RIGHT)
+			return {"mode": DOJO_TARGET_DIRECTIONAL, "a": _vec_to_dojo_direction(dir_vec), "b": 0}
+		CombatEnums.AbilityID.HEAL, CombatEnums.AbilityID.SLAM:
+			# Contract expects: mode=TARGET_SELF, a=0, b=0
+			return {"mode": DOJO_TARGET_SELF, "a": 0, "b": 0}
+		_:
+			return {"mode": 0, "a": 0, "b": 0}
+
+## Find the contract actor_id (1-5) of the enemy at a grid cell, or 0 if none.
+func _contract_actor_id_at(cell:Vector2i) -> int:
+	for enemy_data in enemies:
+		var stats:CombatStatsResource = enemy_data.get("combat_stats", null)
+		if stats != null && stats.grid_pos == cell:
+			return int(enemy_data.get("contract_actor_id", 0))
+	return 0
+
+## Convert a Vector2i unit direction to the contract's direction enum (0-3).
+func _vec_to_dojo_direction(dir:Vector2i) -> int:
+	if dir.x > 0:
+		return DOJO_DIR_EAST
+	if dir.x < 0:
+		return DOJO_DIR_WEST
+	if dir.y < 0:
+		return DOJO_DIR_NORTH
+	return DOJO_DIR_SOUTH
 
 func _focus_camera_to_grid() -> void:
 	if combat_grid == null:

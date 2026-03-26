@@ -6,52 +6,84 @@ signal room_cleared(room_index:int)
 signal run_completed
 signal run_failed
 
+# Room layouts MUST match contract definitions in actions.cairo.
+# Obstacles = room_X_blocked_bitmap(), enemies = spawn_room_X_enemies(),
+# player_start = (ENTRY_X, ENTRY_Y). Order matters: enemy[0]=actor_id 1, etc.
 const ROOM_CONFIGS:Array[Dictionary] = [
+	# Room 0 (Easy): 2 Brute + 1 Caster
 	{
 		"grid_size": 8,
 		"obstacles": [
-			Vector2i(1, 1), Vector2i(6, 6), Vector2i(2, 5),
-			Vector2i(5, 2), Vector2i(3, 0), Vector2i(0, 4),
-			Vector2i(7, 3), Vector2i(4, 7), Vector2i(6, 1),
-			Vector2i(1, 6), Vector2i(3, 3), Vector2i(5, 5),
+			# Row 0
+			Vector2i(0, 0), Vector2i(1, 0), Vector2i(6, 0), Vector2i(7, 0),
+			# Row 1
+			Vector2i(0, 1), Vector2i(7, 1),
+			# Row 2
+			Vector2i(0, 2), Vector2i(3, 2), Vector2i(4, 2), Vector2i(7, 2),
+			# Row 3
+			Vector2i(1, 3), Vector2i(6, 3),
+			# Row 4
+			Vector2i(1, 4), Vector2i(6, 4),
+			# Row 5
+			Vector2i(0, 5), Vector2i(7, 5),
+			# Row 6
+			Vector2i(0, 6), Vector2i(2, 6), Vector2i(7, 6),
+			# Row 7
+			Vector2i(0, 7), Vector2i(7, 7),
 		],
 		"enemies": [
-			{"name": "Brute", "grid_pos": Vector2i(5, 1)},
-			{"name": "Brute", "grid_pos": Vector2i(4, 5)},
-			{"name": "Caster", "grid_pos": Vector2i(6, 4)},
+			{"name": "Brute", "grid_pos": Vector2i(6, 2)},   # actor_id 1
+			{"name": "Brute", "grid_pos": Vector2i(5, 2)},   # actor_id 2
+			{"name": "Caster", "grid_pos": Vector2i(5, 6)},  # actor_id 3
 		],
-		"player_start": Vector2i(1, 3),
+		"player_start": Vector2i(1, 1),
 	},
+	# Room 1 (Medium): 1 Brute + 1 Flanker + 1 Heavy
 	{
 		"grid_size": 8,
 		"obstacles": [
-			Vector2i(2, 1), Vector2i(5, 6), Vector2i(3, 4),
-			Vector2i(0, 3), Vector2i(7, 2), Vector2i(4, 0),
-			Vector2i(1, 7), Vector2i(6, 5), Vector2i(3, 1),
-			Vector2i(5, 3),
+			# Border
+			Vector2i(0, 0), Vector2i(7, 0),
+			Vector2i(0, 1), Vector2i(7, 1),
+			Vector2i(0, 2), Vector2i(7, 2),
+			Vector2i(0, 7), Vector2i(7, 7),
+			# Interior
+			Vector2i(2, 2), Vector2i(3, 2),
+			Vector2i(4, 3), Vector2i(4, 4),
+			Vector2i(1, 5), Vector2i(2, 5),
+			Vector2i(5, 1), Vector2i(6, 1),
 		],
 		"enemies": [
-			{"name": "Brute", "grid_pos": Vector2i(5, 2)},
-			{"name": "Flanker", "grid_pos": Vector2i(6, 5)},
-			{"name": "Heavy", "grid_pos": Vector2i(4, 1)},
+			{"name": "Brute", "grid_pos": Vector2i(6, 2)},    # actor_id 1
+			{"name": "Flanker", "grid_pos": Vector2i(5, 5)},  # actor_id 2
+			{"name": "Heavy", "grid_pos": Vector2i(6, 6)},    # actor_id 3
 		],
-		"player_start": Vector2i(1, 3),
+		"player_start": Vector2i(1, 1),
 	},
+	# Room 2 (Hard): 1 Heavy + 1 Puller + 2 Flanker
 	{
 		"grid_size": 8,
 		"obstacles": [
-			Vector2i(1, 1), Vector2i(6, 6), Vector2i(3, 3),
-			Vector2i(4, 4), Vector2i(2, 6), Vector2i(5, 1),
-			Vector2i(7, 3), Vector2i(0, 5), Vector2i(6, 0),
-			Vector2i(1, 7),
+			# Row 0
+			Vector2i(0, 0), Vector2i(1, 0), Vector2i(6, 0), Vector2i(7, 0),
+			# Row 1
+			Vector2i(0, 1), Vector2i(7, 1),
+			# Row 2
+			Vector2i(2, 2), Vector2i(3, 2), Vector2i(4, 2), Vector2i(5, 2),
+			# Row 5
+			Vector2i(2, 5), Vector2i(3, 5), Vector2i(4, 5), Vector2i(5, 5),
+			# Row 6
+			Vector2i(0, 6), Vector2i(7, 6),
+			# Row 7
+			Vector2i(0, 7), Vector2i(1, 7), Vector2i(6, 7), Vector2i(7, 7),
 		],
 		"enemies": [
-			{"name": "Heavy", "grid_pos": Vector2i(6, 2)},
-			{"name": "Puller", "grid_pos": Vector2i(5, 6)},
-			{"name": "Flanker", "grid_pos": Vector2i(3, 5)},
-			{"name": "Flanker", "grid_pos": Vector2i(4, 1)},
+			{"name": "Heavy", "grid_pos": Vector2i(6, 3)},    # actor_id 1
+			{"name": "Puller", "grid_pos": Vector2i(6, 6)},   # actor_id 2
+			{"name": "Flanker", "grid_pos": Vector2i(3, 3)},  # actor_id 3
+			{"name": "Flanker", "grid_pos": Vector2i(1, 5)},  # actor_id 4
 		],
-		"player_start": Vector2i(1, 3),
+		"player_start": Vector2i(1, 1),
 	},
 ]
 

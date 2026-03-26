@@ -21,6 +21,9 @@ var _selected_button:int = -1
 var _default_style:StyleBoxFlat
 var _selected_style:StyleBoxFlat
 
+var _toast_label:Label
+var _toast_tween:Tween
+
 func _ready() -> void:
 	_build_styles()
 	_apply_resource_bar_styles()
@@ -31,6 +34,9 @@ func _ready() -> void:
 			button.pressed.connect(_on_ability_button_pressed.bind(_ability_buttons.size() - 1))
 	confirm_button.pressed.connect(_on_confirm_pressed)
 	reset_button.pressed.connect(_on_reset_pressed)
+	_create_toast_label()
+	DojoBridge.tx_failed.connect(_on_tx_failed)
+	DojoBridge.tx_submitted.connect(_on_tx_submitted)
 	visible = false
 
 func _unhandled_input(event:InputEvent) -> void:
@@ -269,3 +275,62 @@ func _apply_resource_bar_styles() -> void:
 	hp_bar.add_theme_stylebox_override("fill", hp_fill)
 	stamina_bar.add_theme_stylebox_override("background", bar_background.duplicate())
 	stamina_bar.add_theme_stylebox_override("fill", stamina_fill)
+
+# --- TX feedback toast ---
+
+func _create_toast_label() -> void:
+	_toast_label = Label.new()
+	_toast_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_toast_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_toast_label.anchor_left = 0.1
+	_toast_label.anchor_right = 0.9
+	_toast_label.anchor_top = 0.05
+	_toast_label.anchor_bottom = 0.12
+	_toast_label.add_theme_font_size_override("font_size", 8)
+	_toast_label.modulate = Color(1, 1, 1, 0)
+	_toast_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	var toast_bg:StyleBoxFlat = StyleBoxFlat.new()
+	toast_bg.bg_color = Color(0.6, 0.1, 0.1, 0.9)
+	toast_bg.border_color = Color(0.9, 0.2, 0.2, 0.9)
+	toast_bg.set_border_width_all(1)
+	toast_bg.set_corner_radius_all(2)
+	toast_bg.set_content_margin_all(4)
+	_toast_label.add_theme_stylebox_override("normal", toast_bg)
+	add_child(_toast_label)
+
+func _show_toast(text:String, color:Color = Color(0.6, 0.1, 0.1, 0.9), duration:float = 4.0) -> void:
+	if _toast_label == null:
+		return
+	_toast_label.text = text
+
+	# Update background color
+	var style:StyleBoxFlat = _toast_label.get_theme_stylebox("normal").duplicate() as StyleBoxFlat
+	if style != null:
+		style.bg_color = color
+		_toast_label.add_theme_stylebox_override("normal", style)
+
+	if _toast_tween != null && _toast_tween.is_valid():
+		_toast_tween.kill()
+	_toast_tween = create_tween()
+	_toast_tween.tween_property(_toast_label, "modulate:a", 1.0, 0.15)
+	_toast_tween.tween_interval(duration)
+	_toast_tween.tween_property(_toast_label, "modulate:a", 0.0, 0.5)
+
+func _on_tx_failed(action:String, reason:String) -> void:
+	# Extract readable error from the raw reason string
+	var display_reason:String = reason
+	# Look for Cairo panic messages like ('Some message')
+	var regex := RegEx.new()
+	regex.compile("\\('([^']+)'\\)")
+	var matches := regex.search_all(reason)
+	if !matches.is_empty():
+		var parts:PackedStringArray = []
+		for m in matches:
+			parts.append(m.get_string(1))
+		display_reason = " | ".join(parts)
+
+	_show_toast("TX FAILED [%s]: %s" % [action, display_reason], Color(0.6, 0.1, 0.1, 0.9))
+
+func _on_tx_submitted(action:String) -> void:
+	_show_toast("TX OK: %s" % action, Color(0.1, 0.4, 0.15, 0.85), 2.0)
