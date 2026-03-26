@@ -11,12 +11,19 @@ var _turn_actions: Array[Dictionary] = []
 func _ready() -> void:
 	get_tree().node_added.connect(_on_node_added)
 	DojoBridge.tx_failed.connect(_on_tx_failed)
+	DojoBridge.tx_submitted.connect(_on_tx_submitted)
 
 func _on_tx_failed(action: String, _reason: String) -> void:
 	# On failed confirm_turn, reset turn so player can retry from clean state.
 	if action == "confirm_turn" && _combat_manager != null:
 		_combat_manager.reset_turn()
 		_turn_actions.clear()
+
+func _on_tx_submitted(action: String) -> void:
+	# After successful confirm_turn, re-sync from chain so the next turn
+	# starts with the contract's post-enemy-phase state (HP, positions, alive).
+	if action == "confirm_turn" && _enabled:
+		_resync_after_confirm()
 
 func set_enabled(enabled: bool) -> void:
 	_enabled = enabled
@@ -161,3 +168,17 @@ func _wait_and_sync_from_chain() -> void:
 		_combat_manager.sync_positions_from_chain(GameState.actors)
 	else:
 		push_warning("[dojo_integration] chain sync skipped — no combat_manager or no actors")
+
+## After successful confirm_turn, wait for Torii to index the post-enemy-phase
+## state, then re-sync so the next turn starts from the contract's authoritative
+## actor positions, HP, and alive status.
+func _resync_after_confirm() -> void:
+	# Wait for Katana to process confirm_turn (player actions + enemy phase) + Torii to index
+	await get_tree().create_timer(4.0).timeout
+	DojoBridge.pull_entities_snapshot()
+	await get_tree().create_timer(1.0).timeout
+	if _combat_manager != null && !GameState.actors.is_empty():
+		_combat_manager.sync_positions_from_chain(GameState.actors)
+		push_warning("[dojo_integration] post-confirm resync complete")
+	else:
+		push_warning("[dojo_integration] post-confirm resync skipped — no data")

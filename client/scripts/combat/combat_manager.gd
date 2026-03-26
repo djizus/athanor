@@ -120,7 +120,15 @@ func sync_positions_from_chain(chain_actors: Dictionary) -> void:
 			if player_node != null && combat_grid != null:
 				player_node.global_position = combat_grid.grid_to_world(player_stats.grid_pos)
 
-	# Sync enemies (actor_id 1+)
+	# Sync player HP from chain
+	if chain_actors.has(0):
+		var chain_player: Dictionary = chain_actors[0]
+		var player_health: HealthResource = player.get("health", null)
+		if player_health != null && chain_player.has("hp"):
+			player_health.hp = float(int(chain_player.get("hp", player_health.hp)))
+			player_health.max_hp = float(int(chain_player.get("max_hp", player_health.max_hp)))
+
+	# Sync enemies (actor_id 1+): position, HP, alive status
 	for enemy_data in enemies:
 		var actor_id: int = int(enemy_data.get("contract_actor_id", -1))
 		if actor_id < 0 || !chain_actors.has(actor_id):
@@ -133,6 +141,16 @@ func sync_positions_from_chain(chain_actors: Dictionary) -> void:
 		var enemy_node: Node2D = enemy_data.get("node", null)
 		if enemy_node != null && combat_grid != null:
 			enemy_node.global_position = combat_grid.grid_to_world(stats.grid_pos)
+		# Sync HP and alive status
+		var enemy_health: HealthResource = enemy_data.get("health", null)
+		if enemy_health != null && chain_enemy.has("hp"):
+			enemy_health.hp = float(int(chain_enemy.get("hp", enemy_health.hp)))
+		# Hide dead enemies
+		var alive: bool = bool(int(chain_enemy.get("alive", 1)))
+		if !alive && enemy_node != null:
+			enemy_node.visible = false
+			if enemy_health != null:
+				enemy_health.hp = 0.0
 
 	push_warning("[combat_manager] synced positions from chain — player=%s enemies=%s" % [
 		str(player.get("combat_stats").grid_pos),
