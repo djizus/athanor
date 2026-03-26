@@ -1,7 +1,7 @@
-world_address = "0x77382f71a4459797905b267e6a2f6e395ce914f3942e2fe140ffa712b1a9e81"
+world_address = "0x2f7d2a01f4a8273a75d3c6b625a2a47469dbeac537afb38ada984e2b358b185"
 rpc = "https://api.cartridge.gg/x/athanor-djizus-slot/katana"
 
 [indexing]
 pending = true
 transactions = true
-namespaces = ["athanor"]
+namespaces = ["athanor_0_1"]

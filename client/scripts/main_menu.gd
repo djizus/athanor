@@ -2,8 +2,8 @@ extends Control
 
 const DEFAULT_TORII_URL := "https://api.cartridge.gg/x/athanor-djizus-slot/torii"
 const DEFAULT_RPC_URL := "https://api.cartridge.gg/x/athanor-djizus-slot/katana"
-const DEFAULT_WORLD_ADDRESS := "WORLD_ADDRESS_PLACEHOLDER"
-const DEFAULT_ACTIONS_ADDRESS := "ACTIONS_ADDRESS_PLACEHOLDER"
+const DEFAULT_WORLD_ADDRESS := "0x2f7d2a01f4a8273a75d3c6b625a2a47469dbeac537afb38ada984e2b358b185"
+const DEFAULT_ACTIONS_ADDRESS := "0x3ed528647b1f3f347b47f7048e02203517343f32f9c5d710a9bd836d6b412a5"
 
 var _connect_button: Button = null
 
