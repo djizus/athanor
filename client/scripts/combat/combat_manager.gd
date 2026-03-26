@@ -105,6 +105,44 @@ func start_combat(player_node:Node2D, enemy_nodes:Array[Node], combat_grid_node:
 	turn_manager.start_combat()
 	combat_started.emit()
 
+## Sync grid positions from on-chain actor data (contract = source of truth).
+## Called by DojoIntegration after enter_room TX is indexed by Torii.
+## chain_actors: Dictionary keyed by actor_id (int), values are model Dicts
+## with at minimum "pos_x", "pos_y", "archetype", "alive".
+func sync_positions_from_chain(chain_actors: Dictionary) -> void:
+	# Sync player (actor_id 0)
+	if chain_actors.has(0):
+		var chain_player: Dictionary = chain_actors[0]
+		var player_stats: CombatStatsResource = player.get("combat_stats", null)
+		if player_stats != null:
+			player_stats.grid_pos = Vector2i(int(chain_player.get("pos_x", 0)), int(chain_player.get("pos_y", 0)))
+			var player_node: Node2D = player.get("node") as Node2D
+			if player_node != null && combat_grid != null:
+				player_node.global_position = combat_grid.grid_to_world(player_stats.grid_pos)
+
+	# Sync enemies (actor_id 1+)
+	for enemy_data in enemies:
+		var actor_id: int = int(enemy_data.get("contract_actor_id", -1))
+		if actor_id < 0 || !chain_actors.has(actor_id):
+			continue
+		var chain_enemy: Dictionary = chain_actors[actor_id]
+		var stats: CombatStatsResource = enemy_data.get("combat_stats", null)
+		if stats == null:
+			continue
+		stats.grid_pos = Vector2i(int(chain_enemy.get("pos_x", 0)), int(chain_enemy.get("pos_y", 0)))
+		var enemy_node: Node2D = enemy_data.get("node", null)
+		if enemy_node != null && combat_grid != null:
+			enemy_node.global_position = combat_grid.grid_to_world(stats.grid_pos)
+
+	push_warning("[combat_manager] synced positions from chain — player=%s enemies=%s" % [
+		str(player.get("combat_stats").grid_pos),
+		str(enemies.map(func(e: Dictionary) -> String: return "id%d@%s" % [int(e.get("contract_actor_id", 0)), str(e.get("combat_stats").grid_pos)]))
+	])
+	_refresh_grid_state()
+	grid_movement.set_blocked_cells(grid_state.get("blocked_cells", Array([], TYPE_VECTOR2I, "", null)))
+	grid_movement.set_occupied_cells(_occupied_cells_without_player())
+	grid_movement.refresh_reachable()
+
 func end_combat() -> void:
 	if turn_manager != null:
 		turn_manager.queue_combat_end(_are_enemies_defeated())

@@ -81,13 +81,15 @@ func submit_turn() -> void:
 	DojoBridge.confirm_turn(_current_game_id, actions_packed)
 	_turn_actions.clear()
 
+var _combat_manager: CombatManager
+
 func _on_node_added(node: Node) -> void:
 	if node is CombatManager:
-		var combat_manager := node as CombatManager
-		if not combat_manager.combat_started.is_connected(_on_combat_started):
-			combat_manager.combat_started.connect(_on_combat_started)
-		if not combat_manager.combat_finished.is_connected(_on_combat_finished):
-			combat_manager.combat_finished.connect(_on_combat_finished)
+		_combat_manager = node as CombatManager
+		if not _combat_manager.combat_started.is_connected(_on_combat_started):
+			_combat_manager.combat_started.connect(_on_combat_started)
+		if not _combat_manager.combat_finished.is_connected(_on_combat_finished):
+			_combat_manager.combat_finished.connect(_on_combat_finished)
 
 func _on_combat_started() -> void:
 	_turn_actions.clear()
@@ -117,6 +119,7 @@ func _spawn_and_enter_room() -> void:
 	if _current_game_id >= 0:
 		push_warning("[dojo_integration] game_id=%d — entering room %d" % [_current_game_id, _current_room_id])
 		DojoBridge.enter_room(_current_game_id, _current_room_id)
+		await _wait_and_sync_from_chain()
 	else:
 		push_warning("[dojo_integration] No game_id after spawn — chain may be slow, retrying...")
 		await get_tree().create_timer(3.0).timeout
@@ -126,6 +129,7 @@ func _spawn_and_enter_room() -> void:
 		if _current_game_id >= 0:
 			push_warning("[dojo_integration] game_id=%d (retry) — entering room %d" % [_current_game_id, _current_room_id])
 			DojoBridge.enter_room(_current_game_id, _current_room_id)
+			await _wait_and_sync_from_chain()
 		else:
 			push_warning("[dojo_integration] Failed to get game_id — online turns will not submit")
 
@@ -136,5 +140,17 @@ func _enter_next_room() -> void:
 	if _current_game_id >= 0:
 		push_warning("[dojo_integration] Entering room %d for game_id=%d" % [_current_room_id, _current_game_id])
 		DojoBridge.enter_room(_current_game_id, _current_room_id)
+		await _wait_and_sync_from_chain()
 	else:
 		push_warning("[dojo_integration] Cannot enter room %d — no game_id" % _current_room_id)
+
+## Wait for Torii to index enter_room TX, then sync combat positions from chain.
+## The contract is the source of truth for actor positions.
+func _wait_and_sync_from_chain() -> void:
+	await get_tree().create_timer(3.0).timeout
+	DojoBridge.pull_entities_snapshot()
+	await get_tree().create_timer(1.0).timeout
+	if _combat_manager != null && !GameState.actors.is_empty():
+		_combat_manager.sync_positions_from_chain(GameState.actors)
+	else:
+		push_warning("[dojo_integration] chain sync skipped — no combat_manager or no actors")
