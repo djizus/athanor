@@ -89,6 +89,15 @@ func start_combat(player_node:Node2D, enemy_nodes:Array[Node], combat_grid_node:
 
 	_bind_player_subsystems()
 	_sync_world_positions_to_grid()
+	# Debug: verify grid positions after sync match contract expectations
+	push_warning("[combat_manager] player grid_pos=%s" % str(player.get("combat_stats").grid_pos))
+	for i in range(enemies.size()):
+		var e:Dictionary = enemies[i]
+		push_warning("[combat_manager] enemy[%d] actor_id=%d pos=%s name=%s" % [
+			i, int(e.get("contract_actor_id", 0)),
+			str(e.get("combat_stats").grid_pos),
+			str(e.get("node").name) if e.get("node") != null else "?"
+		])
 	_refresh_grid_state()
 	_turn_reset_abilities()
 	_clear_grid_overlay()

@@ -111,9 +111,9 @@ func _spawn_enemies(enemy_defs:Array) -> Array[Node]:
 			sprite.hframes = 8
 		enemy.add_child(sprite)
 
-		enemy.global_position = _combat_grid.grid_to_world(grid_pos)
 		enemy.z_index = 10
 		add_child(enemy)
+		enemy.global_position = _combat_grid.grid_to_world(grid_pos)
 		nodes.push_back(enemy)
 	return nodes
 
