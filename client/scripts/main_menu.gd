@@ -98,10 +98,10 @@ func _ensure_sdk_nodes() -> void:
 	if ClassDB.class_exists("ToriiClient"):
 		torii_client = ClassDB.instantiate("ToriiClient")
 		torii_client.name = "ToriiClient"
-		add_child(torii_client)
+		DojoBridge.add_child(torii_client)  # Autoload persists across scene changes
 	if ClassDB.class_exists("DojoSessionAccount"):
 		session_account = ClassDB.instantiate("DojoSessionAccount")
 		session_account.name = "DojoSessionAccount"
-		add_child(session_account)
+		DojoBridge.add_child(session_account)
 	if torii_client != null and session_account != null:
 		DojoBridge.configure_nodes(torii_client, session_account)
