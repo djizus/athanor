@@ -2,9 +2,9 @@
 pub enum AbilityType {
     Strike,
     Dash,
-    Cleave,
-    Fireball,
-    Guard,
+    Heal,
+    Shove,
+    Slam,
 }
 
 #[derive(Drop, Copy, Serde, PartialEq, Introspect)]

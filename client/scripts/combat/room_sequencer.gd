@@ -8,29 +8,32 @@ signal run_failed
 
 const ROOM_CONFIGS:Array[Dictionary] = [
 	{
-		"grid_size": 6,
+		"grid_size": 8,
 		"obstacles": [
-			Vector2i(1, 1), Vector2i(4, 4), Vector2i(2, 4),
-			Vector2i(3, 1), Vector2i(0, 3), Vector2i(5, 2),
+			Vector2i(1, 1), Vector2i(6, 6), Vector2i(2, 5),
+			Vector2i(5, 2), Vector2i(3, 0), Vector2i(0, 4),
+			Vector2i(7, 3), Vector2i(4, 7), Vector2i(6, 1),
+			Vector2i(1, 6), Vector2i(3, 3), Vector2i(5, 5),
 		],
 		"enemies": [
-			{"name": "Brute", "grid_pos": Vector2i(4, 1)},
-			{"name": "Brute", "grid_pos": Vector2i(3, 4)},
-			{"name": "Caster", "grid_pos": Vector2i(5, 3)},
+			{"name": "Brute", "grid_pos": Vector2i(5, 1)},
+			{"name": "Brute", "grid_pos": Vector2i(4, 5)},
+			{"name": "Caster", "grid_pos": Vector2i(6, 4)},
 		],
-		"player_start": Vector2i(1, 2),
+		"player_start": Vector2i(1, 3),
 	},
 	{
-		"grid_size": 7,
+		"grid_size": 8,
 		"obstacles": [
-			Vector2i(1, 1), Vector2i(5, 5), Vector2i(3, 3),
-			Vector2i(2, 5), Vector2i(4, 1), Vector2i(6, 3),
-			Vector2i(0, 4), Vector2i(5, 0),
+			Vector2i(2, 1), Vector2i(5, 6), Vector2i(3, 4),
+			Vector2i(0, 3), Vector2i(7, 2), Vector2i(4, 0),
+			Vector2i(1, 7), Vector2i(6, 5), Vector2i(3, 1),
+			Vector2i(5, 3),
 		],
 		"enemies": [
 			{"name": "Brute", "grid_pos": Vector2i(5, 2)},
-			{"name": "Flanker", "grid_pos": Vector2i(4, 5)},
-			{"name": "Heavy", "grid_pos": Vector2i(3, 1)},
+			{"name": "Flanker", "grid_pos": Vector2i(6, 5)},
+			{"name": "Heavy", "grid_pos": Vector2i(4, 1)},
 		],
 		"player_start": Vector2i(1, 3),
 	},

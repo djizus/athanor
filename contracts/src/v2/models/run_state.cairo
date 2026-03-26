@@ -10,4 +10,5 @@ pub struct RunState {
     pub turn_index: u16,
     pub player_actor_id: u8,
     pub status_flags: u8,
+    pub last_player_direction: u8,
 }

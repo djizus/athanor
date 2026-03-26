@@ -3,4 +3,7 @@ pub enum Archetype {
     Hero,
     Brute,
     Caster,
+    Flanker,
+    Heavy,
+    Puller,
 }

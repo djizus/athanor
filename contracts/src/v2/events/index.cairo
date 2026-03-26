@@ -53,17 +53,6 @@ pub struct AbilityUsed {
 
 #[derive(Copy, Drop, Serde)]
 #[dojo::event]
-pub struct GuardApplied {
-    #[key]
-    pub player: ContractAddress,
-    #[key]
-    pub game_id: u32,
-    pub actor_id: u8,
-    pub room_id: u8,
-}
-
-#[derive(Copy, Drop, Serde)]
-#[dojo::event]
 pub struct TelegraphCreated {
     #[key]
     pub player: ContractAddress,

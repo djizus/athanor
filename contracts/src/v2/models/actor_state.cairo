@@ -21,5 +21,6 @@ pub struct ActorState {
     pub pos_y: u8,
     pub alive: bool,
     pub guard_active: bool,
+    pub is_immovable: bool,
     pub room_id: u8,
 }

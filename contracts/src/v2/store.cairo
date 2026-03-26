@@ -7,8 +7,8 @@ use athanor::v2::models::index::{
     RunState, RoomState, ActorState, AbilitySlotState, TelegraphState,
 };
 use athanor::v2::events::index::{
-    RunSpawnedV2, RoomEnteredV2, ActorMoved, AbilityUsed, GuardApplied,
-    TelegraphCreated, TelegraphResolved, EnemyTurnComputed, TurnEnded,
+    RunSpawnedV2, RoomEnteredV2, ActorMoved, AbilityUsed, TelegraphCreated, TelegraphResolved,
+    EnemyTurnComputed, TurnEnded,
     ActorDamaged, ActorDied, RoomCleared, RunCompleted, RunFailed,
 };
 
@@ -111,12 +111,6 @@ pub impl StoreImpl of StoreTrait {
         self.world.emit_event(@AbilityUsed {
             player, game_id, actor_id, ability_id, room_id, target_actor_id, target_x, target_y,
         });
-    }
-
-    fn emit_guard_applied(
-        ref self: Store, player: ContractAddress, game_id: u32, actor_id: u8, room_id: u8,
-    ) {
-        self.world.emit_event(@GuardApplied { player, game_id, actor_id, room_id });
     }
 
     fn emit_telegraph_created(

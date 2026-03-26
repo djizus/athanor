@@ -42,6 +42,43 @@ pub fn choose_step_toward(
     (from_x, from_y, false)
 }
 
+pub fn choose_step_toward_exact(
+    from_x: u8,
+    from_y: u8,
+    to_x: u8,
+    to_y: u8,
+    blocked: u64,
+    occupancy_without_self: u64,
+) -> (u8, u8, bool) {
+    let dx = movement::abs_diff_u8(to_x, from_x);
+    let dy = movement::abs_diff_u8(to_y, from_y);
+    let prefer_x = dx >= dy;
+
+    if prefer_x {
+        let (x1, y1, ok1) = toward_x(from_x, from_y, to_x);
+        if ok1 && can_move_to(x1, y1, blocked, occupancy_without_self) {
+            return (x1, y1, true);
+        };
+
+        let (x2, y2, ok2) = toward_y(from_x, from_y, to_y);
+        if ok2 && can_move_to(x2, y2, blocked, occupancy_without_self) {
+            return (x2, y2, true);
+        };
+    } else {
+        let (x1, y1, ok1) = toward_y(from_x, from_y, to_y);
+        if ok1 && can_move_to(x1, y1, blocked, occupancy_without_self) {
+            return (x1, y1, true);
+        };
+
+        let (x2, y2, ok2) = toward_x(from_x, from_y, to_x);
+        if ok2 && can_move_to(x2, y2, blocked, occupancy_without_self) {
+            return (x2, y2, true);
+        };
+    };
+
+    (from_x, from_y, false)
+}
+
 pub fn choose_step_away(
     from_x: u8,
     from_y: u8,
