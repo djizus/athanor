@@ -62,6 +62,7 @@ var _camera_prev_position:Vector2 = Vector2.ZERO
 var _camera_prev_follow:bool = true
 
 var _turn_snapshot:Dictionary = {}
+var _enemy_registry:Dictionary = {}
 
 func _ready() -> void:
 	_setup_subsystems()
@@ -82,6 +83,9 @@ func start_combat(player_node:Node2D, enemy_nodes:Array[Node], combat_grid_node:
 
 	player = _build_player_data(player_node)
 	enemies = _build_enemy_data(enemy_nodes)
+	_enemy_registry.clear()
+	for enemy_data in enemies:
+		_enemy_registry[enemy_data.get("enemy_id", -1)] = enemy_data
 
 	_bind_player_subsystems()
 	_sync_world_positions_to_grid()
@@ -277,6 +281,36 @@ func reset_turn() -> void:
 	for i in range(mini(saved_cooldowns.size(), ability_manager.abilities.size())):
 		ability_manager.abilities[i].current_cooldown = int(saved_cooldowns[i])
 
+	var saved_enemies:Array = _turn_snapshot.get("enemies", [])
+	var restored_enemies:Array[Dictionary] = []
+	for saved_enemy_variant in saved_enemies:
+		if !(saved_enemy_variant is Dictionary):
+			continue
+		var saved_enemy:Dictionary = saved_enemy_variant
+		var enemy_id:Variant = saved_enemy.get("enemy_id", -1)
+		var enemy_data:Dictionary = _enemy_registry.get(enemy_id, {})
+		if enemy_data.is_empty():
+			continue
+
+		var enemy_health:HealthResource = enemy_data.get("health", null)
+		if enemy_health != null:
+			enemy_health.hp = float(saved_enemy.get("hp", enemy_health.max_hp))
+
+		var enemy_stats:CombatStatsResource = enemy_data.get("combat_stats", null)
+		if enemy_stats != null:
+			enemy_stats.grid_pos = saved_enemy.get("grid_pos", enemy_stats.grid_pos)
+
+		var enemy_node:Node2D = enemy_data.get("node", null)
+		if enemy_node != null:
+			enemy_node.global_position = combat_grid.grid_to_world(saved_enemy.get("grid_pos", Vector2i.ZERO))
+			enemy_node.visible = bool(saved_enemy.get("visible", true))
+
+		enemy_data["death_processed"] = bool(saved_enemy.get("death_processed", false))
+		if enemy_health != null && enemy_health.hp > 0.0:
+			restored_enemies.push_back(enemy_data)
+
+	enemies = restored_enemies
+
 	_refresh_grid_state()
 	grid_movement.set_blocked_cells(grid_state.get("blocked_cells", Array([], TYPE_VECTOR2I, "", null)))
 	grid_movement.set_occupied_cells(_occupied_cells_without_player())
@@ -288,13 +322,29 @@ func _save_turn_snapshot() -> void:
 	var player_stats:CombatStatsResource = player.get("combat_stats", null)
 	var stamina:StaminaResource = player.get("stamina", null)
 	var cooldowns:Array = []
+	var enemy_snapshots:Array[Dictionary] = []
 	for ability in ability_manager.abilities:
 		cooldowns.push_back(ability.current_cooldown)
+
+	for enemy_data in enemies:
+		var enemy_health:HealthResource = enemy_data.get("health", null)
+		var enemy_stats:CombatStatsResource = enemy_data.get("combat_stats", null)
+		var enemy_node:Node2D = enemy_data.get("node", null)
+		if enemy_health == null || enemy_stats == null:
+			continue
+		enemy_snapshots.push_back({
+			"enemy_id": enemy_data.get("enemy_id", -1),
+			"hp": enemy_health.hp,
+			"grid_pos": enemy_stats.grid_pos,
+			"visible": enemy_node.visible if enemy_node != null else true,
+			"death_processed": bool(enemy_data.get("death_processed", false)),
+		})
 
 	_turn_snapshot = {
 		"grid_pos": player_stats.grid_pos if player_stats != null else Vector2i.ZERO,
 		"stamina_value": stamina.value if stamina != null else 80,
 		"cooldowns": cooldowns,
+		"enemies": enemy_snapshots,
 	}
 
 func _on_player_turn_started() -> void:

@@ -23,6 +23,7 @@ var _selected_style:StyleBoxFlat
 
 func _ready() -> void:
 	_build_styles()
+	_apply_resource_bar_styles()
 	for child in ability_bar.get_children():
 		if child is Button:
 			var button:Button = child
@@ -251,3 +252,20 @@ func _build_styles() -> void:
 	_selected_style = _default_style.duplicate()
 	_selected_style.border_color = Color(1.0, 0.86, 0.2)
 	_selected_style.set_border_width_all(1)
+
+func _apply_resource_bar_styles() -> void:
+	var bar_background:StyleBoxFlat = StyleBoxFlat.new()
+	bar_background.bg_color = Color(0.15, 0.15, 0.15, 0.8)
+	bar_background.border_color = Color(0.25, 0.25, 0.3, 0.9)
+	bar_background.set_border_width_all(1)
+
+	var hp_fill:StyleBoxFlat = StyleBoxFlat.new()
+	hp_fill.bg_color = Color(0.2, 0.8, 0.2, 0.95)
+
+	var stamina_fill:StyleBoxFlat = StyleBoxFlat.new()
+	stamina_fill.bg_color = Color(0.3, 0.5, 0.9, 0.95)
+
+	hp_bar.add_theme_stylebox_override("background", bar_background)
+	hp_bar.add_theme_stylebox_override("fill", hp_fill)
+	stamina_bar.add_theme_stylebox_override("background", bar_background.duplicate())
+	stamina_bar.add_theme_stylebox_override("fill", stamina_fill)

@@ -40,6 +40,7 @@ func _ready() -> void:
 func _spawn_player() -> void:
 	_player = PLAYER_SCENE.instantiate() as CharacterBody2D
 	_player.position = Vector2.ZERO
+	_player.z_index = 10
 	_player.set_movement_enabled(false)
 	add_child(_player)
 
@@ -63,6 +64,7 @@ func _start_room_combat(config:Dictionary) -> void:
 	_combat_grid.position = Vector2(0, -32)
 	add_child(_combat_grid)
 	_combat_grid.show_grid(Vector2i.ZERO, Vector2i(grid_size, grid_size))
+	_combat_grid.set_obstacles(obstacles)
 
 	var grid_cursor:GridCursor = GridCursor.new()
 	grid_cursor.name = "GridCursor"
@@ -110,6 +112,7 @@ func _spawn_enemies(enemy_defs:Array) -> Array[Node]:
 		enemy.add_child(sprite)
 
 		enemy.global_position = _combat_grid.grid_to_world(grid_pos)
+		enemy.z_index = 10
 		add_child(enemy)
 		nodes.push_back(enemy)
 	return nodes

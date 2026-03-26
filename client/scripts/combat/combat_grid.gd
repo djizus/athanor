@@ -11,6 +11,7 @@ const STATE_SELECTED:int = 1
 const STATE_DANGER:int = 2
 const STATE_MOVE_RANGE:int = 3
 const STATE_ABILITY_RANGE:int = 4
+const STATE_OBSTACLE:int = 5
 
 const STATE_COLORS:Dictionary = {
 	STATE_WALKABLE: Color(0.2, 0.5, 1.0, 0.15),
@@ -18,6 +19,7 @@ const STATE_COLORS:Dictionary = {
 	STATE_DANGER: Color(1.0, 0.08, 0.08, 0.55),
 	STATE_MOVE_RANGE: Color(0.2, 0.9, 0.35, 0.3),
 	STATE_ABILITY_RANGE: Color(0.7, 0.3, 0.95, 0.3),
+	STATE_OBSTACLE: Color(0.18, 0.12, 0.22, 0.9),
 }
 
 const MOVE_COST_COLORS:Array[Color] = [
@@ -39,6 +41,7 @@ var _grid_visible:bool = false
 var _cell_states:Dictionary = {}
 var _tile_costs:Dictionary = {}
 var _danger_pulse:float = 0.0
+var _obstacle_cells:Array[Vector2i] = []
 
 func _process(delta:float) -> void:
 	_danger_pulse += delta * 3.0
@@ -60,6 +63,13 @@ func show_grid(origin:Vector2i, size:Vector2i) -> void:
 
 func hide_grid() -> void:
 	_grid_visible = false
+	queue_redraw()
+
+func set_obstacles(cells:Array[Vector2i]) -> void:
+	_obstacle_cells.clear()
+	for cell in cells:
+		if _is_in_current_bounds(cell):
+			_obstacle_cells.push_back(cell)
 	queue_redraw()
 
 func set_cell_state(pos:Vector2i, state:int) -> void:
@@ -114,6 +124,12 @@ func _draw() -> void:
 			var cell:Vector2i = grid_origin + Vector2i(x, y)
 			_draw_cell(cell, STATE_COLORS[STATE_WALKABLE])
 
+	for obstacle_cell in _obstacle_cells:
+		if !_is_in_current_bounds(obstacle_cell):
+			continue
+		_draw_cell(obstacle_cell, Color(0.18, 0.12, 0.22, 0.9))
+		_draw_cell_border(obstacle_cell, Color(0.3, 0.2, 0.35, 0.8), 1.4)
+
 	for cell_key in _tile_costs.keys():
 		var cell:Vector2i = cell_key
 		if !_is_in_current_bounds(cell):
@@ -147,7 +163,7 @@ func _draw_cell(cell:Vector2i, color:Color) -> void:
 	])
 	draw_colored_polygon(points, color)
 
-func _draw_cell_border(cell:Vector2i, color:Color) -> void:
+func _draw_cell_border(cell:Vector2i, color:Color, width:float = 1.0) -> void:
 	var center:Vector2 = to_local(grid_to_world(cell))
 	var points:PackedVector2Array = PackedVector2Array([
 		center + Vector2(0.0, -HALF_H),
@@ -156,7 +172,7 @@ func _draw_cell_border(cell:Vector2i, color:Color) -> void:
 		center + Vector2(-HALF_W, 0.0),
 		center + Vector2(0.0, -HALF_H),
 	])
-	draw_polyline(points, color, 1.0)
+	draw_polyline(points, color, width)
 
 func _is_in_current_bounds(pos:Vector2i) -> bool:
 	if pos.x < grid_origin.x || pos.y < grid_origin.y:

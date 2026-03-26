@@ -69,3 +69,10 @@
 - `CombatManager.start_combat()` now accepts optional room config (`grid_size`, `obstacles`) and internally wires `BumpSystem` + `EnergyOrbSystem`; kill flow now grants +10 stamina and spawns a 2-turn +20 orb at enemy death cell.
 - `GridMovement` can now mark enemy-occupied cells as reachable endpoints without allowing traversal through them; this enables move-into-enemy bump resolution while preserving obstacle/occupancy path blocking.
 - `TelegraphSystem.add_telegraph()` now stores `telegraph_type`, `pull_source`, and `pull_distance`; `resolve_telegraphs()` returns pull telegraphs before damage telegraphs so resolve phase can apply forced movement first.
+
+## 2026-03-26 — Tactical combat UX bugfix notes
+
+- Turn reset that should revive/reposition enemies needs a stable enemy lookup independent from the mutable alive list (`enemies` gets pruned in `_refresh_grid_state`). Keeping an `_enemy_registry` keyed by `enemy_id` allows snapshot restore to rehydrate dead enemies with HP/visibility/grid position.
+- `CombatGrid` obstacle visualization works cleanly with a dedicated `set_obstacles(cells:Array[Vector2i])` API and drawing obstacle diamonds immediately after base walkable tiles but before movement/ability/danger overlays.
+- For overlay-vs-sprite layering, setting spawned combat actor roots (`player`, `enemy Node2D`) to `z_index = 10` reliably keeps sprites above `CombatGrid` `_draw()` content.
+- ProgressBar theming for HP/stamina is reliable when applied in script with `add_theme_stylebox_override("background"/"fill")`; this avoids scene/theme inheritance issues where bars render gray.
