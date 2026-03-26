@@ -10,6 +10,7 @@ signal guard_changed(active:bool)
 @export var move_range:int = 10
 @export var is_guarding:bool = false : set = set_is_guarding
 @export var guard_reduction:float = 0.5
+@export var is_immovable:bool = false
 
 func set_grid_pos(new_pos:Vector2i) -> void:
 	if grid_pos == new_pos:

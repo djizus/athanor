@@ -36,25 +36,41 @@ func queue_combat_end(player_won:bool) -> void:
 	_queued_combat_end = player_won
 
 func _run_combat_loop() -> void:
+	# Initial enemy action: enemies position + create first telegraphs
+	_set_phase(CombatEnums.Phase.ENEMY_TURN)
+	enemy_turn_started.emit()
+	await get_tree().process_frame
+
 	while _running:
+		# PLAYER acts (sees telegraphs from previous enemy turn)
 		_set_phase(CombatEnums.Phase.PLAYER_TURN)
 		player_turn_started.emit()
 		await _player_turn_ended
 
-		if _queued_combat_end != null:
-			_end_combat_internal(bool(_queued_combat_end))
+		if _check_combat_end():
 			break
 
-		_set_phase(CombatEnums.Phase.ENEMY_TURN)
-		enemy_turn_started.emit()
-
+		# RESOLVE: telegraphs fire, deaths processed
 		_set_phase(CombatEnums.Phase.RESOLVE)
 		resolve_started.emit()
 		turn_count += 1
 
-		if _queued_combat_end != null:
-			_end_combat_internal(bool(_queued_combat_end))
+		if _check_combat_end():
 			break
+
+		# ENEMY acts: move + create new telegraphs
+		_set_phase(CombatEnums.Phase.ENEMY_TURN)
+		enemy_turn_started.emit()
+		await get_tree().process_frame
+
+		if _check_combat_end():
+			break
+
+func _check_combat_end() -> bool:
+	if _queued_combat_end != null:
+		_end_combat_internal(bool(_queued_combat_end))
+		return true
+	return false
 
 func _set_phase(next_phase:int) -> void:
 	phase = next_phase

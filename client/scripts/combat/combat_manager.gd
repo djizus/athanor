@@ -9,14 +9,20 @@ const TILE_MOVE_STAMINA_COST:int = 10
 const BRUTE_AI_SCRIPT:Script = preload("res://scripts/combat/ai/brute_ai.gd")
 const CASTER_AI_SCRIPT:Script = preload("res://scripts/combat/ai/caster_ai.gd")
 const FLANKER_AI_SCRIPT:Script = preload("res://scripts/combat/ai/flanker_ai.gd")
+const HEAVY_AI_SCRIPT:Script = preload("res://scripts/combat/ai/heavy_ai.gd")
+const PULLER_AI_SCRIPT:Script = preload("res://scripts/combat/ai/puller_ai.gd")
 
 const STRIKE_EFFECT_SCRIPT:Script = preload("res://scripts/combat/abilities/ability_strike.gd")
 const DASH_EFFECT_SCRIPT:Script = preload("res://scripts/combat/abilities/ability_dash.gd")
-const GUARD_EFFECT_SCRIPT:Script = preload("res://scripts/combat/abilities/ability_guard.gd")
+const HEAL_EFFECT_SCRIPT:Script = preload("res://scripts/combat/abilities/ability_heal.gd")
+const SHOVE_EFFECT_SCRIPT:Script = preload("res://scripts/combat/abilities/ability_shove.gd")
+const SLAM_EFFECT_SCRIPT:Script = preload("res://scripts/combat/abilities/ability_slam.gd")
 
 const ABILITY_STRIKE:AbilityResource = preload("res://resources/combat/ability_strike.tres")
 const ABILITY_DASH:AbilityResource = preload("res://resources/combat/ability_dash.tres")
-const ABILITY_GUARD:AbilityResource = preload("res://resources/combat/ability_guard.tres")
+const ABILITY_HEAL:AbilityResource = preload("res://resources/combat/ability_heal.tres")
+const ABILITY_SHOVE:AbilityResource = preload("res://resources/combat/ability_shove.tres")
+const ABILITY_SLAM:AbilityResource = preload("res://resources/combat/ability_slam.tres")
 
 var turn_manager:TurnManager
 var grid_movement:GridMovement
@@ -24,6 +30,8 @@ var ability_manager:AbilityManager
 var ability_targeting:AbilityTargeting
 var telegraph_system:TelegraphSystem
 var enemy_turn_resolver:EnemyTurnResolver
+var bump_system:BumpSystem
+var energy_orb_system:EnergyOrbSystem
 
 var combat_grid:CombatGrid
 var grid_cursor:GridCursor
@@ -33,7 +41,9 @@ var enemies:Array[Dictionary] = []
 
 var grid_state:Dictionary = {
 	"blocked_cells": Array([], TYPE_VECTOR2I, "", null),
+	"obstacle_cells": Array([], TYPE_VECTOR2I, "", null),
 	"occupied_cells": Array([], TYPE_VECTOR2I, "", null),
+	"immovable_cells": Array([], TYPE_VECTOR2I, "", null),
 	"grid_size": 8,
 	"player_last_move_dir": Vector2i.RIGHT,
 }
@@ -42,7 +52,9 @@ var _input_enabled:bool = false
 
 var _ability_strike:AbilityStrike
 var _ability_dash:AbilityDash
-var _ability_guard:AbilityGuard
+var _ability_heal:AbilityHeal
+var _ability_shove:AbilityShove
+var _ability_slam:AbilitySlam
 
 var _camera:Camera2D
 var _camera_prev_zoom:Vector2 = Vector2.ONE
@@ -54,13 +66,19 @@ var _turn_snapshot:Dictionary = {}
 func _ready() -> void:
 	_setup_subsystems()
 
-func start_combat(player_node:Node2D, enemy_nodes:Array[Node], combat_grid_node:Node) -> void:
+func start_combat(player_node:Node2D, enemy_nodes:Array[Node], combat_grid_node:Node, combat_config:Dictionary = {}) -> void:
 	combat_grid = combat_grid_node as CombatGrid
 	if combat_grid == null:
 		return
 
 	grid_cursor = combat_grid.get_node_or_null("GridCursor") as GridCursor
-	grid_state["grid_size"] = mini(combat_grid.grid_size.x, combat_grid.grid_size.y)
+	grid_state["grid_size"] = int(combat_config.get("grid_size", mini(combat_grid.grid_size.x, combat_grid.grid_size.y)))
+
+	var obstacle_cells:Array[Vector2i] = []
+	for cell in combat_config.get("obstacles", []):
+		obstacle_cells.push_back(cell)
+	grid_state["obstacle_cells"] = obstacle_cells
+	grid_state["blocked_cells"] = obstacle_cells.duplicate()
 
 	player = _build_player_data(player_node)
 	enemies = _build_enemy_data(enemy_nodes)
@@ -91,7 +109,13 @@ func _setup_subsystems() -> void:
 	grid_movement.move_completed.connect(_on_move_completed)
 
 	ability_manager = AbilityManager.new()
-	ability_manager.abilities = [ABILITY_STRIKE.duplicate(), ABILITY_DASH.duplicate(), ABILITY_GUARD.duplicate()]
+	ability_manager.abilities = [
+		ABILITY_STRIKE.duplicate(),
+		ABILITY_DASH.duplicate(),
+		ABILITY_HEAL.duplicate(),
+		ABILITY_SHOVE.duplicate(),
+		ABILITY_SLAM.duplicate(),
+	]
 	add_child(ability_manager)
 	ability_manager.ability_selected.connect(_on_ability_selected)
 	ability_manager.ability_used.connect(_on_ability_used)
@@ -107,12 +131,23 @@ func _setup_subsystems() -> void:
 	enemy_turn_resolver = EnemyTurnResolver.new()
 	add_child(enemy_turn_resolver)
 
+	bump_system = BumpSystem.new()
+	add_child(bump_system)
+	bump_system.collision_damage_dealt.connect(_on_bump_collision_damage_dealt)
+
+	energy_orb_system = EnergyOrbSystem.new()
+	add_child(energy_orb_system)
+
 	_ability_strike = STRIKE_EFFECT_SCRIPT.new()
 	add_child(_ability_strike)
 	_ability_dash = DASH_EFFECT_SCRIPT.new()
 	add_child(_ability_dash)
-	_ability_guard = GUARD_EFFECT_SCRIPT.new()
-	add_child(_ability_guard)
+	_ability_heal = HEAL_EFFECT_SCRIPT.new()
+	add_child(_ability_heal)
+	_ability_shove = SHOVE_EFFECT_SCRIPT.new()
+	add_child(_ability_shove)
+	_ability_slam = SLAM_EFFECT_SCRIPT.new()
+	add_child(_ability_slam)
 
 func _bind_player_subsystems() -> void:
 	if player.is_empty():
@@ -131,8 +166,8 @@ func _bind_player_subsystems() -> void:
 
 func _build_player_data(player_node:Node2D) -> Dictionary:
 	var stamina:StaminaResource = StaminaResource.new()
-	stamina.max_value = 100
-	stamina.value = 100
+	stamina.max_value = 80
+	stamina.value = 80
 
 	var combat_stats:CombatStatsResource = CombatStatsResource.new()
 	combat_stats.faction = CombatEnums.Faction.PLAYER
@@ -187,6 +222,15 @@ func _assign_enemy_ai(enemy_node:Node2D, combat_stats:CombatStatsResource, healt
 			health.max_hp = 40.0
 			health.hp = 40.0
 			return FLANKER_AI_SCRIPT.new()
+		CombatEnums.Archetype.HEAVY:
+			health.max_hp = 70.0
+			health.hp = 70.0
+			combat_stats.is_immovable = true
+			return HEAVY_AI_SCRIPT.new()
+		CombatEnums.Archetype.PULLER:
+			health.max_hp = 35.0
+			health.hp = 35.0
+			return PULLER_AI_SCRIPT.new()
 		_:
 			health.max_hp = 50.0
 			health.hp = 50.0
@@ -194,6 +238,10 @@ func _assign_enemy_ai(enemy_node:Node2D, combat_stats:CombatStatsResource, healt
 
 func _infer_enemy_archetype(node_name:String) -> int:
 	var lowered:String = node_name.to_lower()
+	if lowered.contains("heavy"):
+		return CombatEnums.Archetype.HEAVY
+	if lowered.contains("puller"):
+		return CombatEnums.Archetype.PULLER
 	if lowered.contains("caster"):
 		return CombatEnums.Archetype.CASTER
 	if lowered.contains("flanker"):
@@ -225,22 +273,9 @@ func reset_turn() -> void:
 	if stamina != null:
 		stamina.value = int(_turn_snapshot.get("stamina_value", stamina.max_value))
 
-	_ability_guard.clear_guard(player.get("combat_stats", null))
-
 	var saved_cooldowns:Array = _turn_snapshot.get("cooldowns", [])
 	for i in range(mini(saved_cooldowns.size(), ability_manager.abilities.size())):
 		ability_manager.abilities[i].current_cooldown = int(saved_cooldowns[i])
-
-	for i in enemies.size():
-		var enemy_data:Dictionary = enemies[i]
-		var saved_enemies:Array = _turn_snapshot.get("enemy_hp", [])
-		if i < saved_enemies.size():
-			var health:HealthResource = enemy_data.get("health", null)
-			if health != null:
-				health.hp = float(saved_enemies[i])
-				var enemy_node:Node2D = enemy_data.get("node", null)
-				if enemy_node != null:
-					enemy_node.visible = health.hp > 0.0
 
 	_refresh_grid_state()
 	grid_movement.set_blocked_cells(grid_state.get("blocked_cells", Array([], TYPE_VECTOR2I, "", null)))
@@ -255,16 +290,11 @@ func _save_turn_snapshot() -> void:
 	var cooldowns:Array = []
 	for ability in ability_manager.abilities:
 		cooldowns.push_back(ability.current_cooldown)
-	var enemy_hp:Array = []
-	for enemy_data in enemies:
-		var health:HealthResource = enemy_data.get("health", null)
-		enemy_hp.push_back(health.hp if health != null else 0.0)
 
 	_turn_snapshot = {
 		"grid_pos": player_stats.grid_pos if player_stats != null else Vector2i.ZERO,
-		"stamina_value": stamina.value if stamina != null else 100,
+		"stamina_value": stamina.value if stamina != null else 80,
 		"cooldowns": cooldowns,
-		"enemy_hp": enemy_hp,
 	}
 
 func _on_player_turn_started() -> void:
@@ -275,7 +305,6 @@ func _on_player_turn_started() -> void:
 	if stamina != null:
 		stamina.refill()
 
-	_ability_guard.clear_guard(player.get("combat_stats", null))
 	_refresh_grid_state()
 
 	_save_turn_snapshot()
@@ -306,9 +335,16 @@ func _on_enemy_turn_started() -> void:
 func _on_resolve_started() -> void:
 	var resolved:Array = telegraph_system.resolve_telegraphs(turn_manager.turn_count)
 	for telegraph_data in resolved:
-		_apply_telegraph_damage(telegraph_data)
+		if int(telegraph_data.get("telegraph_type", CombatEnums.TelegraphType.DAMAGE)) == CombatEnums.TelegraphType.PULL:
+			_apply_pull_telegraph(telegraph_data)
 
+	for telegraph_data in resolved:
+		if int(telegraph_data.get("telegraph_type", CombatEnums.TelegraphType.DAMAGE)) == CombatEnums.TelegraphType.DAMAGE:
+			_apply_telegraph_damage(telegraph_data)
+
+	_process_enemy_deaths()
 	ability_manager.tick_cooldowns()
+	energy_orb_system.tick()
 	_refresh_grid_state()
 	_check_win_lose()
 
@@ -390,15 +426,26 @@ func _on_ability_used(ability:AbilityResource, target_data:Dictionary) -> void:
 			(player.get("node") as Node2D).global_position = combat_grid.grid_to_world(moved_to)
 			var impact_cell:Vector2i = result.get("impact_cell", moved_to)
 			_spawn_tile_vfx(impact_cell, Color(0.98, 0.55, 0.12, 0.75), 0.24)
-		CombatEnums.AbilityID.GUARD:
-			did_execute = _ability_guard.execute(player.get("combat_stats", null))
+		CombatEnums.AbilityID.HEAL:
+			did_execute = _ability_heal.execute(player.get("health", null))
 			if did_execute:
-				_spawn_tile_vfx(player.get("combat_stats").grid_pos, Color(0.35, 0.65, 1.0, 0.65), 0.3)
+				_spawn_tile_vfx(player.get("combat_stats").grid_pos, Color(0.2, 0.95, 0.4, 0.7), 0.25)
+		CombatEnums.AbilityID.SHOVE:
+			var shove_result:Dictionary = _ability_shove.execute(target_data.get("target_cell", Vector2i(-1, -1)), actors_on_grid)
+			did_execute = bool(shove_result.get("pushed", false)) || float(shove_result.get("total_damage", 0.0)) > 0.0
+			if did_execute:
+				_spawn_tile_vfx(shove_result.get("final_pos", target_data.get("target_cell", Vector2i.ZERO)), Color(0.95, 0.75, 0.25, 0.75), 0.22)
+		CombatEnums.AbilityID.SLAM:
+			var slam_results:Array[Dictionary] = _ability_slam.execute(player.get("combat_stats").grid_pos, actors_on_grid)
+			did_execute = !slam_results.is_empty()
+			for slam_result in slam_results:
+				_spawn_tile_vfx(slam_result.get("final_pos", slam_result.get("enemy_pos", Vector2i.ZERO)), Color(1.0, 0.5, 0.1, 0.72), 0.2)
 
 	if !did_execute:
 		return
 
 	_sync_enemy_positions_from_data()
+	_process_enemy_deaths()
 	_refresh_grid_state()
 	grid_movement.set_occupied_cells(_occupied_cells_without_player())
 	grid_movement.refresh_reachable()
@@ -407,14 +454,34 @@ func _on_ability_used(ability:AbilityResource, target_data:Dictionary) -> void:
 
 func _on_move_completed(from:Vector2i, to:Vector2i) -> void:
 	grid_state["player_last_move_dir"] = _direction_to(from, to)
+
+	var collided_enemy:Dictionary = _find_enemy_at_cell(to)
+	if !collided_enemy.is_empty() && bump_system != null:
+		var bump_result:Dictionary = bump_system.compute_bump(from, to, _direction_to(from, to), grid_state)
+		_apply_bump_result(collided_enemy, bump_result)
+
+	var orb_bonus:int = energy_orb_system.check_pickup(player.get("combat_stats").grid_pos)
+	if orb_bonus > 0:
+		var stamina:StaminaResource = player.get("stamina", null)
+		if stamina != null:
+			stamina.add_bonus(orb_bonus)
+
+	_process_enemy_deaths()
 	_refresh_grid_state()
 	grid_movement.set_occupied_cells(_occupied_cells_without_player())
 	grid_movement.refresh_reachable()
 	_draw_active_telegraphs()
+	_check_win_lose()
 
 func _on_telegraph_added(data:Dictionary) -> void:
 	var cells:Array[Vector2i] = data.get("cells", Array([], TYPE_VECTOR2I, "", null))
 	combat_grid.highlight_cells(cells, CombatGrid.STATE_DANGER)
+
+func _on_bump_collision_damage_dealt(target_pos:Vector2i, damage:int) -> void:
+	for enemy_data in enemies:
+		if enemy_data.get("combat_stats").grid_pos == target_pos:
+			_apply_damage_to_actor(enemy_data, float(damage))
+			break
 
 func _on_combat_ended(player_won:bool) -> void:
 	_enable_player_input(false)
@@ -446,6 +513,7 @@ func _sync_enemy_positions_from_data() -> void:
 
 func _refresh_grid_state() -> void:
 	var occupied:Array[Vector2i] = []
+	var immovable:Array[Vector2i] = []
 	if !player.is_empty():
 		occupied.append(player.get("combat_stats").grid_pos)
 
@@ -458,10 +526,17 @@ func _refresh_grid_state() -> void:
 				dead_node.visible = false
 			continue
 		alive_enemies.push_back(enemy_data)
-		occupied.append(enemy_data.get("combat_stats").grid_pos)
+		var stats:CombatStatsResource = enemy_data.get("combat_stats", null)
+		if stats != null:
+			occupied.append(stats.grid_pos)
+			if stats.is_immovable:
+				immovable.append(stats.grid_pos)
 	enemies = alive_enemies
 
 	grid_state["occupied_cells"] = occupied
+	grid_state["immovable_cells"] = immovable
+	var obstacle_cells:Array[Vector2i] = grid_state.get("obstacle_cells", Array([], TYPE_VECTOR2I, "", null))
+	grid_state["blocked_cells"] = obstacle_cells.duplicate()
 
 	grid_movement.set_blocked_cells(grid_state.get("blocked_cells", Array([], TYPE_VECTOR2I, "", null)))
 	grid_movement.set_occupied_cells(_occupied_cells_without_player())
@@ -489,6 +564,7 @@ func _build_actors_grid_context() -> Dictionary:
 		"enemies": enemy_map,
 		"occupied": enemy_map,
 		"blocked": grid_state.get("blocked_cells", Array([], TYPE_VECTOR2I, "", null)),
+		"grid_size": int(grid_state.get("grid_size", 8)),
 	}
 
 func _apply_telegraph_damage(telegraph_data:Dictionary) -> void:
@@ -508,17 +584,83 @@ func _apply_telegraph_damage(telegraph_data:Dictionary) -> void:
 
 	_draw_active_telegraphs()
 
+func _apply_pull_telegraph(telegraph_data:Dictionary) -> void:
+	var pull_source:Vector2i = telegraph_data.get("pull_source", Vector2i.ZERO)
+	var pull_distance:int = maxi(0, int(telegraph_data.get("pull_distance", 0)))
+	if pull_distance <= 0:
+		return
+
+	var player_stats:CombatStatsResource = player.get("combat_stats", null)
+	if player_stats == null:
+		return
+
+	var current:Vector2i = player_stats.grid_pos
+	var obstacle_lookup:Dictionary = _cells_to_lookup(grid_state.get("blocked_cells", Array([], TYPE_VECTOR2I, "", null)))
+	var occupied_lookup:Dictionary = {}
+	for enemy_data in enemies:
+		var enemy_stats:CombatStatsResource = enemy_data.get("combat_stats", null)
+		if enemy_stats != null:
+			occupied_lookup[enemy_stats.grid_pos] = true
+
+	for _step in range(pull_distance):
+		if current == pull_source:
+			break
+		var step_dir:Vector2i = _step_toward(current, pull_source)
+		if step_dir == Vector2i.ZERO:
+			break
+		var next_cell:Vector2i = current + step_dir
+		if !GridUtils.is_in_bounds(next_cell, int(grid_state.get("grid_size", 8))):
+			break
+		if obstacle_lookup.has(next_cell) || occupied_lookup.has(next_cell):
+			break
+		current = next_cell
+
+	if current != player_stats.grid_pos:
+		player_stats.grid_pos = current
+		(player.get("node") as Node2D).global_position = combat_grid.grid_to_world(current)
+
+func _apply_bump_result(collided_enemy:Dictionary, bump_result:Dictionary) -> void:
+	if bump_result.is_empty():
+		return
+
+	var player_stats:CombatStatsResource = player.get("combat_stats", null)
+	if player_stats != null:
+		var player_final:Vector2i = bump_result.get("player_final_pos", player_stats.grid_pos)
+		player_stats.grid_pos = player_final
+		(player.get("node") as Node2D).global_position = combat_grid.grid_to_world(player_final)
+
+	var enemy_stats:CombatStatsResource = collided_enemy.get("combat_stats", null)
+	var enemy_node:Node2D = collided_enemy.get("node", null)
+	if enemy_stats != null:
+		enemy_stats.grid_pos = bump_result.get("enemy_final_pos", enemy_stats.grid_pos)
+	if enemy_node != null && enemy_stats != null:
+		enemy_node.global_position = combat_grid.grid_to_world(enemy_stats.grid_pos)
+
 func _apply_damage_to_actor(actor_data:Dictionary, amount:float) -> void:
 	var health:HealthResource = actor_data.get("health", null)
 	if health == null:
 		return
 
-	var final_damage:float = amount
-	var stats:CombatStatsResource = actor_data.get("combat_stats", null)
-	if stats != null && stats.is_guarding:
-		final_damage *= (1.0 - clampf(stats.guard_reduction, 0.0, 1.0))
+	health.add_hp(-amount)
 
-	health.add_hp(-final_damage)
+func _process_enemy_deaths() -> void:
+	for enemy_data in enemies:
+		var health:HealthResource = enemy_data.get("health", null)
+		if health == null || health.hp > 0.0:
+			continue
+		if bool(enemy_data.get("death_processed", false)):
+			continue
+		enemy_data["death_processed"] = true
+		_on_enemy_killed(enemy_data)
+
+func _on_enemy_killed(enemy_data:Dictionary) -> void:
+	var stamina:StaminaResource = player.get("stamina", null)
+	if stamina != null:
+		stamina.add_bonus(10)
+
+	var enemy_stats:CombatStatsResource = enemy_data.get("combat_stats", null)
+	if enemy_stats != null:
+		energy_orb_system.spawn_orb(enemy_stats.grid_pos)
 
 func _animate_enemy_intents(intents:Array[Dictionary]) -> void:
 	if intents.is_empty():
@@ -543,6 +685,13 @@ func _animate_enemy_intents(intents:Array[Dictionary]) -> void:
 func _find_enemy_by_id(enemy_id:Variant) -> Dictionary:
 	for enemy_data in enemies:
 		if enemy_data.get("enemy_id", -1) == enemy_id:
+			return enemy_data
+	return {}
+
+func _find_enemy_at_cell(cell:Vector2i) -> Dictionary:
+	for enemy_data in enemies:
+		var stats:CombatStatsResource = enemy_data.get("combat_stats", null)
+		if stats != null && stats.grid_pos == cell:
 			return enemy_data
 	return {}
 
@@ -609,6 +758,20 @@ func _direction_to(from:Vector2i, to:Vector2i) -> Vector2i:
 		return Vector2i(signi(delta.x), 0)
 	return Vector2i(0, signi(delta.y))
 
+func _step_toward(from_cell:Vector2i, target_cell:Vector2i) -> Vector2i:
+	var delta:Vector2i = target_cell - from_cell
+	if delta == Vector2i.ZERO:
+		return Vector2i.ZERO
+	if absi(delta.x) >= absi(delta.y):
+		return Vector2i(signi(delta.x), 0)
+	return Vector2i(0, signi(delta.y))
+
+func _cells_to_lookup(cells:Array[Vector2i]) -> Dictionary:
+	var lookup:Dictionary = {}
+	for cell in cells:
+		lookup[cell] = true
+	return lookup
+
 func _turn_reset_abilities() -> void:
 	for ability in ability_manager.abilities:
 		ability.current_cooldown = 0
@@ -661,11 +824,12 @@ func _focus_camera_to_grid() -> void:
 	if _camera.has_method("set_follow"):
 		_camera.call("set_follow", false)
 
+	var max_index:int = int(grid_state.get("grid_size", 8)) - 1
 	var corners:Array[Vector2] = [
 		combat_grid.grid_to_world(Vector2i(0, 0)),
-		combat_grid.grid_to_world(Vector2i(7, 0)),
-		combat_grid.grid_to_world(Vector2i(0, 7)),
-		combat_grid.grid_to_world(Vector2i(7, 7)),
+		combat_grid.grid_to_world(Vector2i(max_index, 0)),
+		combat_grid.grid_to_world(Vector2i(0, max_index)),
+		combat_grid.grid_to_world(Vector2i(max_index, max_index)),
 	]
 	var min_x:float = corners[0].x
 	var max_x:float = corners[0].x

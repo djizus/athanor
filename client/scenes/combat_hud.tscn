@@ -110,14 +110,14 @@ text = "CD"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Guard" type="Button" parent="BottomBar/AbilityBar"]
+[node name="Heal" type="Button" parent="BottomBar/AbilityBar"]
 layout_mode = 2
 size_flags_horizontal = 3
 custom_minimum_size = Vector2(40, 12)
 theme_override_font_sizes/font_size = 5
-text = "3:Guard 15"
+text = "3:Heal 25"
 
-[node name="CooldownOverlay" type="ColorRect" parent="BottomBar/AbilityBar/Guard"]
+[node name="CooldownOverlay" type="ColorRect" parent="BottomBar/AbilityBar/Heal"]
 visible = false
 layout_mode = 1
 anchors_preset = 15
@@ -126,7 +126,59 @@ anchor_bottom = 1.0
 color = Color(0, 0, 0, 0.6)
 mouse_filter = 2
 
-[node name="CooldownLabel" type="Label" parent="BottomBar/AbilityBar/Guard/CooldownOverlay"]
+[node name="CooldownLabel" type="Label" parent="BottomBar/AbilityBar/Heal/CooldownOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_font_sizes/font_size = 5
+text = "CD"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Shove" type="Button" parent="BottomBar/AbilityBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(40, 12)
+theme_override_font_sizes/font_size = 5
+text = "4:Shove 20"
+
+[node name="CooldownOverlay" type="ColorRect" parent="BottomBar/AbilityBar/Shove"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.6)
+mouse_filter = 2
+
+[node name="CooldownLabel" type="Label" parent="BottomBar/AbilityBar/Shove/CooldownOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_font_sizes/font_size = 5
+text = "CD"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Slam" type="Button" parent="BottomBar/AbilityBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(40, 12)
+theme_override_font_sizes/font_size = 5
+text = "5:Slam 35"
+
+[node name="CooldownOverlay" type="ColorRect" parent="BottomBar/AbilityBar/Slam"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.6)
+mouse_filter = 2
+
+[node name="CooldownLabel" type="Label" parent="BottomBar/AbilityBar/Slam/CooldownOverlay"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0

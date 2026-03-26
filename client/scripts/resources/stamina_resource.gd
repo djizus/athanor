@@ -6,8 +6,8 @@ signal stamina_spent(cost:int)
 signal stamina_refilled
 signal stamina_depleted
 
-@export var max_value:int = 100 : set = set_max_value
-@export var value:int = 100 : set = set_value
+@export var max_value:int = 80 : set = set_max_value
+@export var value:int = 80 : set = set_value
 
 func set_max_value(_max_value:int) -> void:
 	max_value = maxi(_max_value, 0)
@@ -31,6 +31,12 @@ func spend(cost:int) -> bool:
 	if value == 0:
 		stamina_depleted.emit()
 	return true
+
+func add_bonus(amount:int) -> void:
+	if amount <= 0:
+		return
+	value = value + amount
+	updated.emit()
 
 func refill() -> void:
 	value = max_value

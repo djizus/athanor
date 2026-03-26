@@ -37,6 +37,9 @@ func execute_enemy_turn(
 		var moved_to:Vector2i = intent.get("move_to", self_pos)
 		var telegraph_cells:Array[Vector2i] = intent.get("telegraph_cells", Array([], TYPE_VECTOR2I, "", null))
 		var telegraph_damage:float = float(intent.get("telegraph_damage", 0.0))
+		var telegraph_type:int = int(intent.get("telegraph_type", CombatEnums.TelegraphType.DAMAGE))
+		var pull_source:Vector2i = intent.get("pull_source", moved_to)
+		var pull_distance:int = int(intent.get("pull_distance", 0))
 
 		if moved_to != self_pos:
 			occupied_cells.erase(self_pos)
@@ -50,7 +53,15 @@ func execute_enemy_turn(
 			enemy["combat_stats"] = combat_stats
 		enemies[i] = enemy
 
-		telegraph_system.add_telegraph(telegraph_cells, telegraph_damage, enemy_id, turn)
+		telegraph_system.add_telegraph(
+			telegraph_cells,
+			telegraph_damage,
+			enemy_id,
+			turn,
+			telegraph_type,
+			pull_source,
+			pull_distance
+		)
 
 		results.append({
 			"enemy_id": enemy_id,

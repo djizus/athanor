@@ -48,6 +48,12 @@ func _unhandled_input(event:InputEvent) -> void:
 		KEY_3:
 			_ability_manager.select_ability(2)
 			get_viewport().set_input_as_handled()
+		KEY_4:
+			_ability_manager.select_ability(3)
+			get_viewport().set_input_as_handled()
+		KEY_5:
+			_ability_manager.select_ability(4)
+			get_viewport().set_input_as_handled()
 		KEY_ENTER, KEY_KP_ENTER:
 			_on_confirm_pressed()
 			get_viewport().set_input_as_handled()

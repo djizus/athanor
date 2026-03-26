@@ -4,8 +4,8 @@ extends RefCounted
 enum Phase {
 	IDLE,
 	PLAYER_TURN,
-	ENEMY_TURN,
 	RESOLVE,
+	ENEMY_TURN,
 	COMBAT_OVER,
 }
 
@@ -19,6 +19,8 @@ enum Archetype {
 	BRUTE = 1,
 	CASTER = 2,
 	FLANKER = 3,
+	HEAVY = 4,
+	PULLER = 5,
 }
 
 enum TargetMode {
@@ -30,5 +32,12 @@ enum TargetMode {
 enum AbilityID {
 	STRIKE = 0,
 	DASH = 1,
-	GUARD = 2,
+	HEAL = 2,
+	SHOVE = 3,
+	SLAM = 4,
+}
+
+enum TelegraphType {
+	DAMAGE = 0,
+	PULL = 1,
 }

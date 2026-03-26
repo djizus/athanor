@@ -8,58 +8,68 @@ const ENEMY_SPRITES:Dictionary = {
 	"Brute": "res://assets/images/characters/zombie_16x16_strip8.png",
 	"Caster": "res://assets/images/characters/slime_16x16_strip8.png",
 	"Flanker": "res://assets/images/characters/zombie_crawler_16x16_strip6-sheet.png",
+	"Heavy": "res://assets/images/characters/skeleton_16x16_strip8.png",
+	"Puller": "res://assets/images/characters/mage_16x16_strip8.png",
 }
 
-const ENEMY_LAYOUT:Array[Dictionary] = [
-	{"name": "Brute", "grid_pos": Vector2i(5, 2)},
-	{"name": "Caster", "grid_pos": Vector2i(6, 5)},
-	{"name": "Flanker", "grid_pos": Vector2i(4, 6)},
-]
-
-const PLAYER_START_GRID:Vector2i = Vector2i(1, 3)
-const HP_BAR_WIDTH:float = 14.0
-const HP_BAR_HEIGHT:float = 2.0
 const HP_BAR_Y:float = -12.0
 
 var _player:CharacterBody2D
 var _combat_manager:CombatManager
 var _combat_hud:CombatHUD
 var _combat_grid:CombatGrid
+var _room_sequencer:RoomSequencer
 var _result_screen:GameResultScreen
+
 var _in_combat:bool = false
+var _enemy_nodes:Array[Node] = []
 var _enemy_hp_drawers:Array[Node2D] = []
+var _player_health:HealthResource
+var _result_is_victory:bool = false
 
 
 func _ready() -> void:
 	_spawn_player()
-	_start_combat()
+	_room_sequencer = RoomSequencer.new()
+	_room_sequencer.room_started.connect(_on_room_started)
+	_room_sequencer.run_completed.connect(_on_run_completed)
+	_room_sequencer.run_failed.connect(_on_run_failed)
+	_room_sequencer.start_run()
 
 
 func _spawn_player() -> void:
 	_player = PLAYER_SCENE.instantiate() as CharacterBody2D
 	_player.position = Vector2.ZERO
+	_player.set_movement_enabled(false)
 	add_child(_player)
 
 
-func _start_combat() -> void:
-	if _in_combat:
-		return
-	_in_combat = true
+func _on_room_started(_room_index:int, config:Dictionary) -> void:
+	_cleanup_combat_nodes()
+	_start_room_combat(config)
 
+
+func _start_room_combat(config:Dictionary) -> void:
+	_in_combat = true
 	_player.set_movement_enabled(false)
+
+	var grid_size:int = int(config.get("grid_size", 8))
+	var player_start:Vector2i = config.get("player_start", Vector2i(1, 3))
+	var obstacles:Array[Vector2i] = []
+	for obstacle_cell in config.get("obstacles", []):
+		obstacles.push_back(obstacle_cell)
 
 	_combat_grid = CombatGrid.new()
 	_combat_grid.position = Vector2(0, -32)
 	add_child(_combat_grid)
-	_combat_grid.show_grid(Vector2i.ZERO, Vector2i(8, 8))
+	_combat_grid.show_grid(Vector2i.ZERO, Vector2i(grid_size, grid_size))
 
 	var grid_cursor:GridCursor = GridCursor.new()
 	grid_cursor.name = "GridCursor"
 	_combat_grid.add_child(grid_cursor)
 
-	_player.global_position = _combat_grid.grid_to_world(PLAYER_START_GRID)
-
-	var enemy_nodes:Array[Node] = _spawn_enemies()
+	_player.global_position = _combat_grid.grid_to_world(player_start)
+	_enemy_nodes = _spawn_enemies(config.get("enemies", []))
 
 	_combat_manager = CombatManager.new()
 	add_child(_combat_manager)
@@ -70,16 +80,22 @@ func _start_combat() -> void:
 
 	await get_tree().process_frame
 
-	_combat_manager.start_combat(_player, enemy_nodes, _combat_grid)
+	_combat_manager.start_combat(_player, _enemy_nodes, _combat_grid, {
+		"grid_size": grid_size,
+		"obstacles": obstacles,
+	})
+	_ensure_player_health_carryover()
 	_combat_hud.bind_combat_manager(_combat_manager)
 	_setup_enemy_hp_bars()
 
 
-func _spawn_enemies() -> Array[Node]:
+func _spawn_enemies(enemy_defs:Array) -> Array[Node]:
 	var nodes:Array[Node] = []
-	for enemy_def in ENEMY_LAYOUT:
-		var enemy_name:String = enemy_def["name"]
-		var grid_pos:Vector2i = enemy_def["grid_pos"]
+	for enemy_def in enemy_defs:
+		if !(enemy_def is Dictionary):
+			continue
+		var enemy_name:String = String(enemy_def.get("name", "Brute"))
+		var grid_pos:Vector2i = enemy_def.get("grid_pos", Vector2i.ZERO)
 
 		var enemy:Node2D = Node2D.new()
 		enemy.name = enemy_name
@@ -97,6 +113,21 @@ func _spawn_enemies() -> Array[Node]:
 		add_child(enemy)
 		nodes.push_back(enemy)
 	return nodes
+
+
+func _ensure_player_health_carryover() -> void:
+	if _combat_manager == null:
+		return
+	var room_health:HealthResource = _combat_manager.player.get("health", null)
+	if room_health == null:
+		return
+
+	if _player_health == null:
+		_player_health = room_health
+	else:
+		room_health.max_hp = _player_health.max_hp
+		room_health.hp = _player_health.hp
+		_combat_manager.player["health"] = _player_health
 
 
 func _setup_enemy_hp_bars() -> void:
@@ -117,40 +148,66 @@ func _setup_enemy_hp_bars() -> void:
 
 func _on_combat_finished(player_won:bool) -> void:
 	_in_combat = false
+	_cleanup_combat_nodes()
+	if player_won:
+		_room_sequencer.on_room_cleared()
+	else:
+		_room_sequencer.on_player_died()
 
-	if _combat_hud != null:
-		_combat_hud.clear_bindings()
+
+func _on_run_completed() -> void:
+	_result_is_victory = true
+	_show_result_screen(true)
+
+
+func _on_run_failed() -> void:
+	_result_is_victory = false
+	_show_result_screen(false)
+
+
+func _show_result_screen(player_won:bool) -> void:
+	if _result_screen != null:
+		_result_screen.queue_free()
+		_result_screen = null
 
 	_result_screen = RESULT_SCREEN_SCENE.instantiate() as GameResultScreen
 	add_child(_result_screen)
 	_result_screen.show_result(player_won)
-
 	_result_screen.continue_pressed.connect(_on_continue)
 	_result_screen.retry_pressed.connect(_on_retry)
 	_result_screen.menu_pressed.connect(_on_menu)
 
 
 func _on_continue() -> void:
-	_cleanup_combat()
-	_player.set_movement_enabled(true)
+	if _result_is_victory:
+		get_tree().change_scene_to_file("res://scenes/main_menu.tscn")
+	else:
+		_reset_run()
 
 
 func _on_retry() -> void:
-	_cleanup_combat()
-	_start_combat()
+	_reset_run()
 
 
 func _on_menu() -> void:
 	get_tree().change_scene_to_file("res://scenes/main_menu.tscn")
 
 
-func _cleanup_combat() -> void:
-	_enemy_hp_drawers.clear()
+func _reset_run() -> void:
+	_cleanup_combat_nodes()
 	if _result_screen != null:
 		_result_screen.queue_free()
 		_result_screen = null
+	_player_health = null
+	_room_sequencer.reset()
+	_room_sequencer.start_run()
+
+
+func _cleanup_combat_nodes() -> void:
+	_enemy_hp_drawers.clear()
 
 	if _combat_hud != null:
+		_combat_hud.clear_bindings()
 		_combat_hud.queue_free()
 		_combat_hud = null
 
@@ -162,9 +219,10 @@ func _cleanup_combat() -> void:
 		_combat_grid.queue_free()
 		_combat_grid = null
 
-	for child in get_children():
-		if child != _player && child is Node2D && child.name in ["Brute", "Caster", "Flanker"]:
-			child.queue_free()
+	for enemy_node in _enemy_nodes:
+		if enemy_node != null && is_instance_valid(enemy_node):
+			enemy_node.queue_free()
+	_enemy_nodes.clear()
 
 
 class _EnemyHPDrawer extends Node2D:

@@ -31,6 +31,7 @@ func refresh_reachable() -> void:
 	var max_cost:int = stamina.value / 10
 	var blocked:Array[Vector2i] = _merged_blocked_cells(combat_stats.grid_pos)
 	reachable_cells = GridUtils.flood_fill_reachable(combat_stats.grid_pos, max_cost, blocked, grid_size)
+	_include_occupied_destinations(max_cost)
 	_draw_reachable_overlay()
 
 func set_blocked_cells(cells:Array[Vector2i]) -> void:
@@ -119,6 +120,23 @@ func _merged_blocked_cells(ignore_cell:Vector2i) -> Array[Vector2i]:
 			merged.push_back(cell)
 
 	return merged
+
+func _include_occupied_destinations(max_cost:int) -> void:
+	if occupied_cells.is_empty():
+		return
+
+	for occupied in occupied_cells:
+		if occupied == combat_stats.grid_pos:
+			continue
+		var best_steps:int = max_cost + 1
+		for adjacent in GridUtils.get_adjacent_cells(occupied):
+			if !reachable_cells.has(adjacent):
+				continue
+			var candidate_steps:int = int(reachable_cells[adjacent]) + 1
+			if candidate_steps < best_steps:
+				best_steps = candidate_steps
+		if best_steps <= max_cost:
+			reachable_cells[occupied] = best_steps
 
 func _draw_reachable_overlay() -> void:
 	if combat_grid == null:

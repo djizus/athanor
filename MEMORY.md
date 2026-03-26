@@ -59,3 +59,13 @@
 - Added reusable `GameResultScreen` as `CanvasLayer` scene/script (`scenes/combat/game_result_screen.tscn`, `scripts/ui/game_result_screen.gd`) with `show_result(player_won)` API and `continue/retry/menu` signals; starts hidden and fades in overlay/content.
 - `tactical_room.gd` now listens to `CombatManager.combat_finished` and spawns the result overlay; continue/retry both reload current scene, menu changes to `res://scenes/main_menu.tscn`.
 - `combat_room_setup.gd` now spawns the same overlay on `combat_finished`; continue exits fight mode (`fight_mode=false`) and clears overlay, retry reloads scene, menu returns to main menu.
+
+## 2026-03-26 — Tooling note for AI script edits
+
+- In this OpenCode environment, `.gd` files currently have no configured LSP server (`lsp_diagnostics` returns "No LSP server configured for extension: .gd"); use `cd client && timeout 60 godot --headless --quit 2>&1` as the authoritative parse validation step.
+
+## 2026-03-26 — v2 combat merge wiring notes
+
+- `CombatManager.start_combat()` now accepts optional room config (`grid_size`, `obstacles`) and internally wires `BumpSystem` + `EnergyOrbSystem`; kill flow now grants +10 stamina and spawns a 2-turn +20 orb at enemy death cell.
+- `GridMovement` can now mark enemy-occupied cells as reachable endpoints without allowing traversal through them; this enables move-into-enemy bump resolution while preserving obstacle/occupancy path blocking.
+- `TelegraphSystem.add_telegraph()` now stores `telegraph_type`, `pull_source`, and `pull_distance`; `resolve_telegraphs()` returns pull telegraphs before damage telegraphs so resolve phase can apply forced movement first.
