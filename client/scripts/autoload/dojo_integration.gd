@@ -69,6 +69,15 @@ func submit_turn() -> void:
 	push_warning("[dojo_integration] confirm_turn game_id=%d actions=%d felts=%d" % [
 		_current_game_id, _turn_actions.size(), actions_packed.size()
 	])
+	for i in range(_turn_actions.size()):
+		var a: Dictionary = _turn_actions[i]
+		if String(a.get("type", "")) == "move":
+			push_warning("[dojo_integration]   [%d] MOVE to (%d, %d)" % [i, int(a.get("x", 0)), int(a.get("y", 0))])
+		else:
+			push_warning("[dojo_integration]   [%d] ABILITY id=%d mode=%d a=%d b=%d" % [
+				i, int(a.get("id", 0)), int(a.get("mode", 0)), int(a.get("a", 0)), int(a.get("b", 0))
+			])
+	push_warning("[dojo_integration]   felts=%s" % str(actions_packed))
 	DojoBridge.confirm_turn(_current_game_id, actions_packed)
 	_turn_actions.clear()
 
