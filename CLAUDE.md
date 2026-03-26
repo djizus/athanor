@@ -7,7 +7,7 @@ Athanor is a tactical RPG (Into the Breach-style) built with Godot 4.5.2 (2D iso
 ## Repository Layout
 
 ```
-contracts/src/v2/     Cairo contracts (namespace: athanor_0_1)
+contracts/src/        Cairo contracts (namespace: athanor_0_1)
 client/               Godot 4.5.2 project (480x270, 4x upscale to 1080p)
 scripts/              Deploy + QA shell scripts
 PLAN.md               Combat design document (source of truth for game design)
@@ -34,9 +34,8 @@ cd client && godot --headless --export-release "Web" export/web/index.html  # HT
 # Serve for browser testing
 python3 -m http.server 8090 --directory client/export/web
 
-# Local dev stack
-katana --dev --dev.no-fee     # Local sequencer
-./scripts/deploy_dev.sh       # Deploy contracts
+# Deploy to Slot
+./scripts/deploy.sh           # Build, migrate, update client addresses
 ```
 
 ## Game Design (from PLAN.md)
@@ -140,7 +139,7 @@ Following zkube pattern: version in namespace, not in contract names.
 |------|---------|
 | `dojo_bridge.gd` | Autoload. ToriiClient, DojoSessionAccount, burner mode, Controller auth, sozo CLI fallback |
 | `dojo_integration.gd` | Autoload. Records moves/abilities, batch-submits on confirm turn |
-| `game_state.gd` | Autoload. v2 model containers (run, room, actors dict), Torii subscription updates |
+| `game_state.gd` | Autoload. Model containers (run, room, actors dict), Torii subscription updates |
 
 ### Slot Endpoints
 - Torii: `https://api.cartridge.gg/x/athanor-djizus-slot/torii`

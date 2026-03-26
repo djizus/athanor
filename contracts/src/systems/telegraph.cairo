@@ -1,5 +1,5 @@
-use athanor::v2::systems::movement;
-use athanor::v2::systems::phase::{
+use athanor::systems::movement;
+use athanor::systems::phase::{
     SHAPE_SINGLE_TILE, SHAPE_LINE, SHAPE_CONE, SHAPE_CIRCLE, SHAPE_CROSS,
 };
 

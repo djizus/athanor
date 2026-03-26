@@ -1,4 +1,4 @@
-use athanor::v2::helpers::bitmap;
+use athanor::helpers::bitmap;
 
 pub fn abs_diff_u8(a: u8, b: u8) -> u8 {
     if a >= b {

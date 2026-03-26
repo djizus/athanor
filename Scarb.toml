@@ -15,5 +15,3 @@ cairo_test = "2.15.0"
 sierra-replace-ids = true
 
 [profile.slot]
-
-[profile.v2]

@@ -40,7 +40,7 @@ Built with [Dojo](https://www.dojoengine.org/) (Cairo contracts) and [Godot 4.5]
 
 ```
 athanor/
-├── contracts/src/v2/
+├── contracts/src/
 │   ├── models/          RunState, RoomState, ActorState, AbilitySlotState, TelegraphState
 │   ├── systems/         actions (main contract), movement, abilities, telegraph, enemy_ai, phase
 │   ├── types/           Phase, Faction, Archetype, Ability, Direction, Shape enums
@@ -65,8 +65,7 @@ athanor/
 │   ├── scenes/          5 scenes (main_menu, dungeon_room, player, combat_hud, game_result_screen)
 │   ├── assets/images/   Character sprites (6), tileset PNGs
 │   └── project.godot
-├── scripts/             deploy_dev.sh, deploy_slot.sh, qa_local.sh
-├── dojo_dev.toml        Local dev profile (namespace: athanor_0_1)
+├── scripts/             deploy.sh
 ├── dojo_slot.toml       Slot deployment profile
 ├── PLAN.md              Combat design document
 └── .tool-versions       scarb 2.15.1, sozo 1.8.6
@@ -88,7 +87,7 @@ godot --version     # 4.5.x
 
 ---
 
-## Running Locally
+## Running
 
 ```bash
 git clone git@github.com:djizus/athanor.git && cd athanor
@@ -96,17 +95,14 @@ git clone git@github.com:djizus/athanor.git && cd athanor
 # Build contracts
 sozo build
 
-# Terminal 1: local sequencer
-katana --dev --dev.no-fee
+# Deploy to Slot
+./scripts/deploy.sh
 
-# Terminal 2: deploy + indexer
-./scripts/deploy_dev.sh --with-torii
-
-# Terminal 3: launch game
+# Launch game
 cd client && godot
 ```
 
-The game works **fully offline** without Katana/Torii. Click **Enter Dungeon** to play immediately. Onchain integration activates when you click **Connect (Burner)**.
+The game works **fully offline** without Dojo. Click **Enter Dungeon** to play immediately. Onchain integration activates when you click **Connect (Burner)**.
 
 ### HTML5 Web Export
 
@@ -119,22 +115,10 @@ python3 -m http.server 8090 --directory export/web
 
 ---
 
-## Running on Slot
-
-```bash
-./scripts/deploy_slot.sh
-cd client && godot
-```
-
-Click **Connect (Burner)** or use Cartridge Controller for wallet auth.
-
----
-
 ## Testing
 
 ```bash
 sozo test                     # Contract tests
-./scripts/qa_local.sh         # E2E: deploy + play via CLI
 ```
 
 ---

@@ -3,10 +3,10 @@ use dojo::world::WorldStorage;
 use dojo::model::ModelStorage;
 use dojo::event::EventStorage;
 
-use athanor::v2::models::index::{
+use athanor::models::index::{
     RunState, RoomState, ActorState, AbilitySlotState, TelegraphState,
 };
-use athanor::v2::events::index::{
+use athanor::events::index::{
     RunSpawned, RoomEntered, ActorMoved, AbilityUsed, TelegraphCreated, TelegraphResolved,
     EnemyTurnComputed, TurnEnded,
     ActorDamaged, ActorDied, RoomCleared, RunCompleted, RunFailed,

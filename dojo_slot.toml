@@ -1,5 +1,5 @@
 [world]
-name = "Athanor v2"
+name = "Athanor"
 description = "Onchain tactical dungeon crawler — grid-based combat with telegraphed attacks"
 seed = "athanor_0_1"
 

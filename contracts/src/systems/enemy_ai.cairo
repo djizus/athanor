@@ -1,5 +1,5 @@
-use athanor::v2::helpers::bitmap;
-use athanor::v2::systems::movement;
+use athanor::helpers::bitmap;
+use athanor::systems::movement;
 
 pub fn choose_step_toward(
     from_x: u8,

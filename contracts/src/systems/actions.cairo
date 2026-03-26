@@ -16,7 +16,7 @@ pub mod actions {
 
     use starknet::{ContractAddress, get_caller_address};
 
-    use athanor::v2::constants::{
+    use athanor::constants::{
         GRID_WIDTH, GRID_HEIGHT, BASE_STAMINA, MOVE_COST_PER_TILE, HERO_HP, HERO_OFFENSE,
         HERO_DEFENSE, HERO_SPEED, BRUTE_HP, BRUTE_OFFENSE, BRUTE_DEFENSE, BRUTE_SPEED, CASTER_HP,
         CASTER_OFFENSE, CASTER_DEFENSE, CASTER_SPEED, FLANKER_HP, FLANKER_OFFENSE,
@@ -25,17 +25,17 @@ pub mod actions {
         HEAL_AMOUNT, SHOVE_DAMAGE, SHOVE_PUSH_DISTANCE, SLAM_DAMAGE, SLAM_PUSH_DISTANCE,
         COLLISION_DAMAGE, KILL_STAMINA_BONUS,
     };
-    use athanor::v2::helpers::bitmap;
-    use athanor::v2::models::index::{RunState, RoomState, ActorState, AbilitySlotState, TelegraphState};
-    use athanor::v2::store::{Store, StoreTrait};
-    use athanor::v2::systems::phase::{
+    use athanor::helpers::bitmap;
+    use athanor::models::index::{RunState, RoomState, ActorState, AbilitySlotState, TelegraphState};
+    use athanor::store::{Store, StoreTrait};
+    use athanor::systems::phase::{
         PHASE_EXPLORE, PHASE_PLAYER_TURN, PHASE_ENEMY_TURN, PHASE_COMPLETE, PHASE_FAILED,
         FACTION_PLAYER, FACTION_ENEMY, ARCHETYPE_HERO, ARCHETYPE_BRUTE, ARCHETYPE_CASTER,
         ARCHETYPE_FLANKER, ARCHETYPE_HEAVY, ARCHETYPE_PULLER, ABILITY_STRIKE, ABILITY_DASH,
         ABILITY_HEAL, ABILITY_SHOVE, ABILITY_SLAM, TARGET_DIRECTIONAL, SHAPE_SINGLE_TILE,
         SHAPE_CIRCLE, SHAPE_CROSS, TELEGRAPH_TYPE_DAMAGE, TELEGRAPH_TYPE_PULL,
     };
-    use athanor::v2::systems::{movement, abilities, telegraph, enemy_ai};
+    use athanor::systems::{movement, abilities, telegraph, enemy_ai};
 
     const PLAYER_ACTOR_ID: u8 = 0;
     const ENEMY_ACTOR_ID_1: u8 = 1;

@@ -1,8 +1,8 @@
-use athanor::v2::constants::{
+use athanor::constants::{
     STRIKE_COST, STRIKE_COOLDOWN, DASH_COST, DASH_COOLDOWN, HEAL_COST, HEAL_COOLDOWN, SHOVE_COST,
     SHOVE_COOLDOWN, SLAM_COST, SLAM_COOLDOWN,
 };
-use athanor::v2::systems::phase::{
+use athanor::systems::phase::{
     ABILITY_STRIKE, ABILITY_DASH, ABILITY_HEAL, ABILITY_SHOVE, ABILITY_SLAM, TARGET_SINGLE,
     TARGET_DIRECTIONAL, TARGET_SELF,
 };

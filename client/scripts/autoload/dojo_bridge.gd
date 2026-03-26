@@ -264,7 +264,7 @@ func _create_entity_subscription() -> void:
 		return
 	callback.set("on_update", Callable(self, "_on_entities"))
 
-	# Use KeysClause with v2 model names so Torii streams matching entity updates.
+	# Use KeysClause with model names so Torii streams matching entity updates.
 	var clause: Variant = null
 	if ClassDB.class_exists("KeysClause"):
 		clause = ClassDB.instantiate("KeysClause")
