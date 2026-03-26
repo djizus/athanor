@@ -25,10 +25,6 @@ var http_tools: Node
 var current_player := ""
 var entity_subscription_id := -1
 
-# Burner mode: plain Katana dev account, txs via sozo CLI
-var _burner_address := ""
-var _burner_private_key := ""
-
 # Ephemeral session key — generated internally, NEVER user-provided
 var _session_priv_key := ""
 const SESSION_CACHE_PATH := "user://controller_session.json"
@@ -42,10 +38,7 @@ var full_policies: Dictionary:
 				"methods": [
 					{"entrypoint": "spawn"},
 					{"entrypoint": "enter_room"},
-					{"entrypoint": "move_action"},
-					{"entrypoint": "use_ability"},
-					{"entrypoint": "end_player_phase"},
-					{"entrypoint": "step_enemy_phase"}
+					{"entrypoint": "confirm_turn"}
 				]
 			}
 		}
@@ -65,19 +58,7 @@ func configure_network(next_torii_url: String, next_rpc_url: String, next_world_
 	if session_account != null:
 		session_account.set("full_policies", full_policies)
 
-# --- Auth: Burner account for local dev (no browser, no Controller) ---
-
-const KATANA_CHAIN_ID := "0x4b4154414e41"  # felt("KATANA")
-
-func setup_burner(private_key: String, address: String) -> bool:
-	_burner_address = address
-	_burner_private_key = private_key
-	current_player = address.to_lower()
-	session_ready.emit(current_player)
-	push_warning("[dojo_bridge] Burner mode: %s (txs via sozo CLI)" % address)
-	return true
-
-# --- Auth: Controller session flow (no private key input) ---
+# --- Auth: Controller session flow ---
 
 func connect_torii() -> bool:
 	if torii_client == null:
@@ -188,8 +169,6 @@ func is_session_valid() -> bool:
 func disconnect_session() -> void:
 	current_player = ""
 	_session_priv_key = ""
-	_burner_address = ""
-	_burner_private_key = ""
 	_clear_session_cache()
 	push_warning("[dojo_bridge] Session disconnected")
 
@@ -242,17 +221,15 @@ func spawn() -> void:
 func enter_room(game_id: int, room_id: int) -> void:
 	_execute_action("enter_room", [_resolve_game_id(game_id), room_id])
 
-func move_action(game_id: int, target_x: int, target_y: int) -> void:
-	_execute_action("move_action", [_resolve_game_id(game_id), target_x, target_y])
-
-func use_ability(game_id: int, ability_id: int, target_mode: int, target_a: int, target_b: int) -> void:
-	_execute_action("use_ability", [_resolve_game_id(game_id), ability_id, target_mode, target_a, target_b])
-
-func end_player_phase(game_id: int) -> void:
-	_execute_action("end_player_phase", [_resolve_game_id(game_id)])
-
-func step_enemy_phase(game_id: int) -> void:
-	_execute_action("step_enemy_phase", [_resolve_game_id(game_id)])
+## Submit a full turn as a single batched transaction.
+## actions_packed is a flat array of ints encoding all player actions:
+##   Move:    [0, target_x, target_y]
+##   Ability: [1, ability_id, target_mode, target_a, target_b]
+func confirm_turn(game_id: int, actions_packed: Array) -> void:
+	var calldata: Array = [_resolve_game_id(game_id)]
+	calldata.append(actions_packed.size())
+	calldata.append_array(actions_packed)
+	_execute_action("confirm_turn", calldata)
 
 # --- Internals ---
 
@@ -343,11 +320,6 @@ func _execute_action(entrypoint: String, calldata: Array) -> void:
 		"calldata": calldata,
 	}
 
-	if not _burner_private_key.is_empty():
-		_sozo_execute(entrypoint, calldata)
-		return
-
-	# Controller mode: use DojoSessionAccount
 	if session_account == null or not bool(session_account.call("is_valid")):
 		push_error("[dojo_bridge] No active session for %s" % entrypoint)
 		tx_failed.emit(entrypoint, "No active session")
@@ -385,48 +357,6 @@ func _instantiate_dojo_class(type_name: String) -> Variant:
 	if not ClassDB.class_exists(type_name):
 		return null
 	return ClassDB.instantiate(type_name)
-
-func _sozo_execute(entrypoint: String, calldata: Array) -> void:
-	var args: PackedStringArray = PackedStringArray([
-		"execute", actions_address, entrypoint,
-	])
-	for arg in calldata:
-		args.append(str(arg))
-	args.append_array(PackedStringArray([
-		"--rpc-url", rpc_url,
-		"--account-address", _burner_address,
-		"--private-key", _burner_private_key,
-		"--world", world_address,
-		"--profile", "dev",
-	]))
-
-	var project_root := ProjectSettings.globalize_path("res://").trim_suffix("/").get_base_dir()
-	var output: Array = []
-	push_warning("[dojo_bridge] sozo %s (cwd: %s)" % [" ".join(args), project_root])
-	var exit_code := OS.execute("bash", PackedStringArray(["-c", "cd %s && sozo %s" % [project_root, " ".join(args)]]), output, true)
-	var stdout: String = "\n".join(output)
-
-	if exit_code == 0:
-		push_warning("[dojo_bridge] tx %s ok: %s" % [entrypoint, stdout.strip_edges()])
-		tx_submitted.emit(entrypoint)
-	else:
-		push_error("[dojo_bridge] tx %s failed (exit %d): %s" % [entrypoint, exit_code, stdout.strip_edges()])
-		tx_failed.emit(entrypoint, stdout.strip_edges())
-
-func _find_binary(name: String) -> String:
-	var output: Array = []
-	if OS.execute("which", PackedStringArray([name]), output, true) == 0:
-		var path := String("\n".join(output)).strip_edges()
-		if not path.is_empty():
-			return path
-	for candidate in [
-		"/home/" + OS.get_environment("USER") + "/.asdf/shims/" + name,
-		"/usr/local/bin/" + name,
-		"/usr/bin/" + name,
-	]:
-		if FileAccess.file_exists(candidate):
-			return candidate
-	return ""
 
 func _save_session_info(key: String, info: Dictionary) -> void:
 	if key.is_empty() or info.is_empty():

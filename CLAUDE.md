@@ -130,8 +130,24 @@ Following zkube pattern: version in namespace, not in contract names.
 
 - **Namespace**: `athanor_0_1`
 - **Contract**: `actions` (not `actions_v2`)
-- **Functions**: `spawn`, `enter_room`, `move_action`, `use_ability`, `end_player_phase`, `step_enemy_phase`
+- **Functions**: `spawn`, `enter_room`, `confirm_turn`
 - **Models**: `RunState`, `RoomState`, `ActorState`, `AbilitySlotState`, `TelegraphState`
+
+### Batched Turn Architecture
+
+Player plays full turn locally (optimistic), then submits all actions in one `confirm_turn(game_id, actions: Span<felt252>)` transaction. The contract processes all player actions sequentially, then auto-runs enemy phase (telegraph resolve, enemy AI, new telegraphs, turn flip).
+
+**Action encoding** (packed felt252 array):
+| Action | Type ID | Fields | Felts |
+|--------|---------|--------|-------|
+| Move | 0 | target_x, target_y | 3 |
+| Ability | 1 | ability_id, target_mode, target_a, target_b | 5 |
+
+```bash
+# CLI examples
+sozo execute athanor_0_1-actions confirm_turn $GID 3 0 2 1 --wait              # Move to (2,1)
+sozo execute athanor_0_1-actions confirm_turn $GID 8 0 2 1 1 0 0 1 0 --wait    # Move + Strike actor 1
+```
 
 ## Dojo Integration (Client Side)
 
@@ -149,7 +165,7 @@ Following zkube pattern: version in namespace, not in contract names.
 ## Known Quirks
 
 - `.gd` files have no LSP in this environment. Use `godot --headless --quit` as parse check.
-- `move` is a Cairo keyword — the contract function is `move_action`.
+- `move` is a Cairo keyword — avoid as function names in contracts.
 - GDScript typed arrays (`Array[Vector2i]`) reject untyped literals in tests — create typed locals first.
 - godot-dojo GDExtension binaries are not in git — user installs from dojo.godot releases into `client/addons/godot-dojo/bin/`.
 - Godot export templates installed at `~/.local/share/godot/export_templates/4.5.2.stable/`.

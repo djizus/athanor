@@ -2,12 +2,7 @@
 trait IActions<T> {
     fn spawn(ref self: T, class_id: u8);
     fn enter_room(ref self: T, game_id: u32, room_id: u8);
-    fn move_action(ref self: T, game_id: u32, target_x: u8, target_y: u8);
-    fn use_ability(
-        ref self: T, game_id: u32, ability_id: u8, target_mode: u8, target_a: u8, target_b: u8,
-    );
-    fn end_player_phase(ref self: T, game_id: u32);
-    fn step_enemy_phase(ref self: T, game_id: u32);
+    fn confirm_turn(ref self: T, game_id: u32, actions: Span<felt252>);
 }
 
 #[dojo::contract]
@@ -46,6 +41,9 @@ pub mod actions {
     const MAX_ACTOR_ID: u8 = 5;
     const MAX_ABILITY_SLOTS: u8 = 5;
     const INVALID_ACTOR_ID: u8 = 255;
+
+    const ACTION_TYPE_MOVE: u8 = 0;
+    const ACTION_TYPE_ABILITY: u8 = 1;
 
     const DIRECTION_NORTH: u8 = 0;
     const DIRECTION_EAST: u8 = 1;
@@ -198,10 +196,73 @@ pub mod actions {
             store.emit_room_entered(player, game_id, room_id);
         }
 
-        fn move_action(ref self: ContractState, game_id: u32, target_x: u8, target_y: u8) {
+        fn confirm_turn(ref self: ContractState, game_id: u32, actions: Span<felt252>) {
             let mut store = self.store();
             let player = get_caller_address();
 
+            let run = store.get_run_state(player, game_id);
+            assert(run.phase == PHASE_PLAYER_TURN, 'Not player turn');
+
+            let mut actions = actions;
+
+            loop {
+                match actions.pop_front() {
+                    Option::Some(action_type_felt) => {
+                        let action_type: u8 = (*action_type_felt).try_into().unwrap();
+
+                        if action_type == ACTION_TYPE_MOVE {
+                            let target_x: u8 = (*actions.pop_front().unwrap()).try_into().unwrap();
+                            let target_y: u8 = (*actions.pop_front().unwrap()).try_into().unwrap();
+                            if !self.process_move(ref store, player, game_id, target_x, target_y) {
+                                return;
+                            }
+                        } else {
+                            assert(action_type == ACTION_TYPE_ABILITY, 'Invalid action type');
+                            let ability_id: u8 = (*actions.pop_front().unwrap()).try_into().unwrap();
+                            let target_mode: u8 = (*actions.pop_front().unwrap()).try_into().unwrap();
+                            let target_a: u8 = (*actions.pop_front().unwrap()).try_into().unwrap();
+                            let target_b: u8 = (*actions.pop_front().unwrap()).try_into().unwrap();
+                            if !self.process_ability(
+                                ref store, player, game_id, ability_id, target_mode, target_a, target_b,
+                            ) {
+                                return;
+                            }
+                        }
+                    },
+                    Option::None => { break; }
+                }
+            };
+
+            // Only run enemy phase if still in player turn (room not cleared, player not dead)
+            let run_after = store.get_run_state(player, game_id);
+            if run_after.phase == PHASE_PLAYER_TURN {
+                self.process_enemy_phase(ref store, player, game_id);
+            }
+        }
+    }
+
+    #[generate_trait]
+    impl InternalImpl of InternalTrait {
+        fn store(self: @ContractState) -> Store {
+            StoreTrait::new(self.world_default())
+        }
+
+        fn world_default(self: @ContractState) -> dojo::world::WorldStorage {
+            self.world(@"athanor_0_1")
+        }
+
+        // --- Batched turn action processors ---
+
+        /// Process a single move action within a batched turn.
+        /// Returns true to continue processing, false if turn should stop (room cleared).
+        fn process_move(
+            self: @ContractState,
+            ref store: Store,
+            player: ContractAddress,
+            game_id: u32,
+            target_x: u8,
+            target_y: u8,
+        ) -> bool {
             let mut run = store.get_run_state(player, game_id);
             assert(run.phase == PHASE_PLAYER_TURN, 'Not player turn');
             assert(movement::in_bounds(target_x, target_y), 'Target out of bounds');
@@ -274,7 +335,9 @@ pub mod actions {
                 room.occupancy = bitmap::clear_bit(room.occupancy, from_x, from_y);
                 room.occupancy = bitmap::set_bit(room.occupancy, move_to_x, move_to_y);
 
-                run.last_player_direction = self.direction_from_delta(from_x, from_y, move_to_x, move_to_y);
+                run.last_player_direction = self.direction_from_delta(
+                    from_x, from_y, move_to_x, move_to_y,
+                );
 
                 store.emit_actor_moved(
                     player,
@@ -293,21 +356,26 @@ pub mod actions {
             store.set_run_state(@run);
 
             if room.enemy_count == 0 {
-                let _ = self.maybe_finalize_room(ref store, player, game_id, ref run, ref room);
+                if self.maybe_finalize_room(ref store, player, game_id, ref run, ref room) {
+                    return false;
+                }
             };
+
+            true
         }
 
-        fn use_ability(
-            ref self: ContractState,
+        /// Process a single ability action within a batched turn.
+        /// Returns true to continue processing, false if turn should stop (player died, room cleared).
+        fn process_ability(
+            self: @ContractState,
+            ref store: Store,
+            player: ContractAddress,
             game_id: u32,
             ability_id: u8,
             target_mode: u8,
             target_a: u8,
             target_b: u8,
-        ) {
-            let mut store = self.store();
-            let player = get_caller_address();
-
+        ) -> bool {
             let mut run = store.get_run_state(player, game_id);
             assert(run.phase == PHASE_PLAYER_TURN, 'Not player turn');
 
@@ -317,7 +385,9 @@ pub mod actions {
             let mut player_actor = store.get_actor_state(player, game_id, PLAYER_ACTOR_ID);
             let mut room = store.get_room_state(player, game_id, run.room_id);
 
-            let mut slot = store.get_ability_slot_state(player, game_id, PLAYER_ACTOR_ID, ability_id);
+            let mut slot = store.get_ability_slot_state(
+                player, game_id, PLAYER_ACTOR_ID, ability_id,
+            );
             assert(slot.ability_id == ability_id, 'Unknown ability');
             assert(slot.cooldown_remaining == 0, 'Ability on cooldown');
 
@@ -340,7 +410,10 @@ pub mod actions {
                 assert(target_actor.room_id == run.room_id, 'Target wrong room');
 
                 let dist = movement::manhattan_distance(
-                    player_actor.pos_x, player_actor.pos_y, target_actor.pos_x, target_actor.pos_y,
+                    player_actor.pos_x,
+                    player_actor.pos_y,
+                    target_actor.pos_x,
+                    target_actor.pos_y,
                 );
                 assert(dist <= 1, 'Target not adjacent');
 
@@ -375,7 +448,9 @@ pub mod actions {
 
                 let mut step: u8 = 0;
                 while step < 3 {
-                    let (next_x, next_y, ok) = movement::step_in_direction(cur_x, cur_y, direction);
+                    let (next_x, next_y, ok) = movement::step_in_direction(
+                        cur_x, cur_y, direction,
+                    );
                     if !ok {
                         break;
                     };
@@ -448,7 +523,9 @@ pub mod actions {
                 used_target_x = final_x;
                 used_target_y = final_y;
             } else if ability_id == ABILITY_HEAL {
-                player_actor.hp = self.add_hp_capped(player_actor.hp, player_actor.max_hp, HEAL_AMOUNT);
+                player_actor.hp = self.add_hp_capped(
+                    player_actor.hp, player_actor.max_hp, HEAL_AMOUNT,
+                );
                 used_target_actor_id = PLAYER_ACTOR_ID;
                 used_target_x = player_actor.pos_x;
                 used_target_y = player_actor.pos_y;
@@ -460,7 +537,10 @@ pub mod actions {
                 assert(target_actor.room_id == run.room_id, 'Target wrong room');
 
                 let dist = movement::manhattan_distance(
-                    player_actor.pos_x, player_actor.pos_y, target_actor.pos_x, target_actor.pos_y,
+                    player_actor.pos_x,
+                    player_actor.pos_y,
+                    target_actor.pos_x,
+                    target_actor.pos_y,
                 );
                 assert(dist == 1, 'Target not adjacent');
 
@@ -509,7 +589,10 @@ pub mod actions {
                 let mut actor_id: u8 = 1;
                 while actor_id <= MAX_ACTOR_ID {
                     let actor = store.get_actor_state(player, game_id, actor_id);
-                    if actor.alive && actor.faction == FACTION_ENEMY && actor.room_id == run.room_id {
+                    if actor.alive
+                        && actor.faction == FACTION_ENEMY
+                        && actor.room_id == run.room_id
+                    {
                         let dist = movement::manhattan_distance(
                             player_actor.pos_x,
                             player_actor.pos_y,
@@ -531,7 +614,9 @@ pub mod actions {
                             );
                             room = updated_room;
 
-                            let actor_after_hit = store.get_actor_state(player, game_id, actor_id);
+                            let actor_after_hit = store.get_actor_state(
+                                player, game_id, actor_id,
+                            );
                             if actor_after_hit.alive {
                                 let slam_direction = self.direction_from_delta(
                                     player_actor.pos_x,
@@ -578,39 +663,38 @@ pub mod actions {
                 used_target_y,
             );
 
+            // Re-read player actor (may have been modified by damage helpers giving kill bonus)
             player_actor = store.get_actor_state(player, game_id, PLAYER_ACTOR_ID);
             if !player_actor.alive || player_actor.hp == 0 {
                 run.phase = PHASE_FAILED;
                 store.set_run_state(@run);
                 store.emit_run_failed(player, game_id, run.turn_index);
-                return;
+                return false;
             }
 
             if room.enemy_count == 0 {
-                let _ = self.maybe_finalize_room(ref store, player, game_id, ref run, ref room);
-            }
+                if self.maybe_finalize_room(ref store, player, game_id, ref run, ref room) {
+                    return false;
+                }
+            };
 
             let _ = target_b;
+            true
         }
 
-        fn end_player_phase(ref self: ContractState, game_id: u32) {
-            let mut store = self.store();
-            let player = get_caller_address();
-
+        /// Run the full enemy phase: resolve telegraphs, enemy AI, new telegraphs, turn transition.
+        fn process_enemy_phase(
+            self: @ContractState,
+            ref store: Store,
+            player: ContractAddress,
+            game_id: u32,
+        ) {
             let mut run = store.get_run_state(player, game_id);
-            assert(run.phase == PHASE_PLAYER_TURN, 'Not player turn');
 
+            // End player phase
             run.phase = PHASE_ENEMY_TURN;
             store.set_run_state(@run);
             store.emit_turn_ended(player, game_id, run.room_id, run.turn_index);
-        }
-
-        fn step_enemy_phase(ref self: ContractState, game_id: u32) {
-            let mut store = self.store();
-            let player = get_caller_address();
-
-            let mut run = store.get_run_state(player, game_id);
-            assert(run.phase == PHASE_ENEMY_TURN, 'Not enemy turn');
 
             let mut room = store.get_room_state(player, game_id, run.room_id);
             let telegraph_count = run.status_flags;
@@ -625,12 +709,7 @@ pub mod actions {
                     && tg.telegraph_type == TELEGRAPH_TYPE_PULL
                 {
                     room = self.resolve_pull_telegraph(
-                        ref store,
-                        player,
-                        game_id,
-                        room,
-                        run.room_id,
-                        tg,
+                        ref store, player, game_id, room, run.room_id, tg,
                     );
 
                     tg.resolved = true;
@@ -715,7 +794,9 @@ pub mod actions {
 
             let mut slot_index: u8 = 0;
             while slot_index < MAX_ABILITY_SLOTS {
-                let mut slot = store.get_ability_slot_state(player, game_id, PLAYER_ACTOR_ID, slot_index);
+                let mut slot = store.get_ability_slot_state(
+                    player, game_id, PLAYER_ACTOR_ID, slot_index,
+                );
                 if slot.cooldown_remaining > 0 {
                     slot.cooldown_remaining -= 1;
                     store.set_ability_slot_state(@slot);
@@ -726,17 +807,6 @@ pub mod actions {
             store.set_room_state(@room);
             store.emit_enemy_turn_computed(player, game_id, run.room_id, run.turn_index);
             store.emit_turn_ended(player, game_id, run.room_id, run.turn_index);
-        }
-    }
-
-    #[generate_trait]
-    impl InternalImpl of InternalTrait {
-        fn store(self: @ContractState) -> Store {
-            StoreTrait::new(self.world_default())
-        }
-
-        fn world_default(self: @ContractState) -> dojo::world::WorldStorage {
-            self.world(@"athanor_0_1")
         }
 
         fn init_ability_slots(

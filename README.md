@@ -131,18 +131,15 @@ Namespace: `athanor_0_1`
 |--------|--------|---------|
 | `spawn` | `class_id` | Create run + player (100 HP, 80 stamina) + 5 ability slots |
 | `enter_room` | `game_id, room_id` | Enter room (0/1/2), spawn enemies, begin combat |
-| `move_action` | `game_id, x, y` | Move on grid (10 stamina/tile). Bump enemies on collision. |
-| `use_ability` | `game_id, ability_id, target_mode, a, b` | Strike/Dash/Heal/Shove/Slam |
-| `end_player_phase` | `game_id` | End player turn -> Resolve -> Enemy |
-| `step_enemy_phase` | `game_id` | Resolve telegraphs, enemy AI, new telegraphs, back to player |
+| `confirm_turn` | `game_id, actions: Span<felt252>` | Batch all player actions + auto-trigger enemy phase |
+
+Actions are packed as `[type, params...]`: Move = `[0, x, y]`, Ability = `[1, id, mode, a, b]`.
 
 ```bash
 sozo execute athanor_0_1-actions spawn 0 --wait
 sozo execute athanor_0_1-actions enter_room $GID 0 --wait
-sozo execute athanor_0_1-actions move_action $GID 2 1 --wait
-sozo execute athanor_0_1-actions use_ability $GID 0 0 1 0 --wait
-sozo execute athanor_0_1-actions end_player_phase $GID --wait
-sozo execute athanor_0_1-actions step_enemy_phase $GID --wait
+sozo execute athanor_0_1-actions confirm_turn $GID 3 0 2 1 --wait              # Move to (2,1)
+sozo execute athanor_0_1-actions confirm_turn $GID 8 0 2 1 1 0 0 1 0 --wait    # Move + Strike enemy 1
 ```
 
 ---

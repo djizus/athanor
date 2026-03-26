@@ -1,5 +1,8 @@
 extends Node
 
+const ACTION_TYPE_MOVE := 0
+const ACTION_TYPE_ABILITY := 1
+
 var _enabled: bool = false
 var _current_game_id: int = -1
 var _turn_actions: Array[Dictionary] = []
@@ -35,6 +38,8 @@ func record_ability(ability_id: int, target_mode: int, target_a: int, target_b: 
 		"b": target_b,
 	})
 
+## Serialize all recorded actions into a flat felt252 array and submit as a single
+## confirm_turn transaction. The contract processes all actions then auto-runs enemy phase.
 func submit_turn() -> void:
 	if not _enabled:
 		return
@@ -43,27 +48,22 @@ func submit_turn() -> void:
 	if _current_game_id < 0:
 		return
 
+	var actions_packed: Array = []
 	for action in _turn_actions:
 		match String(action.get("type", "")):
 			"move":
-				DojoBridge.move_action(_current_game_id, int(action.get("x", 0)), int(action.get("y", 0)))
+				actions_packed.append(ACTION_TYPE_MOVE)
+				actions_packed.append(int(action.get("x", 0)))
+				actions_packed.append(int(action.get("y", 0)))
 			"ability":
-				DojoBridge.use_ability(
-					_current_game_id,
-					int(action.get("id", 0)),
-					int(action.get("mode", 0)),
-					int(action.get("a", 0)),
-					int(action.get("b", 0))
-				)
+				actions_packed.append(ACTION_TYPE_ABILITY)
+				actions_packed.append(int(action.get("id", 0)))
+				actions_packed.append(int(action.get("mode", 0)))
+				actions_packed.append(int(action.get("a", 0)))
+				actions_packed.append(int(action.get("b", 0)))
 
-	DojoBridge.end_player_phase(_current_game_id)
-	_step_enemy_phase_deferred()
+	DojoBridge.confirm_turn(_current_game_id, actions_packed)
 	_turn_actions.clear()
-
-func _step_enemy_phase_deferred() -> void:
-	await get_tree().create_timer(1.0).timeout
-	if _enabled and _current_game_id >= 0:
-		DojoBridge.step_enemy_phase(_current_game_id)
 
 func _on_node_added(node: Node) -> void:
 	if node is CombatManager:
