@@ -93,12 +93,8 @@ func initiate_controller_auth() -> void:
 		tx_failed.emit("auth", "Could not generate session URL")
 		return
 
-	if _can_use_embedded_auth_browser():
-		auth_url_ready.emit(session_url)
-		return
-
-	# Fallback for mobile/web or when CefTexture is unavailable.
-	DisplayServer.enable_for_stealing_focus(OS.get_process_id())
+	# Always open system browser — embedded CefTexture not wired to UI
+	push_warning("[dojo_bridge] Opening auth URL in browser: %s" % session_url)
 	OS.shell_open(session_url)
 
 func complete_controller_auth() -> bool:
