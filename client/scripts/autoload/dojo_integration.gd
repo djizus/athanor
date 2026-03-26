@@ -10,6 +10,13 @@ var _turn_actions: Array[Dictionary] = []
 
 func _ready() -> void:
 	get_tree().node_added.connect(_on_node_added)
+	DojoBridge.tx_failed.connect(_on_tx_failed)
+
+func _on_tx_failed(action: String, _reason: String) -> void:
+	# On failed confirm_turn, reset turn so player can retry from clean state.
+	if action == "confirm_turn" && _combat_manager != null:
+		_combat_manager.reset_turn()
+		_turn_actions.clear()
 
 func set_enabled(enabled: bool) -> void:
 	_enabled = enabled

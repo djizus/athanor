@@ -139,9 +139,14 @@ func sync_positions_from_chain(chain_actors: Dictionary) -> void:
 		str(enemies.map(func(e: Dictionary) -> String: return "id%d@%s" % [int(e.get("contract_actor_id", 0)), str(e.get("combat_stats").grid_pos)]))
 	])
 	_refresh_grid_state()
+	# Reset the turn: save new snapshot from chain-corrected state and clear recorded actions.
+	_save_turn_snapshot()
+	DojoIntegration._turn_actions.clear()
 	grid_movement.set_blocked_cells(grid_state.get("blocked_cells", Array([], TYPE_VECTOR2I, "", null)))
 	grid_movement.set_occupied_cells(_occupied_cells_without_player())
 	grid_movement.refresh_reachable()
+	_clear_grid_overlay()
+	_draw_active_telegraphs()
 
 func end_combat() -> void:
 	if turn_manager != null:
@@ -569,6 +574,8 @@ func _on_ability_used(ability:AbilityResource, target_data:Dictionary) -> void:
 	_check_win_lose()
 
 func _on_move_completed(from:Vector2i, to:Vector2i) -> void:
+	if from == to:
+		return
 	grid_state["player_last_move_dir"] = _direction_to(from, to)
 	push_warning("[combat_manager] move from=%s to=%s grid_pos=%s" % [str(from), str(to), str(player.get("combat_stats").grid_pos)])
 	DojoIntegration.record_move(to.x, to.y)
