@@ -1,0 +1,149 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/combat_hud.gd" id="1_hud"]
+
+[node name="CombatHUD" type="CanvasLayer"]
+layer = 10
+script = ExtResource("1_hud")
+
+[node name="HudRoot" type="VBoxContainer" parent="."]
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -64.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="TopBar" type="HBoxContainer" parent="HudRoot"]
+layout_mode = 2
+
+[node name="PhaseIndicator" type="Label" parent="HudRoot/TopBar"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "IDLE"
+
+[node name="Spacer" type="Control" parent="HudRoot/TopBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TurnCounter" type="Label" parent="HudRoot/TopBar"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Turn 0"
+horizontal_alignment = 2
+
+[node name="StaminaBar" type="ProgressBar" parent="HudRoot"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(0, 8)
+max_value = 100.0
+value = 100.0
+show_percentage = false
+
+[node name="BottomBar" type="HBoxContainer" parent="HudRoot"]
+layout_mode = 2
+
+[node name="AbilityBar" type="HBoxContainer" parent="HudRoot/BottomBar"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Strike" type="Button" parent="HudRoot/BottomBar/AbilityBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(60, 28)
+text = "Strike
+Cost 20"
+
+[node name="CooldownOverlay" type="ColorRect" parent="HudRoot/BottomBar/AbilityBar/Strike"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.6)
+mouse_filter = 2
+
+[node name="CooldownLabel" type="Label" parent="HudRoot/BottomBar/AbilityBar/Strike/CooldownOverlay"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -20.0
+offset_top = -8.0
+offset_right = 20.0
+offset_bottom = 8.0
+text = "CD 0"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Dash" type="Button" parent="HudRoot/BottomBar/AbilityBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(60, 28)
+text = "Dash
+Cost 25"
+
+[node name="CooldownOverlay" type="ColorRect" parent="HudRoot/BottomBar/AbilityBar/Dash"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.6)
+mouse_filter = 2
+
+[node name="CooldownLabel" type="Label" parent="HudRoot/BottomBar/AbilityBar/Dash/CooldownOverlay"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -20.0
+offset_top = -8.0
+offset_right = 20.0
+offset_bottom = 8.0
+text = "CD 0"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Guard" type="Button" parent="HudRoot/BottomBar/AbilityBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(60, 28)
+text = "Guard
+Cost 15"
+
+[node name="CooldownOverlay" type="ColorRect" parent="HudRoot/BottomBar/AbilityBar/Guard"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.6)
+mouse_filter = 2
+
+[node name="CooldownLabel" type="Label" parent="HudRoot/BottomBar/AbilityBar/Guard/CooldownOverlay"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -20.0
+offset_top = -8.0
+offset_right = 20.0
+offset_bottom = 8.0
+text = "CD 0"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="EndTurnButton" type="Button" parent="HudRoot/BottomBar"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(60, 28)
+text = "End Turn"

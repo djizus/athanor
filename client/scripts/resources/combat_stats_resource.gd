@@ -1,5 +1,5 @@
 class_name CombatStatsResource
-extends SaveableResource
+extends Resource
 
 signal position_changed(old_pos:Vector2i, new_pos:Vector2i)
 signal guard_changed(active:bool)
@@ -23,24 +23,3 @@ func set_is_guarding(active:bool) -> void:
 		return
 	is_guarding = active
 	guard_changed.emit(active)
-
-func reset_resource() -> void:
-	grid_pos = Vector2i(-1, -1)
-	faction = 0
-	archetype = 0
-	move_range = 10
-	is_guarding = false
-	guard_reduction = 0.5
-
-func prepare_save() -> Resource:
-	return self.duplicate()
-
-func prepare_load(_data:Resource) -> void:
-	if _data == null:
-		return
-	grid_pos = _data.grid_pos
-	faction = _data.faction
-	archetype = _data.archetype
-	move_range = _data.move_range
-	is_guarding = _data.is_guarding
-	guard_reduction = _data.guard_reduction

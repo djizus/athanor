@@ -128,33 +128,21 @@ func _bind_player_subsystems() -> void:
 		grid_cursor.tile_clicked.connect(_on_grid_tile_clicked)
 
 func _build_player_data(player_node:Node2D) -> Dictionary:
-	var resource_node:ResourceNode = player_node.get_node_or_null("ResourceNode") as ResourceNode
-	if resource_node == null:
-		return {}
+	var stamina:StaminaResource = StaminaResource.new()
+	stamina.max_value = 100
+	stamina.value = 100
 
-	var stamina:StaminaResource = resource_node.get_resource("stamina") as StaminaResource
-	if stamina == null:
-		stamina = StaminaResource.new()
-		stamina.max_value = 100
-		stamina.value = 100
-		_add_resource_to_node(resource_node, "stamina", stamina)
+	var combat_stats:CombatStatsResource = CombatStatsResource.new()
+	combat_stats.faction = CombatEnums.Faction.PLAYER
+	combat_stats.archetype = CombatEnums.Archetype.PLAYER
+	combat_stats.move_range = 10
 
-	var combat_stats:CombatStatsResource = resource_node.get_resource("combat_stats") as CombatStatsResource
-	if combat_stats == null:
-		combat_stats = CombatStatsResource.new()
-		combat_stats.faction = CombatEnums.Faction.PLAYER
-		combat_stats.archetype = CombatEnums.Archetype.PLAYER
-		combat_stats.move_range = 10
-		_add_resource_to_node(resource_node, "combat_stats", combat_stats)
-
-	var health:HealthResource = resource_node.get_resource("health") as HealthResource
-	if health != null:
-		health.max_hp = 100.0
-		health.hp = health.max_hp
+	var health:HealthResource = HealthResource.new()
+	health.max_hp = 100.0
+	health.hp = 100.0
 
 	return {
 		"node": player_node,
-		"resource_node": resource_node,
 		"combat_stats": combat_stats,
 		"stamina": stamina,
 		"health": health,
@@ -165,21 +153,13 @@ func _build_enemy_data(enemy_nodes:Array[Node]) -> Array[Dictionary]:
 	for enemy_node in enemy_nodes:
 		if !(enemy_node is Node2D):
 			continue
-		var resource_node:ResourceNode = enemy_node.get_node_or_null("ResourceNode") as ResourceNode
-		if resource_node == null:
-			continue
 
-		var combat_stats:CombatStatsResource = resource_node.get_resource("combat_stats") as CombatStatsResource
-		if combat_stats == null:
-			combat_stats = CombatStatsResource.new()
-			_add_resource_to_node(resource_node, "combat_stats", combat_stats)
-
-		var health:HealthResource = resource_node.get_resource("health") as HealthResource
+		var combat_stats:CombatStatsResource = CombatStatsResource.new()
+		var health:HealthResource = HealthResource.new()
 		var ai:EnemyGridAI = _assign_enemy_ai(enemy_node as Node2D, combat_stats, health)
 
 		result.push_back({
 			"node": enemy_node,
-			"resource_node": resource_node,
 			"combat_stats": combat_stats,
 			"health": health,
 			"ai": ai,
@@ -194,21 +174,20 @@ func _assign_enemy_ai(enemy_node:Node2D, combat_stats:CombatStatsResource, healt
 
 	match archetype:
 		CombatEnums.Archetype.BRUTE:
-			if health != null:
-				health.max_hp = 50.0
-				health.hp = minf(health.hp, health.max_hp)
+			health.max_hp = 50.0
+			health.hp = 50.0
 			return BRUTE_AI_SCRIPT.new()
 		CombatEnums.Archetype.CASTER:
-			if health != null:
-				health.max_hp = 30.0
-				health.hp = minf(health.hp, health.max_hp)
+			health.max_hp = 30.0
+			health.hp = 30.0
 			return CASTER_AI_SCRIPT.new()
 		CombatEnums.Archetype.FLANKER:
-			if health != null:
-				health.max_hp = 40.0
-				health.hp = minf(health.hp, health.max_hp)
+			health.max_hp = 40.0
+			health.hp = 40.0
 			return FLANKER_AI_SCRIPT.new()
 		_:
+			health.max_hp = 50.0
+			health.hp = 50.0
 			return BRUTE_AI_SCRIPT.new()
 
 func _infer_enemy_archetype(node_name:String) -> int:
@@ -402,6 +381,9 @@ func _refresh_grid_state() -> void:
 	for enemy_data in enemies:
 		var health:HealthResource = enemy_data.get("health", null)
 		if health != null && health.hp <= 0.0:
+			var dead_node:Node2D = enemy_data.get("node", null)
+			if dead_node != null:
+				dead_node.visible = false
 			continue
 		alive_enemies.push_back(enemy_data)
 		occupied.append(enemy_data.get("combat_stats").grid_pos)
@@ -554,13 +536,6 @@ func _direction_to(from:Vector2i, to:Vector2i) -> Vector2i:
 	if absi(delta.x) >= absi(delta.y):
 		return Vector2i(signi(delta.x), 0)
 	return Vector2i(0, signi(delta.y))
-
-func _add_resource_to_node(resource_node:ResourceNode, resource_name:String, resource:SaveableResource) -> void:
-	var item:ResourceNodeItem = ResourceNodeItem.new()
-	item.resource_name = resource_name
-	item.resource = resource
-	item.make_unique = false
-	resource_node.add_resource(item)
 
 func _turn_reset_abilities() -> void:
 	for ability in ability_manager.abilities:

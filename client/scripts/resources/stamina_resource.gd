@@ -1,6 +1,7 @@
 class_name StaminaResource
-extends ValueResource
+extends Resource
 
+signal updated
 signal stamina_spent(cost:int)
 signal stamina_refilled
 signal stamina_depleted
@@ -34,15 +35,3 @@ func spend(cost:int) -> bool:
 func refill() -> void:
 	value = max_value
 	stamina_refilled.emit()
-
-func reset_resource() -> void:
-	refill()
-
-func prepare_save() -> Resource:
-	return self.duplicate()
-
-func prepare_load(_data:Resource) -> void:
-	if _data == null:
-		return
-	max_value = _data.max_value
-	value = _data.value
