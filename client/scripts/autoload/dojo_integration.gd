@@ -5,6 +5,7 @@ const ACTION_TYPE_ABILITY := 1
 
 var _enabled: bool = false
 var _current_game_id: int = -1
+var _current_room_id: int = -1
 var _turn_actions: Array[Dictionary] = []
 
 func _ready() -> void:
@@ -14,6 +15,8 @@ func set_enabled(enabled: bool) -> void:
 	_enabled = enabled
 	if not _enabled:
 		_turn_actions.clear()
+		_current_game_id = -1
+		_current_room_id = -1
 
 func set_current_game_id(game_id: int) -> void:
 	_current_game_id = game_id
@@ -46,6 +49,7 @@ func submit_turn() -> void:
 	if _current_game_id < 0:
 		_current_game_id = GameState.get_game_id()
 	if _current_game_id < 0:
+		push_warning("[dojo_integration] submit_turn skipped — no game_id")
 		return
 
 	var actions_packed: Array = []
@@ -62,6 +66,9 @@ func submit_turn() -> void:
 				actions_packed.append(int(action.get("a", 0)))
 				actions_packed.append(int(action.get("b", 0)))
 
+	push_warning("[dojo_integration] confirm_turn game_id=%d actions=%d felts=%d" % [
+		_current_game_id, _turn_actions.size(), actions_packed.size()
+	])
 	DojoBridge.confirm_turn(_current_game_id, actions_packed)
 	_turn_actions.clear()
 
@@ -75,7 +82,50 @@ func _on_node_added(node: Node) -> void:
 
 func _on_combat_started() -> void:
 	_turn_actions.clear()
-	_current_game_id = GameState.get_game_id()
+	_current_room_id += 1
+	if _enabled:
+		if _current_room_id == 0:
+			_spawn_and_enter_room()
+		else:
+			_enter_next_room()
 
-func _on_combat_finished(_player_won: bool) -> void:
+func _on_combat_finished(player_won: bool) -> void:
 	_turn_actions.clear()
+	if not player_won:
+		# Run failed — reset for potential retry
+		_current_room_id = -1
+		_current_game_id = -1
+
+## Spawn a new game on chain, wait for Torii to index, then enter room 0.
+func _spawn_and_enter_room() -> void:
+	push_warning("[dojo_integration] spawn() — creating onchain game...")
+	DojoBridge.spawn()
+	# Wait for Katana to process + Torii to index the new RunState
+	await get_tree().create_timer(3.0).timeout
+	DojoBridge.pull_entities_snapshot()
+	await get_tree().create_timer(1.0).timeout
+	_current_game_id = GameState.get_game_id()
+	if _current_game_id >= 0:
+		push_warning("[dojo_integration] game_id=%d — entering room %d" % [_current_game_id, _current_room_id])
+		DojoBridge.enter_room(_current_game_id, _current_room_id)
+	else:
+		push_warning("[dojo_integration] No game_id after spawn — chain may be slow, retrying...")
+		await get_tree().create_timer(3.0).timeout
+		DojoBridge.pull_entities_snapshot()
+		await get_tree().create_timer(1.0).timeout
+		_current_game_id = GameState.get_game_id()
+		if _current_game_id >= 0:
+			push_warning("[dojo_integration] game_id=%d (retry) — entering room %d" % [_current_game_id, _current_room_id])
+			DojoBridge.enter_room(_current_game_id, _current_room_id)
+		else:
+			push_warning("[dojo_integration] Failed to get game_id — online turns will not submit")
+
+## Enter subsequent rooms (1, 2) using existing game_id.
+func _enter_next_room() -> void:
+	if _current_game_id < 0:
+		_current_game_id = GameState.get_game_id()
+	if _current_game_id >= 0:
+		push_warning("[dojo_integration] Entering room %d for game_id=%d" % [_current_room_id, _current_game_id])
+		DojoBridge.enter_room(_current_game_id, _current_room_id)
+	else:
+		push_warning("[dojo_integration] Cannot enter room %d — no game_id" % _current_room_id)

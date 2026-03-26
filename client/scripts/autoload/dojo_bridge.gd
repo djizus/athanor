@@ -28,6 +28,7 @@ var entity_subscription_id := -1
 # Ephemeral session key — generated internally, NEVER user-provided
 var _session_priv_key := ""
 const SESSION_CACHE_PATH := "user://controller_session.json"
+const POLICY_VERSION := 2  # Bump when session policies change (forces re-auth)
 
 var full_policies: Dictionary:
 	get:
@@ -126,6 +127,10 @@ func try_resume_controller_session() -> bool:
 	var cached := _load_session_info()
 	if cached.is_empty():
 		push_warning("[dojo_bridge] resume: no cached session at %s" % SESSION_CACHE_PATH)
+		return false
+	if int(cached.get("policy_version", 0)) != POLICY_VERSION:
+		push_warning("[dojo_bridge] resume: stale policies (v%d != v%d), re-auth required" % [int(cached.get("policy_version", 0)), POLICY_VERSION])
+		_clear_session_cache()
 		return false
 	var cached_key := String(cached.get("private_key", ""))
 	var cached_address := String(cached.get("address", ""))
@@ -365,6 +370,7 @@ func _save_session_info(key: String, info: Dictionary) -> void:
 	if file == null:
 		return
 	file.store_string(JSON.stringify({
+		"policy_version": POLICY_VERSION,
 		"private_key": key,
 		"address": String(info.get("address", "")),
 		"owner_guid": String(info.get("owner_guid", "")),
