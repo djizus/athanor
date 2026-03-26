@@ -5,6 +5,7 @@ signal combat_started
 signal combat_finished(player_won:bool)
 
 const TILE_MOVE_STAMINA_COST:int = 10
+const CombatConstants:Script = preload("res://scripts/combat/combat_constants.gd")
 
 const BRUTE_AI_SCRIPT:Script = preload("res://scripts/combat/ai/brute_ai.gd")
 const CASTER_AI_SCRIPT:Script = preload("res://scripts/combat/ai/caster_ai.gd")
@@ -247,6 +248,9 @@ func _build_player_data(player_node:Node2D) -> Dictionary:
 	combat_stats.faction = CombatEnums.Faction.PLAYER
 	combat_stats.archetype = CombatEnums.Archetype.PLAYER
 	combat_stats.move_range = 10
+	combat_stats.offense = CombatConstants.HERO_OFFENSE
+	combat_stats.defense = CombatConstants.HERO_DEFENSE
+	combat_stats.speed = CombatConstants.HERO_SPEED
 
 	var health:HealthResource = HealthResource.new()
 	health.max_hp = 100.0
@@ -289,29 +293,47 @@ func _assign_enemy_ai(enemy_node:Node2D, combat_stats:CombatStatsResource, healt
 
 	match archetype:
 		CombatEnums.Archetype.BRUTE:
-			health.max_hp = 50.0
-			health.hp = 50.0
+			health.max_hp = float(CombatConstants.BRUTE_HP)
+			health.hp = float(CombatConstants.BRUTE_HP)
+			combat_stats.offense = CombatConstants.BRUTE_OFFENSE
+			combat_stats.defense = CombatConstants.BRUTE_DEFENSE
+			combat_stats.speed = CombatConstants.BRUTE_SPEED
 			return BRUTE_AI_SCRIPT.new()
 		CombatEnums.Archetype.CASTER:
-			health.max_hp = 30.0
-			health.hp = 30.0
+			health.max_hp = float(CombatConstants.CASTER_HP)
+			health.hp = float(CombatConstants.CASTER_HP)
+			combat_stats.offense = CombatConstants.CASTER_OFFENSE
+			combat_stats.defense = CombatConstants.CASTER_DEFENSE
+			combat_stats.speed = CombatConstants.CASTER_SPEED
 			return CASTER_AI_SCRIPT.new()
 		CombatEnums.Archetype.FLANKER:
-			health.max_hp = 40.0
-			health.hp = 40.0
+			health.max_hp = float(CombatConstants.FLANKER_HP)
+			health.hp = float(CombatConstants.FLANKER_HP)
+			combat_stats.offense = CombatConstants.FLANKER_OFFENSE
+			combat_stats.defense = 5
+			combat_stats.speed = CombatConstants.FLANKER_SPEED
 			return FLANKER_AI_SCRIPT.new()
 		CombatEnums.Archetype.HEAVY:
-			health.max_hp = 70.0
-			health.hp = 70.0
+			health.max_hp = float(CombatConstants.HEAVY_HP)
+			health.hp = float(CombatConstants.HEAVY_HP)
+			combat_stats.offense = CombatConstants.HEAVY_OFFENSE
+			combat_stats.defense = 12
+			combat_stats.speed = CombatConstants.HEAVY_SPEED
 			combat_stats.is_immovable = true
 			return HEAVY_AI_SCRIPT.new()
 		CombatEnums.Archetype.PULLER:
-			health.max_hp = 35.0
-			health.hp = 35.0
+			health.max_hp = float(CombatConstants.PULLER_HP)
+			health.hp = float(CombatConstants.PULLER_HP)
+			combat_stats.offense = CombatConstants.PULLER_OFFENSE
+			combat_stats.defense = CombatConstants.PULLER_DEFENSE
+			combat_stats.speed = CombatConstants.PULLER_SPEED
 			return PULLER_AI_SCRIPT.new()
 		_:
-			health.max_hp = 50.0
-			health.hp = 50.0
+			health.max_hp = float(CombatConstants.BRUTE_HP)
+			health.hp = float(CombatConstants.BRUTE_HP)
+			combat_stats.offense = CombatConstants.BRUTE_OFFENSE
+			combat_stats.defense = CombatConstants.BRUTE_DEFENSE
+			combat_stats.speed = CombatConstants.BRUTE_SPEED
 			return BRUTE_AI_SCRIPT.new()
 
 func _infer_enemy_archetype(node_name:String) -> int:

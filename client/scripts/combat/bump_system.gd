@@ -59,7 +59,6 @@ func compute_bump(mover_pos:Vector2i, target_pos:Vector2i, move_dir:Vector2i, gr
 	if push_into_enemy:
 		bump_occurred.emit(mover_pos, target_pos, move_dir, true)
 		collision_damage_dealt.emit(target_pos, COLLISION_DAMAGE)
-		collision_damage_dealt.emit(push_target, COLLISION_DAMAGE)
 		return {
 			"player_final_pos": mover_pos,
 			"enemy_final_pos": target_pos,

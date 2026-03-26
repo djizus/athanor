@@ -8,6 +8,9 @@ signal guard_changed(active:bool)
 @export var faction:int = 0
 @export var archetype:int = 0
 @export var move_range:int = 10
+@export var offense:int = 0
+@export var defense:int = 0
+@export var speed:int = 0
 @export var is_guarding:bool = false : set = set_is_guarding
 @export var guard_reduction:float = 0.5
 @export var is_immovable:bool = false

@@ -14,7 +14,29 @@ func execute_enemy_turn(
 	var grid_size:int = int(grid_state.get("grid_size", 8))
 	var player_last_move_dir:Vector2i = grid_state.get("player_last_move_dir", Vector2i.LEFT)
 
-	for i in enemies.size():
+	var enemy_turn_order:Array[Dictionary] = []
+	for i in range(enemies.size()):
+		var enemy_entry:Dictionary = enemies[i]
+		var entry_stats:CombatStatsResource = enemy_entry.get("combat_stats", null)
+		enemy_turn_order.append({
+			"index": i,
+			"speed": entry_stats.speed if entry_stats != null else 0,
+			"contract_actor_id": int(enemy_entry.get("contract_actor_id", 0)),
+		})
+
+	enemy_turn_order.sort_custom(func(a:Dictionary, b:Dictionary) -> bool:
+		var speed_a:int = int(a.get("speed", 0))
+		var speed_b:int = int(b.get("speed", 0))
+		if speed_a == speed_b:
+			return int(a.get("contract_actor_id", 0)) < int(b.get("contract_actor_id", 0))
+		return speed_a > speed_b
+	)
+
+	for order_entry in enemy_turn_order:
+		var i:int = int(order_entry.get("index", -1))
+		if i < 0 || i >= enemies.size():
+			continue
+
 		var enemy:Dictionary = enemies[i]
 		var enemy_id:Variant = enemy.get("enemy_id", enemy.get("id", i))
 		var combat_stats:CombatStatsResource = enemy.get("combat_stats", null)
@@ -40,6 +62,7 @@ func execute_enemy_turn(
 		var telegraph_type:int = int(intent.get("telegraph_type", CombatEnums.TelegraphType.DAMAGE))
 		var pull_source:Vector2i = intent.get("pull_source", moved_to)
 		var pull_distance:int = int(intent.get("pull_distance", 0))
+		var is_immovable:bool = bool(intent.get("is_immovable", combat_stats.is_immovable if combat_stats != null else false))
 
 		if moved_to != self_pos:
 			occupied_cells.erase(self_pos)
@@ -50,7 +73,9 @@ func execute_enemy_turn(
 		enemy["pos"] = moved_to
 		if combat_stats != null:
 			combat_stats.grid_pos = moved_to
+			combat_stats.is_immovable = is_immovable
 			enemy["combat_stats"] = combat_stats
+		enemy["is_immovable"] = is_immovable
 		enemies[i] = enemy
 
 		telegraph_system.add_telegraph(

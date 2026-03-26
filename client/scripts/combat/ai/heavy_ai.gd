@@ -1,19 +1,32 @@
 extends EnemyGridAI
 
-const HEAVY_DAMAGE:float = 25.0
+const ContractAIUtils = preload("res://scripts/combat/ai/contract_ai_utils.gd")
+const CombatConstants = preload("res://scripts/combat/combat_constants.gd")
 
 func compute_intent(self_pos:Vector2i, player_pos:Vector2i, grid_state:Dictionary) -> Dictionary:
 	var move_to:Vector2i = self_pos
-	if GridUtils.manhattan_distance(self_pos, player_pos) > 1:
-		move_to = _choose_step_toward(self_pos, player_pos, self_pos, grid_state)
+	var blocked_cells:Array[Vector2i] = grid_state.get("blocked_cells", Array([], TYPE_VECTOR2I, "", null))
+	var occupied_cells:Array[Vector2i] = grid_state.get("occupied_cells", Array([], TYPE_VECTOR2I, "", null)).duplicate()
+	occupied_cells.erase(self_pos)
+	var grid_size:int = int(grid_state.get("grid_size", 8))
 
-	var telegraph_cells:Array[Vector2i] = _build_cross_on_player(player_pos, int(grid_state.get("grid_size", 8)))
+	var move_result:Dictionary = ContractAIUtils.choose_step_toward(
+		self_pos,
+		player_pos,
+		blocked_cells,
+		occupied_cells,
+		grid_size
+	)
+	move_to = move_result.get("pos", self_pos)
+
+	var telegraph_cells:Array[Vector2i] = _build_cross_on_player(player_pos, grid_size)
 
 	return {
 		"move_to": move_to,
 		"telegraph_cells": telegraph_cells,
-		"telegraph_damage": HEAVY_DAMAGE,
+		"telegraph_damage": float(CombatConstants.HEAVY_OFFENSE),
 		"telegraph_type": 0,
+		"is_immovable": true,
 	}
 
 func _build_cross_on_player(center:Vector2i, grid_size:int) -> Array[Vector2i]:
@@ -31,57 +44,3 @@ func _build_cross_on_player(center:Vector2i, grid_size:int) -> Array[Vector2i]:
 			result.append(cell)
 
 	return result
-
-func _choose_step_toward(from_pos:Vector2i, target_pos:Vector2i, self_pos:Vector2i, grid_state:Dictionary) -> Vector2i:
-	var dx:int = target_pos.x - from_pos.x
-	var dy:int = target_pos.y - from_pos.y
-
-	var primary_step:Vector2i = Vector2i.ZERO
-	var secondary_step:Vector2i = Vector2i.ZERO
-
-	if (absi(dx) <= absi(dy) && dx != 0) || dy == 0:
-		if dx != 0:
-			primary_step = Vector2i(signi(dx), 0)
-		if dy != 0:
-			secondary_step = Vector2i(0, signi(dy))
-	else:
-		if dy != 0:
-			primary_step = Vector2i(0, signi(dy))
-		if dx != 0:
-			secondary_step = Vector2i(signi(dx), 0)
-
-	if primary_step != Vector2i.ZERO:
-		var primary_target:Vector2i = from_pos + primary_step
-		if _is_walkable(primary_target, self_pos, grid_state):
-			return primary_target
-
-	if secondary_step != Vector2i.ZERO:
-		var secondary_target:Vector2i = from_pos + secondary_step
-		if _is_walkable(secondary_target, self_pos, grid_state):
-			return secondary_target
-
-	var current_distance:int = GridUtils.manhattan_distance(from_pos, target_pos)
-	for candidate in GridUtils.get_adjacent_cells(from_pos):
-		if !_is_walkable(candidate, self_pos, grid_state):
-			continue
-		if GridUtils.manhattan_distance(candidate, target_pos) < current_distance:
-			return candidate
-
-	return from_pos
-
-func _is_walkable(cell:Vector2i, self_pos:Vector2i, grid_state:Dictionary) -> bool:
-	if !_is_in_bounds(cell, grid_state):
-		return false
-
-	var blocked_cells:Array[Vector2i] = grid_state.get("blocked_cells", Array([], TYPE_VECTOR2I, "", null))
-	if blocked_cells.has(cell):
-		return false
-
-	var occupied_cells:Array[Vector2i] = grid_state.get("occupied_cells", Array([], TYPE_VECTOR2I, "", null))
-	if cell != self_pos && occupied_cells.has(cell):
-		return false
-
-	return true
-
-func _is_in_bounds(cell:Vector2i, grid_state:Dictionary) -> bool:
-	return GridUtils.is_in_bounds(cell, int(grid_state.get("grid_size", 8)))

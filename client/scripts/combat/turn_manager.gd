@@ -36,13 +36,8 @@ func queue_combat_end(player_won:bool) -> void:
 	_queued_combat_end = player_won
 
 func _run_combat_loop() -> void:
-	# Initial enemy action: enemies position + create first telegraphs
-	_set_phase(CombatEnums.Phase.ENEMY_TURN)
-	enemy_turn_started.emit()
-	await get_tree().process_frame
-
 	while _running:
-		# PLAYER acts (sees telegraphs from previous enemy turn)
+		# PLAYER acts first (matches contract enter_room -> PHASE_PLAYER_TURN)
 		_set_phase(CombatEnums.Phase.PLAYER_TURN)
 		player_turn_started.emit()
 		await _player_turn_ended

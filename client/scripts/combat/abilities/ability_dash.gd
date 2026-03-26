@@ -1,6 +1,8 @@
 class_name AbilityDash
 extends Node
 
+const DamageCalculator:Script = preload("res://scripts/combat/damage_calculator.gd")
+
 @export var range_tiles:int = 3
 @export var base_damage:float = 10.0
 
@@ -8,12 +10,16 @@ extends Node
 func execute(direction:Vector2i, player_pos:Vector2i, actors_on_grid:Dictionary) -> Dictionary:
 	var blocked_map:Dictionary = _to_cell_map(actors_on_grid.get("blocked", []))
 	var occupied_map:Dictionary = _get_occupied_map(actors_on_grid)
+	var grid_size:int = int(actors_on_grid.get("grid_size", 8))
 
 	var current:Vector2i = player_pos
 	var impact_cell:Vector2i = Vector2i(-1, -1)
 
 	for _step in range(range_tiles):
 		var next_cell:Vector2i = current + direction
+		if !GridUtils.is_in_bounds(next_cell, grid_size):
+			impact_cell = next_cell
+			break
 		if blocked_map.has(next_cell):
 			impact_cell = next_cell
 			break
@@ -62,8 +68,15 @@ func _damage_enemy_at_cell(cell:Vector2i, actors_on_grid:Dictionary) -> bool:
 	var health:HealthResource = _resolve_health(enemy)
 	if health == null:
 		return false
+	if health.hp <= 0.0:
+		return false
 
-	health.add_hp(-base_damage)
+	var attacker_stats:CombatStatsResource = _resolve_player_combat_stats(actors_on_grid)
+	var target_stats:CombatStatsResource = _resolve_combat_stats(enemy)
+	var offense:int = attacker_stats.offense if attacker_stats != null else 0
+	var defense:int = target_stats.defense if target_stats != null else 0
+	var damage:int = DamageCalculator.compute_damage_with_stats(int(base_damage), offense, defense)
+	health.add_hp(-float(damage))
 	return true
 
 
@@ -104,6 +117,25 @@ func _resolve_health(actor) -> HealthResource:
 		var resource_node = actor.get("resource_node")
 		if resource_node != null:
 			return _resolve_health(resource_node)
+	return null
+
+
+func _resolve_combat_stats(actor) -> CombatStatsResource:
+	if actor == null:
+		return null
+	if actor is CombatStatsResource:
+		return actor
+	if actor is Dictionary:
+		if actor.has("combat_stats") && actor["combat_stats"] is CombatStatsResource:
+			return actor["combat_stats"]
+		if actor.has("resource_node"):
+			return _resolve_combat_stats(actor["resource_node"])
+	if actor is Node && actor.has_method("get_resource"):
+		return actor.get_resource("combat_stats")
+	if actor is Node && actor.has_method("get"):
+		var resource_node = actor.get("resource_node")
+		if resource_node != null:
+			return _resolve_combat_stats(resource_node)
 	return null
 
 

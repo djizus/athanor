@@ -1,6 +1,9 @@
 class_name AbilityShove
 extends Node
 
+const CombatConstants:Script = preload("res://scripts/combat/combat_constants.gd")
+const DamageCalculator:Script = preload("res://scripts/combat/damage_calculator.gd")
+
 @export var base_damage:float = 5.0
 @export var push_tiles:int = 2
 
@@ -20,12 +23,24 @@ func execute(target_cell:Vector2i, actors_on_grid:Dictionary) -> Dictionary:
 	var health:HealthResource = _resolve_health(enemy_data)
 	if health == null:
 		return result
+	if health.hp <= 0.0:
+		return result
 
-	var total_damage:float = base_damage
+	var player_stats:CombatStatsResource = _resolve_player_combat_stats(actors_on_grid)
+	var enemy_stats:CombatStatsResource = _resolve_combat_stats(enemy_data)
+	var offense:int = player_stats.offense if player_stats != null else 0
+	var defense:int = enemy_stats.defense if enemy_stats != null else 0
+	var base_hit:int = DamageCalculator.compute_damage_with_stats(int(base_damage), offense, defense)
+	health.add_hp(-float(base_hit))
+	var total_damage:float = float(base_hit)
+
+	if health.hp <= 0.0:
+		result["total_damage"] = total_damage
+		return result
+
 	var player_pos:Vector2i = _resolve_player_pos(actors_on_grid)
 	var direction:Vector2i = _cardinal_direction(player_pos, target_cell)
 
-	var enemy_stats:CombatStatsResource = _resolve_combat_stats(enemy_data)
 	var immovable:bool = enemy_stats != null && enemy_stats.is_immovable
 
 	var final_pos:Vector2i = target_cell
@@ -33,38 +48,32 @@ func execute(target_cell:Vector2i, actors_on_grid:Dictionary) -> Dictionary:
 	if !immovable && direction != Vector2i.ZERO:
 		var blocked_map:Dictionary = _to_cell_map(actors_on_grid.get("blocked", []))
 		var grid_size:int = int(actors_on_grid.get("grid_size", 8))
-		var blocked_collision:bool = false
-		var moved_steps:int = 0
 		var current_pos:Vector2i = target_cell
+		var blocked_collision:bool = false
 
 		for _step in range(push_tiles):
 			var next_cell:Vector2i = current_pos + direction
-			var blocked_by_bounds:bool = !GridUtils.is_in_bounds(next_cell, grid_size)
-			var blocked_by_obstacle:bool = blocked_map.has(next_cell)
-			var blocked_by_enemy:bool = enemies.has(next_cell) && next_cell != target_cell
-
-			if blocked_by_bounds || blocked_by_obstacle || blocked_by_enemy:
+			if !GridUtils.is_in_bounds(next_cell, grid_size) || blocked_map.has(next_cell) || enemies.has(next_cell):
 				blocked_collision = true
 				break
 
+			enemies.erase(current_pos)
 			current_pos = next_cell
-			moved_steps += 1
-
-		if moved_steps < push_tiles:
-			blocked_collision = true
-
-		if moved_steps > 0:
+			enemies[current_pos] = enemy_data
 			pushed = true
+
+		if pushed:
 			final_pos = current_pos
-			enemies.erase(target_cell)
-			enemies[final_pos] = enemy_data
 			if enemy_stats != null:
 				enemy_stats.grid_pos = final_pos
 
 		if blocked_collision:
-			total_damage += 5.0
+			health.add_hp(-float(CombatConstants.COLLISION_DAMAGE))
+			total_damage += float(CombatConstants.COLLISION_DAMAGE)
+	elif immovable:
+		health.add_hp(-float(CombatConstants.COLLISION_DAMAGE))
+		total_damage += float(CombatConstants.COLLISION_DAMAGE)
 
-	health.add_hp(-total_damage)
 
 	result["pushed"] = pushed
 	result["final_pos"] = final_pos
@@ -86,6 +95,22 @@ func _resolve_player_pos(actors_on_grid:Dictionary) -> Vector2i:
 		return player.grid_pos
 
 	return Vector2i.ZERO
+
+
+func _resolve_player_combat_stats(actors_on_grid:Dictionary) -> CombatStatsResource:
+	if actors_on_grid.has("player_stats") && actors_on_grid["player_stats"] is CombatStatsResource:
+		return actors_on_grid["player_stats"]
+
+	if !actors_on_grid.has("player"):
+		return null
+
+	var player = actors_on_grid["player"]
+	if player is Dictionary && player.has("combat_stats") && player["combat_stats"] is CombatStatsResource:
+		return player["combat_stats"]
+	if player is CombatStatsResource:
+		return player
+
+	return null
 
 
 func _cardinal_direction(from_cell:Vector2i, to_cell:Vector2i) -> Vector2i:

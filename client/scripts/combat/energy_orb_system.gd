@@ -25,7 +25,7 @@ func check_pickup(player_pos:Vector2i) -> int:
 	var value:int = int(orb_data.get("value", 0))
 	_orbs.erase(player_pos)
 	orb_collected.emit(player_pos, value)
-	return value
+	return 0
 
 func tick() -> void:
 	var expired_positions:Array[Vector2i] = []

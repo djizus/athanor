@@ -1,6 +1,9 @@
 class_name AbilitySlam
 extends Node
 
+const CombatConstants:Script = preload("res://scripts/combat/combat_constants.gd")
+const DamageCalculator:Script = preload("res://scripts/combat/damage_calculator.gd")
+
 @export var base_damage:float = 10.0
 @export var push_tiles:int = 1
 
@@ -11,57 +14,51 @@ func execute(player_pos:Vector2i, actors_on_grid:Dictionary) -> Array[Dictionary
 	if !(enemies is Dictionary):
 		return results
 
+	var player_stats:CombatStatsResource = _resolve_player_combat_stats(actors_on_grid)
+	var player_offense:int = player_stats.offense if player_stats != null else 0
 	var blocked_map:Dictionary = _to_cell_map(actors_on_grid.get("blocked", []))
 	var grid_size:int = int(actors_on_grid.get("grid_size", 8))
 
-	for enemy_pos in GridUtils.get_adjacent_cells(player_pos):
-		if !enemies.has(enemy_pos):
+	for enemy_data in _ordered_enemies(enemies):
+		var enemy_stats:CombatStatsResource = _resolve_combat_stats(enemy_data)
+		if enemy_stats == null:
+			continue
+		var enemy_pos:Vector2i = enemy_stats.grid_pos
+		if GridUtils.manhattan_distance(player_pos, enemy_pos) != 1:
 			continue
 
-		var enemy_data:Dictionary = enemies[enemy_pos]
 		var health:HealthResource = _resolve_health(enemy_data)
-		if health == null:
+		if health == null || health.hp <= 0.0:
 			continue
 
-		var total_damage:float = base_damage
+		var hit_damage:int = DamageCalculator.compute_damage_with_stats(
+			int(base_damage),
+			player_offense,
+			enemy_stats.defense
+		)
+		health.add_hp(-float(hit_damage))
+
+		var total_damage:float = float(hit_damage)
 		var final_pos:Vector2i = enemy_pos
 		var direction:Vector2i = enemy_pos - player_pos
-		var blocked_push:bool = false
+		var collision_damage:float = 0.0
 
-		var enemy_stats:CombatStatsResource = _resolve_combat_stats(enemy_data)
-		if enemy_stats != null && enemy_stats.is_immovable:
-			blocked_push = true
-		else:
-			var current_pos:Vector2i = enemy_pos
-			var moved_steps:int = 0
+		if health.hp > 0.0:
+			if enemy_stats.is_immovable:
+				health.add_hp(-float(CombatConstants.COLLISION_DAMAGE))
+				collision_damage = float(CombatConstants.COLLISION_DAMAGE)
+			else:
+				var next_cell:Vector2i = enemy_pos + direction
+				if !GridUtils.is_in_bounds(next_cell, grid_size) || blocked_map.has(next_cell) || enemies.has(next_cell):
+					health.add_hp(-float(CombatConstants.COLLISION_DAMAGE))
+					collision_damage = float(CombatConstants.COLLISION_DAMAGE)
+				else:
+					enemies.erase(enemy_pos)
+					enemies[next_cell] = enemy_data
+					enemy_stats.grid_pos = next_cell
+					final_pos = next_cell
 
-			for _step in range(push_tiles):
-				var next_cell:Vector2i = current_pos + direction
-				var blocked_by_bounds:bool = !GridUtils.is_in_bounds(next_cell, grid_size)
-				var blocked_by_obstacle:bool = blocked_map.has(next_cell)
-				var blocked_by_enemy:bool = enemies.has(next_cell) && next_cell != enemy_pos
-
-				if blocked_by_bounds || blocked_by_obstacle || blocked_by_enemy:
-					blocked_push = true
-					break
-
-				current_pos = next_cell
-				moved_steps += 1
-
-			if moved_steps > 0:
-				final_pos = current_pos
-				enemies.erase(enemy_pos)
-				enemies[final_pos] = enemy_data
-				if enemy_stats != null:
-					enemy_stats.grid_pos = final_pos
-
-			if moved_steps < push_tiles:
-				blocked_push = true
-
-		if blocked_push:
-			total_damage += 5.0
-
-		health.add_hp(-total_damage)
+		total_damage += collision_damage
 		results.push_back({
 			"enemy_pos": enemy_pos,
 			"final_pos": final_pos,
@@ -107,6 +104,36 @@ func _resolve_combat_stats(actor) -> CombatStatsResource:
 		if resource_node != null:
 			return _resolve_combat_stats(resource_node)
 	return null
+
+
+func _resolve_player_combat_stats(actors_on_grid:Dictionary) -> CombatStatsResource:
+	if actors_on_grid.has("player_stats") && actors_on_grid["player_stats"] is CombatStatsResource:
+		return actors_on_grid["player_stats"]
+	if !actors_on_grid.has("player"):
+		return null
+
+	var player = actors_on_grid["player"]
+	if player is CombatStatsResource:
+		return player
+	if player is Dictionary && player.has("combat_stats") && player["combat_stats"] is CombatStatsResource:
+		return player["combat_stats"]
+
+	return null
+
+
+func _ordered_enemies(enemies:Dictionary) -> Array[Dictionary]:
+	var by_id:Dictionary = {}
+	for enemy_data in enemies.values():
+		if enemy_data is Dictionary:
+			var actor_id:int = int(enemy_data.get("contract_actor_id", -1))
+			if actor_id > 0:
+				by_id[actor_id] = enemy_data
+
+	var ordered:Array[Dictionary] = []
+	for actor_id in range(1, 6):
+		if by_id.has(actor_id):
+			ordered.push_back(by_id[actor_id])
+	return ordered
 
 
 func _to_cell_map(cells:Array) -> Dictionary:
