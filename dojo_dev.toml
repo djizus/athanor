@@ -1,0 +1,6 @@
+[world]
+name = "Athanor"
+seed = "athanor_0_1"
+
+[namespace]
+default = "athanor_0_1"
