@@ -1,22 +1,25 @@
 # Athanor
 
-**Onchain tactical dungeon crawler on Starknet.**
+**Onchain tactical RPG on Starknet.** Into the Breach meets Attack of the Astrals.
 
-Turn-based combat on an 8×8 isometric grid where stamina pays for both movement and abilities. Enemies follow simple deterministic rules — you can predict what they'll do, but you can't avoid everything. The tension between dodging telegraphed attacks and spending stamina on offense IS the game.
+Turn-based combat on an 8x8 isometric grid. Move into enemies to bump them into telegraphed danger zones. Spend stamina on movement and abilities. Kill enemies to gain bonus stamina and energy orbs. Clear 3 rooms to win.
 
-Built with [Dojo](https://www.dojoengine.org/) (Cairo contracts) and [Godot 4.6](https://godotengine.org/) (2D isometric client on [Godot-GameTemplate](https://github.com/nezvers/Godot-GameTemplate)).
+Built with [Dojo](https://www.dojoengine.org/) (Cairo contracts) and [Godot 4.5](https://godotengine.org/) (2D isometric pixel art client).
 
-> **Previous versions**: [3D PoC](../../tree/3d-approach) • [Game Jam VIII](../../tree/game-jam-viii)
+> **Previous versions**: [3D PoC](../../tree/3d-approach) | [Game Jam VIII](../../tree/game-jam-viii)
 
 ---
 
 ## Combat
 
-- **8×8 grid** with ~20 obstacle tiles creating cover and choke points
-- **Stamina** (100) is the universal currency — movement costs 10/tile, abilities cost 15-30
-- **5 abilities**: Strike (melee), Dash (line move+hit), Cleave (cone AOE), Fireball (radius AOE), Guard (damage reduction)
-- **Telegraph system**: enemy attacks show danger zones on turn N, damage resolves on turn N+1 — you get one full turn to reposition
-- **Deterministic enemy AI**: Melee Brute moves toward you, Ranged Caster keeps distance. All computed onchain. No randomness.
+- **8x8 isometric grid** with obstacle tiles per room
+- **Bump displacement**: move into an enemy to push them 1 tile — into danger zones, walls (5 collision damage), or other enemies
+- **Escalating stamina**: 80 base per turn, +10 on kill, +20 from energy orbs that drop at death locations
+- **5 abilities**: Strike (melee), Dash (line move+hit), Heal (self HP restore), Shove (push 2 tiles), Slam (AOE + push all adjacent)
+- **Telegraph system**: enemies show danger zones, damage resolves next turn. Turn order: PLAYER -> RESOLVE -> ENEMY
+- **5 enemy types**: Brute (chase + melee), Caster (kite + AOE), Flanker (backstab), Heavy (immovable, cross telegraph), Puller (forced movement)
+- **3-room progression**: escalating difficulty, HP carries between rooms
+- **Confirm/Reset**: preview your whole turn, undo freely, then commit
 
 ---
 
@@ -25,8 +28,8 @@ Built with [Dojo](https://www.dojoengine.org/) (Cairo contracts) and [Godot 4.6]
 | Layer | Technology |
 |-------|-----------|
 | Contracts | Cairo 2.15 + Dojo 1.8 |
-| Client | Godot 4.6 (GDScript, 2D isometric) |
-| Dojo SDK | [godot-dojo](https://github.com/lonewolftechnology/godot-dojo) v0.7.4 |
+| Client | Godot 4.5.2 (GDScript, 2D isometric, HTML5 export) |
+| Dojo SDK | [godot-dojo](https://github.com/dojoengine/dojo.godot) GDExtension |
 | Wallet | [Cartridge Controller](https://docs.cartridge.gg/controller/overview) |
 | Indexer | [Torii](https://book.dojoengine.org/toolchain/torii) |
 | Deployment | [Slot](https://docs.cartridge.gg/slot/overview) |
@@ -37,53 +40,50 @@ Built with [Dojo](https://www.dojoengine.org/) (Cairo contracts) and [Godot 4.6]
 
 ```
 athanor/
-├── contracts/src/
-│   ├── v2/
-│   │   ├── models/          RunState, RoomState, ActorState, AbilitySlotState, TelegraphState
-│   │   ├── events/          14 events (ActorMoved, TelegraphCreated, RoomCleared, etc.)
-│   │   ├── types/           Phase, Faction, Archetype, Ability, Direction, Shape enums
-│   │   ├── helpers/         u64 bitmap ops for 8×8 grid
-│   │   ├── systems/         actions_v2 + movement, abilities, telegraph, enemy_ai, phase
-│   │   ├── constants.cairo
-│   │   └── store.cairo
-│   ├── lib.cairo
-│   └── tests.cairo          16 tests
+├── contracts/src/v2/
+│   ├── models/          RunState, RoomState, ActorState, AbilitySlotState, TelegraphState
+│   ├── systems/         actions (main contract), movement, abilities, telegraph, enemy_ai, phase
+│   ├── types/           Phase, Faction, Archetype, Ability, Direction, Shape enums
+│   ├── helpers/         u64 bitmap ops for 8x8 grid
+│   ├── events/          14 event types
+│   ├── constants.cairo
+│   └── store.cairo
 ├── client/
-│   ├── addons/
-│   │   ├── great_games_library/   Template core (ValueResource, ResourceNode)
-│   │   └── top_down/              Template game systems (MoverTopDown2D, ArenaStarter, etc.)
 │   ├── scripts/
-│   │   ├── autoload/        dojo_bridge.gd, game_state.gd, audio_manager.gd
-│   │   ├── combat/          combat_manager, movement_constraint, telegraph_system,
-│   │   │                    enemy_visual, aoe_preview, debug_overlay
-│   │   ├── resources/       stamina_resource, combat_stats_resource, ability_resource
-│   │   ├── ui/              combat_hud
-│   │   ├── game_entry.gd    Main menu + auth + game flow
-│   │   ├── game_room.gd     Combat scene (builds 8×8 grid programmatically)
-│   │   └── auth_browser.gd  CEF embedded / external browser auth
+│   │   ├── combat/      combat_manager, combat_grid, turn_manager, grid_movement,
+│   │   │                ability_manager, ability_targeting, telegraph_system,
+│   │   │                bump_system, energy_orb_system, enemy_turn_resolver,
+│   │   │                room_sequencer, grid_cursor, grid_utils
+│   │   ├── combat/abilities/  ability_strike, ability_dash, ability_heal, ability_shove, ability_slam
+│   │   ├── combat/ai/        brute_ai, caster_ai, flanker_ai, heavy_ai, puller_ai
+│   │   ├── autoload/         dojo_bridge, dojo_integration, game_state
+│   │   ├── resources/        health_resource, stamina_resource, combat_stats_resource, ability_resource
+│   │   ├── ui/               combat_hud, game_result_screen
+│   │   ├── dungeon_room.gd   Room setup, enemy spawning, combat wiring
+│   │   ├── player.gd         WASD CharacterBody2D
+│   │   └── main_menu.gd      Menu + Dojo connect
+│   ├── scenes/          5 scenes (main_menu, dungeon_room, player, combat_hud, game_result_screen)
+│   ├── assets/images/   Character sprites (6), tileset PNGs
 │   └── project.godot
-├── docs/                    Domain spec, ABI spec, enemy rules, art spec
-├── scripts/                 deploy_dev.sh, deploy_slot.sh, qa_local.sh
-├── Scarb.toml
-├── dojo_v2.toml             Local dev profile
-├── dojo_slot.toml           Slot deployment profile
-├── setup.sh                 Installs godot-dojo + godot-cef addons
-├── .tool-versions           scarb 2.15.1, sozo 1.8.6
-└── PLAN.md
+├── scripts/             deploy_dev.sh, deploy_slot.sh, qa_local.sh
+├── dojo_dev.toml        Local dev profile (namespace: athanor_0_1)
+├── dojo_slot.toml       Slot deployment profile
+├── PLAN.md              Combat design document
+└── .tool-versions       scarb 2.15.1, sozo 1.8.6
 ```
 
 ---
 
 ## Prerequisites
 
-- [Dojo](https://book.dojoengine.org/getting-started) 1.8.0+ (`sozo`, `katana`, `torii`)
-- [Godot 4.6+](https://godotengine.org/download/)
-- [mise](https://mise.jdx.dev/) or [asdf](https://asdf-vm.com/) (reads `.tool-versions` for exact versions)
+- [Dojo](https://book.dojoengine.org/getting-started) 1.8+ (`sozo`, `katana`, `torii`)
+- [Godot 4.5+](https://godotengine.org/download/)
+- [mise](https://mise.jdx.dev/) or [asdf](https://asdf-vm.com/) (reads `.tool-versions`)
 
 ```bash
-mise install        # pins scarb 2.15.1, sozo 1.8.6
+mise install
 sozo --version      # sozo 1.8.x
-godot --version     # 4.6.x
+godot --version     # 4.5.x
 ```
 
 ---
@@ -91,22 +91,31 @@ godot --version     # 4.6.x
 ## Running Locally
 
 ```bash
-git clone git@github.com:djizus/athanor.git
-cd athanor && git checkout v2
+git clone git@github.com:djizus/athanor.git && cd athanor
 
-./setup.sh          # downloads godot-dojo + godot-cef addons
+# Build contracts
+sozo build
 
 # Terminal 1: local sequencer
-katana --dev --dev.no-fee --dev.no-account-validation
+katana --dev --dev.no-fee
 
-# Terminal 2: deploy + start indexer
+# Terminal 2: deploy + indexer
 ./scripts/deploy_dev.sh --with-torii
 
 # Terminal 3: launch game
 cd client && godot
 ```
 
-Local dev auto-detects `localhost` and uses a Katana burner account — no wallet setup needed. Click **Enter Dungeon** to start.
+The game works **fully offline** without Katana/Torii. Click **Enter Dungeon** to play immediately. Onchain integration activates when you click **Connect (Burner)**.
+
+### HTML5 Web Export
+
+```bash
+cd client
+godot --headless --export-release "Web" export/web/index.html
+python3 -m http.server 8090 --directory export/web
+# Open http://localhost:8090
+```
 
 ---
 
@@ -117,39 +126,39 @@ Local dev auto-detects `localhost` and uses a Katana burner account — no walle
 cd client && godot
 ```
 
-Click **Connect Wallet** → Cartridge Controller auth (passkey or social login) → **Enter Dungeon**.
+Click **Connect (Burner)** or use Cartridge Controller for wallet auth.
 
 ---
 
 ## Testing
 
 ```bash
-sozo test                     # 16 contract tests (spawn, move, abilities, telegraphs, AI, phases)
-./scripts/qa_local.sh        # E2E: deploy to katana + play full combat loop via sozo CLI
-./scripts/qa_local.sh --keep # keep stack running for manual inspection
+sozo test                     # Contract tests
+./scripts/qa_local.sh         # E2E: deploy + play via CLI
 ```
 
 ---
 
 ## Contract Actions
 
+Namespace: `athanor_0_1`
+
 | Action | Params | Purpose |
 |--------|--------|---------|
-| `spawn_v2` | `class_id` | Create run + player actor + 5 ability slots |
-| `enter_room_v2` | `game_id, room_id` | Enter room, spawn enemies, begin PlayerTurn |
-| `move_v2` | `game_id, x, y` | Move on grid (costs stamina = Manhattan distance × 10) |
-| `use_ability_v2` | `game_id, ability_id, target_mode, a, b` | Cast ability (Strike/Dash/Cleave/Fireball/Guard) |
-| `end_player_phase_v2` | `game_id` | End player turn → EnemyTurn |
-| `step_enemy_phase_v2` | `game_id` | Resolve telegraphs → enemy AI → new telegraphs → PlayerTurn |
+| `spawn` | `class_id` | Create run + player (100 HP, 80 stamina) + 5 ability slots |
+| `enter_room` | `game_id, room_id` | Enter room (0/1/2), spawn enemies, begin combat |
+| `move_action` | `game_id, x, y` | Move on grid (10 stamina/tile). Bump enemies on collision. |
+| `use_ability` | `game_id, ability_id, target_mode, a, b` | Strike/Dash/Heal/Shove/Slam |
+| `end_player_phase` | `game_id` | End player turn -> Resolve -> Enemy |
+| `step_enemy_phase` | `game_id` | Resolve telegraphs, enemy AI, new telegraphs, back to player |
 
-CLI example:
 ```bash
-sozo execute athanor_v2-actions_v2 spawn_v2 0 -P v2 --wait
-sozo execute athanor_v2-actions_v2 enter_room_v2 0 0 -P v2 --wait
-sozo execute athanor_v2-actions_v2 move_v2 0 2 1 -P v2 --wait
-sozo execute athanor_v2-actions_v2 use_ability_v2 0 0 0 1 0 -P v2 --wait  # Strike enemy 1
-sozo execute athanor_v2-actions_v2 end_player_phase_v2 0 -P v2 --wait
-sozo execute athanor_v2-actions_v2 step_enemy_phase_v2 0 -P v2 --wait
+sozo execute athanor_0_1-actions spawn 0 --wait
+sozo execute athanor_0_1-actions enter_room $GID 0 --wait
+sozo execute athanor_0_1-actions move_action $GID 2 1 --wait
+sozo execute athanor_0_1-actions use_ability $GID 0 0 1 0 --wait
+sozo execute athanor_0_1-actions end_player_phase $GID --wait
+sozo execute athanor_0_1-actions step_enemy_phase $GID --wait
 ```
 
 ---
@@ -157,18 +166,17 @@ sozo execute athanor_v2-actions_v2 step_enemy_phase_v2 0 -P v2 --wait
 ## Architecture
 
 ```
-┌─────────────┐     sozo execute      ┌──────────────┐
-│ Godot Client │ ──────────────────── │  Cairo/Dojo   │
-│              │     (burner CLI       │  Contracts    │
-│  game_entry  │      or Controller    │              │
-│  game_room   │      session)         │  actions_v2   │
-│  combat_*    │                       │  enemy_ai     │
-│  dojo_bridge │ ◄──── Torii gRPC ──── │  telegraph    │
-│  game_state  │     entity updates    │  movement     │
-└─────────────┘                       └──────────────┘
+┌──────────────┐                        ┌───────────────┐
+│ Godot Client │                        │  Cairo / Dojo │
+│              │   optimistic local     │               │
+│ dungeon_room │   play + submit on     │   actions     │
+│ combat_mgr   │   turn confirm ──────► │   enemy_ai    │
+│ dojo_bridge  │                        │   telegraph   │
+│ game_state   │ ◄── Torii subscription │   movement    │
+└──────────────┘    entity updates      └───────────────┘
 ```
 
-All game state lives onchain. The client is a pure renderer + input handler. Entity updates stream from Torii to `game_state.gd` which emits signals. Visual systems react to signals.
+Combat plays **locally first** (instant, responsive). On turn confirm, actions are batched and submitted to the chain. Torii subscriptions sync onchain state back for verification. The game is fully playable offline.
 
 ---
 
