@@ -1,159 +1,37 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=2 format=3]
 
 [ext_resource type="Script" path="res://scripts/main_menu.gd" id="1"]
-[ext_resource type="Texture2D" path="res://assets/branding/logo-in-game-gold.png" id="logo"]
 
 [node name="MainMenu" type="Control"]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
 script = ExtResource("1")
 
-[node name="Backdrop" type="ColorRect" parent="."]
+[node name="VBox" type="VBoxContainer" parent="."]
 layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-color = Color(0.059, 0.067, 0.09, 1)
-
-[node name="Center" type="CenterContainer" parent="."]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -80.0
+offset_top = -40.0
+offset_right = 80.0
+offset_bottom = 40.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Panel" type="PanelContainer" parent="Center"]
-custom_minimum_size = Vector2(540, 470)
+[node name="Title" type="Label" parent="VBox"]
 layout_mode = 2
-
-[node name="VBox" type="VBoxContainer" parent="Center/Panel"]
-layout_mode = 2
-theme_override_constants/separation = 14
-
-[node name="Logo" type="TextureRect" parent="Center/Panel/VBox"]
-unique_name_in_owner = true
-layout_mode = 2
-texture = ExtResource("logo")
-expand_mode = 3
-stretch_mode = 5
-custom_minimum_size = Vector2(0, 100)
-
-[node name="Title" type="Label" parent="Center/Panel/VBox"]
-layout_mode = 2
-theme_type_variation = &"HeaderLabel"
-horizontal_alignment = 1
 text = "ATHANOR"
-
-[node name="StatusLabel" type="Label" parent="Center/Panel/VBox"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"SubtitleLabel"
 horizontal_alignment = 1
-autowrap_mode = 2
-text = "Walk the room, enter the arena, survive tactical combat."
 
-[node name="SpawnButton" type="Button" parent="Center/Panel/VBox"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 46)
+[node name="EnterDungeon" type="Button" parent="VBox"]
 layout_mode = 2
 text = "Enter Dungeon"
 
-[node name="QuitButton" type="Button" parent="Center/Panel/VBox"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 42)
+[node name="Quit" type="Button" parent="VBox"]
 layout_mode = 2
 text = "Quit"
-
-[node name="SettingsButton" type="Button" parent="."]
-layout_mode = 1
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -50.0
-offset_top = 8.0
-offset_right = -8.0
-offset_bottom = 50.0
-text = "⚙"
-theme_override_font_sizes/font_size = 22
-
-[node name="SettingsPanel" type="PanelContainer" parent="."]
-unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -280.0
-offset_top = 56.0
-offset_right = -8.0
-offset_bottom = 420.0
-visible = false
-
-[node name="SettingsVBox" type="VBoxContainer" parent="SettingsPanel"]
-layout_mode = 2
-theme_override_constants/separation = 10
-
-[node name="SettingsTitle" type="Label" parent="SettingsPanel/SettingsVBox"]
-layout_mode = 2
-theme_type_variation = &"HeaderLabel"
-text = "Settings"
-
-[node name="MusicRow" type="HBoxContainer" parent="SettingsPanel/SettingsVBox"]
-layout_mode = 2
-
-[node name="MusicToggle" type="CheckButton" parent="SettingsPanel/SettingsVBox/MusicRow"]
-unique_name_in_owner = true
-layout_mode = 2
-button_pressed = true
-text = "Music"
-
-[node name="MusicSlider" type="HSlider" parent="SettingsPanel/SettingsVBox/MusicRow"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-min_value = 0.0
-max_value = 1.0
-step = 0.05
-value = 0.8
-
-[node name="SfxRow" type="HBoxContainer" parent="SettingsPanel/SettingsVBox"]
-layout_mode = 2
-
-[node name="SfxToggle" type="CheckButton" parent="SettingsPanel/SettingsVBox/SfxRow"]
-unique_name_in_owner = true
-layout_mode = 2
-button_pressed = true
-text = "SFX"
-
-[node name="SfxSlider" type="HSlider" parent="SettingsPanel/SettingsVBox/SfxRow"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-min_value = 0.0
-max_value = 1.0
-step = 0.05
-value = 1.0
-
-[node name="KeybindTitle" type="Label" parent="SettingsPanel/SettingsVBox"]
-layout_mode = 2
-theme_type_variation = &"SubtitleLabel"
-text = "Movement Keybinds"
-
-[node name="KeybindContainer" type="VBoxContainer" parent="SettingsPanel/SettingsVBox"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_constants/separation = 4
-
-[connection signal="pressed" from="Center/Panel/VBox/SpawnButton" to="." method="_on_spawn_button_pressed"]
-[connection signal="pressed" from="Center/Panel/VBox/QuitButton" to="." method="_on_quit_button_pressed"]
-[connection signal="pressed" from="SettingsButton" to="." method="_on_settings_button_pressed"]
-[connection signal="value_changed" from="SettingsPanel/SettingsVBox/MusicRow/MusicSlider" to="." method="_on_music_slider_changed"]
-[connection signal="value_changed" from="SettingsPanel/SettingsVBox/SfxRow/SfxSlider" to="." method="_on_sfx_slider_changed"]
-[connection signal="toggled" from="SettingsPanel/SettingsVBox/MusicRow/MusicToggle" to="." method="_on_music_toggle_toggled"]
-[connection signal="toggled" from="SettingsPanel/SettingsVBox/SfxRow/SfxToggle" to="." method="_on_sfx_toggle_toggled"]
