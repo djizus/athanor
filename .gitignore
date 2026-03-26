@@ -37,6 +37,17 @@ node_modules/
 scripts/generate-assets/output/
 scripts/generate-assets/node_modules/
 
+# Screenshots & QA captures
+screenshots/
+screenshot_*.png
+test_*.png
+
+# Godot export output
+client/export/
+
+# Old v1 client (local artifact)
+client_v1/
+
 # Agent state
 .claude/
 .agents/
