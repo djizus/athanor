@@ -10,6 +10,12 @@ config/name="Athanor"
 run/main_scene="res://scenes/main_menu.tscn"
 config/features=PackedStringArray("4.5", "Forward Plus")
 
+[autoload]
+
+GameState="*res://scripts/autoload/game_state.gd"
+DojoBridge="*res://scripts/autoload/dojo_bridge.gd"
+DojoIntegration="*res://scripts/autoload/dojo_integration.gd"
+
 [display]
 
 window/size/viewport_width=480

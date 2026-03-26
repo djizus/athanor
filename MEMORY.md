@@ -76,3 +76,8 @@
 - `CombatGrid` obstacle visualization works cleanly with a dedicated `set_obstacles(cells:Array[Vector2i])` API and drawing obstacle diamonds immediately after base walkable tiles but before movement/ability/danger overlays.
 - For overlay-vs-sprite layering, setting spawned combat actor roots (`player`, `enemy Node2D`) to `z_index = 10` reliably keeps sprites above `CombatGrid` `_draw()` content.
 - ProgressBar theming for HP/stamina is reliable when applied in script with `add_theme_stylebox_override("background"/"fill")`; this avoids scene/theme inheritance issues where bars render gray.
+
+## 2026-03-26 — Dojo v2 bridge wiring notes
+
+- `offline` branch did not contain `client/scripts/autoload/dojo_bridge.gd`; recreating it from `3d-approach` and then swapping to `athanor_v2-*` model/action names was the fastest safe path while preserving Controller + burner + sozo fallback flows.
+- Keep Dojo integration optional by default (`DojoIntegration.set_enabled(false)` in menu) and only enable after explicit connect; this preserves fully offline gameplay while letting turn submissions run fire-and-forget when connected.

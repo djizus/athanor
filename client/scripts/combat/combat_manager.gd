@@ -257,6 +257,7 @@ func confirm_turn() -> void:
 		return
 	if turn_manager.phase != CombatEnums.Phase.PLAYER_TURN:
 		return
+	DojoIntegration.submit_turn()
 	turn_manager.end_player_turn()
 
 func reset_turn() -> void:
@@ -494,6 +495,14 @@ func _on_ability_used(ability:AbilityResource, target_data:Dictionary) -> void:
 	if !did_execute:
 		return
 
+	var dojo_payload: Dictionary = _build_dojo_ability_payload(ability, target_data)
+	DojoIntegration.record_ability(
+		int(ability.ability_id),
+		int(dojo_payload.get("mode", 0)),
+		int(dojo_payload.get("a", 0)),
+		int(dojo_payload.get("b", 0))
+	)
+
 	_sync_enemy_positions_from_data()
 	_process_enemy_deaths()
 	_refresh_grid_state()
@@ -504,6 +513,7 @@ func _on_ability_used(ability:AbilityResource, target_data:Dictionary) -> void:
 
 func _on_move_completed(from:Vector2i, to:Vector2i) -> void:
 	grid_state["player_last_move_dir"] = _direction_to(from, to)
+	DojoIntegration.record_move(to.x, to.y)
 
 	var collided_enemy:Dictionary = _find_enemy_at_cell(to)
 	if !collided_enemy.is_empty() && bump_system != null:
@@ -859,6 +869,18 @@ func _flash_screen() -> void:
 	tween.tween_property(rect, "color:a", 0.25, 0.05)
 	tween.tween_property(rect, "color:a", 0.0, 0.16)
 	tween.tween_callback(flash_layer.queue_free)
+
+func _build_dojo_ability_payload(ability: AbilityResource, target_data: Dictionary) -> Dictionary:
+	var target_cell: Vector2i = target_data.get("target_cell", player.get("combat_stats").grid_pos)
+	var mode: int = 0
+	if int(ability.ability_id) == CombatEnums.AbilityID.HEAL:
+		target_cell = player.get("combat_stats").grid_pos
+		mode = 1
+	return {
+		"mode": mode,
+		"a": target_cell.x,
+		"b": target_cell.y,
+	}
 
 func _focus_camera_to_grid() -> void:
 	if combat_grid == null:
