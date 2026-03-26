@@ -51,9 +51,9 @@ func _run_combat_loop() -> void:
 			break
 
 		# RESOLVE: telegraphs fire, deaths processed
+		turn_count += 1
 		_set_phase(CombatEnums.Phase.RESOLVE)
 		resolve_started.emit()
-		turn_count += 1
 
 		if _check_combat_end():
 			break
