@@ -1,0 +1,203 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/combat_hud.gd" id="1_hud"]
+
+[node name="CombatHUD" type="CanvasLayer"]
+layer = 10
+script = ExtResource("1_hud")
+
+[node name="TopLeft" type="VBoxContainer" parent="."]
+offset_left = 2.0
+offset_top = 2.0
+offset_right = 72.0
+offset_bottom = 22.0
+
+[node name="PhaseIndicator" type="Label" parent="TopLeft"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 5
+text = "YOUR TURN"
+
+[node name="HPBar" type="ProgressBar" parent="TopLeft"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(68, 3)
+max_value = 100.0
+value = 100.0
+show_percentage = false
+
+[node name="StaminaBar" type="ProgressBar" parent="TopLeft"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(68, 3)
+max_value = 100.0
+value = 100.0
+show_percentage = false
+
+[node name="TurnCounter" type="Label" parent="."]
+unique_name_in_owner = true
+offset_left = 430.0
+offset_top = 2.0
+offset_right = 478.0
+offset_bottom = 12.0
+theme_override_font_sizes/font_size = 5
+text = "Turn 1"
+horizontal_alignment = 2
+
+[node name="BottomBar" type="HBoxContainer" parent="."]
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -14.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="AbilityBar" type="HBoxContainer" parent="BottomBar"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Strike" type="Button" parent="BottomBar/AbilityBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(40, 12)
+theme_override_font_sizes/font_size = 5
+text = "1:Strike 20"
+
+[node name="CooldownOverlay" type="ColorRect" parent="BottomBar/AbilityBar/Strike"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.6)
+mouse_filter = 2
+
+[node name="CooldownLabel" type="Label" parent="BottomBar/AbilityBar/Strike/CooldownOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_font_sizes/font_size = 5
+text = "CD"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Dash" type="Button" parent="BottomBar/AbilityBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(40, 12)
+theme_override_font_sizes/font_size = 5
+text = "2:Dash 25"
+
+[node name="CooldownOverlay" type="ColorRect" parent="BottomBar/AbilityBar/Dash"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.6)
+mouse_filter = 2
+
+[node name="CooldownLabel" type="Label" parent="BottomBar/AbilityBar/Dash/CooldownOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_font_sizes/font_size = 5
+text = "CD"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Heal" type="Button" parent="BottomBar/AbilityBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(40, 12)
+theme_override_font_sizes/font_size = 5
+text = "3:Heal 25"
+
+[node name="CooldownOverlay" type="ColorRect" parent="BottomBar/AbilityBar/Heal"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.6)
+mouse_filter = 2
+
+[node name="CooldownLabel" type="Label" parent="BottomBar/AbilityBar/Heal/CooldownOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_font_sizes/font_size = 5
+text = "CD"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Shove" type="Button" parent="BottomBar/AbilityBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(40, 12)
+theme_override_font_sizes/font_size = 5
+text = "4:Shove 20"
+
+[node name="CooldownOverlay" type="ColorRect" parent="BottomBar/AbilityBar/Shove"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.6)
+mouse_filter = 2
+
+[node name="CooldownLabel" type="Label" parent="BottomBar/AbilityBar/Shove/CooldownOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_font_sizes/font_size = 5
+text = "CD"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Slam" type="Button" parent="BottomBar/AbilityBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(40, 12)
+theme_override_font_sizes/font_size = 5
+text = "5:Slam 35"
+
+[node name="CooldownOverlay" type="ColorRect" parent="BottomBar/AbilityBar/Slam"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.6)
+mouse_filter = 2
+
+[node name="CooldownLabel" type="Label" parent="BottomBar/AbilityBar/Slam/CooldownOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_font_sizes/font_size = 5
+text = "CD"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ResetButton" type="Button" parent="BottomBar"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(28, 12)
+theme_override_font_sizes/font_size = 5
+text = "Reset"
+
+[node name="ConfirmButton" type="Button" parent="BottomBar"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(36, 12)
+theme_override_font_sizes/font_size = 5
+text = "Confirm"

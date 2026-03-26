@@ -6,12 +6,11 @@ signal tx_submitted(action: String)
 signal tx_failed(action: String, reason: String)
 signal auth_url_ready(url: String)
 
-const CHARACTER_MODEL := "athanor-Character"
-const DUNGEON_MODEL := "athanor-Dungeon"
-const FIGHT_MODEL := "athanor-Fight"
-const PLAYER_STATE_MODEL := "athanor-PlayerState"
-const DIRECTION_LEFT := 0
-const DIRECTION_RIGHT := 1
+const RUN_STATE_MODEL := "athanor_0_1-RunState"
+const ROOM_STATE_MODEL := "athanor_0_1-RoomState"
+const ACTOR_STATE_MODEL := "athanor_0_1-ActorState"
+const ABILITY_SLOT_MODEL := "athanor_0_1-AbilitySlotState"
+const TELEGRAPH_MODEL := "athanor_0_1-TelegraphState"
 
 @export var torii_url := "http://localhost:8080"
 @export var rpc_url := "http://localhost:5050"
@@ -42,10 +41,11 @@ var full_policies: Dictionary:
 			actions_address: {
 				"methods": [
 					{"entrypoint": "spawn"},
-					{"entrypoint": "choose"},
-					{"entrypoint": "start"},
-					{"entrypoint": "cast"},
-					{"entrypoint": "finish"}
+					{"entrypoint": "enter_room"},
+					{"entrypoint": "move_action"},
+					{"entrypoint": "use_ability"},
+					{"entrypoint": "end_player_phase"},
+					{"entrypoint": "step_enemy_phase"}
 				]
 			}
 		}
@@ -232,25 +232,27 @@ func pull_entities_snapshot() -> void:
 	push_warning("[dojo_bridge] Snapshot: %d entities returned" % items.size())
 	for entity in items:
 		if entity is Dictionary:
-			push_warning("[dojo_bridge] Entity: %s" % str(entity).left(300))
 			_handle_entity_payload(entity)
 
 # --- Game actions ---
 
-func spawn(class_id: int = 0) -> void:
-	_execute_action("spawn", [class_id])
+func spawn() -> void:
+	_execute_action("spawn", [0])
 
-func choose(game_id: int, direction: int) -> void:
-	_execute_action("choose", [_resolve_game_id(game_id), direction])
+func enter_room(game_id: int, room_id: int) -> void:
+	_execute_action("enter_room", [_resolve_game_id(game_id), room_id])
 
-func start(game_id: int) -> void:
-	_execute_action("start", [_resolve_game_id(game_id)])
+func move_action(game_id: int, target_x: int, target_y: int) -> void:
+	_execute_action("move_action", [_resolve_game_id(game_id), target_x, target_y])
 
-func cast(game_id: int, mob_id: int, skill_id: int) -> void:
-	_execute_action("cast", [_resolve_game_id(game_id), mob_id, skill_id])
+func use_ability(game_id: int, ability_id: int, target_mode: int, target_a: int, target_b: int) -> void:
+	_execute_action("use_ability", [_resolve_game_id(game_id), ability_id, target_mode, target_a, target_b])
 
-func finish(game_id: int) -> void:
-	_execute_action("finish", [_resolve_game_id(game_id)])
+func end_player_phase(game_id: int) -> void:
+	_execute_action("end_player_phase", [_resolve_game_id(game_id)])
+
+func step_enemy_phase(game_id: int) -> void:
+	_execute_action("step_enemy_phase", [_resolve_game_id(game_id)])
 
 # --- Internals ---
 
@@ -262,16 +264,16 @@ func _create_entity_subscription() -> void:
 		return
 	callback.set("on_update", Callable(self, "_on_entities"))
 
-	# Use KeysClause with our model names so Torii streams matching entity updates
+	# Use KeysClause with v2 model names so Torii streams matching entity updates.
 	var clause: Variant = null
 	if ClassDB.class_exists("KeysClause"):
 		clause = ClassDB.instantiate("KeysClause")
-		clause.call("add_model", CHARACTER_MODEL)
-		clause.call("add_model", DUNGEON_MODEL)
-		clause.call("add_model", FIGHT_MODEL)
-		clause.call("add_model", PLAYER_STATE_MODEL)
+		clause.call("add_model", RUN_STATE_MODEL)
+		clause.call("add_model", ROOM_STATE_MODEL)
+		clause.call("add_model", ACTOR_STATE_MODEL)
+		clause.call("add_model", ABILITY_SLOT_MODEL)
+		clause.call("add_model", TELEGRAPH_MODEL)
 		clause.call("pattern", 2)  # VariableLen
-		push_warning("[dojo_bridge] Subscribing with KeysClause: %s, %s, %s" % [CHARACTER_MODEL, DUNGEON_MODEL, FIGHT_MODEL])
 	else:
 		clause = _instantiate_dojo_class("DojoClause")
 		if clause == null:
@@ -281,7 +283,6 @@ func _create_entity_subscription() -> void:
 	push_warning("[dojo_bridge] Entity subscription ID: %d" % entity_subscription_id)
 
 func _on_entities(args: Dictionary) -> void:
-	push_warning("[dojo_bridge] SUBSCRIPTION entity update: %s" % str(args).left(500))
 	_handle_entity_payload(args)
 
 func _handle_entity_payload(payload: Dictionary) -> void:
@@ -289,83 +290,20 @@ func _handle_entity_payload(payload: Dictionary) -> void:
 	if models.is_empty():
 		return
 
-	# Parse PlayerState first to learn latest game_id
-	if models.has(PLAYER_STATE_MODEL):
-		var ps := _normalize_model(models[PLAYER_STATE_MODEL])
-		if _matches_current_player(ps):
-			var game_count := int(ps.get("game_count", 0))
-			if game_count > game_state.latest_game_id:
-				game_state.set_latest_game_id(game_count)
+	if models.has(RUN_STATE_MODEL):
+		var run_model: Dictionary = _normalize_model(models[RUN_STATE_MODEL])
+		if _matches_current_player(run_model):
+			GameState.update_run(run_model)
 
-	# Determine which game_id to accept for current state
-	var target_gid := game_state.latest_game_id
+	if models.has(ROOM_STATE_MODEL):
+		var room_model: Dictionary = _normalize_model(models[ROOM_STATE_MODEL])
+		if _matches_current_player(room_model):
+			GameState.update_room(room_model)
 
-	if models.has(CHARACTER_MODEL):
-		var character_model := _normalize_model(models[CHARACTER_MODEL])
-		if _matches_current_player(character_model):
-			var gid := int(character_model.get("game_id", -1))
-			if gid >= target_gid and gid > 0:
-				if gid > target_gid:
-					game_state.set_latest_game_id(gid)
-				game_state.update_character(character_model)
-			elif gid > 0:
-				_store_historical_character(character_model)
-
-	if models.has(DUNGEON_MODEL):
-		var dungeon_model := _normalize_model(models[DUNGEON_MODEL])
-		if _matches_current_player(dungeon_model):
-			var gid := int(dungeon_model.get("game_id", -1))
-			if gid >= game_state.latest_game_id and gid > 0:
-				game_state.update_dungeon(dungeon_model)
-			elif gid > 0:
-				_store_historical_dungeon(dungeon_model)
-
-	if models.has(FIGHT_MODEL):
-		var fight_model := _normalize_model(models[FIGHT_MODEL])
-		if _matches_current_player(fight_model):
-			var gid := int(fight_model.get("game_id", -1))
-			if gid == target_gid:
-				var current_zone := int(game_state.character.get("current_zone", -1))
-				var fight_zone := int(fight_model.get("zone_id", -2))
-				if current_zone < 0 or fight_zone == current_zone:
-					game_state.update_fight(fight_model)
-
-# Build historical run entries from old game data
-var _history_chars := {}  # game_id → character dict
-var _history_dungeons := {}  # game_id → dungeon dict
-
-func _store_historical_character(model: Dictionary) -> void:
-	var gid := int(model.get("game_id", -1))
-	if gid < 0:
-		return
-	_history_chars[gid] = model
-	_flush_history(gid)
-
-func _store_historical_dungeon(model: Dictionary) -> void:
-	var gid := int(model.get("game_id", -1))
-	if gid < 0:
-		return
-	_history_dungeons[gid] = model
-	_flush_history(gid)
-
-func _flush_history(gid: int) -> void:
-	if not _history_chars.has(gid) or not _history_dungeons.has(gid):
-		return
-	var ch: Dictionary = _history_chars[gid]
-	var dg: Dictionary = _history_dungeons[gid]
-	var status := "In Progress"
-	if bool(dg.get("completed", false)):
-		status = "Completed"
-	elif bool(dg.get("failed", false)):
-		status = "Failed"
-	elif int(ch.get("health", 0)) <= 0:
-		status = "Failed"
-	game_state.add_historical_run({
-		"game_id": gid,
-		"character": ch,
-		"dungeon": dg,
-		"status": status,
-	})
+	if models.has(ACTOR_STATE_MODEL):
+		var actor_model: Dictionary = _normalize_model(models[ACTOR_STATE_MODEL])
+		if _matches_current_player(actor_model):
+			GameState.upsert_actor(actor_model)
 
 func _normalize_model(model: Dictionary) -> Dictionary:
 	var normalized := model.duplicate(true)
@@ -426,7 +364,7 @@ func _execute_action(entrypoint: String, calldata: Array) -> void:
 func _resolve_game_id(game_id: int) -> int:
 	if game_id >= 0:
 		return game_id
-	return game_state.get_game_id()
+	return GameState.get_game_id()
 
 var _poll_timer: Timer = null
 

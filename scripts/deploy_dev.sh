@@ -1,23 +1,30 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Deploy Athanor contracts to local Katana and update Godot project.godot
+# Deploy Athanor v2 contracts to local Katana and update client config
 #
 # Prerequisites:
-#   1. katana --dev --dev.no-fee  (running in another terminal)
-#   2. torii (optional, for entity sync)
-#   3. jq installed
+#   1. katana --dev --dev.no-fee --dev.no-account-validation  (running)
+#   2. jq installed
 #
 # Usage:
-#   ./scripts/deploy_dev.sh
+#   ./scripts/deploy_dev.sh              # Build, migrate, update client, print torii cmd
+#   ./scripts/deploy_dev.sh --with-torii # Also start torii in background
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-MANIFEST="$ROOT_DIR/manifest_dev.json"
-PROJECT_GODOT="$ROOT_DIR/client/project.godot"
-DOJO_TOML="$ROOT_DIR/dojo_dev.toml"
-PROFILE="dev"
-NAMESPACE="athanor"
+PROFILE="v2"
+NAMESPACE="athanor_0_1"
+CONTRACT_TAG="${NAMESPACE}-actions"
+MANIFEST="$ROOT_DIR/manifest_v2.json"
+DOJO_BRIDGE="$ROOT_DIR/client/scripts/autoload/dojo_bridge.gd"
+START_TORII=false
+
+for arg in "$@"; do
+    case $arg in
+        --with-torii) START_TORII=true ;;
+    esac
+done
 
 # --- Colors ---
 RED='\033[0;31m'
@@ -33,22 +40,16 @@ err()   { echo -e "${RED}[x]${NC} $*" >&2; }
 command -v sozo >/dev/null 2>&1 || { err "sozo not found. Install dojo toolchain."; exit 1; }
 command -v jq >/dev/null 2>&1   || { err "jq not found. Install jq."; exit 1; }
 
-if [ ! -f "$PROJECT_GODOT" ]; then
-    err "client/project.godot not found at $PROJECT_GODOT"
-    exit 1
-fi
-
-# Check Katana is running
 if ! curl -s -o /dev/null -w '' http://localhost:5050 2>/dev/null; then
     err "Katana not reachable at localhost:5050. Start it first:"
-    err "  katana --dev --dev.no-fee"
+    err "  katana --dev --dev.no-fee --dev.no-account-validation"
     exit 1
 fi
 
 # --- Build & Migrate ---
-info "Building contracts..."
+info "Building contracts (profile: $PROFILE)..."
 cd "$ROOT_DIR"
-sozo build 2>&1
+sozo build -P "$PROFILE" 2>&1
 
 info "Migrating contracts (profile: $PROFILE)..."
 MIGRATE_OUTPUT=$(sozo migrate -P "$PROFILE" 2>&1) || {
@@ -56,7 +57,7 @@ MIGRATE_OUTPUT=$(sozo migrate -P "$PROFILE" 2>&1) || {
     echo "$MIGRATE_OUTPUT"
     exit 1
 }
-echo "$MIGRATE_OUTPUT"
+echo "$MIGRATE_OUTPUT" | tail -3
 info "Migration complete."
 
 # --- Parse manifest ---
@@ -66,48 +67,59 @@ if [ ! -f "$MANIFEST" ]; then
 fi
 
 WORLD_ADDRESS=$(jq -r '.world.address // empty' "$MANIFEST")
-ACTIONS_ADDRESS=$(jq -r ".contracts[] | select(.tag == \"${NAMESPACE}-actions\") | .address // empty" "$MANIFEST")
+ACTIONS_ADDRESS=$(jq -r ".contracts[] | select(.tag == \"${CONTRACT_TAG}\") | .address // empty" "$MANIFEST")
 
 if [ -z "$WORLD_ADDRESS" ]; then
     err "Could not extract world_address from manifest"
     exit 1
 fi
 if [ -z "$ACTIONS_ADDRESS" ]; then
-    err "Could not extract actions_address from manifest (tag: ${NAMESPACE}-actions)"
-    exit 1
+    warn "Could not extract actions_address (tag: ${CONTRACT_TAG}) — trying fallback"
+    ACTIONS_ADDRESS=$(jq -r '.contracts[-1].address // empty' "$MANIFEST")
 fi
 
 info "world_address:   $WORLD_ADDRESS"
 info "actions_address: $ACTIONS_ADDRESS"
 
-# --- Read dev account from dojo_dev.toml ---
-ACCOUNT_ADDRESS=""
-PRIVATE_KEY=""
-if [ -f "$DOJO_TOML" ]; then
-    ACCOUNT_ADDRESS=$(grep '^account_address' "$DOJO_TOML" | head -1 | sed 's/.*= *"\(.*\)"/\1/')
-    PRIVATE_KEY=$(grep '^private_key' "$DOJO_TOML" | head -1 | sed 's/.*= *"\(.*\)"/\1/')
+# --- Update dojo_bridge.gd defaults ---
+if [ -f "$DOJO_BRIDGE" ]; then
+    info "Updating dojo_bridge.gd with deployed addresses..."
+    sed -i "s|@export var world_address := \"0x[0-9a-fA-F]*\"|@export var world_address := \"$WORLD_ADDRESS\"|" "$DOJO_BRIDGE"
+    sed -i "s|@export var actions_address := \"0x[0-9a-fA-F]*\"|@export var actions_address := \"$ACTIONS_ADDRESS\"|" "$DOJO_BRIDGE"
+    info "dojo_bridge.gd updated."
+else
+    warn "dojo_bridge.gd not found at $DOJO_BRIDGE — skipping address injection"
 fi
 
-if [ -z "$ACCOUNT_ADDRESS" ] || [ -z "$PRIVATE_KEY" ]; then
-    warn "Could not read dev account from dojo_dev.toml — project.godot account fields unchanged"
+# --- Torii ---
+if [ "$START_TORII" = true ]; then
+    command -v torii >/dev/null 2>&1 || { err "torii not found"; exit 1; }
+    info "Starting Torii..."
+    torii --world "$WORLD_ADDRESS" --rpc http://localhost:5050 &
+    TORII_PID=$!
+    sleep 2
+    if kill -0 "$TORII_PID" 2>/dev/null; then
+        info "Torii running (PID: $TORII_PID)"
+        info "  GraphQL: http://localhost:8080/graphql"
+    else
+        err "Torii failed to start"
+    fi
 fi
 
-# --- Update project.godot ---
-info "Updating client/project.godot..."
-
-# Replace config values using sed (match the existing key=value pattern)
-sed -i "s|config/world_address=.*|config/world_address=\"$WORLD_ADDRESS\"|" "$PROJECT_GODOT"
-sed -i "s|config/actions_address=.*|config/actions_address=\"$ACTIONS_ADDRESS\"|" "$PROJECT_GODOT"
-
-if [ -n "$ACCOUNT_ADDRESS" ] && [ -n "$PRIVATE_KEY" ]; then
-    sed -i "s|config/account/address=.*|config/account/address=\"$ACCOUNT_ADDRESS\"|" "$PROJECT_GODOT"
-    sed -i "s|config/account/private_key=.*|config/account/private_key=\"$PRIVATE_KEY\"|" "$PROJECT_GODOT"
-    info "account_address: $ACCOUNT_ADDRESS"
-fi
-
-# --- Start Torii hint ---
-info "Done! To start Torii:"
+# --- Done ---
 echo ""
-echo "  torii --world $WORLD_ADDRESS --rpc http://localhost:5050"
+info "Deploy complete!"
 echo ""
-info "Then launch Godot — burner account will auto-connect."
+echo "  World:   $WORLD_ADDRESS"
+echo "  Actions: $ACTIONS_ADDRESS"
+echo ""
+if [ "$START_TORII" = false ]; then
+    echo "  Start Torii:"
+    echo "    torii --world $WORLD_ADDRESS --rpc http://localhost:5050"
+    echo ""
+fi
+echo "  Launch Godot:"
+echo "    cd client && godot"
+echo ""
+echo "  QA script:"
+echo "    ./scripts/qa_local.sh --keep"

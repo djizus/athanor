@@ -1,7 +1,7 @@
 [world]
-name = "Athanor"
-description = "Onchain tactical dungeon crawler"
-seed = "athanor"
+name = "Athanor v2"
+description = "Onchain tactical dungeon crawler — grid-based combat with telegraphed attacks"
+seed = "athanor_0_1"
 
 [env]
 rpc_url = "https://api.cartridge.gg/x/athanor-djizus-slot/katana"
@@ -9,7 +9,7 @@ account_address = "0x127fd5f1fe78a71f8bcd1fec63e3fe2f0486b6ecd5c86a0466c3a21fa5c
 private_key = "0xc5b2fcab997346f3ea1c00b002ecf6f382c5f9c9659a3894eb783c5320f912"
 
 [namespace]
-default = "athanor"
+default = "athanor_0_1"
 
 [writers]
-"athanor" = ["athanor-actions"]
+"athanor_0_1" = ["athanor_0_1-actions"]

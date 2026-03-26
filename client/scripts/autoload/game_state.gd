@@ -1,84 +1,53 @@
 extends Node
 
-signal character_updated(character: Dictionary)
-signal dungeon_updated(dungeon: Dictionary)
-signal fight_updated(fight: Dictionary)
-signal game_over(completed: bool, failed: bool)
-signal history_updated()
+signal run_updated(run: Dictionary)
+signal room_updated(room: Dictionary)
+signal actor_updated(actor: Dictionary)
 
-var character: Dictionary = {}
-var dungeon: Dictionary = {}
-var fight: Dictionary = {}
-
-# Latest game_id from PlayerState.game_count
-var latest_game_id: int = -1
-
-# History of past runs: Array of {game_id, character, dungeon, status}
-var past_runs: Array[Dictionary] = []
+var run_state: Dictionary = {}
+var room_state: Dictionary = {}
+var actors: Dictionary = {}
+var current_game_id: int = -1
 
 func reset() -> void:
-	character = {}
-	dungeon = {}
-	fight = {}
-	character_updated.emit(character)
-	dungeon_updated.emit(dungeon)
-	fight_updated.emit(fight)
+	run_state = {}
+	room_state = {}
+	actors = {}
+	current_game_id = -1
+	run_updated.emit(run_state)
+	room_updated.emit(room_state)
 
-func set_latest_game_id(game_id: int) -> void:
-	latest_game_id = game_id
+func set_current_game_id(game_id: int) -> void:
+	current_game_id = game_id
 
-func add_historical_run(run: Dictionary) -> void:
-	var gid := int(run.get("game_id", -1))
-	if gid < 0:
-		return
-	# Replace existing or append
-	for i in range(past_runs.size()):
-		if int(past_runs[i].get("game_id", -1)) == gid:
-			past_runs[i] = run
-			history_updated.emit()
-			return
-	past_runs.append(run)
-	# Sort by game_id descending (newest first)
-	past_runs.sort_custom(func(a, b): return int(a.get("game_id", 0)) > int(b.get("game_id", 0)))
-	history_updated.emit()
+func update_run(next_run: Dictionary) -> void:
+	run_state = next_run.duplicate(true)
+	if run_state.has("game_id"):
+		current_game_id = int(run_state.get("game_id", current_game_id))
+	run_updated.emit(run_state)
 
-func update_character(next_character: Dictionary) -> void:
-	character = next_character.duplicate(true)
-	character_updated.emit(character)
-	_emit_game_over_if_needed()
+func update_room(next_room: Dictionary) -> void:
+	room_state = next_room.duplicate(true)
+	if room_state.has("game_id"):
+		current_game_id = int(room_state.get("game_id", current_game_id))
+	room_updated.emit(room_state)
 
-func update_dungeon(next_dungeon: Dictionary) -> void:
-	dungeon = next_dungeon.duplicate(true)
-	dungeon_updated.emit(dungeon)
-	_emit_game_over_if_needed()
-
-func update_fight(next_fight: Dictionary) -> void:
-	fight = next_fight.duplicate(true)
-	fight_updated.emit(fight)
+func upsert_actor(next_actor: Dictionary) -> void:
+	var actor_copy: Dictionary = next_actor.duplicate(true)
+	if actor_copy.has("game_id"):
+		current_game_id = int(actor_copy.get("game_id", current_game_id))
+	var actor_id: int = int(actor_copy.get("actor_id", -1))
+	if actor_id < 0:
+		actor_id = int(actor_copy.get("id", -1))
+	if actor_id >= 0:
+		actors[actor_id] = actor_copy
+	actor_updated.emit(actor_copy)
 
 func get_game_id() -> int:
-	if character.has("game_id"):
-		return int(character["game_id"])
-	if dungeon.has("game_id"):
-		return int(dungeon["game_id"])
-	if fight.has("game_id"):
-		return int(fight["game_id"])
+	if current_game_id >= 0:
+		return current_game_id
+	if run_state.has("game_id"):
+		return int(run_state.get("game_id", -1))
+	if room_state.has("game_id"):
+		return int(room_state.get("game_id", -1))
 	return -1
-
-func is_alive() -> bool:
-	return not character.is_empty() and int(character.get("health", 0)) > 0
-
-func has_active_run() -> bool:
-	if character.is_empty():
-		return false
-	if not is_alive():
-		return false
-	if bool(dungeon.get("completed", false)) or bool(dungeon.get("failed", false)):
-		return false
-	return true
-
-func _emit_game_over_if_needed() -> void:
-	var completed := bool(dungeon.get("completed", false))
-	var failed := bool(dungeon.get("failed", false))
-	if completed or failed:
-		game_over.emit(completed, failed)

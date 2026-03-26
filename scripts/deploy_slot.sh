@@ -5,8 +5,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 PROFILE="slot"
 SLOT_NAME="athanor-djizus-slot"
-NAMESPACE="athanor"
+NAMESPACE="athanor_0_1"
+CONTRACT_TAG="${NAMESPACE}-actions"
 MANIFEST="$ROOT_DIR/manifest_${PROFILE}.json"
+DOJO_BRIDGE="$ROOT_DIR/client/scripts/autoload/dojo_bridge.gd"
 PROJECT_GODOT="$ROOT_DIR/client/project.godot"
 DOJO_TOML="$ROOT_DIR/dojo_${PROFILE}.toml"
 TORII_TOML="$ROOT_DIR/torii_${PROFILE}.toml"
@@ -71,7 +73,7 @@ fi
 
 info "Using account: $ACCOUNT_ADDRESS"
 
-info "Building contracts..."
+info "Building contracts (profile: $PROFILE)..."
 cd "$ROOT_DIR"
 sozo build -P "$PROFILE" 2>&1
 
@@ -84,7 +86,7 @@ for attempt in $(seq 1 $MAX_ATTEMPTS); do
     echo "$MIGRATE_OUTPUT"
     sleep "$WAIT"
 done
-echo "$MIGRATE_OUTPUT"
+echo "$MIGRATE_OUTPUT" | tail -5
 
 if [ ! -f "$MANIFEST" ]; then
     err "Manifest not found at $MANIFEST"
@@ -92,43 +94,56 @@ if [ ! -f "$MANIFEST" ]; then
 fi
 
 WORLD_ADDRESS=$(jq -r '.world.address // empty' "$MANIFEST")
-ACTIONS_ADDRESS=$(jq -r ".contracts[] | select(.tag == \"${NAMESPACE}-actions\") | .address // empty" "$MANIFEST")
+ACTIONS_ADDRESS=$(jq -r ".contracts[] | select(.tag == \"${CONTRACT_TAG}\") | .address // empty" "$MANIFEST")
 
 if [ -z "$WORLD_ADDRESS" ]; then
     err "Could not extract world_address from manifest"
     exit 1
 fi
 if [ -z "$ACTIONS_ADDRESS" ]; then
-    err "Could not extract actions_address (tag: ${NAMESPACE}-actions)"
-    exit 1
+    warn "Could not extract actions_address (tag: ${CONTRACT_TAG}) — trying fallback"
+    ACTIONS_ADDRESS=$(jq -r '.contracts[-1].address // empty' "$MANIFEST")
 fi
 
 info "world_address:   $WORLD_ADDRESS"
 info "actions_address: $ACTIONS_ADDRESS"
 
-info "Updating torii_slot.toml..."
-sed -i "s|world_address = \"0x[0-9a-fA-F]*\"|world_address = \"$WORLD_ADDRESS\"|" "$TORII_TOML"
+if [ -f "$TORII_TOML" ]; then
+    info "Updating torii_slot.toml..."
+    sed -i "s|world_address = \"0x[0-9a-fA-F]*\"|world_address = \"$WORLD_ADDRESS\"|" "$TORII_TOML"
+fi
 
-info "Updating client/project.godot..."
-sed -i "s|config/katana_url=.*|config/katana_url=\"$RPC_URL\"|" "$PROJECT_GODOT"
-sed -i "s|config/torii/torii_url=.*|config/torii/torii_url=\"$TORII_URL\"|" "$PROJECT_GODOT"
-sed -i "s|config/world_address=.*|config/world_address=\"$WORLD_ADDRESS\"|" "$PROJECT_GODOT"
-sed -i "s|config/actions_address=.*|config/actions_address=\"$ACTIONS_ADDRESS\"|" "$PROJECT_GODOT"
-sed -i "s|config/account/address=.*|config/account/address=\"$ACCOUNT_ADDRESS\"|" "$PROJECT_GODOT"
-sed -i "s|config/account/private_key=.*|config/account/private_key=\"$PRIVATE_KEY\"|" "$PROJECT_GODOT"
+if [ -f "$DOJO_BRIDGE" ]; then
+    info "Updating dojo_bridge.gd with deployed addresses and Slot URLs..."
+    sed -i "s|@export var world_address := \"0x[0-9a-fA-F]*\"|@export var world_address := \"$WORLD_ADDRESS\"|" "$DOJO_BRIDGE"
+    sed -i "s|@export var actions_address := \"0x[0-9a-fA-F]*\"|@export var actions_address := \"$ACTIONS_ADDRESS\"|" "$DOJO_BRIDGE"
+    sed -i "s|@export var torii_url := \"[^\"]*\"|@export var torii_url := \"$TORII_URL\"|" "$DOJO_BRIDGE"
+    sed -i "s|@export var rpc_url := \"[^\"]*\"|@export var rpc_url := \"$RPC_URL\"|" "$DOJO_BRIDGE"
+    info "dojo_bridge.gd updated for Slot."
+fi
+
+if [ -f "$PROJECT_GODOT" ]; then
+    info "Updating project.godot dojo/config for Slot..."
+    sed -i "s|config/katana_url=\"[^\"]*\"|config/katana_url=\"$RPC_URL\"|" "$PROJECT_GODOT"
+    sed -i "s|config/torii/torii_url=\"[^\"]*\"|config/torii/torii_url=\"$TORII_URL\"|" "$PROJECT_GODOT"
+    sed -i "s|config/world_address=\"0x[0-9a-fA-F]*\"|config/world_address=\"$WORLD_ADDRESS\"|" "$PROJECT_GODOT"
+    sed -i "s|config/actions_address=\"0x[0-9a-fA-F]*\"|config/actions_address=\"$ACTIONS_ADDRESS\"|" "$PROJECT_GODOT"
+    sed -i "s|config/account/address=\"0x[0-9a-fA-F]*\"|config/account/address=\"$ACCOUNT_ADDRESS\"|" "$PROJECT_GODOT"
+    sed -i "s|config/account/private_key=\"0x[0-9a-fA-F]*\"|config/account/private_key=\"$PRIVATE_KEY\"|" "$PROJECT_GODOT"
+    info "project.godot dojo/config updated for Slot."
+fi
 
 info "Done."
 echo ""
-echo "Next manual steps:"
+echo "  World:   $WORLD_ADDRESS"
+echo "  Actions: $ACTIONS_ADDRESS"
+echo "  RPC:     $RPC_URL"
+echo "  Torii:   $TORII_URL"
+echo "  Account: $ACCOUNT_ADDRESS"
+echo ""
+echo "Slot deployments (if not already created):"
 echo "  slot d create $SLOT_NAME katana --config ./katana_slot.toml"
 echo "  slot d create $SLOT_NAME torii --config ./torii_slot.toml"
 echo ""
-echo "Config synced:"
-echo "  RPC:     $RPC_URL"
-echo "  Torii:   $TORII_URL"
-echo "  World:   $WORLD_ADDRESS"
-echo "  Account: $ACCOUNT_ADDRESS"
-echo ""
-echo "Runtime mode:"
-echo "  - Slot/public RPC -> Controller flow (browser/passkey)"
-echo "  - localhost RPC   -> burner flow (sozo CLI)"
+echo "Launch:"
+echo "  cd client && godot"
