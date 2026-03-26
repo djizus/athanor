@@ -5,7 +5,7 @@ const DEFAULT_RPC_URL := "https://api.cartridge.gg/x/athanor-djizus-slot/katana"
 const DEFAULT_WORLD_ADDRESS := "0x2f7d2a01f4a8273a75d3c6b625a2a47469dbeac537afb38ada984e2b358b185"
 const DEFAULT_ACTIONS_ADDRESS := "0x3ed528647b1f3f347b47f7048e02203517343f32f9c5d710a9bd836d6b412a5"
 
-var _connect_button: Button = null
+var _online_button: Button = null
 var _awaiting_auth := false
 
 func _ready() -> void:
@@ -17,62 +17,70 @@ func _ready() -> void:
 	)
 	DojoIntegration.set_enabled(false)
 
-	$VBox/EnterDungeon.pressed.connect(_on_enter)
+	# Rename existing button to "Play Offline"
+	$VBox/EnterDungeon.text = "Play Offline"
+	$VBox/EnterDungeon.pressed.connect(_on_play_offline)
+
+	# Add "Play Online" button right after
+	_online_button = Button.new()
+	_online_button.text = "Play Online"
+	_online_button.pressed.connect(_on_play_online)
+	$VBox.add_child(_online_button)
+	$VBox.move_child(_online_button, 2)  # After Title + Play Offline
+
 	$VBox/Quit.pressed.connect(_on_quit)
-	_setup_connect_button()
 
-func _setup_connect_button() -> void:
-	_connect_button = Button.new()
-	_connect_button.text = "Connect"
-	_connect_button.pressed.connect(_on_connect)
-	$VBox.add_child(_connect_button)
-	$VBox.move_child(_connect_button, 1)
-
+	# Auto-resume cached Controller session if SDK is present
 	if _has_dojo_sdk():
 		_ensure_sdk_nodes()
 		if DojoBridge.try_resume_controller_session():
-			_on_auth_success()
+			_show_connected()
 
-func _on_connect() -> void:
+func _on_play_offline() -> void:
+	DojoIntegration.set_enabled(false)
+	get_tree().change_scene_to_file("res://scenes/dungeon_room.tscn")
+
+func _on_play_online() -> void:
+	if _awaiting_auth:
+		# Second click: complete browser auth, then enter
+		_online_button.text = "Completing..."
+		_online_button.disabled = true
+		if DojoBridge.complete_controller_auth():
+			_enter_online()
+		else:
+			_online_button.text = "Auth Failed — Retry"
+			_online_button.disabled = false
+			_awaiting_auth = false
+		return
+
 	if not _has_dojo_sdk():
-		_connect_button.text = "SDK not installed"
+		push_warning("[main_menu] godot-dojo SDK not installed — entering offline")
+		_on_play_offline()
 		return
 
 	_ensure_sdk_nodes()
 
-	if _awaiting_auth:
-		# Second click: complete auth after browser approval
-		_connect_button.text = "Completing..."
-		_connect_button.disabled = true
-		if DojoBridge.complete_controller_auth():
-			_on_auth_success()
-		else:
-			_connect_button.text = "Auth Failed — Retry"
-			_connect_button.disabled = false
-			_awaiting_auth = false
-		return
-
-	# First click: try resume, then initiate browser auth
+	# Try cached session first
 	if DojoBridge.try_resume_controller_session():
-		_on_auth_success()
+		_enter_online()
 		return
 
+	# Need browser auth — initiate and wait for second click
 	DojoBridge.initiate_controller_auth()
 	_awaiting_auth = true
-	_connect_button.text = "Complete Auth"
+	_online_button.text = "Complete Auth"
 
-func _on_auth_success() -> void:
+func _enter_online() -> void:
 	_awaiting_auth = false
-	var addr := DojoBridge.current_player
-	var short := addr.left(6) + "..." + addr.right(4) if addr.length() > 10 else addr
-	_connect_button.text = "Connected (%s)" % short
-	_connect_button.disabled = true
-
+	_show_connected()
 	DojoBridge.connect_torii()
 	DojoIntegration.set_enabled(true)
-
-func _on_enter() -> void:
 	get_tree().change_scene_to_file("res://scenes/dungeon_room.tscn")
+
+func _show_connected() -> void:
+	var addr := DojoBridge.current_player
+	var short := addr.left(6) + "..." + addr.right(4) if addr.length() > 10 else addr
+	_online_button.text = "Play Online (%s)" % short
 
 func _on_quit() -> void:
 	get_tree().quit()
