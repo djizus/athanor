@@ -500,6 +500,12 @@ func _on_ability_used(ability:AbilityResource, target_data:Dictionary) -> void:
 		return
 
 	var dojo_payload: Dictionary = _build_dojo_ability_payload(ability, target_data)
+	var _player_pos:Vector2i = player.get("combat_stats").grid_pos
+	var _target_cell:Vector2i = target_data.get("target_cell", Vector2i(-1, -1))
+	push_warning("[combat_manager] ability=%d player_pos=%s target_cell=%s dojo(mode=%d a=%d b=%d)" % [
+		int(ability.ability_id), str(_player_pos), str(_target_cell),
+		int(dojo_payload.get("mode", 0)), int(dojo_payload.get("a", 0)), int(dojo_payload.get("b", 0))
+	])
 	DojoIntegration.record_ability(
 		int(ability.ability_id),
 		int(dojo_payload.get("mode", 0)),
@@ -517,6 +523,7 @@ func _on_ability_used(ability:AbilityResource, target_data:Dictionary) -> void:
 
 func _on_move_completed(from:Vector2i, to:Vector2i) -> void:
 	grid_state["player_last_move_dir"] = _direction_to(from, to)
+	push_warning("[combat_manager] move from=%s to=%s grid_pos=%s" % [str(from), str(to), str(player.get("combat_stats").grid_pos)])
 	DojoIntegration.record_move(to.x, to.y)
 
 	var collided_enemy:Dictionary = _find_enemy_at_cell(to)
