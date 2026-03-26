@@ -2,7 +2,7 @@ use starknet::ContractAddress;
 
 #[derive(Copy, Drop, Serde)]
 #[dojo::event]
-pub struct RunSpawnedV2 {
+pub struct RunSpawned {
     #[key]
     pub player: ContractAddress,
     #[key]
@@ -13,7 +13,7 @@ pub struct RunSpawnedV2 {
 
 #[derive(Copy, Drop, Serde)]
 #[dojo::event]
-pub struct RoomEnteredV2 {
+pub struct RoomEntered {
     #[key]
     pub player: ContractAddress,
     #[key]

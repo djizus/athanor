@@ -34,5 +34,5 @@ pub mod systems {
     pub mod abilities;
     pub mod telegraph;
     pub mod enemy_ai;
-    pub mod actions_v2;
+    pub mod actions;
 }

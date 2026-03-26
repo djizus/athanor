@@ -7,7 +7,7 @@ use athanor::v2::models::index::{
     RunState, RoomState, ActorState, AbilitySlotState, TelegraphState,
 };
 use athanor::v2::events::index::{
-    RunSpawnedV2, RoomEnteredV2, ActorMoved, AbilityUsed, TelegraphCreated, TelegraphResolved,
+    RunSpawned, RoomEntered, ActorMoved, AbilityUsed, TelegraphCreated, TelegraphResolved,
     EnemyTurnComputed, TurnEnded,
     ActorDamaged, ActorDied, RoomCleared, RunCompleted, RunFailed,
 };
@@ -71,14 +71,14 @@ pub impl StoreImpl of StoreTrait {
 
     // --- Event emitters ---
 
-    fn emit_run_spawned_v2(
+    fn emit_run_spawned(
         ref self: Store, player: ContractAddress, game_id: u32, room_id: u8, player_actor_id: u8,
     ) {
-        self.world.emit_event(@RunSpawnedV2 { player, game_id, room_id, player_actor_id });
+        self.world.emit_event(@RunSpawned { player, game_id, room_id, player_actor_id });
     }
 
-    fn emit_room_entered_v2(ref self: Store, player: ContractAddress, game_id: u32, room_id: u8) {
-        self.world.emit_event(@RoomEnteredV2 { player, game_id, room_id });
+    fn emit_room_entered(ref self: Store, player: ContractAddress, game_id: u32, room_id: u8) {
+        self.world.emit_event(@RoomEntered { player, game_id, room_id });
     }
 
     fn emit_actor_moved(

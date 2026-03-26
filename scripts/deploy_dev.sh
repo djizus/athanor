@@ -14,8 +14,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 PROFILE="v2"
-NAMESPACE="athanor_v2"
-CONTRACT_TAG="${NAMESPACE}-actions_v2"
+NAMESPACE="athanor_0_1"
+CONTRACT_TAG="${NAMESPACE}-actions"
 MANIFEST="$ROOT_DIR/manifest_v2.json"
 DOJO_BRIDGE="$ROOT_DIR/client/scripts/autoload/dojo_bridge.gd"
 START_TORII=false

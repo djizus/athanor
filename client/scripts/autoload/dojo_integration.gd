@@ -46,9 +46,9 @@ func submit_turn() -> void:
 	for action in _turn_actions:
 		match String(action.get("type", "")):
 			"move":
-				DojoBridge.move_v2(_current_game_id, int(action.get("x", 0)), int(action.get("y", 0)))
+				DojoBridge.move_action(_current_game_id, int(action.get("x", 0)), int(action.get("y", 0)))
 			"ability":
-				DojoBridge.use_ability_v2(
+				DojoBridge.use_ability(
 					_current_game_id,
 					int(action.get("id", 0)),
 					int(action.get("mode", 0)),
@@ -56,14 +56,14 @@ func submit_turn() -> void:
 					int(action.get("b", 0))
 				)
 
-	DojoBridge.end_player_phase_v2(_current_game_id)
+	DojoBridge.end_player_phase(_current_game_id)
 	_step_enemy_phase_deferred()
 	_turn_actions.clear()
 
 func _step_enemy_phase_deferred() -> void:
 	await get_tree().create_timer(1.0).timeout
 	if _enabled and _current_game_id >= 0:
-		DojoBridge.step_enemy_phase_v2(_current_game_id)
+		DojoBridge.step_enemy_phase(_current_game_id)
 
 func _on_node_added(node: Node) -> void:
 	if node is CombatManager:

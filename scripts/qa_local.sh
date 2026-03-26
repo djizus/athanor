@@ -20,8 +20,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 PROFILE="v2"
-NAMESPACE="athanor_v2"
-CONTRACT_TAG="${NAMESPACE}-actions_v2"
+NAMESPACE="athanor_0_1"
+CONTRACT_TAG="${NAMESPACE}-actions"
 KEEP_RUNNING=false
 KATANA_PID=""
 TORII_PID=""
@@ -159,7 +159,7 @@ exec_action() {
 # 4. QA: FULL GAME LOOP
 # =============================================================================
 step "QA: Spawn a new run"
-exec_action "spawn_v2" "0"
+exec_action "spawn" "0"
 
 # game_id is the first uuid() — typically starts at a known value
 # In Dojo, world.uuid() returns incrementing integers. First call = some base value.
@@ -167,14 +167,14 @@ exec_action "spawn_v2" "0"
 GAME_ID=0
 
 step "QA: Enter room 0"
-if ! exec_action "enter_room_v2" "$GAME_ID 0" 2>/dev/null; then
+if ! exec_action "enter_room" "$GAME_ID 0" 2>/dev/null; then
     GAME_ID=1
     info "Retrying with game_id=1..."
-    exec_action "enter_room_v2" "$GAME_ID 0" || {
+    exec_action "enter_room" "$GAME_ID 0" || {
         # Try a few more IDs
         for id in 2 3 4 5; do
             GAME_ID=$id
-            if exec_action "enter_room_v2" "$GAME_ID 0" 2>/dev/null; then
+            if exec_action "enter_room" "$GAME_ID 0" 2>/dev/null; then
                 break
             fi
         done
@@ -185,75 +185,75 @@ info "Using game_id=$GAME_ID"
 step "QA: Player Phase — Movement"
 # Move player from entry (1,1) toward enemies
 # Each move costs 10 stamina, player has 100
-exec_action "move_v2" "$GAME_ID 2 1"    # move right (cost 10, stamina=90)
-exec_action "move_v2" "$GAME_ID 3 1"    # move right (cost 10, stamina=80)
-exec_action "move_v2" "$GAME_ID 4 1"    # move right (cost 10, stamina=70)
+exec_action "move_action" "$GAME_ID 2 1"    # move right (cost 10, stamina=90)
+exec_action "move_action" "$GAME_ID 3 1"    # move right (cost 10, stamina=80)
+exec_action "move_action" "$GAME_ID 4 1"    # move right (cost 10, stamina=70)
 
 step "QA: Player Phase — Use Guard (self buff)"
 # Guard: ability_id=4, target_mode=3 (Self), target_a=0, target_b=0
-exec_action "use_ability_v2" "$GAME_ID 4 3 0 0"
+exec_action "use_ability" "$GAME_ID 4 3 0 0"
 
 step "QA: Player Phase — End Turn"
-exec_action "end_player_phase_v2" "$GAME_ID"
+exec_action "end_player_phase" "$GAME_ID"
 
 step "QA: Enemy Phase — Step (telegraphs + enemy AI)"
-exec_action "step_enemy_phase_v2" "$GAME_ID"
+exec_action "step_enemy_phase" "$GAME_ID"
 
 step "QA: Turn 2 — Move toward Brute (positions depend on enemy AI)"
-exec_action "move_v2" "$GAME_ID 5 1" 2>/dev/null || warn "move(5,1) blocked/occupied — expected after enemy AI"
-exec_action "move_v2" "$GAME_ID 5 2" 2>/dev/null || warn "move(5,2) blocked/occupied — expected after enemy AI"
-exec_action "move_v2" "$GAME_ID 4 2" 2>/dev/null || true
+exec_action "move_action" "$GAME_ID 5 1" 2>/dev/null || warn "move(5,1) blocked/occupied — expected after enemy AI"
+exec_action "move_action" "$GAME_ID 5 2" 2>/dev/null || warn "move(5,2) blocked/occupied — expected after enemy AI"
+exec_action "move_action" "$GAME_ID 4 2" 2>/dev/null || true
 
 step "QA: Turn 2 — Strike the Brute"
 # Strike: ability_id=0, target_mode=0 (SingleTarget), target_a=1 (brute actor_id), target_b=0
 # Need to be adjacent to brute. If brute moved toward us, might be at (5,2) or nearby
-exec_action "use_ability_v2" "$GAME_ID 0 0 1 0" || {
+exec_action "use_ability" "$GAME_ID 0 0 1 0" || {
     warn "Strike failed — brute may not be adjacent. Trying to move closer..."
-    exec_action "move_v2" "$GAME_ID 6 2" || true
-    exec_action "use_ability_v2" "$GAME_ID 0 0 1 0" || warn "Strike still failed — continuing"
+    exec_action "move_action" "$GAME_ID 6 2" || true
+    exec_action "use_ability" "$GAME_ID 0 0 1 0" || warn "Strike still failed — continuing"
 }
 
 step "QA: Turn 2 — Fireball toward Caster"
 # Fireball: ability_id=3, target_mode=2 (Positional), target_a=x, target_b=y
 # Caster started at (5,6). Fireball range=4, cost=30
-exec_action "use_ability_v2" "$GAME_ID 3 2 5 6" || {
+exec_action "use_ability" "$GAME_ID 3 2 5 6" || {
     warn "Fireball failed — caster may have moved. Continuing..."
 }
 
 step "QA: Turn 2 — End Turn + Enemy Phase"
-exec_action "end_player_phase_v2" "$GAME_ID"
-exec_action "step_enemy_phase_v2" "$GAME_ID"
+exec_action "end_player_phase" "$GAME_ID"
+exec_action "step_enemy_phase" "$GAME_ID"
 
 step "QA: Turn 3 — Keep attacking"
 # Try Strike again on brute
-exec_action "use_ability_v2" "$GAME_ID 0 0 1 0" || {
+exec_action "use_ability" "$GAME_ID 0 0 1 0" || {
     warn "Strike failed — adjusting position"
     # Try moving to find brute
-    exec_action "move_v2" "$GAME_ID 5 2" 2>/dev/null || true
-    exec_action "use_ability_v2" "$GAME_ID 0 0 1 0" 2>/dev/null || true
+    exec_action "move_action" "$GAME_ID 5 2" 2>/dev/null || true
+    exec_action "use_ability" "$GAME_ID 0 0 1 0" 2>/dev/null || true
 }
 
 # Cleave: ability_id=2, target_mode=1 (Directional), target_a=2 (South), target_b=0
-exec_action "use_ability_v2" "$GAME_ID 2 1 2 0" || {
+exec_action "use_ability" "$GAME_ID 2 1 2 0" || {
     warn "Cleave failed — continuing"
 }
 
-exec_action "end_player_phase_v2" "$GAME_ID"
-exec_action "step_enemy_phase_v2" "$GAME_ID"
+exec_action "end_player_phase" "$GAME_ID"
+exec_action "step_enemy_phase" "$GAME_ID"
 
 # Keep fighting for a few more turns
 for turn in 4 5 6 7 8; do
     step "QA: Turn $turn — Attack cycle"
     # Try strike on brute (actor 1)
-    exec_action "use_ability_v2" "$GAME_ID 0 0 1 0" 2>/dev/null || true
+    exec_action "use_ability" "$GAME_ID 0 0 1 0" 2>/dev/null || true
     # Try strike on caster (actor 2)
-    exec_action "use_ability_v2" "$GAME_ID 0 0 2 0" 2>/dev/null || true
+    exec_action "use_ability" "$GAME_ID 0 0 2 0" 2>/dev/null || true
     # Try fireball
-    exec_action "use_ability_v2" "$GAME_ID 3 2 5 5" 2>/dev/null || true
+    exec_action "use_ability" "$GAME_ID 3 2 5 5" 2>/dev/null || true
     
     # End turn + enemy phase (may fail if game is already over)
-    exec_action "end_player_phase_v2" "$GAME_ID" 2>/dev/null || { info "Game may have ended"; break; }
-    exec_action "step_enemy_phase_v2" "$GAME_ID" 2>/dev/null || { info "Game may have ended"; break; }
+    exec_action "end_player_phase" "$GAME_ID" 2>/dev/null || { info "Game may have ended"; break; }
+    exec_action "step_enemy_phase" "$GAME_ID" 2>/dev/null || { info "Game may have ended"; break; }
 done
 
 # =============================================================================
@@ -292,12 +292,12 @@ if [ "$KEEP_RUNNING" = true ]; then
     [ -n "$WORLD_ADDRESS" ] && info "  World:      $WORLD_ADDRESS"
     echo ""
     info "Useful commands:"
-    echo "  sozo execute $CONTRACT_TAG spawn_v2 0 -P $PROFILE --wait"
-    echo "  sozo execute $CONTRACT_TAG enter_room_v2 <GAME_ID> 0 -P $PROFILE --wait"
-    echo "  sozo execute $CONTRACT_TAG move_v2 <GAME_ID> <X> <Y> -P $PROFILE --wait"
-    echo "  sozo execute $CONTRACT_TAG use_ability_v2 <GAME_ID> <ABILITY> <MODE> <A> <B> -P $PROFILE --wait"
-    echo "  sozo execute $CONTRACT_TAG end_player_phase_v2 <GAME_ID> -P $PROFILE --wait"
-    echo "  sozo execute $CONTRACT_TAG step_enemy_phase_v2 <GAME_ID> -P $PROFILE --wait"
+    echo "  sozo execute $CONTRACT_TAG spawn 0 -P $PROFILE --wait"
+    echo "  sozo execute $CONTRACT_TAG enter_room <GAME_ID> 0 -P $PROFILE --wait"
+    echo "  sozo execute $CONTRACT_TAG move_action <GAME_ID> <X> <Y> -P $PROFILE --wait"
+    echo "  sozo execute $CONTRACT_TAG use_ability <GAME_ID> <ABILITY> <MODE> <A> <B> -P $PROFILE --wait"
+    echo "  sozo execute $CONTRACT_TAG end_player_phase <GAME_ID> -P $PROFILE --wait"
+    echo "  sozo execute $CONTRACT_TAG step_enemy_phase <GAME_ID> -P $PROFILE --wait"
     echo ""
     wait
 fi

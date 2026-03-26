@@ -6,11 +6,11 @@ signal tx_submitted(action: String)
 signal tx_failed(action: String, reason: String)
 signal auth_url_ready(url: String)
 
-const RUN_STATE_MODEL := "athanor_v2-RunState"
-const ROOM_STATE_MODEL := "athanor_v2-RoomState"
-const ACTOR_STATE_MODEL := "athanor_v2-ActorState"
-const ABILITY_SLOT_MODEL := "athanor_v2-AbilitySlotState"
-const TELEGRAPH_MODEL := "athanor_v2-TelegraphState"
+const RUN_STATE_MODEL := "athanor_0_1-RunState"
+const ROOM_STATE_MODEL := "athanor_0_1-RoomState"
+const ACTOR_STATE_MODEL := "athanor_0_1-ActorState"
+const ABILITY_SLOT_MODEL := "athanor_0_1-AbilitySlotState"
+const TELEGRAPH_MODEL := "athanor_0_1-TelegraphState"
 
 @export var torii_url := "http://localhost:8080"
 @export var rpc_url := "http://localhost:5050"
@@ -40,12 +40,12 @@ var full_policies: Dictionary:
 		return {
 			actions_address: {
 				"methods": [
-					{"entrypoint": "spawn_v2"},
-					{"entrypoint": "enter_room_v2"},
-					{"entrypoint": "move_v2"},
-					{"entrypoint": "use_ability_v2"},
-					{"entrypoint": "end_player_phase_v2"},
-					{"entrypoint": "step_enemy_phase_v2"}
+					{"entrypoint": "spawn"},
+					{"entrypoint": "enter_room"},
+					{"entrypoint": "move_action"},
+					{"entrypoint": "use_ability"},
+					{"entrypoint": "end_player_phase"},
+					{"entrypoint": "step_enemy_phase"}
 				]
 			}
 		}
@@ -234,25 +234,25 @@ func pull_entities_snapshot() -> void:
 		if entity is Dictionary:
 			_handle_entity_payload(entity)
 
-# --- Game actions (v2) ---
+# --- Game actions ---
 
-func spawn_v2() -> void:
-	_execute_action("spawn_v2", [0])
+func spawn() -> void:
+	_execute_action("spawn", [0])
 
-func enter_room_v2(game_id: int, room_id: int) -> void:
-	_execute_action("enter_room_v2", [_resolve_game_id(game_id), room_id])
+func enter_room(game_id: int, room_id: int) -> void:
+	_execute_action("enter_room", [_resolve_game_id(game_id), room_id])
 
-func move_v2(game_id: int, target_x: int, target_y: int) -> void:
-	_execute_action("move_v2", [_resolve_game_id(game_id), target_x, target_y])
+func move_action(game_id: int, target_x: int, target_y: int) -> void:
+	_execute_action("move_action", [_resolve_game_id(game_id), target_x, target_y])
 
-func use_ability_v2(game_id: int, ability_id: int, target_mode: int, target_a: int, target_b: int) -> void:
-	_execute_action("use_ability_v2", [_resolve_game_id(game_id), ability_id, target_mode, target_a, target_b])
+func use_ability(game_id: int, ability_id: int, target_mode: int, target_a: int, target_b: int) -> void:
+	_execute_action("use_ability", [_resolve_game_id(game_id), ability_id, target_mode, target_a, target_b])
 
-func end_player_phase_v2(game_id: int) -> void:
-	_execute_action("end_player_phase_v2", [_resolve_game_id(game_id)])
+func end_player_phase(game_id: int) -> void:
+	_execute_action("end_player_phase", [_resolve_game_id(game_id)])
 
-func step_enemy_phase_v2(game_id: int) -> void:
-	_execute_action("step_enemy_phase_v2", [_resolve_game_id(game_id)])
+func step_enemy_phase(game_id: int) -> void:
+	_execute_action("step_enemy_phase", [_resolve_game_id(game_id)])
 
 # --- Internals ---
 

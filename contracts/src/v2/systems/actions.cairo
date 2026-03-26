@@ -1,18 +1,18 @@
 #[starknet::interface]
-trait IActionsV2<T> {
-    fn spawn_v2(ref self: T, class_id: u8);
-    fn enter_room_v2(ref self: T, game_id: u32, room_id: u8);
-    fn move_v2(ref self: T, game_id: u32, target_x: u8, target_y: u8);
-    fn use_ability_v2(
+trait IActions<T> {
+    fn spawn(ref self: T, class_id: u8);
+    fn enter_room(ref self: T, game_id: u32, room_id: u8);
+    fn move_action(ref self: T, game_id: u32, target_x: u8, target_y: u8);
+    fn use_ability(
         ref self: T, game_id: u32, ability_id: u8, target_mode: u8, target_a: u8, target_b: u8,
     );
-    fn end_player_phase_v2(ref self: T, game_id: u32);
-    fn step_enemy_phase_v2(ref self: T, game_id: u32);
+    fn end_player_phase(ref self: T, game_id: u32);
+    fn step_enemy_phase(ref self: T, game_id: u32);
 }
 
 #[dojo::contract]
-pub mod actions_v2 {
-    use super::IActionsV2;
+pub mod actions {
+    use super::IActions;
 
     use starknet::{ContractAddress, get_caller_address};
 
@@ -79,8 +79,8 @@ pub mod actions_v2 {
     const ROOM2_FLANKER_B_Y: u8 = 5;
 
     #[abi(embed_v0)]
-    impl ActionsV2Impl of IActionsV2<ContractState> {
-        fn spawn_v2(ref self: ContractState, class_id: u8) {
+    impl ActionsImpl of IActions<ContractState> {
+        fn spawn(ref self: ContractState, class_id: u8) {
             let mut store = self.store();
             let player = get_caller_address();
             let game_id: u32 = dojo::world::IWorldDispatcherTrait::uuid(
@@ -126,12 +126,12 @@ pub mod actions_v2 {
 
             self.init_ability_slots(ref store, player, game_id, PLAYER_ACTOR_ID);
 
-            store.emit_run_spawned_v2(player, game_id, 0, PLAYER_ACTOR_ID);
+            store.emit_run_spawned(player, game_id, 0, PLAYER_ACTOR_ID);
 
             let _ = class_id;
         }
 
-        fn enter_room_v2(ref self: ContractState, game_id: u32, room_id: u8) {
+        fn enter_room(ref self: ContractState, game_id: u32, room_id: u8) {
             let mut store = self.store();
             let player = get_caller_address();
 
@@ -195,10 +195,10 @@ pub mod actions_v2 {
             store.set_room_state(@room);
             store.set_run_state(@run);
 
-            store.emit_room_entered_v2(player, game_id, room_id);
+            store.emit_room_entered(player, game_id, room_id);
         }
 
-        fn move_v2(ref self: ContractState, game_id: u32, target_x: u8, target_y: u8) {
+        fn move_action(ref self: ContractState, game_id: u32, target_x: u8, target_y: u8) {
             let mut store = self.store();
             let player = get_caller_address();
 
@@ -297,7 +297,7 @@ pub mod actions_v2 {
             };
         }
 
-        fn use_ability_v2(
+        fn use_ability(
             ref self: ContractState,
             game_id: u32,
             ability_id: u8,
@@ -593,7 +593,7 @@ pub mod actions_v2 {
             let _ = target_b;
         }
 
-        fn end_player_phase_v2(ref self: ContractState, game_id: u32) {
+        fn end_player_phase(ref self: ContractState, game_id: u32) {
             let mut store = self.store();
             let player = get_caller_address();
 
@@ -605,7 +605,7 @@ pub mod actions_v2 {
             store.emit_turn_ended(player, game_id, run.room_id, run.turn_index);
         }
 
-        fn step_enemy_phase_v2(ref self: ContractState, game_id: u32) {
+        fn step_enemy_phase(ref self: ContractState, game_id: u32) {
             let mut store = self.store();
             let player = get_caller_address();
 
@@ -736,7 +736,7 @@ pub mod actions_v2 {
         }
 
         fn world_default(self: @ContractState) -> dojo::world::WorldStorage {
-            self.world(@"athanor_v2")
+            self.world(@"athanor_0_1")
         }
 
         fn init_ability_slots(
