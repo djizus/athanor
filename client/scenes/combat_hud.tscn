@@ -6,57 +6,66 @@
 layer = 10
 script = ExtResource("1_hud")
 
-[node name="HudRoot" type="VBoxContainer" parent="."]
-anchors_preset = 12
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_top = -64.0
-grow_horizontal = 2
-grow_vertical = 0
+[node name="TopLeft" type="VBoxContainer" parent="."]
+offset_left = 2.0
+offset_top = 2.0
+offset_right = 72.0
+offset_bottom = 22.0
 
-[node name="TopBar" type="HBoxContainer" parent="HudRoot"]
-layout_mode = 2
-
-[node name="PhaseIndicator" type="Label" parent="HudRoot/TopBar"]
+[node name="PhaseIndicator" type="Label" parent="TopLeft"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "IDLE"
+theme_override_font_sizes/font_size = 5
+text = "YOUR TURN"
 
-[node name="Spacer" type="Control" parent="HudRoot/TopBar"]
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="TurnCounter" type="Label" parent="HudRoot/TopBar"]
+[node name="HPBar" type="ProgressBar" parent="TopLeft"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Turn 0"
-horizontal_alignment = 2
-
-[node name="StaminaBar" type="ProgressBar" parent="HudRoot"]
-unique_name_in_owner = true
-layout_mode = 2
-custom_minimum_size = Vector2(0, 8)
+custom_minimum_size = Vector2(68, 3)
 max_value = 100.0
 value = 100.0
 show_percentage = false
 
-[node name="BottomBar" type="HBoxContainer" parent="HudRoot"]
+[node name="StaminaBar" type="ProgressBar" parent="TopLeft"]
+unique_name_in_owner = true
 layout_mode = 2
+custom_minimum_size = Vector2(68, 3)
+max_value = 100.0
+value = 100.0
+show_percentage = false
 
-[node name="AbilityBar" type="HBoxContainer" parent="HudRoot/BottomBar"]
+[node name="TurnCounter" type="Label" parent="."]
+unique_name_in_owner = true
+offset_left = 430.0
+offset_top = 2.0
+offset_right = 478.0
+offset_bottom = 12.0
+theme_override_font_sizes/font_size = 5
+text = "Turn 1"
+horizontal_alignment = 2
+
+[node name="BottomBar" type="HBoxContainer" parent="."]
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -14.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="AbilityBar" type="HBoxContainer" parent="BottomBar"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Strike" type="Button" parent="HudRoot/BottomBar/AbilityBar"]
+[node name="Strike" type="Button" parent="BottomBar/AbilityBar"]
 layout_mode = 2
 size_flags_horizontal = 3
-custom_minimum_size = Vector2(60, 28)
-text = "Strike
-Cost 20"
+custom_minimum_size = Vector2(40, 12)
+theme_override_font_sizes/font_size = 5
+text = "1:Strike 20"
 
-[node name="CooldownOverlay" type="ColorRect" parent="HudRoot/BottomBar/AbilityBar/Strike"]
+[node name="CooldownOverlay" type="ColorRect" parent="BottomBar/AbilityBar/Strike"]
 visible = false
 layout_mode = 1
 anchors_preset = 15
@@ -65,29 +74,24 @@ anchor_bottom = 1.0
 color = Color(0, 0, 0, 0.6)
 mouse_filter = 2
 
-[node name="CooldownLabel" type="Label" parent="HudRoot/BottomBar/AbilityBar/Strike/CooldownOverlay"]
+[node name="CooldownLabel" type="Label" parent="BottomBar/AbilityBar/Strike/CooldownOverlay"]
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -20.0
-offset_top = -8.0
-offset_right = 20.0
-offset_bottom = 8.0
-text = "CD 0"
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_font_sizes/font_size = 5
+text = "CD"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Dash" type="Button" parent="HudRoot/BottomBar/AbilityBar"]
+[node name="Dash" type="Button" parent="BottomBar/AbilityBar"]
 layout_mode = 2
 size_flags_horizontal = 3
-custom_minimum_size = Vector2(60, 28)
-text = "Dash
-Cost 25"
+custom_minimum_size = Vector2(40, 12)
+theme_override_font_sizes/font_size = 5
+text = "2:Dash 25"
 
-[node name="CooldownOverlay" type="ColorRect" parent="HudRoot/BottomBar/AbilityBar/Dash"]
+[node name="CooldownOverlay" type="ColorRect" parent="BottomBar/AbilityBar/Dash"]
 visible = false
 layout_mode = 1
 anchors_preset = 15
@@ -96,29 +100,24 @@ anchor_bottom = 1.0
 color = Color(0, 0, 0, 0.6)
 mouse_filter = 2
 
-[node name="CooldownLabel" type="Label" parent="HudRoot/BottomBar/AbilityBar/Dash/CooldownOverlay"]
+[node name="CooldownLabel" type="Label" parent="BottomBar/AbilityBar/Dash/CooldownOverlay"]
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -20.0
-offset_top = -8.0
-offset_right = 20.0
-offset_bottom = 8.0
-text = "CD 0"
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_font_sizes/font_size = 5
+text = "CD"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Guard" type="Button" parent="HudRoot/BottomBar/AbilityBar"]
+[node name="Guard" type="Button" parent="BottomBar/AbilityBar"]
 layout_mode = 2
 size_flags_horizontal = 3
-custom_minimum_size = Vector2(60, 28)
-text = "Guard
-Cost 15"
+custom_minimum_size = Vector2(40, 12)
+theme_override_font_sizes/font_size = 5
+text = "3:Guard 15"
 
-[node name="CooldownOverlay" type="ColorRect" parent="HudRoot/BottomBar/AbilityBar/Guard"]
+[node name="CooldownOverlay" type="ColorRect" parent="BottomBar/AbilityBar/Guard"]
 visible = false
 layout_mode = 1
 anchors_preset = 15
@@ -127,23 +126,26 @@ anchor_bottom = 1.0
 color = Color(0, 0, 0, 0.6)
 mouse_filter = 2
 
-[node name="CooldownLabel" type="Label" parent="HudRoot/BottomBar/AbilityBar/Guard/CooldownOverlay"]
+[node name="CooldownLabel" type="Label" parent="BottomBar/AbilityBar/Guard/CooldownOverlay"]
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -20.0
-offset_top = -8.0
-offset_right = 20.0
-offset_bottom = 8.0
-text = "CD 0"
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_font_sizes/font_size = 5
+text = "CD"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="EndTurnButton" type="Button" parent="HudRoot/BottomBar"]
+[node name="ResetButton" type="Button" parent="BottomBar"]
 unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(60, 28)
-text = "End Turn"
+custom_minimum_size = Vector2(28, 12)
+theme_override_font_sizes/font_size = 5
+text = "Reset"
+
+[node name="ConfirmButton" type="Button" parent="BottomBar"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(36, 12)
+theme_override_font_sizes/font_size = 5
+text = "Confirm"

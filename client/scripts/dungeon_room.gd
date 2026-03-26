@@ -17,6 +17,9 @@ const ENEMY_LAYOUT:Array[Dictionary] = [
 ]
 
 const PLAYER_START_GRID:Vector2i = Vector2i(1, 3)
+const HP_BAR_WIDTH:float = 14.0
+const HP_BAR_HEIGHT:float = 2.0
+const HP_BAR_Y:float = -12.0
 
 var _player:CharacterBody2D
 var _combat_manager:CombatManager
@@ -24,6 +27,7 @@ var _combat_hud:CombatHUD
 var _combat_grid:CombatGrid
 var _result_screen:GameResultScreen
 var _in_combat:bool = false
+var _enemy_hp_drawers:Array[Node2D] = []
 
 
 func _ready() -> void:
@@ -68,6 +72,7 @@ func _start_combat() -> void:
 
 	_combat_manager.start_combat(_player, enemy_nodes, _combat_grid)
 	_combat_hud.bind_combat_manager(_combat_manager)
+	_setup_enemy_hp_bars()
 
 
 func _spawn_enemies() -> Array[Node]:
@@ -92,6 +97,22 @@ func _spawn_enemies() -> Array[Node]:
 		add_child(enemy)
 		nodes.push_back(enemy)
 	return nodes
+
+
+func _setup_enemy_hp_bars() -> void:
+	_enemy_hp_drawers.clear()
+	if _combat_manager == null:
+		return
+	for enemy_data in _combat_manager.enemies:
+		var enemy_node:Node2D = enemy_data.get("node", null)
+		var health:HealthResource = enemy_data.get("health", null)
+		if enemy_node == null || health == null:
+			continue
+		var drawer:Node2D = _EnemyHPDrawer.new()
+		drawer.health = health
+		drawer.position = Vector2(0.0, HP_BAR_Y)
+		enemy_node.add_child(drawer)
+		_enemy_hp_drawers.push_back(drawer)
 
 
 func _on_combat_finished(player_won:bool) -> void:
@@ -124,6 +145,7 @@ func _on_menu() -> void:
 
 
 func _cleanup_combat() -> void:
+	_enemy_hp_drawers.clear()
 	if _result_screen != null:
 		_result_screen.queue_free()
 		_result_screen = null
@@ -143,3 +165,29 @@ func _cleanup_combat() -> void:
 	for child in get_children():
 		if child != _player && child is Node2D && child.name in ["Brute", "Caster", "Flanker"]:
 			child.queue_free()
+
+
+class _EnemyHPDrawer extends Node2D:
+	var health:HealthResource
+	var _prev_hp:float = -1.0
+
+	func _process(_delta:float) -> void:
+		if health == null:
+			return
+		if health.hp != _prev_hp:
+			_prev_hp = health.hp
+			queue_redraw()
+
+	func _draw() -> void:
+		if health == null:
+			return
+		var w:float = 14.0
+		var h:float = 2.0
+		var bg_rect:Rect2 = Rect2(-w * 0.5, 0.0, w, h)
+		draw_rect(bg_rect, Color(0.15, 0.0, 0.0, 0.8))
+		var ratio:float = clampf(health.hp / maxf(health.max_hp, 1.0), 0.0, 1.0)
+		if ratio > 0.0:
+			var fill_color:Color = Color(0.2, 0.85, 0.2) if ratio > 0.5 else (Color(0.9, 0.7, 0.1) if ratio > 0.25 else Color(0.9, 0.15, 0.1))
+			var fill_rect:Rect2 = Rect2(-w * 0.5, 0.0, w * ratio, h)
+			draw_rect(fill_rect, fill_color)
+		draw_rect(bg_rect, Color(0.4, 0.4, 0.5, 0.6), false, 1.0)

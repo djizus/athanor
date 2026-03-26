@@ -49,6 +49,8 @@ var _camera_prev_zoom:Vector2 = Vector2.ONE
 var _camera_prev_position:Vector2 = Vector2.ZERO
 var _camera_prev_follow:bool = true
 
+var _turn_snapshot:Dictionary = {}
+
 func _ready() -> void:
 	_setup_subsystems()
 
@@ -198,6 +200,73 @@ func _infer_enemy_archetype(node_name:String) -> int:
 		return CombatEnums.Archetype.FLANKER
 	return CombatEnums.Archetype.BRUTE
 
+func confirm_turn() -> void:
+	if turn_manager == null:
+		return
+	if turn_manager.phase != CombatEnums.Phase.PLAYER_TURN:
+		return
+	turn_manager.end_player_turn()
+
+func reset_turn() -> void:
+	if turn_manager == null || turn_manager.phase != CombatEnums.Phase.PLAYER_TURN:
+		return
+	if _turn_snapshot.is_empty():
+		return
+
+	if ability_manager.get_selected() != null:
+		ability_manager.cancel_selection()
+
+	var player_stats:CombatStatsResource = player.get("combat_stats", null)
+	if player_stats != null:
+		player_stats.grid_pos = _turn_snapshot.get("grid_pos", player_stats.grid_pos)
+		(player.get("node") as Node2D).global_position = combat_grid.grid_to_world(player_stats.grid_pos)
+
+	var stamina:StaminaResource = player.get("stamina", null)
+	if stamina != null:
+		stamina.value = int(_turn_snapshot.get("stamina_value", stamina.max_value))
+
+	_ability_guard.clear_guard(player.get("combat_stats", null))
+
+	var saved_cooldowns:Array = _turn_snapshot.get("cooldowns", [])
+	for i in range(mini(saved_cooldowns.size(), ability_manager.abilities.size())):
+		ability_manager.abilities[i].current_cooldown = int(saved_cooldowns[i])
+
+	for i in enemies.size():
+		var enemy_data:Dictionary = enemies[i]
+		var saved_enemies:Array = _turn_snapshot.get("enemy_hp", [])
+		if i < saved_enemies.size():
+			var health:HealthResource = enemy_data.get("health", null)
+			if health != null:
+				health.hp = float(saved_enemies[i])
+				var enemy_node:Node2D = enemy_data.get("node", null)
+				if enemy_node != null:
+					enemy_node.visible = health.hp > 0.0
+
+	_refresh_grid_state()
+	grid_movement.set_blocked_cells(grid_state.get("blocked_cells", Array([], TYPE_VECTOR2I, "", null)))
+	grid_movement.set_occupied_cells(_occupied_cells_without_player())
+	grid_movement.refresh_reachable()
+	_clear_grid_overlay()
+	_draw_active_telegraphs()
+
+func _save_turn_snapshot() -> void:
+	var player_stats:CombatStatsResource = player.get("combat_stats", null)
+	var stamina:StaminaResource = player.get("stamina", null)
+	var cooldowns:Array = []
+	for ability in ability_manager.abilities:
+		cooldowns.push_back(ability.current_cooldown)
+	var enemy_hp:Array = []
+	for enemy_data in enemies:
+		var health:HealthResource = enemy_data.get("health", null)
+		enemy_hp.push_back(health.hp if health != null else 0.0)
+
+	_turn_snapshot = {
+		"grid_pos": player_stats.grid_pos if player_stats != null else Vector2i.ZERO,
+		"stamina_value": stamina.value if stamina != null else 100,
+		"cooldowns": cooldowns,
+		"enemy_hp": enemy_hp,
+	}
+
 func _on_player_turn_started() -> void:
 	if ability_manager.get_selected() != null:
 		ability_manager.cancel_selection()
@@ -208,6 +277,9 @@ func _on_player_turn_started() -> void:
 
 	_ability_guard.clear_guard(player.get("combat_stats", null))
 	_refresh_grid_state()
+
+	_save_turn_snapshot()
+
 	grid_movement.set_blocked_cells(grid_state.get("blocked_cells", Array([], TYPE_VECTOR2I, "", null)))
 	grid_movement.set_occupied_cells(_occupied_cells_without_player())
 	grid_movement.refresh_reachable()
