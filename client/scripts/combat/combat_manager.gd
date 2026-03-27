@@ -159,19 +159,15 @@ func sync_positions_from_chain(chain_actors: Dictionary) -> void:
 			if enemy_health != null:
 				enemy_health.hp = 0.0
 
-	push_warning("[combat_manager] synced positions from chain — player=%s enemies=%s" % [
+	push_warning("[combat_manager] synced from chain — player=%s enemies=%s" % [
 		str(player.get("combat_stats").grid_pos),
-		str(enemies.map(func(e: Dictionary) -> String: return "id%d@%s" % [int(e.get("contract_actor_id", 0)), str(e.get("combat_stats").grid_pos)]))
+		str(enemies.map(func(e: Dictionary) -> String: return "id%d@%s(hp%d)" % [
+			int(e.get("contract_actor_id", 0)),
+			str(e.get("combat_stats").grid_pos),
+			int(e.get("health").hp) if e.get("health") != null else 0
+		]))
 	])
 	_refresh_grid_state()
-	# Reset the turn: save new snapshot from chain-corrected state and clear recorded actions.
-	_save_turn_snapshot()
-	DojoIntegration._turn_actions.clear()
-	grid_movement.set_blocked_cells(grid_state.get("blocked_cells", Array([], TYPE_VECTOR2I, "", null)))
-	grid_movement.set_occupied_cells(_occupied_cells_without_player())
-	grid_movement.refresh_reachable()
-	_clear_grid_overlay()
-	_draw_active_telegraphs()
 
 func end_combat() -> void:
 	if turn_manager != null:
@@ -360,7 +356,27 @@ func confirm_turn() -> void:
 	if turn_manager.phase != CombatEnums.Phase.PLAYER_TURN:
 		return
 	DojoIntegration.submit_turn()
-	turn_manager.end_player_turn()
+	if DojoIntegration._enabled:
+		# Online: don't run local enemy phase. Chain processes player actions +
+		# enemy phase. dojo_integration will call start_next_turn_from_chain()
+		# when chain data arrives.
+		_enable_player_input(false)
+	else:
+		# Offline: run local resolve + enemy phase as usual
+		turn_manager.end_player_turn()
+
+## Called by DojoIntegration after chain has processed confirm_turn
+## (player actions + enemy phase) and synced actor states.
+## Skips local resolve/enemy phases — chain already did them.
+func start_next_turn_from_chain() -> void:
+	ability_manager.tick_cooldowns()
+	_process_enemy_deaths()
+	_refresh_grid_state()
+	_check_win_lose()
+	if turn_manager.phase == CombatEnums.Phase.COMBAT_OVER:
+		return
+	# Start fresh player turn
+	_on_player_turn_started()
 
 func reset_turn() -> void:
 	if turn_manager == null || turn_manager.phase != CombatEnums.Phase.PLAYER_TURN:

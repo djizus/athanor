@@ -7,23 +7,12 @@ var _enabled: bool = false
 var _current_game_id: int = -1
 var _current_room_id: int = -1
 var _turn_actions: Array[Dictionary] = []
+var _combat_manager: CombatManager
 
 func _ready() -> void:
 	get_tree().node_added.connect(_on_node_added)
 	DojoBridge.tx_failed.connect(_on_tx_failed)
 	DojoBridge.tx_submitted.connect(_on_tx_submitted)
-
-func _on_tx_failed(action: String, _reason: String) -> void:
-	# On failed confirm_turn, reset turn so player can retry from clean state.
-	if action == "confirm_turn" && _combat_manager != null:
-		_combat_manager.reset_turn()
-		_turn_actions.clear()
-
-func _on_tx_submitted(action: String) -> void:
-	# After successful confirm_turn, re-sync from chain so the next turn
-	# starts with the contract's post-enemy-phase state (HP, positions, alive).
-	if action == "confirm_turn" && _enabled:
-		_resync_after_confirm()
 
 func set_enabled(enabled: bool) -> void:
 	_enabled = enabled
@@ -35,28 +24,21 @@ func set_enabled(enabled: bool) -> void:
 func set_current_game_id(game_id: int) -> void:
 	_current_game_id = game_id
 
+# --- Action recording ---
+
 func record_move(target_x: int, target_y: int) -> void:
 	if not _enabled:
 		return
-	_turn_actions.push_back({
-		"type": "move",
-		"x": target_x,
-		"y": target_y,
-	})
+	_turn_actions.push_back({"type": "move", "x": target_x, "y": target_y})
 
 func record_ability(ability_id: int, target_mode: int, target_a: int, target_b: int) -> void:
 	if not _enabled:
 		return
-	_turn_actions.push_back({
-		"type": "ability",
-		"id": ability_id,
-		"mode": target_mode,
-		"a": target_a,
-		"b": target_b,
-	})
+	_turn_actions.push_back({"type": "ability", "id": ability_id, "mode": target_mode, "a": target_a, "b": target_b})
 
-## Serialize all recorded actions into a flat felt252 array and submit as a single
-## confirm_turn transaction. The contract processes all actions then auto-runs enemy phase.
+# --- Turn submission ---
+
+## Serialize recorded actions and submit as one confirm_turn TX.
 func submit_turn() -> void:
 	if not _enabled:
 		return
@@ -91,11 +73,40 @@ func submit_turn() -> void:
 			push_warning("[dojo_integration]   [%d] ABILITY id=%d mode=%d a=%d b=%d" % [
 				i, int(a.get("id", 0)), int(a.get("mode", 0)), int(a.get("a", 0)), int(a.get("b", 0))
 			])
-	push_warning("[dojo_integration]   felts=%s" % str(actions_packed))
 	DojoBridge.confirm_turn(_current_game_id, actions_packed)
 	_turn_actions.clear()
 
-var _combat_manager: CombatManager
+# --- TX callbacks ---
+
+func _on_tx_failed(action: String, _reason: String) -> void:
+	if action == "confirm_turn" && _combat_manager != null:
+		# TX failed — let player retry. Re-enable input.
+		_combat_manager.reset_turn()
+		_turn_actions.clear()
+
+func _on_tx_submitted(action: String) -> void:
+	if action == "confirm_turn" && _enabled:
+		# TX accepted — wait for chain to process player actions + enemy phase,
+		# then sync the result and start next player turn.
+		_sync_chain_then_next_turn()
+
+## The core online loop: wait for chain to finish, sync state, resume play.
+func _sync_chain_then_next_turn() -> void:
+	# Wait for Katana to process confirm_turn (player actions + enemy phase)
+	# and Torii to index the updated actor states.
+	await get_tree().create_timer(4.0).timeout
+	DojoBridge.pull_entities_snapshot()
+	await get_tree().create_timer(1.0).timeout
+	if _combat_manager != null && !GameState.actors.is_empty():
+		_combat_manager.sync_positions_from_chain(GameState.actors)
+		_combat_manager.start_next_turn_from_chain()
+		push_warning("[dojo_integration] chain turn complete — next player turn started")
+	else:
+		push_warning("[dojo_integration] chain sync failed — no data, re-enabling input")
+		if _combat_manager != null:
+			_combat_manager._enable_player_input(true)
+
+# --- Combat lifecycle ---
 
 func _on_node_added(node: Node) -> void:
 	if node is CombatManager:
@@ -117,15 +128,14 @@ func _on_combat_started() -> void:
 func _on_combat_finished(player_won: bool) -> void:
 	_turn_actions.clear()
 	if not player_won:
-		# Run failed — reset for potential retry
 		_current_room_id = -1
 		_current_game_id = -1
 
-## Spawn a new game on chain, wait for Torii to index, then enter room 0.
+# --- Chain setup (spawn + enter_room) ---
+
 func _spawn_and_enter_room() -> void:
 	push_warning("[dojo_integration] spawn() — creating onchain game...")
 	DojoBridge.spawn()
-	# Wait for Katana to process + Torii to index the new RunState
 	await get_tree().create_timer(3.0).timeout
 	DojoBridge.pull_entities_snapshot()
 	await get_tree().create_timer(1.0).timeout
@@ -133,9 +143,8 @@ func _spawn_and_enter_room() -> void:
 	if _current_game_id >= 0:
 		push_warning("[dojo_integration] game_id=%d — entering room %d" % [_current_game_id, _current_room_id])
 		DojoBridge.enter_room(_current_game_id, _current_room_id)
-		await _wait_and_sync_from_chain()
 	else:
-		push_warning("[dojo_integration] No game_id after spawn — chain may be slow, retrying...")
+		push_warning("[dojo_integration] No game_id after spawn — retrying...")
 		await get_tree().create_timer(3.0).timeout
 		DojoBridge.pull_entities_snapshot()
 		await get_tree().create_timer(1.0).timeout
@@ -143,42 +152,14 @@ func _spawn_and_enter_room() -> void:
 		if _current_game_id >= 0:
 			push_warning("[dojo_integration] game_id=%d (retry) — entering room %d" % [_current_game_id, _current_room_id])
 			DojoBridge.enter_room(_current_game_id, _current_room_id)
-			await _wait_and_sync_from_chain()
 		else:
 			push_warning("[dojo_integration] Failed to get game_id — online turns will not submit")
 
-## Enter subsequent rooms (1, 2) using existing game_id.
 func _enter_next_room() -> void:
 	if _current_game_id < 0:
 		_current_game_id = GameState.get_game_id()
 	if _current_game_id >= 0:
 		push_warning("[dojo_integration] Entering room %d for game_id=%d" % [_current_room_id, _current_game_id])
 		DojoBridge.enter_room(_current_game_id, _current_room_id)
-		await _wait_and_sync_from_chain()
 	else:
 		push_warning("[dojo_integration] Cannot enter room %d — no game_id" % _current_room_id)
-
-## Wait for Torii to index enter_room TX, then sync combat positions from chain.
-## The contract is the source of truth for actor positions.
-func _wait_and_sync_from_chain() -> void:
-	await get_tree().create_timer(3.0).timeout
-	DojoBridge.pull_entities_snapshot()
-	await get_tree().create_timer(1.0).timeout
-	if _combat_manager != null && !GameState.actors.is_empty():
-		_combat_manager.sync_positions_from_chain(GameState.actors)
-	else:
-		push_warning("[dojo_integration] chain sync skipped — no combat_manager or no actors")
-
-## After successful confirm_turn, wait for Torii to index the post-enemy-phase
-## state, then re-sync so the next turn starts from the contract's authoritative
-## actor positions, HP, and alive status.
-func _resync_after_confirm() -> void:
-	# Wait for Katana to process confirm_turn (player actions + enemy phase) + Torii to index
-	await get_tree().create_timer(4.0).timeout
-	DojoBridge.pull_entities_snapshot()
-	await get_tree().create_timer(1.0).timeout
-	if _combat_manager != null && !GameState.actors.is_empty():
-		_combat_manager.sync_positions_from_chain(GameState.actors)
-		push_warning("[dojo_integration] post-confirm resync complete")
-	else:
-		push_warning("[dojo_integration] post-confirm resync skipped — no data")
