@@ -361,6 +361,17 @@ func confirm_turn() -> void:
 		# enemy phase. dojo_integration will call start_next_turn_from_chain()
 		# when chain data arrives.
 		_enable_player_input(false)
+
+		# Terminal state check: if all enemies dead or player dead locally,
+		# end combat NOW. Don't wait for chain sync (may be stale/slow).
+		# The TX is already submitted and will finalize on chain.
+		_process_enemy_deaths()
+		if _is_player_dead():
+			_on_combat_ended(false)
+			return
+		if _are_enemies_defeated():
+			_on_combat_ended(true)
+			return
 	else:
 		# Offline: run local resolve + enemy phase as usual
 		turn_manager.end_player_turn()
