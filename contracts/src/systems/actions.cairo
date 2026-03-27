@@ -274,6 +274,14 @@ pub mod actions {
             let from_x = player_actor.pos_x;
             let from_y = player_actor.pos_y;
 
+            // No-op move (target == current position): skip silently.
+            if target_x == from_x && target_y == from_y {
+                store.set_actor_state(@player_actor);
+                store.set_room_state(@room);
+                store.set_run_state(@run);
+                return true;
+            }
+
             let dist = movement::manhattan_distance(from_x, from_y, target_x, target_y);
             let stamina_cost: u16 = dist.into() * player_actor.move_cost.into();
             assert(player_actor.stamina >= stamina_cost, 'Not enough stamina');

@@ -91,16 +91,37 @@ func _on_tx_submitted(action: String) -> void:
 		_sync_chain_then_next_turn()
 
 ## The core online loop: wait for chain to finish, sync state, resume play.
+## Polls until Torii data changes (actors updated) or max retries reached.
 func _sync_chain_then_next_turn() -> void:
-	# Wait for Katana to process confirm_turn (player actions + enemy phase)
-	# and Torii to index the updated actor states.
-	await get_tree().create_timer(4.0).timeout
-	DojoBridge.pull_entities_snapshot()
-	await get_tree().create_timer(1.0).timeout
+	# Snapshot actor state before poll so we can detect changes.
+	var pre_sync_hp: Dictionary = {}
+	for actor_id in GameState.actors:
+		var actor: Dictionary = GameState.actors[actor_id]
+		pre_sync_hp[actor_id] = int(actor.get("hp", -1))
+
+	var synced := false
+	for attempt in range(4):
+		await get_tree().create_timer(2.0).timeout
+		DojoBridge.pull_entities_snapshot()
+		await get_tree().create_timer(1.0).timeout
+
+		# Check if any actor data changed (HP, position, alive).
+		var changed := false
+		for actor_id in GameState.actors:
+			var actor: Dictionary = GameState.actors[actor_id]
+			var new_hp: int = int(actor.get("hp", -1))
+			if !pre_sync_hp.has(actor_id) || pre_sync_hp[actor_id] != new_hp:
+				changed = true
+				break
+		if changed:
+			synced = true
+			break
+		push_warning("[dojo_integration] poll %d: no chain state change yet, retrying..." % attempt)
+
 	if _combat_manager != null && !GameState.actors.is_empty():
 		_combat_manager.sync_positions_from_chain(GameState.actors)
 		_combat_manager.start_next_turn_from_chain()
-		push_warning("[dojo_integration] chain turn complete — next player turn started")
+		push_warning("[dojo_integration] chain turn complete (synced=%s) — next player turn started" % str(synced))
 	else:
 		push_warning("[dojo_integration] chain sync failed — no data, re-enabling input")
 		if _combat_manager != null:
