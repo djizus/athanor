@@ -111,6 +111,12 @@ func start_combat(player_node:Node2D, enemy_nodes:Array[Node], combat_grid_node:
 ## chain_actors: Dictionary keyed by actor_id (int), values are model Dicts
 ## with at minimum "pos_x", "pos_y", "archetype", "alive".
 func sync_positions_from_chain(chain_actors: Dictionary) -> void:
+	# First: undo any local changes (kills, damage, moves) by restoring
+	# the turn snapshot. This brings back enemies that were killed locally
+	# before their actions were submitted on-chain.
+	if !_turn_snapshot.is_empty():
+		reset_turn()
+
 	# Sync player (actor_id 0)
 	if chain_actors.has(0):
 		var chain_player: Dictionary = chain_actors[0]
