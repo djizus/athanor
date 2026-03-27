@@ -173,8 +173,27 @@ func _spawn_and_enter_room() -> void:
 func _enter_next_room() -> void:
 	if _current_game_id < 0:
 		_current_game_id = GameState.get_game_id()
-	if _current_game_id >= 0:
-		push_warning("[dojo_integration] Entering room %d for game_id=%d" % [_current_room_id, _current_game_id])
-		DojoBridge.enter_room(_current_game_id, _current_room_id)
-	else:
+	if _current_game_id < 0:
 		push_warning("[dojo_integration] Cannot enter room %d — no game_id" % _current_room_id)
+		return
+
+	# Wait for the previous room's confirm_turn to finalize on chain
+	# (room cleared → PHASE_EXPLORE). The TX was just submitted and needs
+	# time to be processed before we can enter the next room.
+	var ready := false
+	for attempt in range(8):
+		await get_tree().create_timer(2.0).timeout
+		DojoBridge.pull_entities_snapshot()
+		await get_tree().create_timer(0.5).timeout
+		var phase: int = int(GameState.run_state.get("phase", -1))
+		# PHASE_EXPLORE=0, PHASE_COMPLETE=3 (from contract phase.cairo)
+		if phase == 0 || phase == 3:
+			ready = true
+			break
+		push_warning("[dojo_integration] waiting for room clear on chain (phase=%d, attempt %d)..." % [phase, attempt])
+
+	if !ready:
+		push_warning("[dojo_integration] room clear not confirmed on chain after 20s — entering anyway")
+
+	push_warning("[dojo_integration] Entering room %d for game_id=%d" % [_current_room_id, _current_game_id])
+	DojoBridge.enter_room(_current_game_id, _current_room_id)
