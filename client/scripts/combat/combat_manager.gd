@@ -368,14 +368,24 @@ func confirm_turn() -> void:
 ## Called by DojoIntegration after chain has processed confirm_turn
 ## (player actions + enemy phase) and synced actor states.
 ## Skips local resolve/enemy phases — chain already did them.
+## Directly checks game-end conditions (bypasses turn_manager coroutine
+## which is stuck awaiting _player_turn_ended in online mode).
 func start_next_turn_from_chain() -> void:
-	ability_manager.tick_cooldowns()
 	_process_enemy_deaths()
 	_refresh_grid_state()
-	_check_win_lose()
-	if turn_manager.phase == CombatEnums.Phase.COMBAT_OVER:
+
+	# Check game-end from chain state — call _on_combat_ended directly
+	# because turn_manager.queue_combat_end doesn't fire in online mode
+	# (the coroutine loop is stuck at await _player_turn_ended).
+	if _is_player_dead():
+		_on_combat_ended(false)
 		return
-	# Start fresh player turn
+	if _are_enemies_defeated():
+		_on_combat_ended(true)
+		return
+
+	# Continue: tick cooldowns, start fresh player turn
+	ability_manager.tick_cooldowns()
 	_on_player_turn_started()
 
 func reset_turn() -> void:

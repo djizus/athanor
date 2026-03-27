@@ -788,6 +788,21 @@ pub mod actions {
             // Step 2: enemies act by speed desc, actor_id asc tie-break.
             self.process_enemies_by_speed(ref store, player, game_id, ref run, ref room);
 
+            // Post-enemy safety checks: player death or room cleared.
+            let player_after_enemies = store.get_actor_state(player, game_id, PLAYER_ACTOR_ID);
+            if !player_after_enemies.alive || player_after_enemies.hp == 0 {
+                run.phase = PHASE_FAILED;
+                store.set_room_state(@room);
+                store.set_run_state(@run);
+                store.emit_run_failed(player, game_id, run.turn_index);
+                return;
+            }
+            if room.enemy_count == 0 {
+                let _ = self.maybe_finalize_room(ref store, player, game_id, ref run, ref room);
+                store.set_room_state(@room);
+                return;
+            }
+
             // Step 3: phase transition.
             run.turn_index += 1;
             run.phase = PHASE_PLAYER_TURN;
