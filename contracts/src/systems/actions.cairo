@@ -398,6 +398,11 @@ pub mod actions {
             player_actor.stamina -= stamina_cost;
             slot.cooldown_remaining = abilities::ability_cooldown(ability_id);
 
+            // Save ref player to store BEFORE ability execution so that
+            // apply_damage_to_actor reads the correct in-flight stamina
+            // when applying kill bonuses.
+            store.set_actor_state(@player_actor);
+
             let mut used_target_actor_id: u8 = INVALID_ACTOR_ID;
             let mut used_target_x: u8 = INVALID_ACTOR_ID;
             let mut used_target_y: u8 = INVALID_ACTOR_ID;
@@ -647,7 +652,7 @@ pub mod actions {
                 used_target_y = player_actor.pos_y;
             };
 
-            store.set_actor_state(@player_actor);
+            // player_actor already saved before ability execution; will re-read below.
             store.set_room_state(@room);
             store.set_ability_slot_state(@slot);
             store.set_run_state(@run);
