@@ -1,6 +1,6 @@
 #[starknet::interface]
 trait IActions<T> {
-    fn spawn(ref self: T, class_id: u8);
+    fn spawn(ref self: T, game_id: u32, settings_id: u32);
     fn enter_room(ref self: T, game_id: u32, room_id: u8);
     fn confirm_turn(ref self: T, game_id: u32, actions: Span<felt252>);
 }
@@ -16,7 +16,7 @@ pub mod actions {
     use starknet::{ContractAddress, get_caller_address};
 
     use athanor::constants::{
-        GRID_WIDTH, GRID_HEIGHT, BASE_STAMINA, MOVE_COST_PER_TILE, HERO_HP, HERO_OFFENSE,
+        GRID_WIDTH, GRID_HEIGHT, BASE_STAMINA, MOVE_COST_PER_TILE, HERO_OFFENSE,
         HERO_DEFENSE, HERO_SPEED, BRUTE_HP, BRUTE_OFFENSE, BRUTE_DEFENSE, BRUTE_SPEED, CASTER_HP,
         CASTER_OFFENSE, CASTER_DEFENSE, CASTER_SPEED, FLANKER_HP, FLANKER_OFFENSE,
         FLANKER_DEFENSE, FLANKER_SPEED, HEAVY_HP, HEAVY_OFFENSE, HEAVY_DEFENSE, HEAVY_SPEED,
@@ -25,7 +25,8 @@ pub mod actions {
         COLLISION_DAMAGE, KILL_STAMINA_BONUS,
     };
     use athanor::helpers::bitmap;
-    use athanor::models::config::Config;
+    use athanor::helpers::random::{RandomTrait};
+    use athanor::models::config::{Config, GameSettingsTrait};
     use athanor::models::index::{RunState, RoomState, ActorState, AbilitySlotState, TelegraphState};
     use athanor::store::{Store, StoreTrait};
     use athanor::systems::phase::{
@@ -186,14 +187,23 @@ pub mod actions {
 
     #[abi(embed_v0)]
     impl ActionsImpl of IActions<ContractState> {
-        fn spawn(ref self: ContractState, class_id: u8) {
+        fn spawn(ref self: ContractState, game_id: u32, settings_id: u32) {
             let mut store = self.store();
             let player = get_caller_address();
-            let game_id: u32 = dojo::world::IWorldDispatcherTrait::uuid(
-                self.world_default().dispatcher,
-            )
-                .try_into()
-                .unwrap();
+
+            // TODO(ascend): once Denshokan is wired up in tests, assert token
+            // ownership. For local dev this is skipped because no test
+            // Denshokan mints `game_id` tokens.
+            // self.minigame.assert_token_ownership(game_id.into());
+
+            let settings = store.get_game_settings(settings_id);
+            assert(settings.exists(), 'actions: settings not found');
+            assert(settings.hero_class == 0, 'actions: class not supported');
+
+            // Consume VRF once per run; every per-room derivation in step 6
+            // will poseidon-hash this seed with room_id and other state bits.
+            let config = store.get_config();
+            let random = RandomTrait::new(config.vrf_address, game_id.into());
 
             let run = RunState {
                 player,
@@ -204,6 +214,11 @@ pub mod actions {
                 player_actor_id: PLAYER_ACTOR_ID,
                 status_flags: 0,
                 last_player_direction: DIRECTION_EAST,
+                seed: random.seed,
+                score: 0,
+                rooms_cleared: 0,
+                started_at: starknet::get_block_timestamp(),
+                ended_at: 0,
             };
             store.set_run_state(@run);
 
@@ -213,10 +228,10 @@ pub mod actions {
                 actor_id: PLAYER_ACTOR_ID,
                 faction: FACTION_PLAYER,
                 archetype: ARCHETYPE_HERO,
-                hp: HERO_HP,
-                max_hp: HERO_HP,
-                stamina: BASE_STAMINA,
-                max_stamina: BASE_STAMINA,
+                hp: settings.hero_hp,
+                max_hp: settings.hero_hp,
+                stamina: settings.hero_stamina,
+                max_stamina: settings.hero_stamina,
                 offense: HERO_OFFENSE,
                 defense: HERO_DEFENSE,
                 speed: HERO_SPEED,
@@ -234,7 +249,7 @@ pub mod actions {
 
             store.emit_run_spawned(player, game_id, 0, PLAYER_ACTOR_ID);
 
-            let _ = class_id;
+            let _ = settings_id;
         }
 
         fn enter_room(ref self: ContractState, game_id: u32, room_id: u8) {
@@ -259,6 +274,8 @@ pub mod actions {
                 occupancy: 0_u64,
                 enemy_count: 0,
                 cleared: false,
+                orbs_fresh: 0,
+                orbs_aged: 0,
             };
 
             room.occupancy = bitmap::set_bit(room.occupancy, ENTRY_X, ENTRY_Y);

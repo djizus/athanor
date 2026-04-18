@@ -11,4 +11,10 @@ pub struct RunState {
     pub player_actor_id: u8,
     pub status_flags: u8,
     pub last_player_direction: u8,
+    // Ascend additions:
+    pub seed: felt252,
+    pub score: u32,
+    pub rooms_cleared: u16,
+    pub started_at: u64,
+    pub ended_at: u64,
 }

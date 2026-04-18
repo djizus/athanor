@@ -13,4 +13,7 @@ pub struct RoomState {
     pub occupancy: u64,
     pub enemy_count: u8,
     pub cleared: bool,
+    // Ascend additions:
+    pub orbs_fresh: u64,
+    pub orbs_aged: u64,
 }
