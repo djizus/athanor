@@ -9,6 +9,10 @@ trait IActions<T> {
 pub mod actions {
     use super::IActions;
 
+    use dojo::world::{WorldStorage, WorldStorageTrait};
+    use game_components_embeddable_game_standard::minigame::interface::IMinigameTokenData;
+    use game_components_embeddable_game_standard::minigame::minigame_component::MinigameComponent;
+    use openzeppelin::introspection::src5::SRC5Component;
     use starknet::{ContractAddress, get_caller_address};
 
     use athanor::constants::{
@@ -21,6 +25,7 @@ pub mod actions {
         COLLISION_DAMAGE, KILL_STAMINA_BONUS,
     };
     use athanor::helpers::bitmap;
+    use athanor::models::config::Config;
     use athanor::models::index::{RunState, RoomState, ActorState, AbilitySlotState, TelegraphState};
     use athanor::store::{Store, StoreTrait};
     use athanor::systems::phase::{
@@ -31,6 +36,109 @@ pub mod actions {
         SHAPE_CIRCLE, SHAPE_CROSS, TELEGRAPH_TYPE_DAMAGE, TELEGRAPH_TYPE_PULL,
     };
     use athanor::systems::{movement, abilities, telegraph, enemy_ai};
+
+    // --- EGC minigame components ---
+
+    component!(path: MinigameComponent, storage: minigame, event: MinigameEvent);
+    component!(path: SRC5Component, storage: src5, event: SRC5Event);
+
+    #[abi(embed_v0)]
+    impl MinigameImpl = MinigameComponent::MinigameImpl<ContractState>;
+    impl MinigameInternalImpl = MinigameComponent::InternalImpl<ContractState>;
+    #[abi(embed_v0)]
+    impl SRC5Impl = SRC5Component::SRC5Impl<ContractState>;
+
+    #[storage]
+    struct Storage {
+        #[substorage(v0)]
+        minigame: MinigameComponent::Storage,
+        #[substorage(v0)]
+        src5: SRC5Component::Storage,
+    }
+
+    #[event]
+    #[derive(Drop, starknet::Event)]
+    enum Event {
+        #[flat]
+        MinigameEvent: MinigameComponent::Event,
+        #[flat]
+        SRC5Event: SRC5Component::Event,
+    }
+
+    fn dojo_init(
+        ref self: ContractState,
+        denshokan_address: ContractAddress,
+        vrf_address: ContractAddress,
+    ) {
+        let world: WorldStorage = self.world(@"athanor_0_1");
+        let creator_address = starknet::get_tx_info().unbox().account_contract_address;
+        let (setup_address, _) = world.dns(@"setup").expect('actions: setup not found');
+
+        self
+            .minigame
+            .initializer(
+                creator_address: creator_address,
+                name: "Athanor:Ascend",
+                description: "On-chain tactical roguelike - how deep can you go?",
+                developer: "djizus",
+                publisher: "djizus",
+                genre: "Tactics",
+                image: "",
+                color: Option::None,
+                client_url: Option::None,
+                renderer_address: Option::None,
+                settings_address: Option::Some(setup_address),
+                objectives_address: Option::None,
+                token_address: denshokan_address,
+                royalty_fraction: Option::None,
+                skills_address: Option::None,
+                version: 1,
+            );
+
+        let mut store = StoreTrait::new(world);
+        store
+            .set_config(
+                @Config { key: 0, token_address: denshokan_address, vrf_address },
+            );
+    }
+
+    // --- EGC IMinigameTokenData ---
+    // Placeholders until RunState gains score + ended_at (step 4/10). Returning
+    // zero/false is safe: Denshokan treats any score as valid and any non-true
+    // game_over as "still playing". Once fields land, swap these reads to real.
+
+    #[abi(embed_v0)]
+    impl TokenDataImpl of IMinigameTokenData<ContractState> {
+        fn score(self: @ContractState, token_id: felt252) -> u64 {
+            let _ = token_id;
+            0
+        }
+
+        fn game_over(self: @ContractState, token_id: felt252) -> bool {
+            let _ = token_id;
+            false
+        }
+
+        fn score_batch(self: @ContractState, token_ids: Span<felt252>) -> Array<u64> {
+            let mut results = array![];
+            let mut i: u32 = 0;
+            while i < token_ids.len() {
+                results.append(self.score(*token_ids.at(i)));
+                i += 1;
+            }
+            results
+        }
+
+        fn game_over_batch(self: @ContractState, token_ids: Span<felt252>) -> Array<bool> {
+            let mut results = array![];
+            let mut i: u32 = 0;
+            while i < token_ids.len() {
+                results.append(self.game_over(*token_ids.at(i)));
+                i += 1;
+            }
+            results
+        }
+    }
 
     const PLAYER_ACTOR_ID: u8 = 0;
     const ENEMY_ACTOR_ID_1: u8 = 1;
