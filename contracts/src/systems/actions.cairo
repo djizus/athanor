@@ -279,14 +279,24 @@ pub mod actions {
 
             self.reset_enemy_slots(ref store, player, game_id, room_id);
 
-            // Procedural enemy spawn
+            // Procedural enemy spawn with tier-weighted archetypes, anti-snowball
+            // caps (2 Pullers / 2 Heavies max), and stat scaling.
             let total = procedural::enemy_count(room_id);
             let mut i: u8 = 0;
+            let mut pullers_so_far: u8 = 0;
+            let mut heavies_so_far: u8 = 0;
             while i < total {
                 let actor_id: u8 = i + 1;
-                let archetype = procedural::roll_archetype(run.seed, room_id, i);
+                let archetype = procedural::roll_archetype_capped(
+                    run.seed, room_id, i, pullers_so_far, heavies_so_far,
+                );
+                if archetype == procedural::ARCH_PULLER {
+                    pullers_so_far += 1;
+                } else if archetype == procedural::ARCH_HEAVY {
+                    heavies_so_far += 1;
+                }
                 let (hp, offense, defense, speed, is_immovable) =
-                    procedural::archetype_base_stats(archetype);
+                    procedural::scaled_archetype_stats(archetype, room_id);
                 let (x, y) = procedural::pick_enemy_position(
                     run.seed, room_id, i, room.blocked, room.occupancy, ENTRY_X, ENTRY_Y,
                 );

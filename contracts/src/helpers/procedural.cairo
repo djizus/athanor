@@ -141,19 +141,92 @@ pub fn pick_enemy_position(
     (7, 7)
 }
 
-/// Uniform-weight archetype roll for step 6. Archetype tier-weights come in
-/// step 7 (replaces this function).
-pub fn roll_archetype(seed: felt252, room_id: u8, slot_index: u8) -> u8 {
-    let h = poseidon_hash_span(
-        array![seed, room_id.into(), 'arch', slot_index.into()].span(),
-    );
-    let v: u256 = h.into();
-    let roll: u8 = (v.low % 5).try_into().unwrap();
-    roll + 1
+/// Tier band for a given room. Tiers shape archetype weight tables and stat
+/// multipliers below.
+pub fn room_tier(room_id: u8) -> u8 {
+    if room_id <= 2 {
+        0
+    } else if room_id <= 6 {
+        1
+    } else if room_id <= 11 {
+        2
+    } else if room_id <= 17 {
+        3
+    } else {
+        4
+    }
 }
 
-/// Base stats per archetype — (hp, offense, defense, speed, is_immovable).
-/// No scaling here; step 7 layers stat_mult on top.
+/// Weights for (Brute, Caster, Flanker, Heavy, Puller) — always sum to 100.
+/// Tier 0 shelters the player from Heavy/Puller; tier 4 is mean-heavy.
+pub fn archetype_weights(tier: u8) -> (u8, u8, u8, u8, u8) {
+    if tier == 0 {
+        (60, 30, 10, 0, 0)
+    } else if tier == 1 {
+        (40, 25, 20, 15, 0)
+    } else if tier == 2 {
+        (25, 20, 25, 15, 15)
+    } else if tier == 3 {
+        (15, 20, 25, 20, 20)
+    } else {
+        (10, 15, 25, 25, 25)
+    }
+}
+
+fn weighted_pick(roll: u8, wb: u8, wc: u8, wf: u8, wh: u8, wp: u8) -> u8 {
+    let _ = wp;
+    if roll < wb {
+        ARCH_BRUTE
+    } else if roll < wb + wc {
+        ARCH_CASTER
+    } else if roll < wb + wc + wf {
+        ARCH_FLANKER
+    } else if roll < wb + wc + wf + wh {
+        ARCH_HEAVY
+    } else {
+        ARCH_PULLER
+    }
+}
+
+/// Roll an archetype honoring the tier weight table and per-room caps:
+/// at most 2 Pullers and 2 Heavies per room. Rerolls with a rotated seed up
+/// to 3 times; falls back to Brute if the caps consistently win.
+pub fn roll_archetype_capped(
+    seed: felt252,
+    room_id: u8,
+    slot_index: u8,
+    pullers_so_far: u8,
+    heavies_so_far: u8,
+) -> u8 {
+    let tier = room_tier(room_id);
+    let (wb, wc, wf, wh, wp) = archetype_weights(tier);
+
+    let mut attempt: u32 = 0;
+    let mut result: u8 = ARCH_BRUTE;
+    let mut decided: bool = false;
+    while attempt < 4 && !decided {
+        let h = poseidon_hash_span(
+            array![
+                seed, room_id.into(), 'arch', slot_index.into(), attempt.into(),
+            ]
+                .span(),
+        );
+        let v: u256 = h.into();
+        let roll: u8 = (v.low % 100).try_into().unwrap();
+        let candidate = weighted_pick(roll, wb, wc, wf, wh, wp);
+        let reject = (candidate == ARCH_PULLER && pullers_so_far >= 2)
+            || (candidate == ARCH_HEAVY && heavies_so_far >= 2);
+        if !reject {
+            result = candidate;
+            decided = true;
+        } else {
+            attempt += 1;
+        };
+    };
+    result
+}
+
+/// Unscaled base stats — (hp, offense, defense, speed, is_immovable).
 pub fn archetype_base_stats(archetype: u8) -> (u16, u8, u8, u8, bool) {
     if archetype == ARCH_BRUTE {
         (40, 15, 8, 5, false)
@@ -166,6 +239,48 @@ pub fn archetype_base_stats(archetype: u8) -> (u16, u8, u8, u8, bool) {
     } else {
         (35, 0, 5, 6, false) // Puller (and fallback)
     }
+}
+
+/// Piecewise stat multiplier as a percentage (100 = 1.00x baseline). Hits
+/// 220% by room 5, 390% by room 10, 610% by room 15, then +60% per room past
+/// room 17 (unbounded — endless).
+pub fn stat_mult(room_id: u8) -> u16 {
+    let r: u16 = room_id.into();
+    if room_id <= 2 {
+        100 + r * 15
+    } else if room_id <= 6 {
+        145 + (r - 2) * 25
+    } else if room_id <= 11 {
+        270 + (r - 6) * 30
+    } else if room_id <= 17 {
+        450 + (r - 11) * 40
+    } else {
+        690 + (r - 17) * 60
+    }
+}
+
+/// Scaled base stats for an archetype at a given room. HP and offense scale
+/// by stat_mult; defense / speed / immovable are unchanged (preserves combat
+/// identity — only the "meat" of the enemy grows, not its movement profile).
+pub fn scaled_archetype_stats(archetype: u8, room_id: u8) -> (u16, u8, u8, u8, bool) {
+    let (base_hp, base_off, def, speed, immovable) = archetype_base_stats(archetype);
+    let mult: u16 = stat_mult(room_id);
+
+    let hp_u32: u32 = base_hp.into() * mult.into() / 100;
+    let scaled_hp: u16 = if hp_u32 > 65535 {
+        65535
+    } else {
+        hp_u32.try_into().unwrap()
+    };
+
+    let off_u32: u32 = base_off.into() * mult.into() / 100;
+    let scaled_off: u8 = if off_u32 > 255 {
+        255
+    } else {
+        off_u32.try_into().unwrap()
+    };
+
+    (scaled_hp, scaled_off, def, speed, immovable)
 }
 
 fn pow2_u64(n: u8) -> u64 {
