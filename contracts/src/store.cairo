@@ -11,6 +11,7 @@ use athanor::events::index::{
     RunSpawned, RoomEntered, ActorMoved, AbilityUsed, TelegraphCreated, TelegraphResolved,
     EnemyTurnComputed, TurnEnded,
     ActorDamaged, ActorDied, RoomCleared, RunCompleted, RunFailed,
+    OrbSpawned, OrbCollected,
 };
 
 #[derive(Copy, Drop)]
@@ -201,5 +202,37 @@ pub impl StoreImpl of StoreTrait {
 
     fn emit_run_failed(ref self: Store, player: ContractAddress, game_id: u32, turn_index: u16) {
         self.world.emit_event(@RunFailed { player, game_id, turn_index });
+    }
+
+    fn emit_orb_spawned(
+        ref self: Store,
+        player: ContractAddress,
+        game_id: u32,
+        room_id: u8,
+        pos_x: u8,
+        pos_y: u8,
+        turn_index: u16,
+    ) {
+        self
+            .world
+            .emit_event(
+                @OrbSpawned { player, game_id, room_id, pos_x, pos_y, turn_index },
+            );
+    }
+
+    fn emit_orb_collected(
+        ref self: Store,
+        player: ContractAddress,
+        game_id: u32,
+        room_id: u8,
+        pos_x: u8,
+        pos_y: u8,
+        stamina_after: u16,
+    ) {
+        self
+            .world
+            .emit_event(
+                @OrbCollected { player, game_id, room_id, pos_x, pos_y, stamina_after },
+            );
     }
 }

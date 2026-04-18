@@ -19,7 +19,7 @@ pub mod actions {
         GRID_WIDTH, GRID_HEIGHT, BASE_STAMINA, MOVE_COST_PER_TILE, HERO_OFFENSE,
         HERO_DEFENSE, HERO_SPEED, STRIKE_DAMAGE, DASH_DAMAGE, HEAL_AMOUNT, SHOVE_DAMAGE,
         SHOVE_PUSH_DISTANCE, SLAM_DAMAGE, SLAM_PUSH_DISTANCE, COLLISION_DAMAGE,
-        KILL_STAMINA_BONUS,
+        ORB_STAMINA_BONUS,
     };
     use athanor::helpers::bitmap;
     use athanor::helpers::procedural;
@@ -483,6 +483,11 @@ pub mod actions {
                     from_x, from_y, move_to_x, move_to_y,
                 );
 
+                self.try_collect_orb_at(
+                    ref store, player, game_id, ref room, ref player_actor,
+                    move_to_x, move_to_y,
+                );
+
                 store.emit_actor_moved(
                     player,
                     game_id,
@@ -624,6 +629,13 @@ pub mod actions {
                     cur_y = next_y;
                     moved = true;
                     step += 1;
+
+                    // Drive-by orb pickup on each transit tile.
+                    self
+                        .try_collect_orb_at(
+                            ref store, player, game_id, ref room, ref player_actor,
+                            cur_x, cur_y,
+                        );
                 };
 
                 assert(moved || hit_actor_id != INVALID_ACTOR_ID, 'Dash has no path');
@@ -639,6 +651,12 @@ pub mod actions {
                     room.occupancy = bitmap::set_bit(room.occupancy, final_x, final_y);
 
                     run.last_player_direction = direction;
+
+                    // Persist position + any orb-derived stamina picked up during
+                    // transit. (Ability branches normally don't re-save
+                    // player_actor; Dash has to so the new position + stamina
+                    // reach the store.)
+                    store.set_actor_state(@player_actor);
 
                     store.emit_actor_moved(
                         player,
@@ -968,6 +986,12 @@ pub mod actions {
                 slot_index += 1;
             };
 
+            // Orb aging rotation. Orbs live at most 2 player turns: they spawn
+            // in `orbs_fresh`, migrate to `orbs_aged` at the end of this enemy
+            // phase, and expire on the next rotation unless collected.
+            room.orbs_aged = room.orbs_fresh;
+            room.orbs_fresh = 0;
+
             store.set_room_state(@room);
             store.emit_enemy_turn_computed(player, game_id, run.room_id, run.turn_index);
             store.emit_turn_ended(player, game_id, run.room_id, run.turn_index);
@@ -1290,6 +1314,13 @@ pub mod actions {
                 cur_x = next_x;
                 cur_y = next_y;
                 step += 1;
+
+                // Involuntary movement still collects orbs.
+                self
+                    .try_collect_orb_at(
+                        ref store, player, game_id, ref room, ref player_actor,
+                        cur_x, cur_y,
+                    );
             };
 
             if cur_x != from_x || cur_y != from_y {
@@ -1412,6 +1443,32 @@ pub mod actions {
             }
         }
 
+        /// Collect any energy orb on (x, y). Called for every tile the player
+        /// occupies — voluntary move destination, each Dash transit tile, and
+        /// each step of a Pull displacement. Idempotent on empty tiles.
+        fn try_collect_orb_at(
+            self: @ContractState,
+            ref store: Store,
+            player: ContractAddress,
+            game_id: u32,
+            ref room: RoomState,
+            ref player_actor: ActorState,
+            x: u8,
+            y: u8,
+        ) {
+            let has_orb = bitmap::get_bit(room.orbs_fresh, x, y)
+                || bitmap::get_bit(room.orbs_aged, x, y);
+            if !has_orb {
+                return;
+            }
+            player_actor.stamina += ORB_STAMINA_BONUS;
+            room.orbs_fresh = bitmap::clear_bit(room.orbs_fresh, x, y);
+            room.orbs_aged = bitmap::clear_bit(room.orbs_aged, x, y);
+            store.emit_orb_collected(
+                player, game_id, room.room_id, x, y, player_actor.stamina,
+            );
+        }
+
         fn apply_damage_to_actor(
             self: @ContractState,
             ref store: Store,
@@ -1521,12 +1578,19 @@ pub mod actions {
             if died {
                 store.emit_actor_died(player, game_id, target_actor_id, room_id);
 
+                // Ascend: enemy death spawns an energy orb on its tile. Picked
+                // up by any player movement (process_move, Dash transit,
+                // Pull displacement) for ORB_STAMINA_BONUS. Replaces the old
+                // direct-to-stamina KILL_STAMINA_BONUS.
                 if target.faction == FACTION_ENEMY {
-                    let mut player_actor = store.get_actor_state(player, game_id, PLAYER_ACTOR_ID);
-                    if player_actor.alive {
-                        player_actor.stamina += KILL_STAMINA_BONUS;
-                        store.set_actor_state(@player_actor);
-                    };
+                    let run_turn: u16 = store.get_run_state(player, game_id).turn_index;
+                    room.orbs_fresh = bitmap::set_bit(
+                        room.orbs_fresh, target.pos_x, target.pos_y,
+                    );
+                    store
+                        .emit_orb_spawned(
+                            player, game_id, room_id, target.pos_x, target.pos_y, run_turn,
+                        );
                 };
             };
 

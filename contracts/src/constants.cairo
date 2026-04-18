@@ -26,7 +26,8 @@ pub const SLAM_COOLDOWN: u8 = 2;
 pub const SLAM_DAMAGE: u16 = 10;
 pub const SLAM_PUSH_DISTANCE: u8 = 1;
 
-pub const KILL_STAMINA_BONUS: u16 = 10;
+pub const KILL_STAMINA_BONUS: u16 = 10; // deprecated — Ascend uses orbs instead
+pub const ORB_STAMINA_BONUS: u16 = 20;
 pub const COLLISION_DAMAGE: u16 = 5;
 
 pub const HERO_HP: u16 = 100;
