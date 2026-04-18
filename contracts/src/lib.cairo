@@ -17,6 +17,7 @@ pub mod models {
     pub mod actor_state;
     pub mod ability_slot;
     pub mod telegraph_state;
+    pub mod config;
     pub mod index;
 }
 
@@ -26,6 +27,11 @@ pub mod events {
 
 pub mod helpers {
     pub mod bitmap;
+    pub mod random;
+}
+
+pub mod interfaces {
+    pub mod vrf;
 }
 
 pub mod systems {
@@ -35,5 +41,6 @@ pub mod systems {
     pub mod telegraph;
     pub mod enemy_ai;
     pub mod actions;
+    pub mod setup;
 }
 

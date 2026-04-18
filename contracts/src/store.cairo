@@ -6,6 +6,7 @@ use dojo::event::EventStorage;
 use athanor::models::index::{
     RunState, RoomState, ActorState, AbilitySlotState, TelegraphState,
 };
+use athanor::models::config::{Config, GameSettings, GameSettingsMetadata};
 use athanor::events::index::{
     RunSpawned, RoomEntered, ActorMoved, AbilityUsed, TelegraphCreated, TelegraphResolved,
     EnemyTurnComputed, TurnEnded,
@@ -66,6 +67,32 @@ pub impl StoreImpl of StoreTrait {
     }
 
     fn set_telegraph_state(ref self: Store, model: @TelegraphState) {
+        self.world.write_model(model);
+    }
+
+    // --- Config / Settings ---
+
+    fn get_config(ref self: Store) -> Config {
+        self.world.read_model(0)
+    }
+
+    fn set_config(ref self: Store, model: @Config) {
+        self.world.write_model(model);
+    }
+
+    fn get_game_settings(ref self: Store, settings_id: u32) -> GameSettings {
+        self.world.read_model(settings_id)
+    }
+
+    fn set_game_settings(ref self: Store, model: @GameSettings) {
+        self.world.write_model(model);
+    }
+
+    fn get_game_settings_metadata(ref self: Store, settings_id: u32) -> GameSettingsMetadata {
+        self.world.read_model(settings_id)
+    }
+
+    fn set_game_settings_metadata(ref self: Store, model: @GameSettingsMetadata) {
         self.world.write_model(model);
     }
 

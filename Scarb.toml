@@ -10,6 +10,8 @@ starknet = "2.15.0"
 dojo = "1.8.0"
 dojo_cairo_test = "1.8.0"
 cairo_test = "2.15.0"
+game_components_embeddable_game_standard = { git = "https://github.com/Provable-Games/game-components.git", branch = "next" }
+openzeppelin = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", tag = "v3.0.0" }
 
 [workspace.cairo]
 sierra-replace-ids = true
