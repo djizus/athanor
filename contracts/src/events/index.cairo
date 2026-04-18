@@ -177,3 +177,16 @@ pub struct OrbCollected {
     pub pos_y: u8,
     pub stamina_after: u16,
 }
+
+#[derive(Copy, Drop, Serde)]
+#[dojo::event]
+pub struct RunEnded {
+    #[key]
+    pub player: ContractAddress,
+    #[key]
+    pub game_id: u32,
+    pub score: u32,
+    pub rooms_cleared: u16,
+    pub turn_index: u16,
+    pub ended_at: u64,
+}

@@ -4,14 +4,14 @@ use dojo::model::ModelStorage;
 use dojo::event::EventStorage;
 
 use athanor::models::index::{
-    RunState, RoomState, ActorState, AbilitySlotState, TelegraphState,
+    RunState, RunOwner, RoomState, ActorState, AbilitySlotState, TelegraphState,
 };
 use athanor::models::config::{Config, GameSettings, GameSettingsMetadata};
 use athanor::events::index::{
     RunSpawned, RoomEntered, ActorMoved, AbilityUsed, TelegraphCreated, TelegraphResolved,
     EnemyTurnComputed, TurnEnded,
     ActorDamaged, ActorDied, RoomCleared, RunCompleted, RunFailed,
-    OrbSpawned, OrbCollected,
+    OrbSpawned, OrbCollected, RunEnded,
 };
 
 #[derive(Copy, Drop)]
@@ -29,6 +29,14 @@ pub impl StoreImpl of StoreTrait {
 
     fn get_run_state(ref self: Store, player: ContractAddress, game_id: u32) -> RunState {
         self.world.read_model((player, game_id))
+    }
+
+    fn get_run_owner(ref self: Store, game_id: u32) -> RunOwner {
+        self.world.read_model(game_id)
+    }
+
+    fn set_run_owner(ref self: Store, model: @RunOwner) {
+        self.world.write_model(model);
     }
 
     fn get_room_state(ref self: Store, player: ContractAddress, game_id: u32, room_id: u8) -> RoomState {
@@ -233,6 +241,24 @@ pub impl StoreImpl of StoreTrait {
             .world
             .emit_event(
                 @OrbCollected { player, game_id, room_id, pos_x, pos_y, stamina_after },
+            );
+    }
+
+    fn emit_run_ended(
+        ref self: Store,
+        player: ContractAddress,
+        game_id: u32,
+        score: u32,
+        rooms_cleared: u16,
+        turn_index: u16,
+        ended_at: u64,
+    ) {
+        self
+            .world
+            .emit_event(
+                @RunEnded {
+                    player, game_id, score, rooms_cleared, turn_index, ended_at,
+                },
             );
     }
 }

@@ -25,10 +25,11 @@ pub mod actions {
     use athanor::helpers::procedural;
     use athanor::helpers::random::{RandomTrait};
     use athanor::models::config::{Config, GameSettingsTrait};
-    use athanor::models::index::{RunState, RoomState, ActorState, AbilitySlotState, TelegraphState};
+    use athanor::models::index::{RunState, RunOwner, RoomState, ActorState, AbilitySlotState, TelegraphState};
     use athanor::store::{Store, StoreTrait};
     use athanor::systems::phase::{
         PHASE_EXPLORE, PHASE_PLAYER_TURN, PHASE_ENEMY_TURN, PHASE_COMPLETE, PHASE_FAILED,
+        PHASE_GAME_OVER,
         FACTION_PLAYER, FACTION_ENEMY, ARCHETYPE_HERO, ARCHETYPE_BRUTE, ARCHETYPE_CASTER,
         ARCHETYPE_FLANKER, ARCHETYPE_HEAVY, ARCHETYPE_PULLER, ABILITY_STRIKE, ABILITY_DASH,
         ABILITY_HEAL, ABILITY_SHOVE, ABILITY_SLAM, TARGET_DIRECTIONAL, SHAPE_SINGLE_TILE,
@@ -109,13 +110,31 @@ pub mod actions {
     #[abi(embed_v0)]
     impl TokenDataImpl of IMinigameTokenData<ContractState> {
         fn score(self: @ContractState, token_id: felt252) -> u64 {
-            let _ = token_id;
-            0
+            let mut store = StoreTrait::new(self.world(@"athanor_0_1"));
+            let game_id: u32 = match token_id.try_into() {
+                Option::Some(v) => v,
+                Option::None => { return 0; },
+            };
+            let owner = store.get_run_owner(game_id);
+            if owner.player.into() == 0_felt252 {
+                return 0;
+            }
+            let run = store.get_run_state(owner.player, game_id);
+            run.score.into()
         }
 
         fn game_over(self: @ContractState, token_id: felt252) -> bool {
-            let _ = token_id;
-            false
+            let mut store = StoreTrait::new(self.world(@"athanor_0_1"));
+            let game_id: u32 = match token_id.try_into() {
+                Option::Some(v) => v,
+                Option::None => { return false; },
+            };
+            let owner = store.get_run_owner(game_id);
+            if owner.player.into() == 0_felt252 {
+                return false;
+            }
+            let run = store.get_run_state(owner.player, game_id);
+            run.ended_at != 0
         }
 
         fn score_batch(self: @ContractState, token_ids: Span<felt252>) -> Array<u64> {
@@ -196,6 +215,7 @@ pub mod actions {
                 ended_at: 0,
             };
             store.set_run_state(@run);
+            store.set_run_owner(@RunOwner { game_id, player });
 
             let actor = ActorState {
                 player,
@@ -337,6 +357,7 @@ pub mod actions {
             let player = get_caller_address();
 
             let run = store.get_run_state(player, game_id);
+            assert(run.ended_at == 0, 'Run over');
             assert(run.phase == PHASE_PLAYER_TURN, 'Not player turn');
 
             let mut actions = actions;
@@ -833,9 +854,7 @@ pub mod actions {
             // Re-read player actor (may have been modified by damage helpers giving kill bonus)
             player_actor = store.get_actor_state(player, game_id, PLAYER_ACTOR_ID);
             if !player_actor.alive || player_actor.hp == 0 {
-                run.phase = PHASE_FAILED;
-                store.set_run_state(@run);
-                store.emit_run_failed(player, game_id, run.turn_index);
+                self.latch_game_over(ref store, player, game_id, ref run);
                 return false;
             }
 
@@ -931,10 +950,8 @@ pub mod actions {
 
                     let player_actor = store.get_actor_state(player, game_id, PLAYER_ACTOR_ID);
                     if !player_actor.alive || player_actor.hp == 0 {
-                        run.phase = PHASE_FAILED;
                         store.set_room_state(@room);
-                        store.set_run_state(@run);
-                        store.emit_run_failed(player, game_id, run.turn_index);
+                        self.latch_game_over(ref store, player, game_id, ref run);
                         return;
                     }
                 };
@@ -953,10 +970,8 @@ pub mod actions {
             // Post-enemy safety checks: player death or room cleared.
             let player_after_enemies = store.get_actor_state(player, game_id, PLAYER_ACTOR_ID);
             if !player_after_enemies.alive || player_after_enemies.hp == 0 {
-                run.phase = PHASE_FAILED;
                 store.set_room_state(@room);
-                store.set_run_state(@run);
-                store.emit_run_failed(player, game_id, run.turn_index);
+                self.latch_game_over(ref store, player, game_id, ref run);
                 return;
             }
             if room.enemy_count == 0 {
@@ -1170,14 +1185,12 @@ pub mod actions {
             store.set_room_state(@room);
             store.emit_room_cleared(player, game_id, run.room_id);
 
-            if run.room_id >= 2 {
-                run.phase = PHASE_COMPLETE;
-                store.set_run_state(@run);
-                store.emit_run_completed(player, game_id, run.turn_index);
-            } else {
-                run.phase = PHASE_EXPLORE;
-                store.set_run_state(@run);
-            };
+            // Ascend: no win condition. Every cleared room advances to the
+            // next and awards bonus score = 100 × (new rooms_cleared).
+            run.rooms_cleared += 1;
+            run.score += 100_u32 * run.rooms_cleared.into();
+            run.phase = PHASE_EXPLORE;
+            store.set_run_state(@run);
 
             true
         }
@@ -1443,6 +1456,27 @@ pub mod actions {
             }
         }
 
+        /// Latch game-over. Single source of truth for run termination on
+        /// player HP=0. Sets ended_at (EGC game_over flips true), switches to
+        /// PHASE_GAME_OVER (rejects further confirm_turn / enter_room), and
+        /// emits RunEnded with leaderboard payload.
+        fn latch_game_over(
+            self: @ContractState,
+            ref store: Store,
+            player: ContractAddress,
+            game_id: u32,
+            ref run: RunState,
+        ) {
+            let ended_at = starknet::get_block_timestamp();
+            run.ended_at = ended_at;
+            run.phase = PHASE_GAME_OVER;
+            store.set_run_state(@run);
+            store
+                .emit_run_ended(
+                    player, game_id, run.score, run.rooms_cleared, run.turn_index, ended_at,
+                );
+        }
+
         /// Collect any energy orb on (x, y). Called for every tile the player
         /// occupies — voluntary move destination, each Dash transit tile, and
         /// each step of a Pull displacement. Idempotent on empty tiles.
@@ -1578,18 +1612,22 @@ pub mod actions {
             if died {
                 store.emit_actor_died(player, game_id, target_actor_id, room_id);
 
-                // Ascend: enemy death spawns an energy orb on its tile. Picked
-                // up by any player movement (process_move, Dash transit,
-                // Pull displacement) for ORB_STAMINA_BONUS. Replaces the old
-                // direct-to-stamina KILL_STAMINA_BONUS.
+                // Ascend: enemy death spawns an energy orb on its tile and
+                // awards score = max_hp × 10 (so scaled late-game enemies are
+                // worth more). Replaces the old direct-to-stamina
+                // KILL_STAMINA_BONUS.
                 if target.faction == FACTION_ENEMY {
-                    let run_turn: u16 = store.get_run_state(player, game_id).turn_index;
+                    let mut run = store.get_run_state(player, game_id);
+                    let kill_score: u32 = target.max_hp.into() * 10;
+                    run.score += kill_score;
+                    store.set_run_state(@run);
+
                     room.orbs_fresh = bitmap::set_bit(
                         room.orbs_fresh, target.pos_x, target.pos_y,
                     );
                     store
                         .emit_orb_spawned(
-                            player, game_id, room_id, target.pos_x, target.pos_y, run_turn,
+                            player, game_id, room_id, target.pos_x, target.pos_y, run.turn_index,
                         );
                 };
             };

@@ -3,6 +3,7 @@ pub const PHASE_PLAYER_TURN: u8 = 1;
 pub const PHASE_ENEMY_TURN: u8 = 2;
 pub const PHASE_COMPLETE: u8 = 3;
 pub const PHASE_FAILED: u8 = 4;
+pub const PHASE_GAME_OVER: u8 = 5;
 
 pub const FACTION_PLAYER: u8 = 0;
 pub const FACTION_ENEMY: u8 = 1;

@@ -18,3 +18,14 @@ pub struct RunState {
     pub started_at: u64,
     pub ended_at: u64,
 }
+
+// Token-id → player mapping. Written on spawn; lets EGC score(token_id) and
+// game_over(token_id) resolve the composite (player, game_id) key without
+// refactoring the RunState schema.
+#[derive(Copy, Drop, Serde)]
+#[dojo::model]
+pub struct RunOwner {
+    #[key]
+    pub game_id: u32,
+    pub player: starknet::ContractAddress,
+}
