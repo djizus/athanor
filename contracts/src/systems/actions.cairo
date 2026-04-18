@@ -17,14 +17,12 @@ pub mod actions {
 
     use athanor::constants::{
         GRID_WIDTH, GRID_HEIGHT, BASE_STAMINA, MOVE_COST_PER_TILE, HERO_OFFENSE,
-        HERO_DEFENSE, HERO_SPEED, BRUTE_HP, BRUTE_OFFENSE, BRUTE_DEFENSE, BRUTE_SPEED, CASTER_HP,
-        CASTER_OFFENSE, CASTER_DEFENSE, CASTER_SPEED, FLANKER_HP, FLANKER_OFFENSE,
-        FLANKER_DEFENSE, FLANKER_SPEED, HEAVY_HP, HEAVY_OFFENSE, HEAVY_DEFENSE, HEAVY_SPEED,
-        PULLER_HP, PULLER_OFFENSE, PULLER_DEFENSE, PULLER_SPEED, STRIKE_DAMAGE, DASH_DAMAGE,
-        HEAL_AMOUNT, SHOVE_DAMAGE, SHOVE_PUSH_DISTANCE, SLAM_DAMAGE, SLAM_PUSH_DISTANCE,
-        COLLISION_DAMAGE, KILL_STAMINA_BONUS,
+        HERO_DEFENSE, HERO_SPEED, STRIKE_DAMAGE, DASH_DAMAGE, HEAL_AMOUNT, SHOVE_DAMAGE,
+        SHOVE_PUSH_DISTANCE, SLAM_DAMAGE, SLAM_PUSH_DISTANCE, COLLISION_DAMAGE,
+        KILL_STAMINA_BONUS,
     };
     use athanor::helpers::bitmap;
+    use athanor::helpers::procedural;
     use athanor::helpers::random::{RandomTrait};
     use athanor::models::config::{Config, GameSettingsTrait};
     use athanor::models::index::{RunState, RoomState, ActorState, AbilitySlotState, TelegraphState};
@@ -162,29 +160,6 @@ pub mod actions {
     const ENTRY_X: u8 = 1;
     const ENTRY_Y: u8 = 1;
 
-    const ROOM0_BRUTE_A_X: u8 = 6;
-    const ROOM0_BRUTE_A_Y: u8 = 2;
-    const ROOM0_BRUTE_B_X: u8 = 5;
-    const ROOM0_BRUTE_B_Y: u8 = 2;
-    const ROOM0_CASTER_X: u8 = 5;
-    const ROOM0_CASTER_Y: u8 = 6;
-
-    const ROOM1_BRUTE_X: u8 = 6;
-    const ROOM1_BRUTE_Y: u8 = 2;
-    const ROOM1_FLANKER_X: u8 = 5;
-    const ROOM1_FLANKER_Y: u8 = 5;
-    const ROOM1_HEAVY_X: u8 = 6;
-    const ROOM1_HEAVY_Y: u8 = 6;
-
-    const ROOM2_HEAVY_X: u8 = 6;
-    const ROOM2_HEAVY_Y: u8 = 3;
-    const ROOM2_PULLER_X: u8 = 6;
-    const ROOM2_PULLER_Y: u8 = 6;
-    const ROOM2_FLANKER_A_X: u8 = 3;
-    const ROOM2_FLANKER_A_Y: u8 = 3;
-    const ROOM2_FLANKER_B_X: u8 = 1;
-    const ROOM2_FLANKER_B_Y: u8 = 5;
-
     #[abi(embed_v0)]
     impl ActionsImpl of IActions<ContractState> {
         fn spawn(ref self: ContractState, game_id: u32, settings_id: u32) {
@@ -259,8 +234,8 @@ pub mod actions {
             let mut run = store.get_run_state(player, game_id);
             assert(run.phase != PHASE_COMPLETE, 'Run complete');
             assert(run.phase != PHASE_FAILED, 'Run failed');
+            assert(run.ended_at == 0, 'Run over');
             assert(run.phase == PHASE_EXPLORE, 'Cannot enter room');
-            assert(room_id <= 2, 'Invalid room id');
 
             let mut player_actor = store.get_actor_state(player, game_id, PLAYER_ACTOR_ID);
 
@@ -270,7 +245,9 @@ pub mod actions {
                 room_id,
                 width: GRID_WIDTH,
                 height: GRID_HEIGHT,
-                blocked: self.room_blocked_bitmap(room_id),
+                blocked: procedural::generate_blocked_bitmap(
+                    run.seed, room_id, ENTRY_X, ENTRY_Y,
+                ),
                 occupancy: 0_u64,
                 enemy_count: 0,
                 cleared: false,
@@ -288,27 +265,51 @@ pub mod actions {
             player_actor.room_id = room_id;
             store.set_actor_state(@player_actor);
 
+            // Reset ability cooldowns — Ascend rule: fresh abilities per room.
+            let mut slot_index: u8 = 0;
+            while slot_index < MAX_ABILITY_SLOTS {
+                let mut slot = store
+                    .get_ability_slot_state(player, game_id, PLAYER_ACTOR_ID, slot_index);
+                if slot.cooldown_remaining > 0 {
+                    slot.cooldown_remaining = 0;
+                    store.set_ability_slot_state(@slot);
+                };
+                slot_index += 1;
+            };
+
             self.reset_enemy_slots(ref store, player, game_id, room_id);
 
-            if room_id == 0 {
-                let (next_occupancy, enemy_count) = self.spawn_room_0_enemies(
-                    ref store, player, game_id, room_id, room.occupancy,
+            // Procedural enemy spawn
+            let total = procedural::enemy_count(room_id);
+            let mut i: u8 = 0;
+            while i < total {
+                let actor_id: u8 = i + 1;
+                let archetype = procedural::roll_archetype(run.seed, room_id, i);
+                let (hp, offense, defense, speed, is_immovable) =
+                    procedural::archetype_base_stats(archetype);
+                let (x, y) = procedural::pick_enemy_position(
+                    run.seed, room_id, i, room.blocked, room.occupancy, ENTRY_X, ENTRY_Y,
                 );
-                room.occupancy = next_occupancy;
-                room.enemy_count = enemy_count;
-            } else if room_id == 1 {
-                let (next_occupancy, enemy_count) = self.spawn_room_1_enemies(
-                    ref store, player, game_id, room_id, room.occupancy,
-                );
-                room.occupancy = next_occupancy;
-                room.enemy_count = enemy_count;
-            } else {
-                let (next_occupancy, enemy_count) = self.spawn_room_2_enemies(
-                    ref store, player, game_id, room_id, room.occupancy,
-                );
-                room.occupancy = next_occupancy;
-                room.enemy_count = enemy_count;
+                room.occupancy = self
+                    .spawn_enemy_actor(
+                        ref store,
+                        player,
+                        game_id,
+                        room_id,
+                        room.occupancy,
+                        actor_id,
+                        archetype,
+                        hp,
+                        offense,
+                        defense,
+                        speed,
+                        x,
+                        y,
+                        is_immovable,
+                    );
+                i += 1;
             };
+            room.enemy_count = total;
 
             run.phase = PHASE_PLAYER_TURN;
             run.room_id = room_id;
@@ -1020,16 +1021,6 @@ pub mod actions {
             store.set_ability_slot_state(@slot4);
         }
 
-        fn room_blocked_bitmap(self: @ContractState, room_id: u8) -> u64 {
-            if room_id == 0 {
-                return self.room_0_blocked_bitmap();
-            };
-            if room_id == 1 {
-                return self.room_1_blocked_bitmap();
-            };
-            self.room_2_blocked_bitmap()
-        }
-
         fn reset_enemy_slots(
             self: @ContractState,
             ref store: Store,
@@ -1107,214 +1098,6 @@ pub mod actions {
             bitmap::set_bit(occupancy, pos_x, pos_y)
         }
 
-        fn spawn_room_0_enemies(
-            self: @ContractState,
-            ref store: Store,
-            player: ContractAddress,
-            game_id: u32,
-            room_id: u8,
-            occupancy: u64,
-        ) -> (u64, u8) {
-            let mut next_occupancy = occupancy;
-
-            next_occupancy = self.spawn_enemy_actor(
-                ref store,
-                player,
-                game_id,
-                room_id,
-                next_occupancy,
-                ENEMY_ACTOR_ID_1,
-                ARCHETYPE_BRUTE,
-                BRUTE_HP,
-                BRUTE_OFFENSE,
-                BRUTE_DEFENSE,
-                BRUTE_SPEED,
-                ROOM0_BRUTE_A_X,
-                ROOM0_BRUTE_A_Y,
-                false,
-            );
-
-            next_occupancy = self.spawn_enemy_actor(
-                ref store,
-                player,
-                game_id,
-                room_id,
-                next_occupancy,
-                ENEMY_ACTOR_ID_2,
-                ARCHETYPE_BRUTE,
-                BRUTE_HP,
-                BRUTE_OFFENSE,
-                BRUTE_DEFENSE,
-                BRUTE_SPEED,
-                ROOM0_BRUTE_B_X,
-                ROOM0_BRUTE_B_Y,
-                false,
-            );
-
-            next_occupancy = self.spawn_enemy_actor(
-                ref store,
-                player,
-                game_id,
-                room_id,
-                next_occupancy,
-                ENEMY_ACTOR_ID_3,
-                ARCHETYPE_CASTER,
-                CASTER_HP,
-                CASTER_OFFENSE,
-                CASTER_DEFENSE,
-                CASTER_SPEED,
-                ROOM0_CASTER_X,
-                ROOM0_CASTER_Y,
-                false,
-            );
-
-            (next_occupancy, 3)
-        }
-
-        fn spawn_room_1_enemies(
-            self: @ContractState,
-            ref store: Store,
-            player: ContractAddress,
-            game_id: u32,
-            room_id: u8,
-            occupancy: u64,
-        ) -> (u64, u8) {
-            let mut next_occupancy = occupancy;
-
-            next_occupancy = self.spawn_enemy_actor(
-                ref store,
-                player,
-                game_id,
-                room_id,
-                next_occupancy,
-                ENEMY_ACTOR_ID_1,
-                ARCHETYPE_BRUTE,
-                BRUTE_HP,
-                BRUTE_OFFENSE,
-                BRUTE_DEFENSE,
-                BRUTE_SPEED,
-                ROOM1_BRUTE_X,
-                ROOM1_BRUTE_Y,
-                false,
-            );
-
-            next_occupancy = self.spawn_enemy_actor(
-                ref store,
-                player,
-                game_id,
-                room_id,
-                next_occupancy,
-                ENEMY_ACTOR_ID_2,
-                ARCHETYPE_FLANKER,
-                FLANKER_HP,
-                FLANKER_OFFENSE,
-                FLANKER_DEFENSE,
-                FLANKER_SPEED,
-                ROOM1_FLANKER_X,
-                ROOM1_FLANKER_Y,
-                false,
-            );
-
-            next_occupancy = self.spawn_enemy_actor(
-                ref store,
-                player,
-                game_id,
-                room_id,
-                next_occupancy,
-                ENEMY_ACTOR_ID_3,
-                ARCHETYPE_HEAVY,
-                HEAVY_HP,
-                HEAVY_OFFENSE,
-                HEAVY_DEFENSE,
-                HEAVY_SPEED,
-                ROOM1_HEAVY_X,
-                ROOM1_HEAVY_Y,
-                true,
-            );
-
-            (next_occupancy, 3)
-        }
-
-        fn spawn_room_2_enemies(
-            self: @ContractState,
-            ref store: Store,
-            player: ContractAddress,
-            game_id: u32,
-            room_id: u8,
-            occupancy: u64,
-        ) -> (u64, u8) {
-            let mut next_occupancy = occupancy;
-
-            next_occupancy = self.spawn_enemy_actor(
-                ref store,
-                player,
-                game_id,
-                room_id,
-                next_occupancy,
-                ENEMY_ACTOR_ID_1,
-                ARCHETYPE_HEAVY,
-                HEAVY_HP,
-                HEAVY_OFFENSE,
-                HEAVY_DEFENSE,
-                HEAVY_SPEED,
-                ROOM2_HEAVY_X,
-                ROOM2_HEAVY_Y,
-                true,
-            );
-
-            next_occupancy = self.spawn_enemy_actor(
-                ref store,
-                player,
-                game_id,
-                room_id,
-                next_occupancy,
-                ENEMY_ACTOR_ID_2,
-                ARCHETYPE_PULLER,
-                PULLER_HP,
-                PULLER_OFFENSE,
-                PULLER_DEFENSE,
-                PULLER_SPEED,
-                ROOM2_PULLER_X,
-                ROOM2_PULLER_Y,
-                false,
-            );
-
-            next_occupancy = self.spawn_enemy_actor(
-                ref store,
-                player,
-                game_id,
-                room_id,
-                next_occupancy,
-                ENEMY_ACTOR_ID_3,
-                ARCHETYPE_FLANKER,
-                FLANKER_HP,
-                FLANKER_OFFENSE,
-                FLANKER_DEFENSE,
-                FLANKER_SPEED,
-                ROOM2_FLANKER_A_X,
-                ROOM2_FLANKER_A_Y,
-                false,
-            );
-
-            next_occupancy = self.spawn_enemy_actor(
-                ref store,
-                player,
-                game_id,
-                room_id,
-                next_occupancy,
-                ENEMY_ACTOR_ID_4,
-                ARCHETYPE_FLANKER,
-                FLANKER_HP,
-                FLANKER_OFFENSE,
-                FLANKER_DEFENSE,
-                FLANKER_SPEED,
-                ROOM2_FLANKER_B_X,
-                ROOM2_FLANKER_B_Y,
-                false,
-            );
-
-            (next_occupancy, 4)
-        }
 
         fn actor_at_position(
             self: @ContractState,
@@ -2095,95 +1878,5 @@ pub mod actions {
             );
         }
 
-        fn room_0_blocked_bitmap(self: @ContractState) -> u64 {
-            let mut blocked = 0_u64;
-
-            blocked = bitmap::set_bit(blocked, 0, 0);
-            blocked = bitmap::set_bit(blocked, 1, 0);
-            blocked = bitmap::set_bit(blocked, 6, 0);
-            blocked = bitmap::set_bit(blocked, 7, 0);
-
-            blocked = bitmap::set_bit(blocked, 0, 1);
-            blocked = bitmap::set_bit(blocked, 7, 1);
-
-            blocked = bitmap::set_bit(blocked, 0, 2);
-            blocked = bitmap::set_bit(blocked, 3, 2);
-            blocked = bitmap::set_bit(blocked, 4, 2);
-            blocked = bitmap::set_bit(blocked, 7, 2);
-
-            blocked = bitmap::set_bit(blocked, 1, 3);
-            blocked = bitmap::set_bit(blocked, 6, 3);
-
-            blocked = bitmap::set_bit(blocked, 1, 4);
-            blocked = bitmap::set_bit(blocked, 6, 4);
-
-            blocked = bitmap::set_bit(blocked, 0, 5);
-            blocked = bitmap::set_bit(blocked, 7, 5);
-
-            blocked = bitmap::set_bit(blocked, 0, 6);
-            blocked = bitmap::set_bit(blocked, 2, 6);
-            blocked = bitmap::set_bit(blocked, 7, 6);
-
-            blocked = bitmap::set_bit(blocked, 0, 7);
-            blocked = bitmap::set_bit(blocked, 7, 7);
-
-            blocked
-        }
-
-        fn room_1_blocked_bitmap(self: @ContractState) -> u64 {
-            let mut blocked = 0_u64;
-
-            blocked = bitmap::set_bit(blocked, 0, 0);
-            blocked = bitmap::set_bit(blocked, 7, 0);
-            blocked = bitmap::set_bit(blocked, 0, 1);
-            blocked = bitmap::set_bit(blocked, 7, 1);
-            blocked = bitmap::set_bit(blocked, 0, 2);
-            blocked = bitmap::set_bit(blocked, 7, 2);
-            blocked = bitmap::set_bit(blocked, 0, 7);
-            blocked = bitmap::set_bit(blocked, 7, 7);
-
-            blocked = bitmap::set_bit(blocked, 2, 2);
-            blocked = bitmap::set_bit(blocked, 3, 2);
-            blocked = bitmap::set_bit(blocked, 4, 3);
-            blocked = bitmap::set_bit(blocked, 4, 4);
-            blocked = bitmap::set_bit(blocked, 1, 5);
-            blocked = bitmap::set_bit(blocked, 2, 5);
-            blocked = bitmap::set_bit(blocked, 5, 1);
-            blocked = bitmap::set_bit(blocked, 6, 1);
-
-            blocked
-        }
-
-        fn room_2_blocked_bitmap(self: @ContractState) -> u64 {
-            let mut blocked = 0_u64;
-
-            blocked = bitmap::set_bit(blocked, 0, 0);
-            blocked = bitmap::set_bit(blocked, 1, 0);
-            blocked = bitmap::set_bit(blocked, 6, 0);
-            blocked = bitmap::set_bit(blocked, 7, 0);
-
-            blocked = bitmap::set_bit(blocked, 0, 1);
-            blocked = bitmap::set_bit(blocked, 7, 1);
-
-            blocked = bitmap::set_bit(blocked, 2, 2);
-            blocked = bitmap::set_bit(blocked, 3, 2);
-            blocked = bitmap::set_bit(blocked, 4, 2);
-            blocked = bitmap::set_bit(blocked, 5, 2);
-
-            blocked = bitmap::set_bit(blocked, 2, 5);
-            blocked = bitmap::set_bit(blocked, 3, 5);
-            blocked = bitmap::set_bit(blocked, 4, 5);
-            blocked = bitmap::set_bit(blocked, 5, 5);
-
-            blocked = bitmap::set_bit(blocked, 0, 6);
-            blocked = bitmap::set_bit(blocked, 7, 6);
-
-            blocked = bitmap::set_bit(blocked, 0, 7);
-            blocked = bitmap::set_bit(blocked, 1, 7);
-            blocked = bitmap::set_bit(blocked, 6, 7);
-            blocked = bitmap::set_bit(blocked, 7, 7);
-
-            blocked
-        }
     }
 }
