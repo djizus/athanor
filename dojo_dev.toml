@@ -4,3 +4,10 @@ seed = "athanor_0_1"
 
 [namespace]
 default = "athanor_0_1"
+
+# Dev init: pass zero for both Denshokan and VRF addresses. The VRF helper
+# falls back to pseudo-random (tx_info.transaction_hash) when vrf is zero, and
+# Denshokan token-ownership checks are commented out in spawn with a TODO
+# until a test Denshokan is wired in.
+[init_call_args]
+"athanor_0_1-actions" = ["0x0", "0x0"]
