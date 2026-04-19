@@ -4,8 +4,12 @@ use dojo::model::ModelStorage;
 use dojo::event::EventStorage;
 
 use athanor::models::index::{
-    RunState, RunOwner, RoomState, ActorState, AbilitySlotState, TelegraphState,
+    RunState, RunOwner, RoomState, ActorState, ActorStatePacked, AbilitySlotState,
+    AbilitySlotStatePacked, TelegraphState, TelegraphStatePacked,
 };
+use athanor::models::actor_state::ActorStatePackingTrait;
+use athanor::models::ability_slot::AbilitySlotStatePackingTrait;
+use athanor::models::telegraph_state::TelegraphStatePackingTrait;
 use athanor::models::config::{Config, GameSettings, GameSettingsMetadata};
 use athanor::events::index::{
     RunSpawned, RoomEntered, ActorMoved, AbilityUsed, TelegraphCreated, TelegraphResolved,
@@ -44,17 +48,22 @@ pub impl StoreImpl of StoreTrait {
     }
 
     fn get_actor_state(ref self: Store, player: ContractAddress, game_id: u32, actor_id: u8) -> ActorState {
-        self.world.read_model((player, game_id, actor_id))
+        let packed: ActorStatePacked = self.world.read_model((player, game_id, actor_id));
+        packed.unpack()
     }
 
     fn get_ability_slot_state(
         ref self: Store, player: ContractAddress, game_id: u32, actor_id: u8, slot_index: u8,
     ) -> AbilitySlotState {
-        self.world.read_model((player, game_id, actor_id, slot_index))
+        let packed: AbilitySlotStatePacked = self
+            .world
+            .read_model((player, game_id, actor_id, slot_index));
+        packed.unpack()
     }
 
     fn get_telegraph_state(ref self: Store, player: ContractAddress, game_id: u32, telegraph_id: u8) -> TelegraphState {
-        self.world.read_model((player, game_id, telegraph_id))
+        let packed: TelegraphStatePacked = self.world.read_model((player, game_id, telegraph_id));
+        packed.unpack()
     }
 
     // --- Model writes ---
@@ -68,15 +77,18 @@ pub impl StoreImpl of StoreTrait {
     }
 
     fn set_actor_state(ref self: Store, model: @ActorState) {
-        self.world.write_model(model);
+        let packed = ActorStatePackingTrait::pack(model);
+        self.world.write_model(@packed);
     }
 
     fn set_ability_slot_state(ref self: Store, model: @AbilitySlotState) {
-        self.world.write_model(model);
+        let packed = AbilitySlotStatePackingTrait::pack(model);
+        self.world.write_model(@packed);
     }
 
     fn set_telegraph_state(ref self: Store, model: @TelegraphState) {
-        self.world.write_model(model);
+        let packed = TelegraphStatePackingTrait::pack(model);
+        self.world.write_model(@packed);
     }
 
     // --- Config / Settings ---

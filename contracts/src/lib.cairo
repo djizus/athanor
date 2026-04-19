@@ -29,6 +29,7 @@ pub mod helpers {
     pub mod bitmap;
     pub mod random;
     pub mod procedural;
+    pub mod packing;
 }
 
 pub mod interfaces {
