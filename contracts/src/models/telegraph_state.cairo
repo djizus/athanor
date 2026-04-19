@@ -129,3 +129,76 @@ pub impl TelegraphStatePackingImpl of TelegraphStatePackingTrait {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{TelegraphState, TelegraphStatePackingTrait};
+
+    #[test]
+    fn test_telegraph_state_round_trip_max_values() {
+        let original = TelegraphState {
+            player: starknet::contract_address_const::<0xdeadbeef>(),
+            game_id: 99,
+            telegraph_id: 7,
+            source_actor_id: 255,
+            shape_type: 4, // SHAPE_CROSS
+            telegraph_type: 1, // TELEGRAPH_TYPE_PULL
+            param_a: 255,
+            param_b: 200,
+            param_c: 100,
+            pull_source_x: 7,
+            pull_source_y: 6,
+            pull_distance: 2,
+            damage: 65535,
+            created_turn: 40000,
+            resolves_turn: 40001,
+            resolved: true,
+            room_id: 200,
+        };
+        let packed = TelegraphStatePackingTrait::pack(@original);
+        let unpacked = packed.unpack();
+        assert!(unpacked.source_actor_id == 255, "source_actor_id");
+        assert!(unpacked.shape_type == 4, "shape_type");
+        assert!(unpacked.telegraph_type == 1, "telegraph_type");
+        assert!(unpacked.param_a == 255, "param_a");
+        assert!(unpacked.param_b == 200, "param_b");
+        assert!(unpacked.param_c == 100, "param_c");
+        assert!(unpacked.pull_source_x == 7, "pull_source_x");
+        assert!(unpacked.pull_source_y == 6, "pull_source_y");
+        assert!(unpacked.pull_distance == 2, "pull_distance");
+        assert!(unpacked.damage == 65535, "damage");
+        assert!(unpacked.created_turn == 40000, "created_turn");
+        assert!(unpacked.resolves_turn == 40001, "resolves_turn");
+        assert!(unpacked.resolved, "resolved");
+        assert!(unpacked.room_id == 200, "room_id");
+    }
+
+    #[test]
+    fn test_telegraph_state_round_trip_typical() {
+        let original = TelegraphState {
+            player: starknet::contract_address_const::<0x1>(),
+            game_id: 1,
+            telegraph_id: 0,
+            source_actor_id: 1,
+            shape_type: 0, // SHAPE_SINGLE_TILE
+            telegraph_type: 0, // TELEGRAPH_TYPE_DAMAGE
+            param_a: 4,
+            param_b: 4,
+            param_c: 0,
+            pull_source_x: 0,
+            pull_source_y: 0,
+            pull_distance: 0,
+            damage: 15,
+            created_turn: 3,
+            resolves_turn: 4,
+            resolved: false,
+            room_id: 2,
+        };
+        let packed = TelegraphStatePackingTrait::pack(@original);
+        let unpacked = packed.unpack();
+        assert!(unpacked.damage == 15, "damage");
+        assert!(unpacked.created_turn == 3, "created_turn");
+        assert!(unpacked.resolves_turn == 4, "resolves_turn");
+        assert!(!unpacked.resolved, "resolved=false");
+    }
+}

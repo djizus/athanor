@@ -292,3 +292,302 @@ fn pow2_u64(n: u8) -> u64 {
     };
     result
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        ARCH_BRUTE, ARCH_CASTER, ARCH_FLANKER, ARCH_HEAVY, ARCH_PULLER, archetype_base_stats,
+        archetype_weights, enemy_count, obstacle_count, room_tier,
+        roll_archetype_capped, scaled_archetype_stats, stat_mult,
+    };
+
+    // --- stat_mult curve ---
+
+    #[test]
+    fn test_stat_mult_table() {
+        // Reference values from the design doc.
+        assert!(stat_mult(0) == 100, "room 0");
+        assert!(stat_mult(2) == 130, "room 2");
+        assert!(stat_mult(3) == 170, "room 3");
+        assert!(stat_mult(5) == 220, "room 5");
+        assert!(stat_mult(6) == 245, "room 6");
+        assert!(stat_mult(7) == 300, "room 7");
+        assert!(stat_mult(10) == 390, "room 10");
+        assert!(stat_mult(11) == 420, "room 11");
+        assert!(stat_mult(12) == 490, "room 12");
+        assert!(stat_mult(15) == 610, "room 15");
+        assert!(stat_mult(17) == 690, "room 17");
+        assert!(stat_mult(18) == 750, "room 18");
+        assert!(stat_mult(20) == 870, "room 20");
+    }
+
+    #[test]
+    fn test_stat_mult_monotonic() {
+        // Ramp must be strictly increasing.
+        let mut prev: u16 = 0;
+        let mut r: u8 = 0;
+        while r < 25 {
+            let current = stat_mult(r);
+            assert!(current > prev, "stat_mult not monotonic");
+            prev = current;
+            r += 1;
+        };
+    }
+
+    // --- enemy_count ---
+
+    #[test]
+    fn test_enemy_count_bands() {
+        assert!(enemy_count(0) == 3, "room 0");
+        assert!(enemy_count(2) == 3, "room 2");
+        assert!(enemy_count(3) == 4, "room 3");
+        assert!(enemy_count(5) == 4, "room 5");
+        assert!(enemy_count(6) == 5, "room 6");
+        assert!(enemy_count(9) == 5, "room 9");
+        assert!(enemy_count(10) == 6, "room 10");
+        assert!(enemy_count(13) == 6, "room 13");
+        assert!(enemy_count(14) == 7, "room 14");
+        assert!(enemy_count(17) == 7, "room 17");
+        assert!(enemy_count(18) == 8, "room 18");
+        assert!(enemy_count(100) == 8, "room 100 capped");
+    }
+
+    // --- obstacle_count ---
+
+    #[test]
+    fn test_obstacle_count() {
+        assert!(obstacle_count(0) == 6, "room 0");
+        assert!(obstacle_count(4) == 8, "room 4");
+        assert!(obstacle_count(10) == 11, "room 10");
+        assert!(obstacle_count(20) == 16, "room 20 at cap");
+        assert!(obstacle_count(100) == 16, "room 100 capped");
+    }
+
+    // --- tier bands ---
+
+    #[test]
+    fn test_room_tier_bands() {
+        assert!(room_tier(0) == 0 && room_tier(2) == 0, "tier 0");
+        assert!(room_tier(3) == 1 && room_tier(6) == 1, "tier 1");
+        assert!(room_tier(7) == 2 && room_tier(11) == 2, "tier 2");
+        assert!(room_tier(12) == 3 && room_tier(17) == 3, "tier 3");
+        assert!(room_tier(18) == 4 && room_tier(100) == 4, "tier 4");
+    }
+
+    // --- archetype weights sum to 100 ---
+
+    #[test]
+    fn test_archetype_weights_sum_to_100() {
+        let mut tier: u8 = 0;
+        while tier < 5 {
+            let (b, c, f, h, p) = archetype_weights(tier);
+            let sum: u16 = b.into() + c.into() + f.into() + h.into() + p.into();
+            assert!(sum == 100, "weights don't sum to 100");
+            tier += 1;
+        };
+    }
+
+    #[test]
+    fn test_archetype_weights_tier_0_no_hard_archetypes() {
+        // Tier 0 must shield the player from Heavy + Puller while they learn.
+        let (_b, _c, _f, h, p) = archetype_weights(0);
+        assert!(h == 0, "tier 0 Heavy weight");
+        assert!(p == 0, "tier 0 Puller weight");
+    }
+
+    #[test]
+    fn test_archetype_weights_tier_1_no_puller() {
+        // Tier 1 introduces Heavy, Puller still absent.
+        let (_b, _c, _f, h, p) = archetype_weights(1);
+        assert!(h > 0, "tier 1 Heavy present");
+        assert!(p == 0, "tier 1 Puller still absent");
+    }
+
+    // --- roll_archetype_capped honors caps ---
+
+    #[test]
+    fn test_roll_archetype_capped_respects_puller_cap() {
+        // If we've already placed 2 Pullers this room, rolling again at
+        // high-tier seeds must NOT return another Puller.
+        let seed: felt252 = 'test_seed';
+        let mut slot: u8 = 0;
+        while slot < 20 {
+            let result = roll_archetype_capped(seed, 20, slot, 2, 0);
+            assert!(result != ARCH_PULLER, "rolled Puller despite cap");
+            slot += 1;
+        };
+    }
+
+    #[test]
+    fn test_roll_archetype_capped_respects_heavy_cap() {
+        let seed: felt252 = 'test_seed';
+        let mut slot: u8 = 0;
+        while slot < 20 {
+            let result = roll_archetype_capped(seed, 20, slot, 0, 2);
+            assert!(result != ARCH_HEAVY, "rolled Heavy despite cap");
+            slot += 1;
+        };
+    }
+
+    // --- archetype_base_stats covers all 5 ---
+
+    #[test]
+    fn test_archetype_base_stats_all() {
+        let (brute_hp, _, _, brute_speed, brute_im) = archetype_base_stats(ARCH_BRUTE);
+        assert!(brute_hp == 40 && brute_speed == 5 && !brute_im, "brute");
+
+        let (caster_hp, _, _, caster_speed, _) = archetype_base_stats(ARCH_CASTER);
+        assert!(caster_hp == 25 && caster_speed == 8, "caster");
+
+        let (flanker_hp, _, _, flanker_speed, _) = archetype_base_stats(ARCH_FLANKER);
+        assert!(flanker_hp == 40 && flanker_speed == 7, "flanker");
+
+        let (heavy_hp, _, heavy_def, _, heavy_im) = archetype_base_stats(ARCH_HEAVY);
+        assert!(heavy_hp == 70 && heavy_def == 10 && heavy_im, "heavy immovable");
+
+        let (puller_hp, puller_off, _, _, _) = archetype_base_stats(ARCH_PULLER);
+        assert!(puller_hp == 35 && puller_off == 0, "puller zero offense");
+    }
+
+    // --- scaled_archetype_stats — hp and offense scale, others don't ---
+
+    #[test]
+    fn test_scaled_stats_preserves_identity() {
+        // defense/speed/immovable must NOT scale with room.
+        let (_, _, def0, sp0, im0) = scaled_archetype_stats(ARCH_HEAVY, 0);
+        let (_, _, def20, sp20, im20) = scaled_archetype_stats(ARCH_HEAVY, 20);
+        assert!(def0 == def20, "defense scaled (bug)");
+        assert!(sp0 == sp20, "speed scaled (bug)");
+        assert!(im0 == im20, "immovable scaled (bug)");
+        assert!(im0, "Heavy should stay immovable");
+    }
+
+    #[test]
+    fn test_scaled_stats_hp_offense_at_room_15() {
+        // Brute @ room 15: stat_mult = 610% → hp=244, offense=91.
+        let (hp, off, _, _, _) = scaled_archetype_stats(ARCH_BRUTE, 15);
+        assert!(hp == 244, "brute hp room 15");
+        assert!(off == 91, "brute offense room 15");
+    }
+
+    #[test]
+    fn test_scaled_stats_offense_u8_cap() {
+        // Puller has 0 base offense → stays 0 at any room.
+        let (_, off, _, _, _) = scaled_archetype_stats(ARCH_PULLER, 50);
+        assert!(off == 0, "puller offense stays 0");
+
+        // Caster @ room 50: stat_mult = 690 + 33*60 = 2670, offense = 20 * 2670 / 100 = 534 → clamped to 255.
+        let (_, caster_off, _, _, _) = scaled_archetype_stats(ARCH_CASTER, 50);
+        assert!(caster_off == 255, "offense clamped at u8 max");
+    }
+
+    // --- generate_blocked_bitmap sanity ---
+
+    use super::{generate_blocked_bitmap, pick_enemy_position};
+    use athanor::helpers::bitmap;
+
+    fn popcount_u64(mut b: u64) -> u8 {
+        let mut count: u8 = 0;
+        while b != 0 {
+            if b & 1 == 1 {
+                count += 1;
+            };
+            b = b / 2;
+        };
+        count
+    }
+
+    #[test]
+    fn test_generate_blocked_bitmap_respects_entry() {
+        // Entry (1, 1) and its 8-neighborhood must never be blocked.
+        let seed: felt252 = 'stress_obst';
+        let mut room_id: u8 = 0;
+        while room_id < 20 {
+            let bitmap = generate_blocked_bitmap(seed, room_id, 1, 1);
+            // 8-neighborhood of (1,1): (0,0)..(2,2)
+            let mut dx: u8 = 0;
+            while dx < 3 {
+                let mut dy: u8 = 0;
+                while dy < 3 {
+                    assert!(
+                        !bitmap::get_bit(bitmap, dx, dy),
+                        "obstacle placed near spawn",
+                    );
+                    dy += 1;
+                };
+                dx += 1;
+            };
+            room_id += 1;
+        };
+    }
+
+    #[test]
+    fn test_generate_blocked_bitmap_respects_count_cap() {
+        // Obstacle count cannot exceed obstacle_count(room_id).
+        let seed: felt252 = 'count_stress';
+        let mut room_id: u8 = 0;
+        while room_id < 25 {
+            let bitmap = generate_blocked_bitmap(seed, room_id, 1, 1);
+            let placed = popcount_u64(bitmap);
+            let expected_cap = obstacle_count(room_id);
+            assert!(placed <= expected_cap, "placed more than cap");
+            room_id += 1;
+        };
+    }
+
+    #[test]
+    fn test_pick_enemy_position_avoids_blocked_and_spawn() {
+        let seed: felt252 = 'place_test';
+        let room_id: u8 = 10;
+        let blocked = generate_blocked_bitmap(seed, room_id, 1, 1);
+        let mut occupancy: u64 = 0;
+        occupancy = bitmap::set_bit(occupancy, 1, 1); // player on entry tile
+
+        let mut slot: u8 = 0;
+        while slot < 8 {
+            let (x, y) = pick_enemy_position(
+                seed, room_id, slot, blocked, occupancy, 1, 1,
+            );
+            assert!(x < 8 && y < 8, "oob enemy spawn");
+            assert!(!bitmap::get_bit(blocked, x, y), "enemy on blocked tile");
+            assert!(!bitmap::get_bit(occupancy, x, y), "enemy on occupied tile");
+            // Not on entry tile
+            assert!(!(x == 1 && y == 1), "enemy on entry");
+            occupancy = bitmap::set_bit(occupancy, x, y);
+            slot += 1;
+        };
+    }
+
+    // --- orb lifecycle simulation (bitmap semantics, no storage) ---
+
+    #[test]
+    fn test_orb_lifecycle_simulation() {
+        // Turn N: enemy dies at (3, 4). orb fresh bit set.
+        let mut orbs_fresh: u64 = 0;
+        let mut orbs_aged: u64 = 0;
+        orbs_fresh = bitmap::set_bit(orbs_fresh, 3, 4);
+        assert!(bitmap::get_bit(orbs_fresh, 3, 4), "spawn bit set");
+
+        // Same-turn pickup: orb IS collectable.
+        let has_orb_n = bitmap::get_bit(orbs_fresh | orbs_aged, 3, 4);
+        assert!(has_orb_n, "same-turn collectable");
+
+        // End of enemy phase: rotate (orbs_aged = fresh, fresh = 0).
+        orbs_aged = orbs_fresh;
+        orbs_fresh = 0;
+        assert!(bitmap::get_bit(orbs_aged, 3, 4), "aged after rotation");
+        assert!(!bitmap::get_bit(orbs_fresh, 3, 4), "fresh cleared");
+
+        // Turn N+1: still collectable (from aged).
+        let has_orb_n1 = bitmap::get_bit(orbs_fresh | orbs_aged, 3, 4);
+        assert!(has_orb_n1, "turn N+1 collectable");
+
+        // End of enemy phase N+1: rotate again (no new kills).
+        orbs_aged = orbs_fresh;
+        orbs_fresh = 0;
+
+        // Turn N+2: expired.
+        let has_orb_n2 = bitmap::get_bit(orbs_fresh | orbs_aged, 3, 4);
+        assert!(!has_orb_n2, "turn N+2 expired");
+    }
+}

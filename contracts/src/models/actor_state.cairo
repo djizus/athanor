@@ -147,3 +147,122 @@ pub impl ActorStatePackingImpl of ActorStatePackingTrait {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{ActorState, ActorStatePackingTrait};
+
+    fn sample_actor() -> ActorState {
+        ActorState {
+            player: starknet::contract_address_const::<0x1234abcd>(),
+            game_id: 42,
+            actor_id: 3,
+            faction: 1,
+            archetype: 5,
+            hp: 65535,
+            max_hp: 30000,
+            stamina: 240,
+            max_stamina: 80,
+            offense: 255,
+            defense: 200,
+            speed: 9,
+            move_cost: 10,
+            pos_x: 7,
+            pos_y: 6,
+            alive: true,
+            guard_active: false,
+            is_immovable: true,
+            room_id: 128,
+        }
+    }
+
+    #[test]
+    fn test_actor_state_round_trip_max_values() {
+        let original = sample_actor();
+        let packed = ActorStatePackingTrait::pack(@original);
+        let unpacked = packed.unpack();
+
+        assert!(unpacked.hp == original.hp, "hp");
+        assert!(unpacked.max_hp == original.max_hp, "max_hp");
+        assert!(unpacked.stamina == original.stamina, "stamina");
+        assert!(unpacked.max_stamina == original.max_stamina, "max_stamina");
+        assert!(unpacked.faction == original.faction, "faction");
+        assert!(unpacked.archetype == original.archetype, "archetype");
+        assert!(unpacked.offense == original.offense, "offense");
+        assert!(unpacked.defense == original.defense, "defense");
+        assert!(unpacked.speed == original.speed, "speed");
+        assert!(unpacked.move_cost == original.move_cost, "move_cost");
+        assert!(unpacked.pos_x == original.pos_x, "pos_x");
+        assert!(unpacked.pos_y == original.pos_y, "pos_y");
+        assert!(unpacked.alive == original.alive, "alive");
+        assert!(unpacked.guard_active == original.guard_active, "guard_active");
+        assert!(unpacked.is_immovable == original.is_immovable, "is_immovable");
+        assert!(unpacked.room_id == original.room_id, "room_id");
+        assert!(unpacked.player == original.player, "player");
+        assert!(unpacked.game_id == original.game_id, "game_id");
+        assert!(unpacked.actor_id == original.actor_id, "actor_id");
+    }
+
+    #[test]
+    fn test_actor_state_round_trip_zero_values() {
+        let original = ActorState {
+            player: starknet::contract_address_const::<0x0>(),
+            game_id: 0,
+            actor_id: 0,
+            faction: 0,
+            archetype: 0,
+            hp: 0,
+            max_hp: 0,
+            stamina: 0,
+            max_stamina: 0,
+            offense: 0,
+            defense: 0,
+            speed: 0,
+            move_cost: 0,
+            pos_x: 0,
+            pos_y: 0,
+            alive: false,
+            guard_active: false,
+            is_immovable: false,
+            room_id: 0,
+        };
+        let packed = ActorStatePackingTrait::pack(@original);
+        let unpacked = packed.unpack();
+        assert!(unpacked.hp == 0, "hp");
+        assert!(unpacked.alive == false, "alive");
+        assert!(unpacked.faction == 0, "faction");
+    }
+
+    #[test]
+    fn test_actor_state_round_trip_typical_player() {
+        let original = ActorState {
+            player: starknet::contract_address_const::<0xabc>(),
+            game_id: 1,
+            actor_id: 0,
+            faction: 0,
+            archetype: 0,
+            hp: 85,
+            max_hp: 100,
+            stamina: 50,
+            max_stamina: 80,
+            offense: 20,
+            defense: 5,
+            speed: 10,
+            move_cost: 10,
+            pos_x: 3,
+            pos_y: 4,
+            alive: true,
+            guard_active: false,
+            is_immovable: false,
+            room_id: 5,
+        };
+        let packed = ActorStatePackingTrait::pack(@original);
+        let unpacked = packed.unpack();
+        assert!(unpacked.hp == 85, "hp");
+        assert!(unpacked.max_hp == 100, "max_hp");
+        assert!(unpacked.stamina == 50, "stamina");
+        assert!(unpacked.pos_x == 3 && unpacked.pos_y == 4, "pos");
+        assert!(unpacked.alive, "alive");
+        assert!(unpacked.room_id == 5, "room_id");
+    }
+}

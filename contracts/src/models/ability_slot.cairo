@@ -58,3 +58,56 @@ pub impl AbilitySlotStatePackingImpl of AbilitySlotStatePackingTrait {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{AbilitySlotState, AbilitySlotStatePackingTrait};
+
+    #[test]
+    fn test_ability_slot_round_trip_max() {
+        let original = AbilitySlotState {
+            player: starknet::contract_address_const::<0x1>(),
+            game_id: 1,
+            actor_id: 0,
+            slot_index: 4,
+            ability_id: 255,
+            cooldown_remaining: 255,
+        };
+        let packed = AbilitySlotStatePackingTrait::pack(@original);
+        let unpacked = packed.unpack();
+        assert!(unpacked.ability_id == 255, "ability_id");
+        assert!(unpacked.cooldown_remaining == 255, "cooldown");
+    }
+
+    #[test]
+    fn test_ability_slot_round_trip_typical() {
+        let original = AbilitySlotState {
+            player: starknet::contract_address_const::<0x1>(),
+            game_id: 1,
+            actor_id: 0,
+            slot_index: 2,
+            ability_id: 2, // Heal
+            cooldown_remaining: 3,
+        };
+        let packed = AbilitySlotStatePackingTrait::pack(@original);
+        let unpacked = packed.unpack();
+        assert!(unpacked.ability_id == 2, "ability_id");
+        assert!(unpacked.cooldown_remaining == 3, "cooldown");
+    }
+
+    #[test]
+    fn test_ability_slot_zero() {
+        let original = AbilitySlotState {
+            player: starknet::contract_address_const::<0x0>(),
+            game_id: 0,
+            actor_id: 0,
+            slot_index: 0,
+            ability_id: 0,
+            cooldown_remaining: 0,
+        };
+        let packed = AbilitySlotStatePackingTrait::pack(@original);
+        let unpacked = packed.unpack();
+        assert!(unpacked.ability_id == 0, "ability_id");
+        assert!(unpacked.cooldown_remaining == 0, "cooldown");
+    }
+}
