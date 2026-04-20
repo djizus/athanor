@@ -173,6 +173,7 @@ body,
 .hud-bottom {
   background: linear-gradient(to top, rgba(5, 5, 12, 0.9), rgba(5, 5, 12, 0));
   justify-content: space-between;
+  align-items: flex-end;
 }
 
 .tier-badge {
@@ -245,6 +246,7 @@ body,
 .abilities {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .ability {
@@ -264,12 +266,19 @@ body,
 
 .ability:hover:not(:disabled) {
   background: #252540;
-  border-color: #50507a;
+  border-color: #7e59d8;
+  box-shadow: 0 0 0 1px rgba(126, 89, 216, 0.35);
 }
 
 .ability:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+.ability.is-selected {
+  background: #2b1f46;
+  border-color: #a176ff;
+  box-shadow: 0 0 0 1px rgba(161, 118, 255, 0.45), 0 0 18px rgba(90, 60, 170, 0.45);
 }
 
 .ability-key {
@@ -289,6 +298,20 @@ body,
 .actions {
   display: flex;
   gap: 8px;
+  align-items: center;
+}
+
+.hud-status {
+  min-width: 260px;
+  max-width: 420px;
+  padding: 8px 12px;
+  border: 1px solid rgba(95, 95, 140, 0.55);
+  border-radius: 6px;
+  background: rgba(12, 12, 24, 0.82);
+  color: #d7d7f2;
+  font-size: 12px;
+  line-height: 1.35;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.25);
 }
 
 .action {
@@ -313,6 +336,34 @@ body,
 
 .action.reset:hover {
   background: #2a2a40;
+}
+
+@media (max-width: 900px) {
+  .hud-top,
+  .hud-bottom {
+    gap: 10px;
+    padding: 10px 12px;
+    flex-wrap: wrap;
+  }
+
+  .resource .bar {
+    width: 120px;
+  }
+
+  .score-block {
+    margin-left: 0;
+  }
+
+  .hud-status {
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+    order: 3;
+  }
+
+  .actions {
+    margin-left: auto;
+  }
 }
 
 .game-over {

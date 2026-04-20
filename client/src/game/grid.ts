@@ -6,8 +6,10 @@ import { TILE_SIZE } from "./scene.js";
 export interface GridBundle {
   group: THREE.Group;
   tiles: THREE.Mesh[][];
-  setReachable: (tiles: Position[]) => void;
+  setMoveRange: (tiles: Position[]) => void;
+  setAbilityRange: (tiles: Position[]) => void;
   setDanger: (tiles: Position[]) => void;
+  setSelected: (tiles: Position[]) => void;
   flash: (tiles: Position[], color: number, durationMs?: number) => void;
   clearOverlays: () => void;
   tileAtHit: (intersect: THREE.Intersection) => Position | null;
@@ -15,11 +17,14 @@ export interface GridBundle {
 
 const TILE_BASE_COLOR = 0x2a2a36;
 const TILE_ALT_COLOR = 0x32323f;
-const TILE_REACHABLE_COLOR = 0x2e4f6d;
-const TILE_DANGER_COLOR = 0x6a2020;
-const TILE_DANGER_REACHABLE_COLOR = 0x7a3540; // overlap: both reachable and danger
-export const TILE_FLASH_HIT_COLOR = 0x8fbf4f;
-export const TILE_FLASH_BAD_COLOR = 0x7a1f1f;
+const TILE_MOVE_RANGE_COLOR = 0x2f8f49;
+const TILE_ABILITY_RANGE_COLOR = 0x6e3fcc;
+const TILE_SELECTED_COLOR = 0xc89a2f;
+const TILE_DANGER_COLOR = 0xa62929;
+const TILE_DANGER_MOVE_COLOR = 0x6f4e1f;
+const TILE_DANGER_ABILITY_COLOR = 0x8d2e6b;
+export const TILE_FLASH_HIT_COLOR = 0xb5d94c;
+export const TILE_FLASH_BAD_COLOR = 0xbe3131;
 
 const tileKey = (x: number, y: number): string => `${x},${y}`;
 
@@ -47,8 +52,10 @@ export function createGrid(scene: THREE.Scene): GridBundle {
     tiles.push(row);
   }
 
-  let reachable = new Set<string>();
+  let moveRange = new Set<string>();
+  let abilityRange = new Set<string>();
   let danger = new Set<string>();
+  let selected = new Set<string>();
   const flashes = new Map<string, { color: number; expiresAt: number }>();
 
   const tileAt = (x: number, y: number): THREE.Mesh | null => tiles[y]?.[x] ?? null;
@@ -57,11 +64,16 @@ export function createGrid(scene: THREE.Scene): GridBundle {
     const k = tileKey(x, y);
     const flash = flashes.get(k);
     if (flash && flash.expiresAt > now) return flash.color;
-    const isReach = reachable.has(k);
+    const isMove = moveRange.has(k);
+    const isAbility = abilityRange.has(k);
     const isDanger = danger.has(k);
-    if (isDanger && isReach) return TILE_DANGER_REACHABLE_COLOR;
+    const isSelected = selected.has(k);
+    if (isSelected) return TILE_SELECTED_COLOR;
+    if (isDanger && isAbility) return TILE_DANGER_ABILITY_COLOR;
+    if (isDanger && isMove) return TILE_DANGER_MOVE_COLOR;
     if (isDanger) return TILE_DANGER_COLOR;
-    if (isReach) return TILE_REACHABLE_COLOR;
+    if (isAbility) return TILE_ABILITY_RANGE_COLOR;
+    if (isMove) return TILE_MOVE_RANGE_COLOR;
     return baseColors.get(k) ?? TILE_BASE_COLOR;
   };
 
@@ -76,13 +88,23 @@ export function createGrid(scene: THREE.Scene): GridBundle {
     }
   };
 
-  const setReachable = (positions: Position[]): void => {
-    reachable = new Set(positions.map((p) => tileKey(p.x, p.y)));
+  const setMoveRange = (positions: Position[]): void => {
+    moveRange = new Set(positions.map((p) => tileKey(p.x, p.y)));
+    redraw();
+  };
+
+  const setAbilityRange = (positions: Position[]): void => {
+    abilityRange = new Set(positions.map((p) => tileKey(p.x, p.y)));
     redraw();
   };
 
   const setDanger = (positions: Position[]): void => {
     danger = new Set(positions.map((p) => tileKey(p.x, p.y)));
+    redraw();
+  };
+
+  const setSelected = (positions: Position[]): void => {
+    selected = new Set(positions.map((p) => tileKey(p.x, p.y)));
     redraw();
   };
 
@@ -102,8 +124,10 @@ export function createGrid(scene: THREE.Scene): GridBundle {
   };
 
   const clearOverlays = (): void => {
-    reachable.clear();
+    moveRange.clear();
+    abilityRange.clear();
     danger.clear();
+    selected.clear();
     flashes.clear();
     redraw();
   };
@@ -116,5 +140,15 @@ export function createGrid(scene: THREE.Scene): GridBundle {
     return { x: obj.userData.gridX, y: obj.userData.gridY };
   };
 
-  return { group, tiles, setReachable, setDanger, flash, clearOverlays, tileAtHit };
+  return {
+    group,
+    tiles,
+    setMoveRange,
+    setAbilityRange,
+    setDanger,
+    setSelected,
+    flash,
+    clearOverlays,
+    tileAtHit,
+  };
 }

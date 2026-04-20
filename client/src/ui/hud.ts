@@ -1,9 +1,14 @@
 import { ABILITIES, type AbilityId } from "../state/constants.js";
 import { canUseAbility, type CombatState } from "../state/combat.js";
 
+export interface HudViewState {
+  selectedAbilityId: AbilityId | null;
+  statusText: string;
+}
+
 export interface HudHandle {
   root: HTMLElement;
-  refresh: (state: CombatState) => void;
+  refresh: (state: CombatState, view: HudViewState) => void;
   onAbility: (cb: (abilityId: AbilityId) => void) => void;
   onConfirm: (cb: () => void) => void;
   onReset: (cb: () => void) => void;
@@ -63,6 +68,10 @@ export function createHud(parent: HTMLElement, initial: CombatState): HudHandle 
   actions.className = "actions";
   bottom.appendChild(actions);
 
+  const status = document.createElement("div");
+  status.className = "hud-status";
+  bottom.appendChild(status);
+
   const resetBtn = document.createElement("button");
   resetBtn.className = "action reset";
   resetBtn.textContent = "Reset";
@@ -73,7 +82,7 @@ export function createHud(parent: HTMLElement, initial: CombatState): HudHandle 
   confirmBtn.textContent = "Confirm";
   actions.appendChild(confirmBtn);
 
-  const refresh = (state: CombatState): void => {
+  const refresh = (state: CombatState, view: HudViewState): void => {
     // Single-mode POC: always online. The badge exists to keep the HUD
     // header honest once tiers return (Bronze/Silver/Gold would show here).
     tierBadge.textContent = `${state.run.tier.name} — online`;
@@ -93,10 +102,17 @@ export function createHud(parent: HTMLElement, initial: CombatState): HudHandle 
     for (const btn of abilityButtons) {
       const abilityId = Number(btn.dataset.abilityId) as AbilityId;
       btn.disabled = !canUseAbility(state, abilityId);
+      btn.classList.toggle("is-selected", abilityId === view.selectedAbilityId);
+      btn.title = ABILITIES[abilityId]?.description ?? "";
     }
+
+    status.textContent = view.statusText;
   };
 
-  refresh(initial);
+  refresh(initial, {
+    selectedAbilityId: null,
+    statusText: "Move on green tiles. Red tiles are enemy danger.",
+  });
 
   return {
     root,

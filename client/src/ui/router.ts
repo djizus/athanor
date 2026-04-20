@@ -3,11 +3,14 @@ import { createHud } from "./hud.js";
 import { renderGameOver } from "./game-over.js";
 import type { Tier } from "../state/tiers.js";
 import {
+  canUseAbility,
+  tickCooldowns,
   computeEnemyIntents,
   computeReachable,
   newCombatState,
   refillStamina,
   tryMove,
+  tryUseAbility,
   type CombatState,
   type Position,
 } from "../state/combat.js";
@@ -16,9 +19,11 @@ import { createGrid, TILE_FLASH_BAD_COLOR, TILE_FLASH_HIT_COLOR } from "../game/
 import { createObstacles } from "../game/obstacles.js";
 import { createActorMeshes, syncActorMeshes } from "../game/actor.js";
 import { attachGridInput } from "../game/input.js";
-import { createDojoClient, packMove, type DojoClient } from "../dojo/client.js";
+import { createDojoClient, packAbility, packMove, type DojoClient } from "../dojo/client.js";
 import { createSigner } from "../dojo/burner.js";
 import { isConfigured, loadDojoConfig } from "../dojo/config.js";
+import type { AbilityId } from "../state/constants.js";
+import { abilityPrompt, buildAbilityPayload, getValidAbilityTargets } from "../state/targeting.js";
 
 type Teardown = () => void;
 
@@ -88,24 +93,72 @@ export function mountApp(root: HTMLElement): void {
     const actorMeshes = createActorMeshes(sceneBundle.scene, combat);
 
     const hud = createHud(root, combat);
+    let selectedAbilityId: AbilityId | null = null;
 
-    const refreshOverlays = (): void => {
+    const refreshPresentation = (): void => {
       if (!state) return;
-      grid.setReachable(computeReachable(state));
+      const abilityRange = selectedAbilityId === null ? [] : getValidAbilityTargets(state, selectedAbilityId);
+      grid.setMoveRange(selectedAbilityId === null ? computeReachable(state) : []);
+      grid.setAbilityRange(abilityRange);
       grid.setDanger(collectIntentTiles(state));
+      grid.setSelected(selectedAbilityId === null ? [] : [{ x: state.player.x, y: state.player.y }]);
+      hud.refresh(state, {
+        selectedAbilityId,
+        statusText: abilityPrompt(selectedAbilityId),
+      });
     };
-    refreshOverlays();
+
+    const clearAbilitySelection = (): void => {
+      selectedAbilityId = null;
+      refreshPresentation();
+    };
+
+    const toggleAbilitySelection = (abilityId: AbilityId): void => {
+      if (!state) return;
+      if (!canUseAbility(state, abilityId)) {
+        return;
+      }
+      if (selectedAbilityId === abilityId) {
+        clearAbilitySelection();
+        return;
+      }
+      selectedAbilityId = abilityId;
+      refreshPresentation();
+    };
+
+    refreshPresentation();
 
     const detachInput = attachGridInput(canvas, sceneBundle, grid, ({ x, y }) => {
       if (!state) return;
+      if (selectedAbilityId !== null) {
+        const target = { x, y };
+        const payload = buildAbilityPayload(state, selectedAbilityId, target);
+        const result = payload ? tryUseAbility(state, selectedAbilityId, x, y) : { ok: false };
+        if (!payload || !result.ok) {
+          grid.flash([{ x, y }], TILE_FLASH_BAD_COLOR, 200);
+          return;
+        }
+
+        onlineRun.pendingActions.push(
+          ...packAbility(selectedAbilityId, payload.targetMode, payload.targetA, payload.targetB),
+        );
+        clearAbilitySelection();
+        syncActorMeshes(actorMeshes, state);
+        refreshPresentation();
+        grid.flash(result.affectedTiles ?? [{ x, y }], TILE_FLASH_HIT_COLOR, 180);
+        if (state.run.gameOver) {
+          renderGameOver(root, state, toMenu);
+        }
+        return;
+      }
+
       const result = tryMove(state, x, y);
       if (!result.ok) {
         grid.flash([{ x, y }], TILE_FLASH_BAD_COLOR, 200);
         return;
       }
       syncActorMeshes(actorMeshes, state);
-      hud.refresh(state);
-      refreshOverlays();
+      refreshPresentation();
       grid.flash([{ x: state.player.x, y: state.player.y }], TILE_FLASH_HIT_COLOR, 150);
       onlineRun.pendingActions.push(...packMove(x, y));
       if (state.run.gameOver) {
@@ -118,9 +171,9 @@ export function mountApp(root: HTMLElement): void {
       if (!state) return;
       const tierRef = state.run.tier;
       state = newCombatState(tierRef);
+      selectedAbilityId = null;
       syncActorMeshes(actorMeshes, state);
-      hud.refresh(state);
-      refreshOverlays();
+      refreshPresentation();
       onlineRun.pendingActions = [];
     });
     hud.onConfirm(async () => {
@@ -135,10 +188,11 @@ export function mountApp(root: HTMLElement): void {
         // Empty-turn confirm: act like a no-op locally so intents rotate and
         // stamina refills. Once Torii subscription replaces the placeholder
         // combat state this branch goes away.
+        clearAbilitySelection();
+        tickCooldowns(state);
         computeEnemyIntents(state);
         refillStamina(state);
-        hud.refresh(state);
-        refreshOverlays();
+        refreshPresentation();
         return;
       }
 
@@ -152,10 +206,11 @@ export function mountApp(root: HTMLElement): void {
         // contract has already refilled stamina on-chain; we mirror locally
         // so the HUD isn't stale until the next re-sync lands.
         if (state) {
+          clearAbilitySelection();
+          tickCooldowns(state);
           refillStamina(state);
           computeEnemyIntents(state);
-          hud.refresh(state);
-          refreshOverlays();
+          refreshPresentation();
         }
       } catch (err) {
         onlineRun.pendingActions = batch;
@@ -165,9 +220,23 @@ export function mountApp(root: HTMLElement): void {
         onlineRun.submitting = false;
       }
     });
-    hud.onAbility(() => {
-      // Ability targeting not wired yet.
+    hud.onAbility((abilityId) => {
+      toggleAbilitySelection(abilityId);
     });
+
+    const onKeyDown = (ev: KeyboardEvent): void => {
+      if (!state) return;
+      if (ev.key === "Escape") {
+        clearAbilitySelection();
+        return;
+      }
+
+      const index = Number(ev.key) - 1;
+      if (index >= 0 && index <= 4) {
+        toggleAbilitySelection(index as AbilityId);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
 
     const clock = { running: true };
     const frame = (): void => {
@@ -180,6 +249,7 @@ export function mountApp(root: HTMLElement): void {
     teardown = () => {
       clock.running = false;
       detachInput();
+      window.removeEventListener("keydown", onKeyDown);
       obstacles.dispose();
       sceneBundle.dispose();
       hud.root.remove();

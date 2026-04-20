@@ -1,4 +1,17 @@
-import { ABILITIES, GRID_HEIGHT, GRID_WIDTH, MOVE_COST_PER_TILE, type AbilityId } from "./constants.js";
+import {
+  ABILITIES,
+  DASH_DAMAGE,
+  GRID_HEIGHT,
+  GRID_WIDTH,
+  HEAL_AMOUNT,
+  MOVE_COST_PER_TILE,
+  SHOVE_DAMAGE,
+  SHOVE_PUSH_DISTANCE,
+  SLAM_DAMAGE,
+  SLAM_PUSH_DISTANCE,
+  STRIKE_DAMAGE,
+  type AbilityId,
+} from "./constants.js";
 import type { Tier } from "./tiers.js";
 
 export const FACTION_PLAYER = 0;
@@ -218,6 +231,12 @@ export interface MoveResult {
   reason?: string;
 }
 
+export interface AbilityResult {
+  ok: boolean;
+  reason?: string;
+  affectedTiles?: Position[];
+}
+
 export function tryMove(state: CombatState, targetX: number, targetY: number): MoveResult {
   if (state.run.gameOver) return { ok: false, reason: "Run over" };
   const { player } = state;
@@ -262,4 +281,141 @@ export function canUseAbility(state: CombatState, abilityId: AbilityId): boolean
   if (!def) return false;
   if (cooldownOf(state, abilityId) > 0) return false;
   return state.run.stamina >= def.cost;
+}
+
+export function tickCooldowns(state: CombatState): void {
+  for (const ability of ABILITIES) {
+    const current = state.abilityCooldowns[ability.id] ?? 0;
+    state.abilityCooldowns[ability.id] = Math.max(0, current - 1);
+  }
+}
+
+export function tryUseAbility(
+  state: CombatState,
+  abilityId: AbilityId,
+  targetX: number,
+  targetY: number,
+): AbilityResult {
+  if (!canUseAbility(state, abilityId)) {
+    return { ok: false, reason: "Ability unavailable" };
+  }
+
+  let affectedTiles: Position[] = [];
+
+  if (abilityId === 0) {
+    const enemy = state.enemies.find((actor) => actor.alive && actor.x === targetX && actor.y === targetY);
+    if (!enemy) return { ok: false, reason: "No enemy at target" };
+    if (manhattan(state.player.x, state.player.y, targetX, targetY) !== 1) {
+      return { ok: false, reason: "Target not adjacent" };
+    }
+    applyDamage(state, enemy, STRIKE_DAMAGE);
+    affectedTiles = [{ x: targetX, y: targetY }];
+  } else if (abilityId === 1) {
+    const dx = Math.sign(targetX - state.player.x);
+    const dy = Math.sign(targetY - state.player.y);
+    if ((dx === 0 && dy === 0) || (dx !== 0 && dy !== 0)) {
+      return { ok: false, reason: "Dash needs a straight line" };
+    }
+
+    let curX = state.player.x;
+    let curY = state.player.y;
+    let finalX = curX;
+    let finalY = curY;
+    let moved = false;
+
+    for (let step = 0; step < 3; step++) {
+      const nextX = curX + dx;
+      const nextY = curY + dy;
+      if (!inBounds(nextX, nextY) || isObstacle(state, nextX, nextY)) break;
+      const enemy = state.enemies.find((actor) => actor.alive && actor.x === nextX && actor.y === nextY);
+      if (enemy) {
+        applyDamage(state, enemy, DASH_DAMAGE);
+        affectedTiles = [{ x: enemy.x, y: enemy.y }];
+        break;
+      }
+
+      finalX = nextX;
+      finalY = nextY;
+      curX = nextX;
+      curY = nextY;
+      moved = true;
+    }
+
+    if (!moved && affectedTiles.length === 0) {
+      return { ok: false, reason: "Dash has no path" };
+    }
+
+    state.player.x = finalX;
+    state.player.y = finalY;
+    if (affectedTiles.length === 0) {
+      affectedTiles = [{ x: finalX, y: finalY }];
+    }
+  } else if (abilityId === 2) {
+    if (targetX !== state.player.x || targetY !== state.player.y) {
+      return { ok: false, reason: "Heal targets self" };
+    }
+    state.player.hp = Math.min(state.player.maxHp, state.player.hp + HEAL_AMOUNT);
+    affectedTiles = [{ x: state.player.x, y: state.player.y }];
+  } else if (abilityId === 3) {
+    const enemy = state.enemies.find((actor) => actor.alive && actor.x === targetX && actor.y === targetY);
+    if (!enemy) return { ok: false, reason: "No enemy at target" };
+    if (manhattan(state.player.x, state.player.y, targetX, targetY) !== 1) {
+      return { ok: false, reason: "Target not adjacent" };
+    }
+    applyDamage(state, enemy, SHOVE_DAMAGE);
+    if (enemy.alive) {
+      const dx = Math.sign(enemy.x - state.player.x);
+      const dy = Math.sign(enemy.y - state.player.y);
+      pushActor(state, enemy, dx, dy, SHOVE_PUSH_DISTANCE);
+    }
+    affectedTiles = [{ x: targetX, y: targetY }, { x: enemy.x, y: enemy.y }];
+  } else {
+    if (targetX !== state.player.x || targetY !== state.player.y) {
+      return { ok: false, reason: "Slam targets self" };
+    }
+    const adjacentEnemies = state.enemies.filter(
+      (actor) => actor.alive && manhattan(state.player.x, state.player.y, actor.x, actor.y) === 1,
+    );
+    if (adjacentEnemies.length === 0) {
+      return { ok: false, reason: "No adjacent enemies" };
+    }
+    affectedTiles = [{ x: state.player.x, y: state.player.y }];
+    for (const enemy of adjacentEnemies) {
+      applyDamage(state, enemy, SLAM_DAMAGE);
+      if (enemy.alive) {
+        const dx = Math.sign(enemy.x - state.player.x);
+        const dy = Math.sign(enemy.y - state.player.y);
+        pushActor(state, enemy, dx, dy, SLAM_PUSH_DISTANCE);
+      }
+      affectedTiles.push({ x: enemy.x, y: enemy.y });
+    }
+  }
+
+  spendStamina(state, ABILITIES[abilityId].cost);
+  state.abilityCooldowns[abilityId] = ABILITIES[abilityId].cooldown;
+  computeEnemyIntents(state);
+  return { ok: true, affectedTiles };
+}
+
+function applyDamage(state: CombatState, actor: Actor, damage: number): void {
+  actor.hp = Math.max(0, actor.hp - damage);
+  if (actor.hp === 0) {
+    actor.alive = false;
+    actor.intent = undefined;
+    state.run.score += 1;
+  }
+}
+
+function pushActor(state: CombatState, actor: Actor, dx: number, dy: number, steps: number): void {
+  let curX = actor.x;
+  let curY = actor.y;
+  for (let step = 0; step < steps; step++) {
+    const nextX = curX + dx;
+    const nextY = curY + dy;
+    if (isBlocked(state, nextX, nextY)) break;
+    curX = nextX;
+    curY = nextY;
+  }
+  actor.x = curX;
+  actor.y = curY;
 }

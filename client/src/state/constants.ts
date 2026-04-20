@@ -47,17 +47,62 @@ export type AbilityId =
   | typeof ABILITY_SHOVE
   | typeof ABILITY_SLAM;
 
+export type AbilityTargetKind = "adjacent" | "line" | "self";
+
 export interface AbilityDef {
   id: AbilityId;
   name: string;
   cost: number;
   cooldown: number;
+  target: AbilityTargetKind;
+  rangeTiles: number;
+  description: string;
 }
 
 export const ABILITIES: AbilityDef[] = [
-  { id: ABILITY_STRIKE, name: "Strike", cost: STRIKE_COST, cooldown: STRIKE_COOLDOWN },
-  { id: ABILITY_DASH, name: "Dash", cost: DASH_COST, cooldown: DASH_COOLDOWN },
-  { id: ABILITY_HEAL, name: "Heal", cost: HEAL_COST, cooldown: HEAL_COOLDOWN },
-  { id: ABILITY_SHOVE, name: "Shove", cost: SHOVE_COST, cooldown: SHOVE_COOLDOWN },
-  { id: ABILITY_SLAM, name: "Slam", cost: SLAM_COST, cooldown: SLAM_COOLDOWN },
+  {
+    id: ABILITY_STRIKE,
+    name: "Strike",
+    cost: STRIKE_COST,
+    cooldown: STRIKE_COOLDOWN,
+    target: "adjacent",
+    rangeTiles: 1,
+    description: "Melee attack against an adjacent target.",
+  },
+  {
+    id: ABILITY_DASH,
+    name: "Dash",
+    cost: DASH_COST,
+    cooldown: DASH_COOLDOWN,
+    target: "line",
+    rangeTiles: 3,
+    description: "Move in a line and strike on impact.",
+  },
+  {
+    id: ABILITY_HEAL,
+    name: "Heal",
+    cost: HEAL_COST,
+    cooldown: HEAL_COOLDOWN,
+    target: "self",
+    rangeTiles: 0,
+    description: "Restore 20 HP to yourself.",
+  },
+  {
+    id: ABILITY_SHOVE,
+    name: "Shove",
+    cost: SHOVE_COST,
+    cooldown: SHOVE_COOLDOWN,
+    target: "adjacent",
+    rangeTiles: 1,
+    description: "Push an adjacent enemy 2 tiles, dealing damage first.",
+  },
+  {
+    id: ABILITY_SLAM,
+    name: "Slam",
+    cost: SLAM_COST,
+    cooldown: SLAM_COOLDOWN,
+    target: "self",
+    rangeTiles: 0,
+    description: "Hit all adjacent enemies and push them back 1 tile.",
+  },
 ];
