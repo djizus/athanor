@@ -1,5 +1,5 @@
 import { TIER_STANDARD, tierFeeRaw, type Tier } from "../state/tiers.js";
-import type { DojoClient } from "../dojo/client.js";
+import type { DojoClient, RunSummary } from "../dojo/client.js";
 
 export interface MainMenuContext {
   /**
@@ -10,6 +10,7 @@ export interface MainMenuContext {
   dojo: DojoClient | null;
   /** Approves the entry fee and submits `spawn(gameId, settings_id)` on-chain. */
   onOnlineSpawn: (tier: Tier) => Promise<void>;
+  onResumeRun: (run: RunSummary) => Promise<void>;
 }
 
 const MINT_AMOUNT = 100_000n;
@@ -69,6 +70,12 @@ function buildOnlineColumn(ctx: MainMenuContext): HTMLElement {
   startBtn.disabled = !ctx.dojo;
   col.appendChild(startBtn);
 
+  const resumeBtn = document.createElement("button");
+  resumeBtn.className = "tier-button tier-standard";
+  resumeBtn.textContent = "Resume latest run";
+  resumeBtn.disabled = true;
+  col.appendChild(resumeBtn);
+
   if (!ctx.dojo) {
     return col;
   }
@@ -76,22 +83,40 @@ function buildOnlineColumn(ctx: MainMenuContext): HTMLElement {
   const dojo = ctx.dojo;
   let currentBalance = 0n;
   let busy = false;
+  let latestActiveRun: RunSummary | null = null;
 
   const setBusy = (on: boolean): void => {
     busy = on;
     mintBtn.disabled = on;
     startBtn.disabled = on;
+    resumeBtn.disabled = on || latestActiveRun === null;
     refreshAffordability();
   };
 
   const refreshAffordability = (): void => {
-    if (busy) return;
     balanceLabel.textContent = `Balance: ${currentBalance.toLocaleString()} mLORDS`;
     const affordable = currentBalance >= TIER_STANDARD.entryFeeLords;
-    startBtn.disabled = !affordable;
+    startBtn.disabled = busy || !affordable;
+    resumeBtn.disabled = busy || latestActiveRun === null;
     startBtn.title = affordable
       ? ""
       : `Need ${TIER_STANDARD.entryFeeLords} mLORDS — mint more`;
+  };
+
+  const reloadRuns = async (): Promise<void> => {
+    try {
+      const runs = await dojo.listRuns();
+      latestActiveRun = runs.find((run) => run.endedAt === 0n) ?? null;
+      if (latestActiveRun) {
+        resumeBtn.textContent = `Resume run #${latestActiveRun.gameId} · Room ${latestActiveRun.roomId + 1}`;
+      } else {
+        resumeBtn.textContent = "No active run to resume";
+      }
+    } catch (err) {
+      resumeBtn.textContent = `Resume unavailable: ${(err as Error).message}`;
+      latestActiveRun = null;
+    }
+    refreshAffordability();
   };
 
   const reloadBalance = async (): Promise<void> => {
@@ -136,7 +161,22 @@ function buildOnlineColumn(ctx: MainMenuContext): HTMLElement {
     }
   });
 
+  resumeBtn.addEventListener("click", async () => {
+    if (busy || !latestActiveRun) return;
+    setBusy(true);
+    const originalLabel = resumeBtn.textContent ?? "Resume latest run";
+    resumeBtn.textContent = "Resuming...";
+    try {
+      await ctx.onResumeRun(latestActiveRun);
+    } catch (err) {
+      balanceLabel.textContent = `Resume failed: ${(err as Error).message}`;
+      resumeBtn.textContent = originalLabel;
+      setBusy(false);
+    }
+  });
+
   void reloadBalance();
+  void reloadRuns();
 
   return col;
 }

@@ -1,14 +1,11 @@
 import { renderMainMenu } from "./main-menu.js";
 import { createHud } from "./hud.js";
 import { renderGameOver } from "./game-over.js";
-import type { Tier } from "../state/tiers.js";
+import { TIER_STANDARD, type Tier } from "../state/tiers.js";
 import {
   canUseAbility,
-  tickCooldowns,
-  computeEnemyIntents,
   computeReachable,
   newCombatState,
-  refillStamina,
   tryMove,
   tryUseAbility,
   type CombatState,
@@ -54,7 +51,6 @@ export function mountApp(root: HTMLElement): void {
   let teardown: Teardown | null = null;
   let state: CombatState | null = null;
   let online: OnlineRun | null = null;
-  let nextGameId = 1;
 
   const toMenu = (): void => {
     teardown?.();
@@ -66,21 +62,30 @@ export function mountApp(root: HTMLElement): void {
       dojo,
       onOnlineSpawn: async (tier) => {
         if (!dojo) throw new Error("Online not configured");
-        const gameId = nextGameId++;
+        const gameId = await dojo.nextGameId();
         await dojo.spawn(gameId, tier.settingsId);
         await dojo.enterRoom(gameId, 0);
+        const liveState = await dojo.loadRun(gameId, tier);
+        if (!liveState) throw new Error(`Run ${gameId} not found after spawn`);
         online = { client: dojo, gameId, pendingActions: [], submitting: false };
-        startGame(tier, online);
+        startGame(tier, online, liveState);
+      },
+      onResumeRun: async (run) => {
+        if (!dojo) throw new Error("Online not configured");
+        const liveState = await dojo.loadRun(run.gameId, TIER_STANDARD);
+        if (!liveState) throw new Error(`Run ${run.gameId} not found`);
+        online = { client: dojo, gameId: run.gameId, pendingActions: [], submitting: false };
+        startGame(TIER_STANDARD, online, liveState);
       },
     });
   };
 
-  const startGame = (tier: Tier, onlineRun: OnlineRun): void => {
+  const startGame = (tier: Tier, onlineRun: OnlineRun, initialState: CombatState): void => {
     teardown?.();
     root.innerHTML = "";
     root.className = "screen game";
 
-    const combat = newCombatState(tier);
+    const combat = initialState;
     state = combat;
 
     const canvas = document.createElement("canvas");
@@ -94,6 +99,20 @@ export function mountApp(root: HTMLElement): void {
 
     const hud = createHud(root, combat);
     let selectedAbilityId: AbilityId | null = null;
+
+    const syncFromChain = async (): Promise<void> => {
+      const latest = await onlineRun.client.loadRun(onlineRun.gameId, tier);
+      if (!latest) {
+        throw new Error(`Run ${onlineRun.gameId} could not be refreshed from Torii`);
+      }
+      state = latest;
+      selectedAbilityId = null;
+      syncActorMeshes(actorMeshes, state);
+      refreshPresentation();
+      if (state.run.gameOver) {
+        renderGameOver(root, state, toMenu);
+      }
+    };
 
     const refreshPresentation = (): void => {
       if (!state) return;
@@ -184,34 +203,13 @@ export function mountApp(root: HTMLElement): void {
       grid.flash([{ x: state.player.x, y: state.player.y }], TILE_FLASH_HIT_COLOR, 250);
 
       if (onlineRun.submitting) return;
-      if (onlineRun.pendingActions.length === 0) {
-        // Empty-turn confirm: act like a no-op locally so intents rotate and
-        // stamina refills. Once Torii subscription replaces the placeholder
-        // combat state this branch goes away.
-        clearAbilitySelection();
-        tickCooldowns(state);
-        computeEnemyIntents(state);
-        refillStamina(state);
-        refreshPresentation();
-        return;
-      }
 
       onlineRun.submitting = true;
       const batch = onlineRun.pendingActions;
       onlineRun.pendingActions = [];
       try {
         await onlineRun.client.confirmTurn(onlineRun.gameId, batch);
-        // TODO(torii): replace this optimistic shim with a Torii subscription
-        // that mirrors the contract's post-enemy-phase state. For now the
-        // contract has already refilled stamina on-chain; we mirror locally
-        // so the HUD isn't stale until the next re-sync lands.
-        if (state) {
-          clearAbilitySelection();
-          tickCooldowns(state);
-          refillStamina(state);
-          computeEnemyIntents(state);
-          refreshPresentation();
-        }
+        await syncFromChain();
       } catch (err) {
         onlineRun.pendingActions = batch;
         // eslint-disable-next-line no-console

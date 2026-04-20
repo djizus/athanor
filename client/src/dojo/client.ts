@@ -5,6 +5,9 @@
 import { CallData, cairo, type Call } from "starknet";
 import type { Signer } from "./burner.js";
 import type { DojoConfig } from "./config.js";
+import { fetchCombatState, fetchRunSummaries, type RunSummary } from "./torii.js";
+import type { CombatState } from "../state/combat.js";
+import type { Tier } from "../state/tiers.js";
 
 // Action type IDs mirror contracts/src/systems/actions.cairo.
 export const ACTION_TYPE_MOVE = 0;
@@ -30,9 +33,14 @@ export interface DojoClient {
   spawn: (gameId: number, settingsId: number) => Promise<string>;
   enterRoom: (gameId: number, roomId: number) => Promise<string>;
   confirmTurn: (gameId: number, actionsPacked: number[]) => Promise<string>;
+  listRuns: () => Promise<RunSummary[]>;
+  loadRun: (gameId: number, tier: Tier) => Promise<CombatState | null>;
+  nextGameId: () => Promise<number>;
 }
 
 const DECIMALS = 10n ** 18n;
+
+export type { RunSummary };
 
 export function createDojoClient(cfg: DojoConfig, signer: Signer): DojoClient {
   const { account } = signer;
@@ -121,6 +129,24 @@ export function createDojoClient(cfg: DojoConfig, signer: Signer): DojoClient {
       const tx = await account.execute(call);
       await signer.provider.waitForTransaction(tx.transaction_hash);
       return tx.transaction_hash;
+    },
+
+    async listRuns() {
+      return fetchRunSummaries(cfg.toriiUrl, account.address);
+    },
+
+    async loadRun(gameId, tier) {
+      for (let attempt = 0; attempt < 8; attempt++) {
+        const snapshot = await fetchCombatState(cfg.toriiUrl, account.address, gameId, tier);
+        if (snapshot) return snapshot;
+        await new Promise((resolve) => window.setTimeout(resolve, 400));
+      }
+      return null;
+    },
+
+    async nextGameId() {
+      const runs = await fetchRunSummaries(cfg.toriiUrl, account.address);
+      return runs.reduce((max, run) => Math.max(max, run.gameId), 0) + 1;
     },
   };
 
