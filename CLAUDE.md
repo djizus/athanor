@@ -13,7 +13,7 @@ Torii.
 ```
 contracts/src/        Cairo contracts (namespace: athanor_0_1)
 client/               TypeScript + Three.js client (Vite + mkcert HTTPS)
-scripts/              Slot deploy script (scripts/deploy.sh)
+scripts/              Slot deploy script (scripts/deploy_slot.sh)
 PLAN.md               Combat design — see "POC Pivot" at the top for the current model
 dojo_slot.toml        World seed + account creds + init args for Slot migrate
 katana_slot.toml      Slot katana runtime config
@@ -77,15 +77,15 @@ cd client && pnpm build       # tsc && vite build --mode slot && electron bundle
 cd client && pnpm slot        # HTTPS dev server (mkcert) on :5173
 
 # Deploy to Slot (runs sozo declare/deploy mock_lords + migrate + writes client/.env.slot)
-./scripts/deploy.sh
+./scripts/deploy_slot.sh
 ```
 
 ## Dev Flow
 
 1. `slot d create zathanor-slot katana --config ./katana_slot.toml`
    (once, requires Slot CLI auth). Override the default name by setting
-   `SLOT_NAME` before running `deploy.sh`.
-2. `./scripts/deploy.sh` — builds contracts, declares/deploys mock_lords on
+   `SLOT_NAME` before running `deploy_slot.sh`.
+2. `./scripts/deploy_slot.sh` — builds contracts, declares/deploys mock_lords on
    Slot, migrates the Dojo world, and writes `client/.env.slot` with the
    fresh addresses.
 3. `cd client && pnpm slot` — Vite + mkcert HTTPS on `https://127.0.0.1:5173`.
@@ -144,7 +144,7 @@ sozo execute athanor_0_1-actions confirm_turn $GID 8 0 2 1 1 0 0 1 0 --wait    #
 | `src/state/tiers.ts`           | Single `TIER_STANDARD` (settingsId 1, 80 HP, 80 STA/turn, 100 mLORDS fee) |
 | `src/state/combat.ts`          | Combat state shape, `newCombatState`, `tryMove`, `refillStamina`, `computeReachable`, intents |
 | `src/state/constants.ts`       | Mirrors `contracts/src/constants.cairo` (ability costs, orb bonuses, drain amount) |
-| `src/dojo/config.ts`           | Reads `VITE_PUBLIC_*` env vars written by `scripts/deploy.sh` |
+| `src/dojo/config.ts`           | Reads `VITE_PUBLIC_*` env vars written by `scripts/deploy_slot.sh` |
 | `src/dojo/burner.ts`           | Raw Starknet `Account` signer using the master burner key from env |
 | `src/dojo/client.ts`           | `spawn`, `enter_room`, `confirm_turn`, `approveLords`, `mintLords` wrappers |
 | `src/ui/main-menu.ts`          | Online-only menu with a single "Start Run" button |
@@ -156,7 +156,7 @@ sozo execute athanor_0_1-actions confirm_turn $GID 8 0 2 1 1 0 0 1 0 --wait    #
 
 - Katana: `https://api.cartridge.gg/x/zathanor-slot/katana`
 - Torii:  `https://api.cartridge.gg/x/zathanor-slot/torii`
-- World / actions / lords addresses: set by `scripts/deploy.sh` into
+- World / actions / lords addresses: set by `scripts/deploy_slot.sh` into
   `torii_slot.toml` and `client/.env.slot`.
 
 ## Skills to Use
@@ -185,7 +185,7 @@ sozo execute athanor_0_1-actions confirm_turn $GID 8 0 2 1 1 0 0 1 0 --wait    #
 - `move` is a Cairo keyword — avoid as function names in contracts.
 - `sozo build` (default dev profile) works for local compile checks, but
   `sozo migrate` requires `dojo_slot.toml` + Slot auth.
-- `slot` CLI auth doesn't work on headless VMs — run `scripts/deploy.sh`
+- `slot` CLI auth doesn't work on headless VMs — run `scripts/deploy_slot.sh`
   on a machine that already has `slot` logged in.
 - Chrome HSTS caches localhost aggressively once any project uses HTTPS
   there — `vite-plugin-mkcert` + `pnpm slot` is the cleanest way through.

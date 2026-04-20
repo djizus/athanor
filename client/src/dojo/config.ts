@@ -1,5 +1,5 @@
 // Slot (and future mainnet/sepolia) addresses + RPC read from Vite env.
-// `scripts/deploy.sh` writes `client/.env.slot` with the `VITE_PUBLIC_*`
+// `scripts/deploy_slot.sh` writes `client/.env.slot` with the `VITE_PUBLIC_*`
 // set used here; `pnpm slot` activates that mode file. The naming matches
 // zkube-budokan so future Controller migration is a drop-in.
 

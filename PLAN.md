@@ -161,10 +161,10 @@ slot d create zathanor-slot katana --config ./katana_slot.toml
 slot d create zathanor-slot torii  --config ./torii_slot.toml
 
 # Every deploy:
-./scripts/deploy.sh
+./scripts/deploy_slot.sh
   # builds contracts (slot profile), declares/deploys mock_lords on Slot,
   # migrates the Dojo world, writes client/.env.slot with fresh addresses.
-  # Override the slot name with: SLOT_NAME=my-slot ./scripts/deploy.sh
+  # Override the slot name with: SLOT_NAME=my-slot ./scripts/deploy_slot.sh
 
 cd client && pnpm slot
   # Vite + mkcert HTTPS on https://127.0.0.1:5173
@@ -196,7 +196,7 @@ Client: `pnpm typecheck` (tsc strict, both browser and electron configs).
 - `move` is a Cairo keyword — avoid as function names.
 - `sozo build` (default dev profile) compiles for local checks; `sozo
   migrate` requires `dojo_slot.toml` + Slot auth.
-- `slot` CLI auth doesn't work on headless VMs — run `scripts/deploy.sh`
+- `slot` CLI auth doesn't work on headless VMs — run `scripts/deploy_slot.sh`
   on a machine that already has `slot` logged in.
 - Chrome HSTS caches localhost aggressively once any project uses HTTPS
   there — `vite-plugin-mkcert` + `pnpm slot` is the cleanest way through.

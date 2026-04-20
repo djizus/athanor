@@ -65,7 +65,7 @@ athanor/
 │   ├── scenes/          5 scenes (main_menu, dungeon_room, player, combat_hud, game_result_screen)
 │   ├── assets/images/   Character sprites (6), tileset PNGs
 │   └── project.godot
-├── scripts/             deploy.sh
+├── scripts/             deploy_slot.sh
 ├── dojo_slot.toml       Slot deployment profile
 ├── PLAN.md              Combat design document
 └── .tool-versions       scarb 2.15.1, sozo 1.8.6
@@ -96,7 +96,7 @@ git clone git@github.com:djizus/athanor.git && cd athanor
 sozo build
 
 # Deploy to Slot
-./scripts/deploy.sh
+./scripts/deploy_slot.sh
 
 # Launch game
 cd client && godot
