@@ -13,19 +13,15 @@ export interface DojoConfig {
   fundingKey: string;
 }
 
-function readEnv(key: string): string {
-  return (import.meta.env[key] as string | undefined) ?? "";
-}
-
 export function loadDojoConfig(): DojoConfig {
   return {
-    rpcUrl: readEnv("VITE_PUBLIC_NODE_URL"),
-    toriiUrl: readEnv("VITE_PUBLIC_TORII"),
-    worldAddress: readEnv("VITE_PUBLIC_WORLD_ADDRESS"),
-    actionsAddress: readEnv("VITE_PUBLIC_ACTIONS_ADDRESS"),
-    lordsAddress: readEnv("VITE_PUBLIC_LORDS_ADDRESS"),
-    fundingAccount: readEnv("VITE_PUBLIC_MASTER_ADDRESS"),
-    fundingKey: readEnv("VITE_PUBLIC_MASTER_PRIVATE_KEY"),
+    rpcUrl: import.meta.env.VITE_PUBLIC_NODE_URL ?? "",
+    toriiUrl: import.meta.env.VITE_PUBLIC_TORII ?? "",
+    worldAddress: import.meta.env.VITE_PUBLIC_WORLD_ADDRESS ?? "",
+    actionsAddress: import.meta.env.VITE_PUBLIC_ACTIONS_ADDRESS ?? "",
+    lordsAddress: import.meta.env.VITE_PUBLIC_LORDS_ADDRESS ?? "",
+    fundingAccount: import.meta.env.VITE_PUBLIC_MASTER_ADDRESS ?? "",
+    fundingKey: import.meta.env.VITE_PUBLIC_MASTER_PRIVATE_KEY ?? "",
   };
 }
 
