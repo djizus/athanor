@@ -8,11 +8,13 @@
 #   - sozo migrated: ./scripts/user_stories.sh migrate
 #
 # Then exercise the scenarios:
-#   ./scripts/user_stories.sh spawn    -> spawn a fresh run
-#   ./scripts/user_stories.sh room0    -> enter room 0 (procedural)
-#   ./scripts/user_stories.sh turn     -> submit one confirm_turn batch
-#   ./scripts/user_stories.sh state    -> read RunState + player ActorState
-#   ./scripts/user_stories.sh all      -> run the above sequentially
+#   ./scripts/user_stories.sh spawn         -> spawn a Bronze run (500 stamina)
+#   ./scripts/user_stories.sh spawn-silver  -> spawn a Silver run (1500 stamina)
+#   ./scripts/user_stories.sh spawn-gold    -> spawn a Gold run (4000 stamina)
+#   ./scripts/user_stories.sh room0         -> enter room 0 (procedural)
+#   ./scripts/user_stories.sh turn          -> submit one confirm_turn batch
+#   ./scripts/user_stories.sh state         -> read RunState + player ActorState
+#   ./scripts/user_stories.sh all           -> run the above sequentially
 #
 # Account pinned to katana's default #0 (seed 0). Addresses land in
 # manifest_dev.json after the first migrate; the script reads them.
@@ -48,9 +50,18 @@ case "$cmd" in
         ;;
 
     spawn)
-        # spawn(game_id = 1, settings_id = 1)
-        # Settings_id 1 is written at deploy time by the Setup contract.
+        # spawn(game_id = 1, settings_id = 1) — Bronze tier (500 stamina budget)
         sozo_exec "athanor_0_1-actions" spawn 1 1
+        ;;
+
+    spawn-silver)
+        # spawn(game_id = 1, settings_id = 2) — Silver tier (1500 stamina budget)
+        sozo_exec "athanor_0_1-actions" spawn 1 2
+        ;;
+
+    spawn-gold)
+        # spawn(game_id = 1, settings_id = 3) — Gold tier (4000 stamina budget)
+        sozo_exec "athanor_0_1-actions" spawn 1 3
         ;;
 
     room0)
@@ -106,7 +117,7 @@ case "$cmd" in
 
     *)
         echo "unknown command: $cmd"
-        echo "usage: $0 [migrate|spawn|room0|turn|strike|state|egc|all]"
+        echo "usage: $0 [migrate|spawn|spawn-silver|spawn-gold|room0|turn|strike|state|egc|all]"
         exit 1
         ;;
 esac

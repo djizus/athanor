@@ -5,9 +5,11 @@ seed = "athanor_0_1"
 [namespace]
 default = "athanor_0_1"
 
-# Dev init: pass zero for both Denshokan and VRF addresses. The VRF helper
-# falls back to pseudo-random (tx_info.transaction_hash) when vrf is zero, and
-# Denshokan token-ownership checks are commented out in spawn with a TODO
-# until a test Denshokan is wired in.
+# Dev init: three addresses passed to actions::dojo_init —
+#   (denshokan_address, vrf_address, lords_address)
+# Denshokan is 0x0 locally (token ownership check stubbed in spawn).
+# VRF is 0x0 locally (RandomTrait falls back to tx_hash-based pseudo-random).
+# LORDS must be the deployed mock_lords address. scripts/deploy_dev.sh
+# declares + deploys mock_lords then rewrites this entry before migrating.
 [init_call_args]
-"athanor_0_1-actions" = ["0x0", "0x0"]
+"athanor_0_1-actions" = ["0x0", "0x0", "0x0"]
