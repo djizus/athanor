@@ -1,8 +1,11 @@
-// Addresses + RPC read from Vite env (written by scripts/deploy_dev.sh into
-// client/.env.local). Missing values leave the client in offline-only mode.
+// Slot (and future mainnet/sepolia) addresses + RPC read from Vite env.
+// `scripts/deploy.sh` writes `client/.env.slot` with the `VITE_PUBLIC_*`
+// set used here; `pnpm slot` activates that mode file. The naming matches
+// zkube-budokan so future Controller migration is a drop-in.
 
 export interface DojoConfig {
   rpcUrl: string;
+  toriiUrl: string;
   worldAddress: string;
   actionsAddress: string;
   lordsAddress: string;
@@ -16,12 +19,13 @@ function readEnv(key: string): string {
 
 export function loadDojoConfig(): DojoConfig {
   return {
-    rpcUrl: readEnv("VITE_RPC_URL"),
-    worldAddress: readEnv("VITE_WORLD_ADDRESS"),
-    actionsAddress: readEnv("VITE_ACTIONS_ADDRESS"),
-    lordsAddress: readEnv("VITE_LORDS_ADDRESS"),
-    fundingAccount: readEnv("VITE_BURNER_FUNDING_ACCOUNT"),
-    fundingKey: readEnv("VITE_BURNER_FUNDING_KEY"),
+    rpcUrl: readEnv("VITE_PUBLIC_NODE_URL"),
+    toriiUrl: readEnv("VITE_PUBLIC_TORII"),
+    worldAddress: readEnv("VITE_PUBLIC_WORLD_ADDRESS"),
+    actionsAddress: readEnv("VITE_PUBLIC_ACTIONS_ADDRESS"),
+    lordsAddress: readEnv("VITE_PUBLIC_LORDS_ADDRESS"),
+    fundingAccount: readEnv("VITE_PUBLIC_MASTER_ADDRESS"),
+    fundingKey: readEnv("VITE_PUBLIC_MASTER_PRIVATE_KEY"),
   };
 }
 

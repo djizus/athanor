@@ -2,111 +2,163 @@
 
 ## What is this project?
 
-Athanor is a tactical RPG (Into the Breach-style) built with Godot 4.5.2 (2D isometric pixel art client) and Dojo (Cairo smart contracts on Starknet). Combat plays locally (optimistic), then turn actions are submitted onchain.
+Athanor:Ascend is an onchain tactical roguelike (Into the Breach-style) built
+with Dojo (Cairo smart contracts on Starknet / Cartridge Slot) and a
+TypeScript + Three.js web client. Combat is authoritative on-chain; the
+client submits batched `confirm_turn` transactions and mirrors state from
+Torii.
 
 ## Repository Layout
 
 ```
 contracts/src/        Cairo contracts (namespace: athanor_0_1)
-client/               Godot 4.5.2 project (480x270, 4x upscale to 1080p)
-scripts/              Deploy + QA shell scripts
-PLAN.md               Combat design document (source of truth for game design)
+client/               TypeScript + Three.js client (Vite + mkcert HTTPS)
+scripts/              Slot deploy script (scripts/deploy.sh)
+PLAN.md               Combat design — see "POC Pivot" at the top for the current model
+dojo_slot.toml        World seed + account creds + init args for Slot migrate
+katana_slot.toml      Slot katana runtime config
+torii_slot.toml       Slot torii indexing config
 ```
 
-## Key Architecture
+## Key Architecture (POC, 2026-04)
 
-- **Offline-first**: Game works 100% without Dojo. Chain is additive.
-- **Optimistic play**: Combat resolves locally. On turn confirm, actions batch-submit to chain.
-- **Turn order**: PLAYER -> RESOLVE -> ENEMY (bumps pay off immediately)
-- **Stamina**: 80 base, +10 kill bonus, +20 energy orb pickup, reset to 80 each turn
+See `PLAN.md` → "POC Pivot" for the source of truth.
+
+- **Online-only, endless runs.** Single "Standard" mode. No Bronze/Silver/Gold tiers.
+- **Run ends only on HP ≤ 0.** Stamina reaching 0 is not a game-over.
+- **Per-turn stamina refill.** Player gets `hero_stamina` (80) back at the
+  start of each player phase. Intra-turn bonuses (kill +10, orb +20) do
+  not carry across turns.
+- **No bump displacement.** Enemy-occupied tiles are hard blockers.
+  Displacement lives only in Shove and Slam.
+- **Turn order**: `PLAYER → RESOLVE → ENEMY`, resolved in
+  `systems::actions::process_enemy_phase` (PULL → STAMINA_DRAIN → DAMAGE).
+- **Per-archetype orb drops**: Brute/Flanker/Drainer → stamina orbs (+20,
+  same-turn only); Caster/Heavy/Puller → HP orbs (+10, persistent).
+
+### 5 Abilities
+
+| # | Name | Cost | CD | Effect |
+|---|------|------|----|--------|
+| 0 | Strike | 20 | 0  | 15 dmg adjacent |
+| 1 | Dash   | 20 | 1  | Line move + 10 dmg |
+| 2 | Heal   | 25 | 3  | Restore 20 HP |
+| 3 | Shove  | 20 | 1  | 5 dmg + push 2 tiles (silent fail if blocked) |
+| 4 | Slam   | 35 | 2  | 10 dmg all adjacent + push 1 tile each |
+
+### 6 Enemy Archetypes (POC HP values)
+
+| Type     | HP | Behavior                 | Telegraph                       | Orb drop |
+|----------|----|--------------------------|----------------------------------|----------|
+| Brute    | 30 | Chase + melee            | Single tile on player            | stamina  |
+| Caster   | 20 | Kite + AOE               | 3×3 circle on player             | HP       |
+| Flanker  | 25 | Flank behind last move   | Single tile behind player        | stamina  |
+| Heavy    | 45 | Slow chase, **immovable** | Cross (+) on player              | HP       |
+| Puller   | 22 | Maintain distance        | 3×3 PULL zone (forced movement)  | HP       |
+| Drainer  | 22 | Maintain distance        | 3×3 STAMINA_DRAIN zone (-20 STA) | stamina  |
+
+Enemy HP and offense scale per room via `stat_mult` (room 0 = 100 %, +15 %
+per room through room 2, then piecewise up to 690 % at room 17 and
++60 % per room beyond — endless). Archetype weights introduce Heavy at
+tier 1 and Puller/Drainer at tier 2. Caps: 2 Pullers, 2 Heavies, 2
+Drainers per room.
 
 ## Build & Validate Commands
 
 ```bash
 # Contracts
-sozo build                    # Build Cairo contracts
-sozo test                     # Run contract tests
+sozo build -P slot            # Build Cairo contracts for Slot deploy
+sozo test                     # Run contract tests (31 passing)
 
-# Client (Godot)
-cd client && timeout 60 godot --headless --quit 2>&1    # Parse check all scripts
-cd client && godot --headless --export-release "Web" export/web/index.html  # HTML5 export
+# Client (TypeScript + Three.js)
+cd client && pnpm install
+cd client && pnpm typecheck   # tsc --noEmit (browser + electron configs)
+cd client && pnpm build       # tsc && vite build --mode slot && electron bundle
+cd client && pnpm slot        # HTTPS dev server (mkcert) on :5173
 
-# Serve for browser testing
-python3 -m http.server 8090 --directory client/export/web
-
-# Deploy to Slot
-./scripts/deploy.sh           # Build, migrate, update client addresses
+# Deploy to Slot (runs sozo declare/deploy mock_lords + migrate + writes client/.env.slot)
+./scripts/deploy.sh
 ```
 
-## Game Design (from PLAN.md)
+## Dev Flow
 
-### 5 Abilities
-| # | Name | Cost | CD | Effect |
-|---|------|------|----|--------|
-| 0 | Strike | 20 | 0 | 15 dmg adjacent |
-| 1 | Dash | 25 | 1 | Line move + 10 dmg |
-| 2 | Heal | 25 | 3 | Restore 20 HP |
-| 3 | Shove | 20 | 1 | Push 2 tiles + 5 dmg + collision |
-| 4 | Slam | 35 | 2 | 10 dmg all adjacent + push 1 tile |
+1. `slot d create athanor-djizus-slot katana --config ./katana_slot.toml`
+   (once, requires Slot CLI auth).
+2. `./scripts/deploy.sh` — builds contracts, declares/deploys mock_lords on
+   Slot, migrates the Dojo world, and writes `client/.env.slot` with the
+   fresh addresses.
+3. `cd client && pnpm slot` — Vite + mkcert HTTPS on `https://127.0.0.1:5173`.
+   The client makes direct HTTPS calls to the Slot-hosted katana/torii
+   (`api.cartridge.gg/x/athanor-djizus-slot/{katana,torii}`) — no proxy
+   needed because both ends are HTTPS.
 
-### 5 Enemy Types
-| Type | HP | Behavior | Telegraph |
-|------|----|----------|-----------|
-| Brute | 50 | Chase + melee | Single tile on player |
-| Caster | 30 | Kite + AOE | Circle on player |
-| Flanker | 40 | Flank behind | Single tile behind player |
-| Heavy | 70 | Slow chase, **immovable** | Cross (+) on player, 25 dmg |
-| Puller | 35 | Maintain distance | 3x3 PULL zone (forced movement) |
+## QA Pipeline (Playwright MCP)
 
-### 3 Rooms (all 8x8 grid)
-- Room 0: 2 Brute + 1 Caster (easy)
-- Room 1: 1 Brute + 1 Flanker + 1 Heavy (medium)
-- Room 2: 1 Heavy + 1 Puller + 2 Flanker (hard)
-
-### Bump Displacement
-Move into enemy-occupied tile -> push enemy 1 tile in movement direction.
-- Open tile: enemy displaced, player takes old position
-- Blocked/wall/out-of-bounds: enemy stays, takes 5 collision damage
-- Immovable enemy: player stops short, enemy takes 5 damage
-
-## QA Pipeline (HTML5 + Playwright)
-
-The preferred testing approach uses Godot's HTML5 export + Playwright MCP:
-
-```bash
-# Export
-cd client && godot --headless --export-release "Web" export/web/index.html
-
-# Serve
-python3 -m http.server 8090 --directory export/web &
-
-# Playwright MCP commands
-playwright_browser_navigate -> http://localhost:8090
-playwright_browser_wait_for -> time: 12  (let Godot/WebGL init)
+```
+# After pnpm slot is running
+playwright_browser_navigate     https://127.0.0.1:5173/
+playwright_browser_wait_for     time: 5
 playwright_browser_take_screenshot
 ```
 
-### Canvas coordinate mapping
-Game viewport is 480x270 stretched to canvas. To click game coordinate (gx, gy):
-```javascript
-const canvas = document.querySelector('canvas');
-const rect = canvas.getBoundingClientRect();
-const scaleX = rect.width / 480;
-const scaleY = rect.height / 270;
-const x = rect.left + gx * scaleX;
-const y = rect.top + gy * scaleY;
-canvas.dispatchEvent(new MouseEvent('mousedown', {clientX: x, clientY: y, button: 0, bubbles: true}));
-canvas.dispatchEvent(new MouseEvent('mouseup', {clientX: x, clientY: y, button: 0, bubbles: true}));
+The menu is online-only: single "Start Run" button that approves the
+100 mLORDS entry fee and submits `spawn(game_id, 1)` on-chain. Ability
+targeting UI is still being wired; basic move/confirm loop works today.
+
+## Contract Namespace & Naming
+
+Following zkube pattern: version in namespace, not in contract names.
+
+- **Namespace**: `athanor_0_1`
+- **Contracts**: `actions`, `setup`
+- **Functions**: `spawn`, `enter_room`, `confirm_turn`
+- **Models**: `RunState`, `RoomState`, `ActorState`, `AbilitySlotState`,
+  `TelegraphState`, `GameSettings`, `Config`
+
+### Batched Turn Architecture
+
+Player plays full turn locally (optimistic), then submits all actions in
+one `confirm_turn(game_id, actions: Span<felt252>)` transaction. The
+contract processes all player actions sequentially, then auto-runs the
+enemy phase (telegraph resolve, enemy AI, new telegraphs, stamina
+refill, turn flip).
+
+**Action encoding** (packed felt252 array):
+
+| Action  | Type ID | Fields                                      | Felts |
+|---------|---------|---------------------------------------------|-------|
+| Move    | 0       | target_x, target_y                          | 3     |
+| Ability | 1       | ability_id, target_mode, target_a, target_b | 5     |
+
+```bash
+# CLI examples (via sozo execute against Slot)
+sozo execute athanor_0_1-actions confirm_turn $GID 3 0 2 1 --wait              # Move to (2,1)
+sozo execute athanor_0_1-actions confirm_turn $GID 8 0 2 1 1 0 0 1 0 --wait    # Move + Strike actor 1
 ```
 
-### Play-testing via Playwright
-Actually interact with the game: click tiles for movement, press 1-5 for abilities, Enter to confirm turns, R to reset. Take screenshots at each step to verify visual state.
+## Client File Map
+
+| File                            | Purpose |
+|---------------------------------|---------|
+| `src/state/tiers.ts`           | Single `TIER_STANDARD` (settingsId 1, 80 HP, 80 STA/turn, 100 mLORDS fee) |
+| `src/state/combat.ts`          | Combat state shape, `newCombatState`, `tryMove`, `refillStamina`, `computeReachable`, intents |
+| `src/state/constants.ts`       | Mirrors `contracts/src/constants.cairo` (ability costs, orb bonuses, drain amount) |
+| `src/dojo/config.ts`           | Reads `VITE_PUBLIC_*` env vars written by `scripts/deploy.sh` |
+| `src/dojo/burner.ts`           | Raw Starknet `Account` signer using the master burner key from env |
+| `src/dojo/client.ts`           | `spawn`, `enter_room`, `confirm_turn`, `approveLords`, `mintLords` wrappers |
+| `src/ui/main-menu.ts`          | Online-only menu with a single "Start Run" button |
+| `src/ui/router.ts`             | Menu ↔ game transitions; wires input, HUD, game-over |
+| `src/ui/hud.ts`, `game-over.ts`| HP/STA bars, ability buttons, death screen |
+| `src/game/{scene,grid,actor,obstacles,input}.ts` | Three.js rendering |
+
+### Slot Endpoints
+
+- Katana: `https://api.cartridge.gg/x/athanor-djizus-slot/katana`
+- Torii:  `https://api.cartridge.gg/x/athanor-djizus-slot/torii`
+- World / actions / lords addresses: set by `scripts/deploy.sh` into
+  `torii_slot.toml` and `client/.env.slot`.
 
 ## Skills to Use
-
-### Godot Development
-- **godot-task**: Scene/script generation, HTML5 export, Playwright QA, visual verification
-- **playwright** (MCP): Browser interaction for HTML5-exported game testing
 
 ### Dojo / Contracts
 - **dojo-model**: Create/modify Cairo models
@@ -115,58 +167,29 @@ Actually interact with the game: click tiles for movement, press 1-5 for abiliti
 - **dojo-test**: Write Cairo tests
 - **dojo-review**: Audit contracts for issues
 - **dojo-deploy**: Deploy to Katana/Slot
-- **dojo-client**: Wire Godot client to Dojo
 - **dojo-init**, **dojo-migrate**, **dojo-world**, **dojo-indexer**, **dojo-token**
 
 ### Cartridge / Infrastructure
-- **controller-setup**, **controller-react**, **controller-sessions**, **controller-signers**, **controller-backend**, **controller-native**, **controller-presets**
-- **slot-deploy**, **slot-rpc**, **slot-teams**, **slot-paymaster**, **slot-scale**, **slot-vrng**
+- **controller-setup**, **controller-react**, **controller-sessions**,
+  **controller-signers**, **controller-backend**, **controller-native**,
+  **controller-presets** — for the future Controller migration
+- **slot-deploy**, **slot-rpc**, **slot-teams**, **slot-paymaster**,
+  **slot-scale**, **slot-vrng**
 - **create-pr**: PR workflow
 - **create-a-plan**: Structured planning interviews
-
-## Contract Namespace & Naming
-
-Following zkube pattern: version in namespace, not in contract names.
-
-- **Namespace**: `athanor_0_1`
-- **Contract**: `actions` (not `actions_v2`)
-- **Functions**: `spawn`, `enter_room`, `confirm_turn`
-- **Models**: `RunState`, `RoomState`, `ActorState`, `AbilitySlotState`, `TelegraphState`
-
-### Batched Turn Architecture
-
-Player plays full turn locally (optimistic), then submits all actions in one `confirm_turn(game_id, actions: Span<felt252>)` transaction. The contract processes all player actions sequentially, then auto-runs enemy phase (telegraph resolve, enemy AI, new telegraphs, turn flip).
-
-**Action encoding** (packed felt252 array):
-| Action | Type ID | Fields | Felts |
-|--------|---------|--------|-------|
-| Move | 0 | target_x, target_y | 3 |
-| Ability | 1 | ability_id, target_mode, target_a, target_b | 5 |
-
-```bash
-# CLI examples
-sozo execute athanor_0_1-actions confirm_turn $GID 3 0 2 1 --wait              # Move to (2,1)
-sozo execute athanor_0_1-actions confirm_turn $GID 8 0 2 1 1 0 0 1 0 --wait    # Move + Strike actor 1
-```
-
-## Dojo Integration (Client Side)
-
-| File | Purpose |
-|------|---------|
-| `dojo_bridge.gd` | Autoload. ToriiClient, DojoSessionAccount, burner mode, Controller auth, sozo CLI fallback |
-| `dojo_integration.gd` | Autoload. Records moves/abilities, batch-submits on confirm turn |
-| `game_state.gd` | Autoload. Model containers (run, room, actors dict), Torii subscription updates |
-
-### Slot Endpoints
-- Torii: `https://api.cartridge.gg/x/athanor-djizus-slot/torii`
-- Katana: `https://api.cartridge.gg/x/athanor-djizus-slot/katana`
-- World/actions addresses: set after `sozo migrate`
+- **playwright** (MCP): Browser automation for the Three.js client
 
 ## Known Quirks
 
-- `.gd` files have no LSP in this environment. Use `godot --headless --quit` as parse check.
 - `move` is a Cairo keyword — avoid as function names in contracts.
-- GDScript typed arrays (`Array[Vector2i]`) reject untyped literals in tests — create typed locals first.
-- godot-dojo GDExtension binaries are not in git — user installs from dojo.godot releases into `client/addons/godot-dojo/bin/`.
-- Godot export templates installed at `~/.local/share/godot/export_templates/4.5.2.stable/`.
-- Web export uses `variant/thread_support=false` for broadest browser compatibility.
+- `sozo build` (default dev profile) works for local compile checks, but
+  `sozo migrate` requires `dojo_slot.toml` + Slot auth.
+- `slot` CLI auth doesn't work on headless VMs — run `scripts/deploy.sh`
+  on a machine that already has `slot` logged in.
+- Chrome HSTS caches localhost aggressively once any project uses HTTPS
+  there — `vite-plugin-mkcert` + `pnpm slot` is the cleanest way through.
+- The `archetype` field on `ActorState` is packed to 3 bits (values 0-7);
+  ARCHETYPE_DRAINER=6 fits. Adding a 9th archetype requires a packing
+  rework.
+- Ability targeting UI is not wired yet — abilities fire via keyboard
+  `1-5` in the near future; today only movement submits real actions.

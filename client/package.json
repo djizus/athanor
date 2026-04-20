@@ -6,8 +6,8 @@
   "type": "module",
   "main": "dist-electron/main.js",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build && pnpm run build:electron",
+    "slot": "vite --mode slot --host",
+    "build": "tsc && vite build --mode slot && pnpm run build:electron",
     "build:electron": "tsc -p tsconfig.electron.json && node -e \"require('fs').writeFileSync('dist-electron/package.json', JSON.stringify({type:'commonjs'}))\"",
     "preview": "vite preview",
     "electron:dev": "pnpm run build && electron .",

@@ -2,14 +2,21 @@
 set -euo pipefail
 
 # =============================================================================
-# Deploy Athanor contracts to Slot
+# Deploy Athanor:Ascend contracts to Slot.
 #
-# Builds, migrates, extracts addresses, and updates client + torii config.
+# Flow:
+#   1. sozo build -P slot
+#   2. sozo declare + deploy mock_lords on Slot (uses dojo_slot.toml creds)
+#   3. Write mock_lords address into dojo_slot.toml init_call_args
+#   4. sozo migrate -P slot
+#   5. Extract world + actions + mock_lords addresses
+#   6. Update torii_slot.toml world_address + client/.env.slot
 #
 # Prerequisites:
 #   - sozo, jq installed
-#   - dojo_slot.toml configured with account credentials
-#   - Slot Katana running: slot d create athanor-djizus-slot katana --config ./katana_slot.toml
+#   - dojo_slot.toml has valid account_address + private_key (either literals
+#     or resolved via `slot deployments accounts` fallback below).
+#   - Slot instance running: `slot d create athanor-djizus-slot katana --config ./katana_slot.toml`
 #
 # Usage:
 #   ./scripts/deploy.sh
@@ -22,9 +29,11 @@ SLOT_NAME="athanor-djizus-slot"
 NAMESPACE="athanor_0_1"
 CONTRACT_TAG="${NAMESPACE}-actions"
 MANIFEST="$ROOT_DIR/manifest_${PROFILE}.json"
-MAIN_MENU="$ROOT_DIR/client/scripts/main_menu.gd"
 TORII_TOML="$ROOT_DIR/torii_${PROFILE}.toml"
 DOJO_TOML="$ROOT_DIR/dojo_${PROFILE}.toml"
+CLIENT_ENV="$ROOT_DIR/client/.env.${PROFILE}"
+TARGET_DIR="$ROOT_DIR/target/${PROFILE}"
+LORDS_SIERRA="$TARGET_DIR/athanor_mock_lords.contract_class.json"
 RPC_URL="https://api.cartridge.gg/x/${SLOT_NAME}/katana"
 TORII_URL="https://api.cartridge.gg/x/${SLOT_NAME}/torii"
 
@@ -35,7 +44,7 @@ err()   { echo -e "${RED}[x]${NC} $*" >&2; }
 
 # --- Preflight ---
 command -v sozo >/dev/null 2>&1 || { err "sozo not found"; exit 1; }
-command -v jq >/dev/null 2>&1   || { err "jq not found"; exit 1; }
+command -v jq   >/dev/null 2>&1 || { err "jq not found"; exit 1; }
 [ -f "$DOJO_TOML" ] || { err "Missing $DOJO_TOML"; exit 1; }
 
 # --- Resolve account ---
@@ -68,13 +77,48 @@ fi
 
 info "Account: $ACCOUNT_ADDRESS"
 
+SOZO_AUTH=(--rpc-url "$RPC_URL" --account-address "$ACCOUNT_ADDRESS" --private-key "$PRIVATE_KEY")
+
 # --- Build ---
-info "Building contracts..."
+info "Building contracts (profile=$PROFILE)..."
 cd "$ROOT_DIR"
-sozo build -P "$PROFILE" 2>&1
+sozo build -P "$PROFILE" 2>&1 | tail -5
+[ -f "$LORDS_SIERRA" ] || { err "Missing $LORDS_SIERRA"; exit 1; }
+
+# --- Declare mock_lords ---
+info "Declaring mock_lords on Slot..."
+DECLARE_OUT=$(sozo --profile "$PROFILE" declare "${SOZO_AUTH[@]}" --wait "$LORDS_SIERRA" 2>&1 || true)
+LORDS_CLASS=$(echo "$DECLARE_OUT" | grep -oE '0x[0-9a-fA-F]{60,}' | tail -1 || true)
+if [ -z "$LORDS_CLASS" ]; then
+    err "Could not extract class hash. Output:"; echo "$DECLARE_OUT"; exit 1
+fi
+info "mock_lords class: $LORDS_CLASS"
+
+# --- Deploy mock_lords (salt 0x1 for a deterministic Slot address) ---
+info "Deploying mock_lords on Slot..."
+DEPLOY_OUT=$(sozo --profile "$PROFILE" deploy "${SOZO_AUTH[@]}" --wait --salt 0x1 "$LORDS_CLASS" 2>&1 || true)
+LORDS_ADDR=$(echo "$DEPLOY_OUT" | grep -oE 'Address[[:space:]]*:[[:space:]]*0x[0-9a-fA-F]+' | grep -oE '0x[0-9a-fA-F]+' | tail -1 || true)
+if [ -z "$LORDS_ADDR" ]; then
+    err "Could not extract deployed address. Output:"; echo "$DEPLOY_OUT"; exit 1
+fi
+info "mock_lords: $LORDS_ADDR"
+
+# --- Rewrite dojo_slot.toml init_call_args ---
+info "Writing mock_lords address into $DOJO_TOML..."
+python3 - "$DOJO_TOML" "$LORDS_ADDR" <<'PY'
+import pathlib, sys
+path = pathlib.Path(sys.argv[1])
+addr = sys.argv[2]
+src = path.read_text()
+marker = '"athanor_0_1-actions" = '
+idx = src.index(marker)
+end = src.index("\n", idx)
+new_line = f'{marker}["0x0", "0x0", "{addr}"]'
+path.write_text(src[:idx] + new_line + src[end:])
+PY
 
 # --- Migrate ---
-info "Migrating to Slot..."
+info "Migrating Dojo world to Slot..."
 MAX_ATTEMPTS=3
 for attempt in $(seq 1 $MAX_ATTEMPTS); do
     MIGRATE_OUTPUT=$(sozo migrate -P "$PROFILE" 2>&1) && break
@@ -90,36 +134,49 @@ echo "$MIGRATE_OUTPUT" | tail -3
 WORLD_ADDRESS=$(jq -r '.world.address // empty' "$MANIFEST")
 ACTIONS_ADDRESS=$(jq -r ".contracts[] | select(.tag == \"${CONTRACT_TAG}\") | .address // empty" "$MANIFEST")
 
-[ -n "$WORLD_ADDRESS" ] || { err "Could not extract world_address"; exit 1; }
-if [ -z "$ACTIONS_ADDRESS" ]; then
-    ACTIONS_ADDRESS=$(jq -r '.contracts[-1].address // empty' "$MANIFEST")
-    warn "Used fallback for actions_address"
-fi
+[ -n "$WORLD_ADDRESS" ]   || { err "Could not extract world_address";   exit 1; }
+[ -n "$ACTIONS_ADDRESS" ] || { err "Could not extract actions_address"; exit 1; }
 
 info "World:   $WORLD_ADDRESS"
 info "Actions: $ACTIONS_ADDRESS"
 
-# --- Update main_menu.gd (source of truth for client) ---
-if [ -f "$MAIN_MENU" ]; then
-    sed -i "s|const DEFAULT_WORLD_ADDRESS := \"0x[0-9a-fA-F]*\"|const DEFAULT_WORLD_ADDRESS := \"$WORLD_ADDRESS\"|" "$MAIN_MENU"
-    sed -i "s|const DEFAULT_ACTIONS_ADDRESS := \"0x[0-9a-fA-F]*\"|const DEFAULT_ACTIONS_ADDRESS := \"$ACTIONS_ADDRESS\"|" "$MAIN_MENU"
-    info "main_menu.gd updated"
-fi
-
 # --- Update torii_slot.toml ---
 if [ -f "$TORII_TOML" ]; then
     sed -i "s|world_address = \"0x[0-9a-fA-F]*\"|world_address = \"$WORLD_ADDRESS\"|" "$TORII_TOML"
-    info "torii_slot.toml updated"
+    info "$TORII_TOML updated"
 fi
+
+# --- Write client/.env.slot ---
+# Mirrors the shape used by zkube-budokan so a future Controller migration
+# drops in cleanly. `pnpm slot` in client/ activates this mode file.
+info "Writing $CLIENT_ENV..."
+mkdir -p "$(dirname "$CLIENT_ENV")"
+cat > "$CLIENT_ENV" <<EOF
+# Slot deployment configuration — regenerated by scripts/deploy.sh.
+VITE_PUBLIC_DEPLOY_TYPE=slot
+VITE_PUBLIC_SLOT=$SLOT_NAME
+VITE_PUBLIC_NAMESPACE=$NAMESPACE
+VITE_PUBLIC_NODE_URL=$RPC_URL
+VITE_PUBLIC_TORII=$TORII_URL
+VITE_PUBLIC_MASTER_ADDRESS=$ACCOUNT_ADDRESS
+VITE_PUBLIC_MASTER_PRIVATE_KEY=$PRIVATE_KEY
+
+# Contract addresses
+VITE_PUBLIC_WORLD_ADDRESS=$WORLD_ADDRESS
+VITE_PUBLIC_ACTIONS_ADDRESS=$ACTIONS_ADDRESS
+VITE_PUBLIC_LORDS_ADDRESS=$LORDS_ADDR
+EOF
 
 # --- Done ---
 echo ""
+info "Slot deploy complete."
 echo "  World:   $WORLD_ADDRESS"
 echo "  Actions: $ACTIONS_ADDRESS"
+echo "  mLORDS:  $LORDS_ADDR"
 echo "  RPC:     $RPC_URL"
 echo "  Torii:   $TORII_URL"
 echo "  Account: $ACCOUNT_ADDRESS"
 echo ""
 echo "Next steps:"
 echo "  slot d update $SLOT_NAME torii --config ./torii_slot.toml   # if world changed"
-echo "  cd client && godot                                          # play"
+echo "  cd client && pnpm slot                                      # HTTPS dev server"
