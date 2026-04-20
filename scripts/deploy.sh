@@ -16,16 +16,18 @@ set -euo pipefail
 #   - sozo, jq installed
 #   - dojo_slot.toml has valid account_address + private_key (either literals
 #     or resolved via `slot deployments accounts` fallback below).
-#   - Slot instance running: `slot d create athanor-djizus-slot katana --config ./katana_slot.toml`
+#   - Slot instance running: `slot d create $SLOT_NAME katana --config ./katana_slot.toml`
+#     (default SLOT_NAME is "zathanor-slot"; override with the env var.)
 #
 # Usage:
 #   ./scripts/deploy.sh
+#   SLOT_NAME=my-slot ./scripts/deploy.sh
 # =============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 PROFILE="slot"
-SLOT_NAME="athanor-djizus-slot"
+SLOT_NAME="${SLOT_NAME:-zathanor-slot}"
 NAMESPACE="athanor_0_1"
 CONTRACT_TAG="${NAMESPACE}-actions"
 MANIFEST="$ROOT_DIR/manifest_${PROFILE}.json"

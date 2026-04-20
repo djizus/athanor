@@ -82,15 +82,16 @@ cd client && pnpm slot        # HTTPS dev server (mkcert) on :5173
 
 ## Dev Flow
 
-1. `slot d create athanor-djizus-slot katana --config ./katana_slot.toml`
-   (once, requires Slot CLI auth).
+1. `slot d create zathanor-slot katana --config ./katana_slot.toml`
+   (once, requires Slot CLI auth). Override the default name by setting
+   `SLOT_NAME` before running `deploy.sh`.
 2. `./scripts/deploy.sh` — builds contracts, declares/deploys mock_lords on
    Slot, migrates the Dojo world, and writes `client/.env.slot` with the
    fresh addresses.
 3. `cd client && pnpm slot` — Vite + mkcert HTTPS on `https://127.0.0.1:5173`.
    The client makes direct HTTPS calls to the Slot-hosted katana/torii
-   (`api.cartridge.gg/x/athanor-djizus-slot/{katana,torii}`) — no proxy
-   needed because both ends are HTTPS.
+   (`api.cartridge.gg/x/zathanor-slot/{katana,torii}`) — no proxy needed
+   because both ends are HTTPS.
 
 ## QA Pipeline (Playwright MCP)
 
@@ -153,8 +154,8 @@ sozo execute athanor_0_1-actions confirm_turn $GID 8 0 2 1 1 0 0 1 0 --wait    #
 
 ### Slot Endpoints
 
-- Katana: `https://api.cartridge.gg/x/athanor-djizus-slot/katana`
-- Torii:  `https://api.cartridge.gg/x/athanor-djizus-slot/torii`
+- Katana: `https://api.cartridge.gg/x/zathanor-slot/katana`
+- Torii:  `https://api.cartridge.gg/x/zathanor-slot/torii`
 - World / actions / lords addresses: set by `scripts/deploy.sh` into
   `torii_slot.toml` and `client/.env.slot`.
 

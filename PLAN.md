@@ -157,23 +157,24 @@ makes HTTPS calls to the HTTPS-hosted Slot katana + torii.
 
 ```bash
 # One-time: provision the Slot instance (requires slot CLI auth)
-slot d create athanor-djizus-slot katana --config ./katana_slot.toml
-slot d create athanor-djizus-slot torii  --config ./torii_slot.toml
+slot d create zathanor-slot katana --config ./katana_slot.toml
+slot d create zathanor-slot torii  --config ./torii_slot.toml
 
 # Every deploy:
 ./scripts/deploy.sh
   # builds contracts (slot profile), declares/deploys mock_lords on Slot,
   # migrates the Dojo world, writes client/.env.slot with fresh addresses.
+  # Override the slot name with: SLOT_NAME=my-slot ./scripts/deploy.sh
 
 cd client && pnpm slot
   # Vite + mkcert HTTPS on https://127.0.0.1:5173
-  # Browser talks to api.cartridge.gg/x/athanor-djizus-slot/{katana,torii}
+  # Browser talks to api.cartridge.gg/x/zathanor-slot/{katana,torii}
 ```
 
 ### Slot endpoints
 
-- Katana: `https://api.cartridge.gg/x/athanor-djizus-slot/katana`
-- Torii:  `https://api.cartridge.gg/x/athanor-djizus-slot/torii`
+- Katana: `https://api.cartridge.gg/x/zathanor-slot/katana`
+- Torii:  `https://api.cartridge.gg/x/zathanor-slot/torii`
 
 ### Toolchain
 
