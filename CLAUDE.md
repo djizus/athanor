@@ -34,7 +34,7 @@ See `PLAN.md` → "POC Pivot" for the source of truth.
 - **Turn order**: `PLAYER → RESOLVE → ENEMY`, resolved in
   `systems::actions::process_enemy_phase` (PULL → STAMINA_DRAIN → DAMAGE).
 - **Per-archetype orb drops**: Brute/Flanker/Drainer → stamina orbs (+20,
-  same-turn only); Caster/Heavy/Puller → HP orbs (+10, persistent).
+  same-turn only); Caster/Heavy/Puller/Marksman → HP orbs (+10, persistent).
 
 ### 5 Abilities
 
@@ -46,22 +46,22 @@ See `PLAN.md` → "POC Pivot" for the source of truth.
 | 3 | Shove  | 20 | 1  | 5 dmg + push 2 tiles (silent fail if blocked) |
 | 4 | Slam   | 35 | 2  | 10 dmg all adjacent + push 1 tile each |
 
-### 6 Enemy Archetypes (POC HP values)
+### 7 Enemy Archetypes (POC HP values)
 
-| Type     | HP | Behavior                 | Telegraph                       | Orb drop |
-|----------|----|--------------------------|----------------------------------|----------|
-| Brute    | 30 | Chase + melee            | Single tile on player            | stamina  |
-| Caster   | 20 | Kite + AOE               | 3×3 circle on player             | HP       |
-| Flanker  | 25 | Flank behind last move   | Single tile behind player        | stamina  |
-| Heavy    | 45 | Slow chase, **immovable** | Cross (+) on player              | HP       |
-| Puller   | 22 | Maintain distance        | 3×3 PULL zone (forced movement)  | HP       |
-| Drainer  | 22 | Maintain distance        | 3×3 STAMINA_DRAIN zone (-20 STA) | stamina  |
+| Type     | HP | Behavior                  | Telegraph                                  | Orb drop |
+|----------|----|---------------------------|---------------------------------------------|----------|
+| Brute    | 30 | Chase + melee             | Single tile on player                       | stamina  |
+| Caster   | 20 | Kite + AOE, ignore cover  | 3×3 circle on player                        | HP       |
+| Flanker  | 25 | Flank behind last move    | Single tile behind player                   | stamina  |
+| Heavy    | 45 | Slow chase, **immovable** | Cross (+) on player                         | HP       |
+| Puller   | 22 | Maintain distance         | 3×3 PULL zone (forced movement)             | HP       |
+| Drainer  | 22 | Maintain distance         | 3×3 STAMINA_DRAIN zone (-20 STA)            | stamina  |
+| Marksman | 18 | Seek open lanes, keep range | Single-tile shot if a clear lane exists   | HP       |
 
-Enemy HP and offense scale per room via `stat_mult` (room 0 = 100 %, +15 %
-per room through room 2, then piecewise up to 690 % at room 17 and
-+60 % per room beyond — endless). Archetype weights introduce Heavy at
-tier 1 and Puller/Drainer at tier 2. Caps: 2 Pullers, 2 Heavies, 2
-Drainers per room.
+Enemy HP and offense scale per room via `stat_mult`, now tuned for short,
+high-pressure runs where room 10 is already a meaningful achievement.
+Archetype weights introduce Puller and Marksman by tier 1, Drainer by tier 2.
+Caps: 2 Pullers, 2 Heavies, 2 Drainers per room.
 
 ## Build & Validate Commands
 
@@ -190,7 +190,7 @@ sozo execute athanor_0_1-actions confirm_turn $GID 8 0 2 1 1 0 0 1 0 --wait    #
 - Chrome HSTS caches localhost aggressively once any project uses HTTPS
   there — `vite-plugin-mkcert` + `pnpm slot` is the cleanest way through.
 - The `archetype` field on `ActorState` is packed to 3 bits (values 0-7);
-  ARCHETYPE_DRAINER=6 fits. Adding a 9th archetype requires a packing
+  ARCHETYPE_MARKSMAN=7 fits. Adding a 9th archetype requires a packing
   rework.
 - Ability targeting UI is not wired yet — abilities fire via keyboard
   `1-5` in the near future; today only movement submits real actions.

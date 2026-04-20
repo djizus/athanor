@@ -55,8 +55,8 @@ pub impl GameSettingsImpl of GameSettingsTrait {
             hero_class: 0,
             hero_hp: 80,
             hero_stamina: 80,
-            // 6 archetypes: Brute, Caster, Flanker, Heavy, Puller, Drainer.
-            archetype_count: 6,
+            // 7 archetypes: Brute, Caster, Flanker, Heavy, Puller, Drainer, Marksman.
+            archetype_count: 7,
             max_enemy_count: 8,
             ramp_curve_id: 0,
             // 100 mLORDS × 10^18

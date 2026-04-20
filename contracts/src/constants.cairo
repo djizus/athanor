@@ -44,7 +44,7 @@ pub const BRUTE_DEFENSE: u8 = 8;
 pub const BRUTE_SPEED: u8 = 5;
 
 pub const CASTER_HP: u16 = 20;
-pub const CASTER_OFFENSE: u8 = 20;
+pub const CASTER_OFFENSE: u8 = 14;
 pub const CASTER_DEFENSE: u8 = 3;
 pub const CASTER_SPEED: u8 = 8;
 
@@ -69,3 +69,8 @@ pub const DRAINER_HP: u16 = 22;
 pub const DRAINER_OFFENSE: u8 = 0;
 pub const DRAINER_DEFENSE: u8 = 4;
 pub const DRAINER_SPEED: u8 = 6;
+
+pub const MARKSMAN_HP: u16 = 18;
+pub const MARKSMAN_OFFENSE: u8 = 20;
+pub const MARKSMAN_DEFENSE: u8 = 2;
+pub const MARKSMAN_SPEED: u8 = 7;

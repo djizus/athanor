@@ -32,7 +32,7 @@ pub mod actions {
         PHASE_EXPLORE, PHASE_PLAYER_TURN, PHASE_ENEMY_TURN, PHASE_COMPLETE, PHASE_FAILED,
         PHASE_GAME_OVER,
         FACTION_PLAYER, FACTION_ENEMY, ARCHETYPE_HERO, ARCHETYPE_BRUTE, ARCHETYPE_CASTER,
-        ARCHETYPE_FLANKER, ARCHETYPE_HEAVY, ARCHETYPE_PULLER, ARCHETYPE_DRAINER,
+        ARCHETYPE_FLANKER, ARCHETYPE_HEAVY, ARCHETYPE_PULLER, ARCHETYPE_DRAINER, ARCHETYPE_MARKSMAN,
         ABILITY_STRIKE, ABILITY_DASH,
         ABILITY_HEAL, ABILITY_SHOVE, ABILITY_SLAM, TARGET_DIRECTIONAL, SHAPE_SINGLE_TILE,
         SHAPE_CIRCLE, SHAPE_CROSS, TELEGRAPH_TYPE_DAMAGE, TELEGRAPH_TYPE_PULL,
@@ -1728,14 +1728,17 @@ pub mod actions {
             ref run: RunState,
             ref room: RoomState,
         ) {
-            // speed desc + actor_id asc. Drainer (speed 6) interleaves with
-            // Puller (also speed 6); actor_id asc resolves tie-break inside
-            // process_enemies_of_archetype.
+            // speed desc + actor_id asc. Marksman (7) acts before Brute (5);
+            // Drainer (6) interleaves with Puller (6); actor_id asc resolves
+            // ties inside process_enemies_of_archetype.
             self.process_enemies_of_archetype(
                 ref store, player, game_id, ref run, ref room, ARCHETYPE_CASTER,
             );
             self.process_enemies_of_archetype(
                 ref store, player, game_id, ref run, ref room, ARCHETYPE_FLANKER,
+            );
+            self.process_enemies_of_archetype(
+                ref store, player, game_id, ref run, ref room, ARCHETYPE_MARKSMAN,
             );
             self.process_enemies_of_archetype(
                 ref store, player, game_id, ref run, ref room, ARCHETYPE_PULLER,
@@ -1920,6 +1923,39 @@ pub mod actions {
                     enemy.pos_y = next_y;
                     moved = true;
                 };
+            } else if enemy.archetype == ARCHETYPE_MARKSMAN {
+                let dist = movement::manhattan_distance(
+                    enemy.pos_x, enemy.pos_y, player_actor.pos_x, player_actor.pos_y,
+                );
+                let (next_x, next_y, can_move) = if dist < 3 {
+                    enemy_ai::choose_step_away(
+                        enemy.pos_x,
+                        enemy.pos_y,
+                        player_actor.pos_x,
+                        player_actor.pos_y,
+                        room.blocked,
+                        occupancy_without_self,
+                    )
+                } else if self.has_clear_marksman_shot(
+                    room.blocked, enemy.pos_x, enemy.pos_y, player_actor.pos_x, player_actor.pos_y,
+                ) {
+                    (enemy.pos_x, enemy.pos_y, false)
+                } else {
+                    enemy_ai::choose_step_toward(
+                        enemy.pos_x,
+                        enemy.pos_y,
+                        player_actor.pos_x,
+                        player_actor.pos_y,
+                        room.blocked,
+                        occupancy_without_self,
+                    )
+                };
+
+                if can_move {
+                    enemy.pos_x = next_x;
+                    enemy.pos_y = next_y;
+                    moved = true;
+                };
             };
 
             if moved {
@@ -2037,7 +2073,62 @@ pub mod actions {
                     0,
                     0,
                 );
+            } else if enemy.archetype == ARCHETYPE_MARKSMAN {
+                if self.has_clear_marksman_shot(
+                    room.blocked,
+                    enemy.pos_x,
+                    enemy.pos_y,
+                    player_after_move.pos_x,
+                    player_after_move.pos_y,
+                ) {
+                    self.create_telegraph(
+                        ref store,
+                        player,
+                        game_id,
+                        ref run,
+                        enemy_actor_id,
+                        TELEGRAPH_TYPE_DAMAGE,
+                        SHAPE_SINGLE_TILE,
+                        player_after_move.pos_x,
+                        player_after_move.pos_y,
+                        0,
+                        enemy.offense.into(),
+                        0,
+                        0,
+                        0,
+                    );
+                };
             };
+        }
+
+        fn has_clear_marksman_shot(
+            self: @ContractState, blocked: u64, from_x: u8, from_y: u8, to_x: u8, to_y: u8,
+        ) -> bool {
+            if from_x != to_x && from_y != to_y {
+                return false;
+            };
+
+            if from_x == to_x {
+                let mut cur_y = if from_y < to_y { from_y + 1 } else { to_y + 1 };
+                let end_y = if from_y < to_y { to_y } else { from_y };
+                while cur_y < end_y {
+                    if bitmap::get_bit(blocked, from_x, cur_y) {
+                        return false;
+                    };
+                    cur_y += 1;
+                };
+                return true;
+            };
+
+            let mut cur_x = if from_x < to_x { from_x + 1 } else { to_x + 1 };
+            let end_x = if from_x < to_x { to_x } else { from_x };
+            while cur_x < end_x {
+                if bitmap::get_bit(blocked, cur_x, from_y) {
+                    return false;
+                };
+                cur_x += 1;
+            };
+            true
         }
 
         fn create_telegraph(

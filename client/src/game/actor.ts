@@ -16,6 +16,8 @@ const ENEMY_COLORS: Record<number, number> = {
   3: 0xc070e0, // flanker-ish
   4: 0x808080, // heavy-ish
   5: 0x60c090, // puller-ish
+  6: 0x6fd15a, // drainer-ish
+  7: 0xf0e06a, // marksman-ish
 };
 
 const HP_BAR_WIDTH = 0.8;

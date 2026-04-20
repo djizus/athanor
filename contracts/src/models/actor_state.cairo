@@ -13,7 +13,7 @@
 //   [ 1..2]  guard_active
 //   [ 2..3]  is_immovable
 //   [ 3..4]  faction (0=player, 1=enemy)
-//   [ 4..7]  archetype (3 bits, values 0-5)
+//   [ 4..7]  archetype (3 bits, values 0-7)
 //   [ 7..15] offense (u8)
 //   [15..23] defense (u8)
 //   [23..31] speed (u8)
@@ -298,23 +298,22 @@ mod tests {
         assert!(unpacked.max_stamina == 4000, "high max_stamina");
     }
 
-    // Verify the packed archetype field (3 bits) carries the new Drainer
-    // archetype (6) cleanly.
+    // Verify the packed archetype field (3 bits) carries the full 0-7 range.
     #[test]
-    fn test_actor_state_round_trip_drainer_archetype() {
+    fn test_actor_state_round_trip_marksman_archetype() {
         let original = ActorState {
             player: starknet::contract_address_const::<0xabc>(),
             game_id: 1,
             actor_id: 1,
             faction: 1,
-            archetype: 6, // ARCHETYPE_DRAINER
-            hp: 22,
-            max_hp: 22,
+            archetype: 7, // ARCHETYPE_MARKSMAN
+            hp: 18,
+            max_hp: 18,
             stamina: 0,
             max_stamina: 0,
-            offense: 0,
-            defense: 4,
-            speed: 6,
+            offense: 20,
+            defense: 2,
+            speed: 7,
             move_cost: 0,
             pos_x: 5,
             pos_y: 5,

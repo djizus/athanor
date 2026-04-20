@@ -51,16 +51,17 @@ plays optimistically and submits a single `confirm_turn` batch per turn.
 
 Blocked Shove/Slam push = silent fail (no collision bonus damage).
 
-### 6 enemy archetypes (POC base HP)
+### 7 enemy archetypes (POC base HP)
 
-| Type     | HP | Speed | Behavior                 | Telegraph                        | Orb drop |
-|----------|----|-------|--------------------------|----------------------------------|----------|
-| Brute    | 30 | 5     | Chase + melee            | Single tile on player            | stamina  |
-| Caster   | 20 | 8     | Kite                     | 3×3 circle on player             | HP       |
-| Flanker  | 25 | 7     | Flank behind last move   | Single tile behind player        | stamina  |
-| Heavy    | 45 | 3     | Slow chase, **immovable** | Cross (+) on player              | HP       |
-| Puller   | 22 | 6     | Maintain distance        | 3×3 PULL zone (forced movement)  | HP       |
-| Drainer  | 22 | 6     | Maintain distance        | 3×3 STAMINA_DRAIN zone (-20 STA) | stamina  |
+| Type     | HP | Speed | Behavior                  | Telegraph                                 | Orb drop |
+|----------|----|-------|---------------------------|-------------------------------------------|----------|
+| Brute    | 30 | 5     | Chase + melee             | Single tile on player                     | stamina  |
+| Caster   | 20 | 8     | Kite, ignore cover        | 3×3 circle on player                      | HP       |
+| Flanker  | 25 | 7     | Flank behind last move    | Single tile behind player                 | stamina  |
+| Heavy    | 45 | 3     | Slow chase, **immovable** | Cross (+) on player                       | HP       |
+| Puller   | 22 | 6     | Maintain distance         | 3×3 PULL zone (forced movement)           | HP       |
+| Drainer  | 22 | 6     | Maintain distance         | 3×3 STAMINA_DRAIN zone (-20 STA)          | stamina  |
+| Marksman | 18 | 7     | Seek open lanes, keep range | Single-tile shot on player if lane is clear | HP    |
 
 HP and offense scale per room via `stat_mult` (100 % @ room 0 → 690 % @ room
 17 → +60 %/room beyond). `stat_mult` is piecewise, not linear — see
@@ -70,16 +71,16 @@ HP and offense scale per room via `stat_mult` (100 % @ room 0 → 690 % @ room
 
 `helpers::procedural::archetype_weights(tier)`:
 
-| Tier | Brute | Caster | Flanker | Heavy | Puller | Drainer |
-|------|-------|--------|---------|-------|--------|---------|
-| 0    | 60    | 30     | 10      | 0     | 0      | 0       |
-| 1    | 40    | 25     | 20      | 15    | 0      | 0       |
-| 2    | 25    | 20     | 20      | 15    | 10     | 10      |
-| 3    | 15    | 20     | 20      | 15    | 15     | 15      |
-| 4    | 10    | 15     | 20      | 20    | 20     | 15      |
+| Tier | Brute | Caster | Flanker | Heavy | Puller | Drainer | Marksman |
+|------|-------|--------|---------|-------|--------|---------|----------|
+| 0    | 30    | 25     | 20      | 0     | 0      | 0       | 25       |
+| 1    | 20    | 20     | 15      | 10    | 10     | 0       | 25       |
+| 2    | 10    | 15     | 15      | 15    | 15     | 10      | 20       |
+| 3    | 5     | 10     | 15      | 15    | 15     | 15      | 25       |
+| 4    | 5     | 8      | 12      | 15    | 18     | 17      | 25       |
 
-Tier bands: 0-2 → tier 0, 3-6 → tier 1, 7-11 → tier 2, 12-17 → tier 3,
-18+ → tier 4. Per-room caps: ≤ 2 Pullers, ≤ 2 Heavies, ≤ 2 Drainers.
+Tier bands: 0 → tier 0, 1-4 → tier 1, 5-9 → tier 2, 10-15 → tier 3,
+16+ → tier 4. Per-room caps: ≤ 2 Pullers, ≤ 2 Heavies, ≤ 2 Drainers.
 
 ### Orbs
 
@@ -87,7 +88,7 @@ Tier bands: 0-2 → tier 0, 3-6 → tier 1, 7-11 → tier 2, 12-17 → tier 3,
   tile. Pickup = `+ORB_STAMINA_BONUS` (20), capped at `max_stamina`. Since
   stamina refills each turn, stamina orbs are a same-turn-only bonus.
   Bitmaps: `RoomState.orbs_fresh` / `orbs_aged`.
-- **HP orbs**: Caster / Heavy / Puller kills drop one. Pickup = `+ORB_HP_BONUS`
+- **HP orbs**: Caster / Heavy / Puller / Marksman kills drop one. Pickup = `+ORB_HP_BONUS`
   (10), capped at `max_hp`. HP carries across turns → persistent value.
   Bitmaps: `RoomState.hp_orbs_fresh` / `hp_orbs_aged`.
 - Both orb types share the 2-turn lifetime (`*_fresh` → `*_aged` → expired).

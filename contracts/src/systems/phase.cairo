@@ -17,6 +17,9 @@ pub const ARCHETYPE_PULLER: u8 = 5;
 // Drainer: telegraphs a 3x3 STAMINA_DRAIN zone on the player. No HP damage,
 // but siphons stamina on resolve. Fits in the 3-bit packed archetype field.
 pub const ARCHETYPE_DRAINER: u8 = 6;
+// Marksman: ranged single-tile shot on the player's location if a clear
+// cardinal lane exists. Obstacles block the shot.
+pub const ARCHETYPE_MARKSMAN: u8 = 7;
 
 pub const ABILITY_STRIKE: u8 = 0;
 pub const ABILITY_DASH: u8 = 1;

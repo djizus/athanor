@@ -13,18 +13,19 @@ pub const ARCH_FLANKER: u8 = 3;
 pub const ARCH_HEAVY: u8 = 4;
 pub const ARCH_PULLER: u8 = 5;
 pub const ARCH_DRAINER: u8 = 6;
+pub const ARCH_MARKSMAN: u8 = 7;
 
 /// Number of enemies to spawn in a room (capped at 8).
 pub fn enemy_count(room_id: u8) -> u8 {
-    if room_id <= 2 {
+    if room_id == 0 {
         3
-    } else if room_id <= 5 {
+    } else if room_id <= 2 {
         4
-    } else if room_id <= 9 {
+    } else if room_id <= 5 {
         5
-    } else if room_id <= 13 {
+    } else if room_id <= 9 {
         6
-    } else if room_id <= 17 {
+    } else if room_id <= 13 {
         7
     } else {
         8
@@ -33,7 +34,7 @@ pub fn enemy_count(room_id: u8) -> u8 {
 
 /// Number of static obstacles (capped at 16).
 pub fn obstacle_count(room_id: u8) -> u8 {
-    let n: u16 = 6 + room_id.into() / 2;
+    let n: u16 = 4 + room_id.into() / 2;
     if n > 16 {
         16
     } else {
@@ -145,38 +146,39 @@ pub fn pick_enemy_position(
 /// Tier band for a given room. Tiers shape archetype weight tables and stat
 /// multipliers below.
 pub fn room_tier(room_id: u8) -> u8 {
-    if room_id <= 2 {
+    if room_id == 0 {
         0
-    } else if room_id <= 6 {
+    } else if room_id <= 4 {
         1
-    } else if room_id <= 11 {
+    } else if room_id <= 9 {
         2
-    } else if room_id <= 17 {
+    } else if room_id <= 15 {
         3
     } else {
         4
     }
 }
 
-/// Weights for (Brute, Caster, Flanker, Heavy, Puller, Drainer) — always sum to 100.
-/// Tier 0 shelters the player from Heavy/Puller/Drainer; higher tiers introduce them.
-pub fn archetype_weights(tier: u8) -> (u8, u8, u8, u8, u8, u8) {
+/// Weights for (Brute, Caster, Flanker, Heavy, Puller, Drainer, Marksman) — always sum to 100.
+/// Tier 0 shelters the player from Heavy/Puller/Drainer while still allowing
+/// ranged pressure via Caster/Marksman.
+pub fn archetype_weights(tier: u8) -> (u8, u8, u8, u8, u8, u8, u8) {
     if tier == 0 {
-        (60, 30, 10, 0, 0, 0)
+        (30, 25, 20, 0, 0, 0, 25)
     } else if tier == 1 {
-        (40, 25, 20, 15, 0, 0)
+        (20, 20, 15, 10, 10, 0, 25)
     } else if tier == 2 {
-        // Drainer introduced at tier 2 as a stamina-pressure threat alongside Puller.
-        (25, 20, 20, 15, 10, 10)
+        // Drainer introduced at tier 2 once room pressure is already established.
+        (10, 15, 15, 15, 15, 10, 20)
     } else if tier == 3 {
-        (15, 20, 20, 15, 15, 15)
+        (5, 10, 15, 15, 15, 15, 25)
     } else {
-        (10, 15, 20, 20, 20, 15)
+        (5, 8, 12, 15, 18, 17, 25)
     }
 }
 
-fn weighted_pick(roll: u8, wb: u8, wc: u8, wf: u8, wh: u8, wp: u8, wd: u8) -> u8 {
-    let _ = wd;
+fn weighted_pick(roll: u8, wb: u8, wc: u8, wf: u8, wh: u8, wp: u8, wd: u8, wm: u8) -> u8 {
+    let _ = wm;
     if roll < wb {
         ARCH_BRUTE
     } else if roll < wb + wc {
@@ -187,8 +189,10 @@ fn weighted_pick(roll: u8, wb: u8, wc: u8, wf: u8, wh: u8, wp: u8, wd: u8) -> u8
         ARCH_HEAVY
     } else if roll < wb + wc + wf + wh + wp {
         ARCH_PULLER
-    } else {
+    } else if roll < wb + wc + wf + wh + wp + wd {
         ARCH_DRAINER
+    } else {
+        ARCH_MARKSMAN
     }
 }
 
@@ -204,7 +208,7 @@ pub fn roll_archetype_capped(
     drainers_so_far: u8,
 ) -> u8 {
     let tier = room_tier(room_id);
-    let (wb, wc, wf, wh, wp, wd) = archetype_weights(tier);
+    let (wb, wc, wf, wh, wp, wd, wm) = archetype_weights(tier);
 
     let mut attempt: u32 = 0;
     let mut result: u8 = ARCH_BRUTE;
@@ -218,7 +222,7 @@ pub fn roll_archetype_capped(
         );
         let v: u256 = h.into();
         let roll: u8 = (v.low % 100).try_into().unwrap();
-        let candidate = weighted_pick(roll, wb, wc, wf, wh, wp, wd);
+        let candidate = weighted_pick(roll, wb, wc, wf, wh, wp, wd, wm);
         let reject = (candidate == ARCH_PULLER && pullers_so_far >= 2)
             || (candidate == ARCH_HEAVY && heavies_so_far >= 2)
             || (candidate == ARCH_DRAINER && drainers_so_far >= 2);
@@ -246,26 +250,29 @@ pub fn archetype_base_stats(archetype: u8) -> (u16, u8, u8, u8, bool) {
         (45, 15, 10, 3, true)
     } else if archetype == ARCH_PULLER {
         (22, 0, 5, 6, false)
+    } else if archetype == ARCH_DRAINER {
+        (22, 0, 4, 6, false)
     } else {
-        (22, 0, 4, 6, false) // Drainer (and fallback)
+        (18, 20, 2, 7, false) // Marksman (and fallback)
     }
 }
 
-/// Piecewise stat multiplier as a percentage (100 = 1.00x baseline). Hits
-/// 220% by room 5, 390% by room 10, 610% by room 15, then +60% per room past
-/// room 17 (unbounded — endless).
+/// Piecewise stat multiplier as a percentage (100 = 1.00x baseline). Tuned for
+/// short, high-pressure runs: room 10 should already feel like an achievement.
 pub fn stat_mult(room_id: u8) -> u16 {
     let r: u16 = room_id.into();
     if room_id <= 2 {
-        100 + r * 15
-    } else if room_id <= 6 {
-        145 + (r - 2) * 25
-    } else if room_id <= 11 {
-        270 + (r - 6) * 30
+        100 + r * 30
+    } else if room_id <= 5 {
+        160 + (r - 2) * 55
+    } else if room_id <= 9 {
+        325 + (r - 5) * 70
+    } else if room_id <= 14 {
+        605 + (r - 9) * 85
     } else if room_id <= 17 {
-        450 + (r - 11) * 40
+        1030 + (r - 14) * 110
     } else {
-        690 + (r - 17) * 60
+        1470 + (r - 18) * 140
     }
 }
 
@@ -307,6 +314,7 @@ fn pow2_u64(n: u8) -> u64 {
 mod tests {
     use super::{
         ARCH_BRUTE, ARCH_CASTER, ARCH_FLANKER, ARCH_HEAVY, ARCH_PULLER, ARCH_DRAINER,
+        ARCH_MARKSMAN,
         archetype_base_stats, archetype_weights, enemy_count, obstacle_count, room_tier,
         roll_archetype_capped, scaled_archetype_stats, stat_mult,
     };
@@ -317,18 +325,18 @@ mod tests {
     fn test_stat_mult_table() {
         // Reference values from the design doc.
         assert!(stat_mult(0) == 100, "room 0");
-        assert!(stat_mult(2) == 130, "room 2");
-        assert!(stat_mult(3) == 170, "room 3");
-        assert!(stat_mult(5) == 220, "room 5");
-        assert!(stat_mult(6) == 245, "room 6");
-        assert!(stat_mult(7) == 300, "room 7");
-        assert!(stat_mult(10) == 390, "room 10");
-        assert!(stat_mult(11) == 420, "room 11");
-        assert!(stat_mult(12) == 490, "room 12");
-        assert!(stat_mult(15) == 610, "room 15");
-        assert!(stat_mult(17) == 690, "room 17");
-        assert!(stat_mult(18) == 750, "room 18");
-        assert!(stat_mult(20) == 870, "room 20");
+        assert!(stat_mult(2) == 160, "room 2");
+        assert!(stat_mult(3) == 215, "room 3");
+        assert!(stat_mult(5) == 325, "room 5");
+        assert!(stat_mult(6) == 395, "room 6");
+        assert!(stat_mult(7) == 465, "room 7");
+        assert!(stat_mult(10) == 690, "room 10");
+        assert!(stat_mult(11) == 775, "room 11");
+        assert!(stat_mult(12) == 860, "room 12");
+        assert!(stat_mult(15) == 1140, "room 15");
+        assert!(stat_mult(17) == 1360, "room 17");
+        assert!(stat_mult(18) == 1470, "room 18");
+        assert!(stat_mult(20) == 1750, "room 20");
     }
 
     #[test]
@@ -349,15 +357,10 @@ mod tests {
     #[test]
     fn test_enemy_count_bands() {
         assert!(enemy_count(0) == 3, "room 0");
-        assert!(enemy_count(2) == 3, "room 2");
-        assert!(enemy_count(3) == 4, "room 3");
-        assert!(enemy_count(5) == 4, "room 5");
-        assert!(enemy_count(6) == 5, "room 6");
-        assert!(enemy_count(9) == 5, "room 9");
-        assert!(enemy_count(10) == 6, "room 10");
-        assert!(enemy_count(13) == 6, "room 13");
-        assert!(enemy_count(14) == 7, "room 14");
-        assert!(enemy_count(17) == 7, "room 17");
+        assert!(enemy_count(1) == 4 && enemy_count(2) == 4, "rooms 1-2");
+        assert!(enemy_count(3) == 5 && enemy_count(5) == 5, "rooms 3-5");
+        assert!(enemy_count(6) == 6 && enemy_count(9) == 6, "rooms 6-9");
+        assert!(enemy_count(10) == 7 && enemy_count(13) == 7, "rooms 10-13");
         assert!(enemy_count(18) == 8, "room 18");
         assert!(enemy_count(100) == 8, "room 100 capped");
     }
@@ -366,9 +369,9 @@ mod tests {
 
     #[test]
     fn test_obstacle_count() {
-        assert!(obstacle_count(0) == 6, "room 0");
-        assert!(obstacle_count(4) == 8, "room 4");
-        assert!(obstacle_count(10) == 11, "room 10");
+        assert!(obstacle_count(0) == 4, "room 0");
+        assert!(obstacle_count(4) == 6, "room 4");
+        assert!(obstacle_count(10) == 9, "room 10");
         assert!(obstacle_count(20) == 16, "room 20 at cap");
         assert!(obstacle_count(100) == 16, "room 100 capped");
     }
@@ -377,11 +380,11 @@ mod tests {
 
     #[test]
     fn test_room_tier_bands() {
-        assert!(room_tier(0) == 0 && room_tier(2) == 0, "tier 0");
-        assert!(room_tier(3) == 1 && room_tier(6) == 1, "tier 1");
-        assert!(room_tier(7) == 2 && room_tier(11) == 2, "tier 2");
-        assert!(room_tier(12) == 3 && room_tier(17) == 3, "tier 3");
-        assert!(room_tier(18) == 4 && room_tier(100) == 4, "tier 4");
+        assert!(room_tier(0) == 0, "tier 0");
+        assert!(room_tier(1) == 1 && room_tier(4) == 1, "tier 1");
+        assert!(room_tier(5) == 2 && room_tier(9) == 2, "tier 2");
+        assert!(room_tier(10) == 3 && room_tier(15) == 3, "tier 3");
+        assert!(room_tier(16) == 4 && room_tier(100) == 4, "tier 4");
     }
 
     // --- archetype weights sum to 100 ---
@@ -390,9 +393,9 @@ mod tests {
     fn test_archetype_weights_sum_to_100() {
         let mut tier: u8 = 0;
         while tier < 5 {
-            let (b, c, f, h, p, d) = archetype_weights(tier);
-            let sum: u16 = b.into() + c.into() + f.into() + h.into() + p.into() + d.into();
-            assert!(sum == 100, "weights don't sum to 100");
+        let (b, c, f, h, p, d, m) = archetype_weights(tier);
+        let sum: u16 = b.into() + c.into() + f.into() + h.into() + p.into() + d.into() + m.into();
+        assert!(sum == 100, "weights don't sum to 100");
             tier += 1;
         };
     }
@@ -401,27 +404,29 @@ mod tests {
     fn test_archetype_weights_tier_0_no_hard_archetypes() {
         // Tier 0 must shield the player from Heavy + Puller + Drainer while
         // they learn. Brute/Caster/Flanker only.
-        let (_b, _c, _f, h, p, d) = archetype_weights(0);
+        let (_b, _c, _f, h, p, d, _m) = archetype_weights(0);
         assert!(h == 0, "tier 0 Heavy weight");
         assert!(p == 0, "tier 0 Puller weight");
         assert!(d == 0, "tier 0 Drainer weight");
     }
 
     #[test]
-    fn test_archetype_weights_tier_1_no_puller() {
-        // Tier 1 introduces Heavy; Puller and Drainer still absent.
-        let (_b, _c, _f, h, p, d) = archetype_weights(1);
+    fn test_archetype_weights_tier_1_introduces_marksman_and_puller() {
+        // Tier 1 introduces Heavy, Puller, and steady ranged pressure.
+        let (_b, _c, _f, h, p, d, m) = archetype_weights(1);
         assert!(h > 0, "tier 1 Heavy present");
-        assert!(p == 0, "tier 1 Puller still absent");
+        assert!(p > 0, "tier 1 Puller present");
         assert!(d == 0, "tier 1 Drainer still absent");
+        assert!(m > 0, "tier 1 Marksman present");
     }
 
     #[test]
     fn test_archetype_weights_tier_2_introduces_drainer() {
-        // Drainer debuts at tier 2 alongside Puller.
-        let (_b, _c, _f, _h, p, d) = archetype_weights(2);
+        // Drainer debuts at tier 2 once the player already handles Pullers.
+        let (_b, _c, _f, _h, p, d, m) = archetype_weights(2);
         assert!(p > 0, "tier 2 Puller present");
         assert!(d > 0, "tier 2 Drainer present");
+        assert!(m > 0, "tier 2 Marksman present");
     }
 
     // --- roll_archetype_capped honors caps ---
@@ -465,7 +470,7 @@ mod tests {
 
     #[test]
     fn test_archetype_base_stats_all() {
-        // POC HP: Brute 30 / Caster 20 / Flanker 25 / Heavy 45 / Puller 22 / Drainer 22.
+        // POC HP: Brute 30 / Caster 20 / Flanker 25 / Heavy 45 / Puller 22 / Drainer 22 / Marksman 18.
         let (brute_hp, _, _, brute_speed, brute_im) = archetype_base_stats(ARCH_BRUTE);
         assert!(brute_hp == 30 && brute_speed == 5 && !brute_im, "brute");
 
@@ -484,6 +489,9 @@ mod tests {
         let (drainer_hp, drainer_off, _, _, drainer_im) = archetype_base_stats(ARCH_DRAINER);
         // Drainer deals stamina drain via telegraph, not HP damage: offense=0.
         assert!(drainer_hp == 22 && drainer_off == 0 && !drainer_im, "drainer");
+
+        let (marksman_hp, marksman_off, marksman_def, marksman_speed, marksman_im) = archetype_base_stats(ARCH_MARKSMAN);
+        assert!(marksman_hp == 18 && marksman_off == 20 && marksman_def == 2 && marksman_speed == 7 && !marksman_im, "marksman");
     }
 
     // --- scaled_archetype_stats — hp and offense scale, others don't ---
@@ -501,11 +509,11 @@ mod tests {
 
     #[test]
     fn test_scaled_stats_hp_offense_at_room_15() {
-        // Brute @ room 15 with POC base 30 hp / 15 off: stat_mult = 610% →
-        // hp = 30 * 610 / 100 = 183, offense = 15 * 610 / 100 = 91.
+        // Brute @ room 15 with POC base 30 hp / 15 off: stat_mult = 1140% →
+        // hp = 30 * 1140 / 100 = 342, offense = 15 * 1140 / 100 = 171.
         let (hp, off, _, _, _) = scaled_archetype_stats(ARCH_BRUTE, 15);
-        assert!(hp == 183, "brute hp room 15");
-        assert!(off == 91, "brute offense room 15");
+        assert!(hp == 342, "brute hp room 15");
+        assert!(off == 171, "brute offense room 15");
     }
 
     #[test]
@@ -514,7 +522,7 @@ mod tests {
         let (_, off, _, _, _) = scaled_archetype_stats(ARCH_PULLER, 50);
         assert!(off == 0, "puller offense stays 0");
 
-        // Caster @ room 50: stat_mult = 690 + 33*60 = 2670, offense = 20 * 2670 / 100 = 534 → clamped to 255.
+        // Caster @ room 50: stat_mult = 1470 + 32*140 = 5950, offense = 14 * 5950 / 100 = 833 → clamped to 255.
         let (_, caster_off, _, _, _) = scaled_archetype_stats(ARCH_CASTER, 50);
         assert!(caster_off == 255, "offense clamped at u8 max");
     }
