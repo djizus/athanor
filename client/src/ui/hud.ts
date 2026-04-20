@@ -4,6 +4,7 @@ import { canUseAbility, type CombatState } from "../state/combat.js";
 export interface HudViewState {
   selectedAbilityId: AbilityId | null;
   statusText: string;
+  submitting: boolean;
 }
 
 export interface HudHandle {
@@ -82,6 +83,11 @@ export function createHud(parent: HTMLElement, initial: CombatState): HudHandle 
   confirmBtn.textContent = "Confirm";
   actions.appendChild(confirmBtn);
 
+  const toast = document.createElement("div");
+  toast.className = "hud-toast";
+  toast.innerHTML = `<span class="hud-spinner" aria-hidden="true"></span><span class="hud-toast-text">Submitting turn...</span>`;
+  root.appendChild(toast);
+
   const refresh = (state: CombatState, view: HudViewState): void => {
     // Single-mode POC: always online. The badge exists to keep the HUD
     // header honest once tiers return (Bronze/Silver/Gold would show here).
@@ -104,14 +110,20 @@ export function createHud(parent: HTMLElement, initial: CombatState): HudHandle 
       btn.disabled = !canUseAbility(state, abilityId);
       btn.classList.toggle("is-selected", abilityId === view.selectedAbilityId);
       btn.title = ABILITIES[abilityId]?.description ?? "";
+      btn.disabled = btn.disabled || view.submitting;
     }
 
     status.textContent = view.statusText;
+    confirmBtn.disabled = view.submitting;
+    resetBtn.disabled = view.submitting;
+    exitButton.disabled = view.submitting;
+    toast.classList.toggle("is-visible", view.submitting);
   };
 
   refresh(initial, {
     selectedAbilityId: null,
     statusText: "Move on green tiles. Red tiles are enemy danger.",
+    submitting: false,
   });
 
   return {

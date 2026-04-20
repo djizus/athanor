@@ -5,6 +5,8 @@ import {
   GRID_WIDTH,
   HEAL_AMOUNT,
   MOVE_COST_PER_TILE,
+  ORB_HP_BONUS,
+  ORB_STAMINA_BONUS,
   SHOVE_DAMAGE,
   SHOVE_PUSH_DISTANCE,
   SLAM_DAMAGE,
@@ -28,6 +30,12 @@ export interface Intent {
   damage: number;
 }
 
+export interface Orb {
+  x: number;
+  y: number;
+  kind: "stamina" | "hp";
+}
+
 export interface Actor {
   id: number;
   faction: number;
@@ -48,6 +56,8 @@ export interface RunState {
   maxStamina: number;
   score: number;
   roomsCleared: number;
+  roomId: number;
+  turnIndex: number;
   gameOver: boolean;
 }
 
@@ -57,6 +67,7 @@ export interface CombatState {
   enemies: Actor[];
   /** Tile positions that block movement. */
   obstacles: Position[];
+  orbs: Orb[];
   abilityCooldowns: Record<AbilityId, number>;
 }
 
@@ -76,6 +87,8 @@ export function newCombatState(tier: Tier): CombatState {
       maxStamina: tier.staminaPerTurn,
       score: 0,
       roomsCleared: 0,
+      roomId: 0,
+      turnIndex: 0,
       gameOver: false,
     },
     player: {
@@ -90,6 +103,7 @@ export function newCombatState(tier: Tier): CombatState {
     },
     enemies: placeholderEnemies(),
     obstacles: placeholderObstacles(),
+    orbs: [],
     abilityCooldowns: { ...DEFAULT_COOLDOWNS },
   };
   // Seed intents so the player sees what enemies will do on their first turn.
@@ -253,6 +267,7 @@ export function tryMove(state: CombatState, targetX: number, targetY: number): M
   player.x = targetX;
   player.y = targetY;
   spendStamina(state, cost);
+  collectOrbAt(state, targetX, targetY);
   // Intents point at the player's new tile — recompute so the HUD stays honest.
   computeEnemyIntents(state);
   return { ok: true };
@@ -288,6 +303,10 @@ export function tickCooldowns(state: CombatState): void {
     const current = state.abilityCooldowns[ability.id] ?? 0;
     state.abilityCooldowns[ability.id] = Math.max(0, current - 1);
   }
+}
+
+export function setTurnIndex(state: CombatState, turnIndex: number): void {
+  state.run.turnIndex = turnIndex;
 }
 
 export function tryUseAbility(
@@ -339,6 +358,7 @@ export function tryUseAbility(
       curX = nextX;
       curY = nextY;
       moved = true;
+      collectOrbAt(state, curX, curY);
     }
 
     if (!moved && affectedTiles.length === 0) {
@@ -402,8 +422,26 @@ function applyDamage(state: CombatState, actor: Actor, damage: number): void {
   if (actor.hp === 0) {
     actor.alive = false;
     actor.intent = undefined;
-    state.run.score += 1;
+    state.run.score += actor.maxHp * 10;
+    spawnOrbForEnemy(state, actor);
   }
+}
+
+function collectOrbAt(state: CombatState, x: number, y: number): void {
+  const index = state.orbs.findIndex((orb) => orb.x === x && orb.y === y);
+  if (index === -1) return;
+  const [orb] = state.orbs.splice(index, 1);
+  if (orb.kind === "stamina") {
+    state.run.stamina = Math.min(state.run.maxStamina, state.run.stamina + ORB_STAMINA_BONUS);
+    return;
+  }
+  state.player.hp = Math.min(state.player.maxHp, state.player.hp + ORB_HP_BONUS);
+}
+
+function spawnOrbForEnemy(state: CombatState, actor: Actor): void {
+  const kind = actor.archetype === 1 || actor.archetype === 3 || actor.archetype === 6 ? "stamina" : "hp";
+  state.orbs = state.orbs.filter((orb) => orb.x !== actor.x || orb.y !== actor.y);
+  state.orbs.push({ x: actor.x, y: actor.y, kind });
 }
 
 function pushActor(state: CombatState, actor: Actor, dx: number, dy: number, steps: number): void {

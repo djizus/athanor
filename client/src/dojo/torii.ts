@@ -41,6 +41,10 @@ interface RoomStateNode {
   occupancy: string;
   enemy_count: number;
   cleared: boolean;
+  orbs_fresh: string;
+  orbs_aged: string;
+  hp_orbs_fresh: string;
+  hp_orbs_aged: string;
 }
 
 interface ActorPackedNode {
@@ -161,7 +165,7 @@ export async function fetchCombatState(
           where: { playerEQ: $player, game_idEQ: $gameId, room_idEQ: $roomId }
           limit: 1
         ) {
-          edges { node { width height blocked occupancy enemy_count cleared } }
+          edges { node { width height blocked occupancy enemy_count cleared orbs_fresh orbs_aged hp_orbs_fresh hp_orbs_aged } }
         }
       }
     `, { player, gameId, roomId }),
@@ -223,6 +227,8 @@ export async function fetchCombatState(
       maxStamina: playerActor.maxStamina,
       score: runNode.score,
       roomsCleared: runNode.rooms_cleared,
+      roomId,
+      turnIndex: runNode.turn_index,
       gameOver: hexishToBigInt(runNode.ended_at) !== 0n,
     },
     player: {
@@ -249,6 +255,12 @@ export async function fetchCombatState(
         intent: intentsByActorId.get(actor.actorId),
       })),
     obstacles: decodeBitmap(hexishToBigInt(roomNode.blocked)),
+    orbs: [
+      ...decodeBitmap(hexishToBigInt(roomNode.orbs_fresh)).map((orb) => ({ ...orb, kind: "stamina" as const })),
+      ...decodeBitmap(hexishToBigInt(roomNode.orbs_aged)).map((orb) => ({ ...orb, kind: "stamina" as const })),
+      ...decodeBitmap(hexishToBigInt(roomNode.hp_orbs_fresh)).map((orb) => ({ ...orb, kind: "hp" as const })),
+      ...decodeBitmap(hexishToBigInt(roomNode.hp_orbs_aged)).map((orb) => ({ ...orb, kind: "hp" as const })),
+    ],
     abilityCooldowns,
   };
 }

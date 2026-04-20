@@ -14,6 +14,7 @@ import {
 import { createScene } from "../game/scene.js";
 import { createGrid, TILE_FLASH_BAD_COLOR, TILE_FLASH_HIT_COLOR } from "../game/grid.js";
 import { createObstacles } from "../game/obstacles.js";
+import { createOrbs } from "../game/orbs.js";
 import { createActorMeshes, syncActorMeshes } from "../game/actor.js";
 import { attachGridInput } from "../game/input.js";
 import { createDojoClient, packAbility, packMove, type DojoClient } from "../dojo/client.js";
@@ -95,19 +96,29 @@ export function mountApp(root: HTMLElement): void {
     const sceneBundle = createScene(canvas);
     const grid = createGrid(sceneBundle.scene);
     const obstacles = createObstacles(sceneBundle.scene, combat.obstacles);
+    const orbs = createOrbs(sceneBundle.scene, combat);
     const actorMeshes = createActorMeshes(sceneBundle.scene, combat);
 
     const hud = createHud(root, combat);
     let selectedAbilityId: AbilityId | null = null;
 
-    const syncFromChain = async (): Promise<void> => {
-      const latest = await onlineRun.client.loadRun(onlineRun.gameId, tier);
-      if (!latest) {
+    const syncFromChain = async (minTurnIndex: number = 0): Promise<void> => {
+      let latest: CombatState | null = null;
+      for (let attempt = 0; attempt < 12; attempt++) {
+        latest = await onlineRun.client.loadRun(onlineRun.gameId, tier);
+        if (latest && latest.run.turnIndex >= minTurnIndex) {
+          break;
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, 350));
+      }
+
+      if (!latest || latest.run.turnIndex < minTurnIndex) {
         throw new Error(`Run ${onlineRun.gameId} could not be refreshed from Torii`);
       }
       state = latest;
       selectedAbilityId = null;
       syncActorMeshes(actorMeshes, state);
+      orbs.sync(state);
       refreshPresentation();
       if (state.run.gameOver) {
         renderGameOver(root, state, toMenu);
@@ -124,6 +135,7 @@ export function mountApp(root: HTMLElement): void {
       hud.refresh(state, {
         selectedAbilityId,
         statusText: abilityPrompt(selectedAbilityId),
+        submitting: onlineRun.submitting,
       });
     };
 
@@ -149,6 +161,7 @@ export function mountApp(root: HTMLElement): void {
 
     const detachInput = attachGridInput(canvas, sceneBundle, grid, ({ x, y }) => {
       if (!state) return;
+      if (onlineRun.submitting) return;
       if (selectedAbilityId !== null) {
         const target = { x, y };
         const payload = buildAbilityPayload(state, selectedAbilityId, target);
@@ -163,6 +176,7 @@ export function mountApp(root: HTMLElement): void {
         );
         clearAbilitySelection();
         syncActorMeshes(actorMeshes, state);
+        orbs.sync(state);
         refreshPresentation();
         grid.flash(result.affectedTiles ?? [{ x, y }], TILE_FLASH_HIT_COLOR, 180);
         if (state.run.gameOver) {
@@ -177,6 +191,7 @@ export function mountApp(root: HTMLElement): void {
         return;
       }
       syncActorMeshes(actorMeshes, state);
+      orbs.sync(state);
       refreshPresentation();
       grid.flash([{ x: state.player.x, y: state.player.y }], TILE_FLASH_HIT_COLOR, 150);
       onlineRun.pendingActions.push(...packMove(x, y));
@@ -192,11 +207,13 @@ export function mountApp(root: HTMLElement): void {
       state = newCombatState(tierRef);
       selectedAbilityId = null;
       syncActorMeshes(actorMeshes, state);
+      orbs.sync(state);
       refreshPresentation();
       onlineRun.pendingActions = [];
     });
     hud.onConfirm(async () => {
       if (!state) return;
+      if (onlineRun.submitting) return;
       // Confirm visual: briefly flash the player's tile. The real turn end
       // (enemy phase, telegraph resolves, stamina refill) is driven by the
       // contract's confirm_turn — the client applies state from Torii.
@@ -205,17 +222,20 @@ export function mountApp(root: HTMLElement): void {
       if (onlineRun.submitting) return;
 
       onlineRun.submitting = true;
+      refreshPresentation();
+      const expectedTurnIndex = state.run.turnIndex + 1;
       const batch = onlineRun.pendingActions;
       onlineRun.pendingActions = [];
       try {
         await onlineRun.client.confirmTurn(onlineRun.gameId, batch);
-        await syncFromChain();
+        await syncFromChain(expectedTurnIndex);
       } catch (err) {
         onlineRun.pendingActions = batch;
         // eslint-disable-next-line no-console
         console.error("[ascend] confirm_turn failed", err);
       } finally {
         onlineRun.submitting = false;
+        refreshPresentation();
       }
     });
     hud.onAbility((abilityId) => {
@@ -224,6 +244,7 @@ export function mountApp(root: HTMLElement): void {
 
     const onKeyDown = (ev: KeyboardEvent): void => {
       if (!state) return;
+      if (onlineRun.submitting) return;
       if (ev.key === "Escape") {
         clearAbilitySelection();
         return;
@@ -249,6 +270,7 @@ export function mountApp(root: HTMLElement): void {
       detachInput();
       window.removeEventListener("keydown", onKeyDown);
       obstacles.dispose();
+      orbs.dispose();
       sceneBundle.dispose();
       hud.root.remove();
       canvas.remove();
