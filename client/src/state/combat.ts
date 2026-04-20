@@ -56,6 +56,7 @@ export interface RunState {
   maxStamina: number;
   score: number;
   roomsCleared: number;
+  phase: number;
   roomId: number;
   turnIndex: number;
   gameOver: boolean;
@@ -69,6 +70,27 @@ export interface CombatState {
   obstacles: Position[];
   orbs: Orb[];
   abilityCooldowns: Record<AbilityId, number>;
+}
+
+export function cloneCombatState(state: CombatState): CombatState {
+  return {
+    run: { ...state.run },
+    player: {
+      ...state.player,
+      intent: state.player.intent
+        ? { damage: state.player.intent.damage, tiles: state.player.intent.tiles.map((tile) => ({ ...tile })) }
+        : undefined,
+    },
+    enemies: state.enemies.map((enemy) => ({
+      ...enemy,
+      intent: enemy.intent
+        ? { damage: enemy.intent.damage, tiles: enemy.intent.tiles.map((tile) => ({ ...tile })) }
+        : undefined,
+    })),
+    obstacles: state.obstacles.map((obstacle) => ({ ...obstacle })),
+    orbs: state.orbs.map((orb) => ({ ...orb })),
+    abilityCooldowns: { ...state.abilityCooldowns },
+  };
 }
 
 const DEFAULT_COOLDOWNS: Record<AbilityId, number> = {
@@ -87,6 +109,7 @@ export function newCombatState(tier: Tier): CombatState {
       maxStamina: tier.staminaPerTurn,
       score: 0,
       roomsCleared: 0,
+      phase: 1,
       roomId: 0,
       turnIndex: 0,
       gameOver: false,

@@ -227,6 +227,7 @@ export async function fetchCombatState(
       maxStamina: playerActor.maxStamina,
       score: runNode.score,
       roomsCleared: runNode.rooms_cleared,
+      phase: runNode.phase,
       roomId,
       turnIndex: runNode.turn_index,
       gameOver: hexishToBigInt(runNode.ended_at) !== 0n,

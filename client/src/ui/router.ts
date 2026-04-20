@@ -4,8 +4,8 @@ import { renderGameOver } from "./game-over.js";
 import { TIER_STANDARD, type Tier } from "../state/tiers.js";
 import {
   canUseAbility,
+  cloneCombatState,
   computeReachable,
-  newCombatState,
   tryMove,
   tryUseAbility,
   type CombatState,
@@ -31,6 +31,8 @@ interface OnlineRun {
   pendingActions: number[];
   submitting: boolean;
 }
+
+const PHASE_EXPLORE = 0;
 
 function collectIntentTiles(state: CombatState): Position[] {
   const out: Position[] = [];
@@ -101,21 +103,71 @@ export function mountApp(root: HTMLElement): void {
 
     const hud = createHud(root, combat);
     let selectedAbilityId: AbilityId | null = null;
+    let turnStartState = cloneCombatState(combat);
 
-    const syncFromChain = async (minTurnIndex: number = 0): Promise<void> => {
+    const syncFromChain = async (opts?: { minTurnIndex?: number; phase?: number; roomId?: number }): Promise<void> => {
+      const minTurnIndex = opts?.minTurnIndex ?? 0;
       let latest: CombatState | null = null;
       for (let attempt = 0; attempt < 12; attempt++) {
         latest = await onlineRun.client.loadRun(onlineRun.gameId, tier);
-        if (latest && latest.run.turnIndex >= minTurnIndex) {
+        if (
+          latest &&
+          latest.run.turnIndex >= minTurnIndex &&
+          (opts?.phase === undefined || latest.run.phase === opts.phase) &&
+          (opts?.roomId === undefined || latest.run.roomId === opts.roomId)
+        ) {
           break;
         }
         await new Promise((resolve) => window.setTimeout(resolve, 350));
       }
 
-      if (!latest || latest.run.turnIndex < minTurnIndex) {
+      if (
+        !latest ||
+        latest.run.turnIndex < minTurnIndex ||
+        (opts?.phase !== undefined && latest.run.phase !== opts.phase) ||
+        (opts?.roomId !== undefined && latest.run.roomId !== opts.roomId)
+      ) {
         throw new Error(`Run ${onlineRun.gameId} could not be refreshed from Torii`);
       }
       state = latest;
+      turnStartState = cloneCombatState(latest);
+      selectedAbilityId = null;
+      syncActorMeshes(actorMeshes, state);
+      orbs.sync(state);
+      refreshPresentation();
+      if (state.run.gameOver) {
+        renderGameOver(root, state, toMenu);
+      }
+    };
+
+    const syncAfterConfirm = async (startTurnIndex: number, startRoomId: number): Promise<void> => {
+      let latest: CombatState | null = null;
+      for (let attempt = 0; attempt < 12; attempt++) {
+        latest = await onlineRun.client.loadRun(onlineRun.gameId, tier);
+        if (
+          latest &&
+          (
+            latest.run.gameOver ||
+            latest.run.turnIndex > startTurnIndex ||
+            (latest.run.roomId === startRoomId && latest.run.phase === PHASE_EXPLORE)
+          )
+        ) {
+          break;
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, 350));
+      }
+
+      if (
+        !latest ||
+        (!latest.run.gameOver &&
+          latest.run.turnIndex <= startTurnIndex &&
+          !(latest.run.roomId === startRoomId && latest.run.phase === PHASE_EXPLORE))
+      ) {
+        throw new Error(`Run ${onlineRun.gameId} could not be refreshed from Torii`);
+      }
+
+      state = latest;
+      turnStartState = cloneCombatState(latest);
       selectedAbilityId = null;
       syncActorMeshes(actorMeshes, state);
       orbs.sync(state);
@@ -202,9 +254,8 @@ export function mountApp(root: HTMLElement): void {
 
     hud.onExit(toMenu);
     hud.onReset(() => {
-      if (!state) return;
-      const tierRef = state.run.tier;
-      state = newCombatState(tierRef);
+      if (onlineRun.submitting) return;
+      state = cloneCombatState(turnStartState);
       selectedAbilityId = null;
       syncActorMeshes(actorMeshes, state);
       orbs.sync(state);
@@ -223,12 +274,17 @@ export function mountApp(root: HTMLElement): void {
 
       onlineRun.submitting = true;
       refreshPresentation();
-      const expectedTurnIndex = state.run.turnIndex + 1;
+      const startTurnIndex = state.run.turnIndex;
       const batch = onlineRun.pendingActions;
       onlineRun.pendingActions = [];
       try {
+        const startRoomId = state.run.roomId;
         await onlineRun.client.confirmTurn(onlineRun.gameId, batch);
-        await syncFromChain(expectedTurnIndex);
+        await syncAfterConfirm(startTurnIndex, startRoomId);
+        if (state && !state.run.gameOver && state.run.phase === PHASE_EXPLORE) {
+          await onlineRun.client.enterRoom(onlineRun.gameId, startRoomId + 1);
+          await syncFromChain({ phase: 1, roomId: startRoomId + 1 });
+        }
       } catch (err) {
         onlineRun.pendingActions = batch;
         // eslint-disable-next-line no-console
