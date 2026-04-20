@@ -47,7 +47,30 @@ err()   { echo -e "${RED}[x]${NC} $*" >&2; }
 # --- Preflight ---
 command -v sozo >/dev/null 2>&1 || { err "sozo not found"; exit 1; }
 command -v jq   >/dev/null 2>&1 || { err "jq not found"; exit 1; }
+command -v curl >/dev/null 2>&1 || { err "curl not found"; exit 1; }
 [ -f "$DOJO_TOML" ] || { err "Missing $DOJO_TOML"; exit 1; }
+
+rpc_class_hash_at() {
+    local address="$1"
+    curl -sS -X POST \
+        -H "Content-Type: application/json" \
+        -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"starknet_getClassHashAt\",\"params\":[\"latest\",\"${address}\"]}" \
+        "$RPC_URL"
+}
+
+assert_contract_exists() {
+    local label="$1"
+    local address="$2"
+    local response
+    response=$(rpc_class_hash_at "$address")
+    local err_code
+    err_code=$(printf "%s" "$response" | jq -r '.error.code // empty' 2>/dev/null || true)
+    if [ -n "$err_code" ]; then
+        err "$label address is not deployed on Slot: $address"
+        printf "%s\n" "$response"
+        exit 1
+    fi
+}
 
 # --- Resolve account ---
 ACCOUNT_ADDRESS=$(grep '^account_address' "$DOJO_TOML" | head -1 | sed 's/.*= *"\(.*\)"/\1/' || true)
@@ -138,6 +161,13 @@ ACTIONS_ADDRESS=$(jq -r ".contracts[] | select(.tag == \"${CONTRACT_TAG}\") | .a
 
 [ -n "$WORLD_ADDRESS" ]   || { err "Could not extract world_address";   exit 1; }
 [ -n "$ACTIONS_ADDRESS" ] || { err "Could not extract actions_address"; exit 1; }
+
+# Manifest data can go stale if a previous migrate left generated artifacts in
+# the tree. Before we write client/.env.slot or torii_slot.toml, verify the
+# extracted addresses actually exist on the live Slot RPC.
+assert_contract_exists "World" "$WORLD_ADDRESS"
+assert_contract_exists "Actions" "$ACTIONS_ADDRESS"
+assert_contract_exists "mock_lords" "$LORDS_ADDR"
 
 info "World:   $WORLD_ADDRESS"
 info "Actions: $ACTIONS_ADDRESS"

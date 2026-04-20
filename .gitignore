@@ -15,6 +15,7 @@ client/addons/godot_cef/
 # Environment
 .env
 client/.env
+client/.env.slot
 
 # Build artifacts
 *.o

@@ -5,7 +5,7 @@ export interface MainMenuContext {
   /**
    * Null when the client is not configured (env vars missing). The menu shows
    * a helpful message in that case and the "Start Run" button stays disabled
-   * until `scripts/deploy_dev.sh` has populated `client/.env.local`.
+   * until `scripts/deploy.sh` has populated `client/.env.slot`.
    */
   dojo: DojoClient | null;
   /** Approves the entry fee and submits `spawn(gameId, settings_id)` on-chain. */
@@ -37,7 +37,7 @@ export function renderMainMenu(container: HTMLElement, ctx: MainMenuContext): vo
   note.className = "note";
   note.textContent = ctx.dojo
     ? "Dev burner connected. mLORDS mint is unrestricted for testing."
-    : "Dev env not bootstrapped — run scripts/deploy_dev.sh.";
+    : "Dev env not bootstrapped — run scripts/deploy.sh.";
   card.appendChild(note);
 
   container.appendChild(card);
