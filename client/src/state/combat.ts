@@ -1,4 +1,4 @@
-import { ABILITIES, GRID_HEIGHT, GRID_WIDTH, HERO_HP, MOVE_COST_PER_TILE, type AbilityId } from "./constants.js";
+import { ABILITIES, GRID_HEIGHT, GRID_WIDTH, MOVE_COST_PER_TILE, type AbilityId } from "./constants.js";
 import type { Tier } from "./tiers.js";
 
 export const FACTION_PLAYER = 0;
@@ -29,7 +29,9 @@ export interface Actor {
 
 export interface RunState {
   tier: Tier;
+  /** Current stamina, refilled to `maxStamina` at the start of each player turn. */
   stamina: number;
+  /** Per-turn cap (from tier.staminaPerTurn). Hero never holds more than this. */
   maxStamina: number;
   score: number;
   roomsCleared: number;
@@ -43,7 +45,6 @@ export interface CombatState {
   /** Tile positions that block movement. */
   obstacles: Position[];
   abilityCooldowns: Record<AbilityId, number>;
-  online: boolean;
 }
 
 const DEFAULT_COOLDOWNS: Record<AbilityId, number> = {
@@ -54,12 +55,12 @@ const DEFAULT_COOLDOWNS: Record<AbilityId, number> = {
   4: 0,
 };
 
-export function newCombatState(tier: Tier, online: boolean): CombatState {
+export function newCombatState(tier: Tier): CombatState {
   const state: CombatState = {
     run: {
       tier,
-      stamina: tier.stamina,
-      maxStamina: tier.stamina,
+      stamina: tier.staminaPerTurn,
+      maxStamina: tier.staminaPerTurn,
       score: 0,
       roomsCleared: 0,
       gameOver: false,
@@ -70,25 +71,27 @@ export function newCombatState(tier: Tier, online: boolean): CombatState {
       archetype: 0,
       x: 1,
       y: 1,
-      hp: HERO_HP,
-      maxHp: HERO_HP,
+      hp: tier.heroHp,
+      maxHp: tier.heroHp,
       alive: true,
     },
     enemies: placeholderEnemies(),
     obstacles: placeholderObstacles(),
     abilityCooldowns: { ...DEFAULT_COOLDOWNS },
-    online,
   };
   // Seed intents so the player sees what enemies will do on their first turn.
+  // Replaced by Torii subscription to the contract's telegraph state once the
+  // online loop is wired end-to-end.
   computeEnemyIntents(state);
   return state;
 }
 
 function placeholderEnemies(): Actor[] {
+  // POC HP values — mirror helpers::procedural::archetype_base_stats.
   return [
-    { id: 1, faction: FACTION_ENEMY, archetype: 1, x: 6, y: 6, hp: 40, maxHp: 40, alive: true },
-    { id: 2, faction: FACTION_ENEMY, archetype: 1, x: 5, y: 2, hp: 40, maxHp: 40, alive: true },
-    { id: 3, faction: FACTION_ENEMY, archetype: 2, x: 2, y: 6, hp: 25, maxHp: 25, alive: true },
+    { id: 1, faction: FACTION_ENEMY, archetype: 1, x: 6, y: 6, hp: 30, maxHp: 30, alive: true },
+    { id: 2, faction: FACTION_ENEMY, archetype: 1, x: 5, y: 2, hp: 30, maxHp: 30, alive: true },
+    { id: 3, faction: FACTION_ENEMY, archetype: 2, x: 2, y: 6, hp: 20, maxHp: 20, alive: true },
   ];
 }
 
@@ -164,12 +167,13 @@ export function computeReachable(state: CombatState): Position[] {
       const k = key(nx, ny);
       if (visited.has(k)) continue;
       if (isObstacle(state, nx, ny)) continue;
-      // Enemies can be bumped; we still let the player click their tile as a
-      // reachable target, but not the player's own tile.
+      // Enemy tiles are hard blockers (no bump). We still surface them as
+      // highlight candidates so the player sees they're in range, but we
+      // don't propagate past them — their own tile is excluded above.
       if (state.player.x === nx && state.player.y === ny) continue;
       visited.set(k, ncost);
-      out.push({ x: nx, y: ny });
       if (!isOccupied(state, nx, ny)) {
+        out.push({ x: nx, y: ny });
         queue.push({ x: nx, y: ny, cost: ncost });
       }
     }
@@ -223,6 +227,8 @@ export function tryMove(state: CombatState, targetX: number, targetY: number): M
   const dist = manhattan(player.x, player.y, targetX, targetY);
   const cost = dist * MOVE_COST_PER_TILE;
   if (state.run.stamina < cost) return { ok: false, reason: "Not enough stamina" };
+  // No bump: enemy-occupied tiles are hard blockers. Displacement and any
+  // "free" collision damage live only in Shove/Slam abilities.
   const occupied = state.enemies.some((e) => e.alive && e.x === targetX && e.y === targetY);
   if (occupied) return { ok: false, reason: "Tile occupied" };
   player.x = targetX;
@@ -233,11 +239,17 @@ export function tryMove(state: CombatState, targetX: number, targetY: number): M
   return { ok: true };
 }
 
+/// Spend stamina. Reaching 0 does NOT end the run — HP ≤ 0 is the only
+/// terminal. Callers must guard with `stamina >= cost` before spending.
 export function spendStamina(state: CombatState, amount: number): void {
   state.run.stamina = Math.max(0, state.run.stamina - amount);
-  if (state.run.stamina === 0) {
-    state.run.gameOver = true;
-  }
+}
+
+/// Refill stamina to the per-turn cap. Called when the contract's enemy phase
+/// completes and the client resyncs; intra-turn bonuses (kill +10, orb +20)
+/// are deliberately NOT preserved across turns.
+export function refillStamina(state: CombatState): void {
+  state.run.stamina = state.run.maxStamina;
 }
 
 export function cooldownOf(state: CombatState, abilityId: AbilityId): number {

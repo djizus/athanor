@@ -14,6 +14,9 @@ pub const ARCHETYPE_CASTER: u8 = 2;
 pub const ARCHETYPE_FLANKER: u8 = 3;
 pub const ARCHETYPE_HEAVY: u8 = 4;
 pub const ARCHETYPE_PULLER: u8 = 5;
+// Drainer: telegraphs a 3x3 STAMINA_DRAIN zone on the player. No HP damage,
+// but siphons stamina on resolve. Fits in the 3-bit packed archetype field.
+pub const ARCHETYPE_DRAINER: u8 = 6;
 
 pub const ABILITY_STRIKE: u8 = 0;
 pub const ABILITY_DASH: u8 = 1;
@@ -34,3 +37,6 @@ pub const SHAPE_CROSS: u8 = 4;
 
 pub const TELEGRAPH_TYPE_DAMAGE: u8 = 0;
 pub const TELEGRAPH_TYPE_PULL: u8 = 1;
+// Drainer telegraph: subtracts stamina from any player inside the zone on
+// resolve. Packed into 2 bits alongside DAMAGE/PULL (see telegraph_state).
+pub const TELEGRAPH_TYPE_STAMINA_DRAIN: u8 = 2;

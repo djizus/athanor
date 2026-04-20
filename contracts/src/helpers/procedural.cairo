@@ -12,6 +12,7 @@ pub const ARCH_CASTER: u8 = 2;
 pub const ARCH_FLANKER: u8 = 3;
 pub const ARCH_HEAVY: u8 = 4;
 pub const ARCH_PULLER: u8 = 5;
+pub const ARCH_DRAINER: u8 = 6;
 
 /// Number of enemies to spawn in a room (capped at 8).
 pub fn enemy_count(room_id: u8) -> u8 {
@@ -157,24 +158,25 @@ pub fn room_tier(room_id: u8) -> u8 {
     }
 }
 
-/// Weights for (Brute, Caster, Flanker, Heavy, Puller) — always sum to 100.
-/// Tier 0 shelters the player from Heavy/Puller; tier 4 is mean-heavy.
-pub fn archetype_weights(tier: u8) -> (u8, u8, u8, u8, u8) {
+/// Weights for (Brute, Caster, Flanker, Heavy, Puller, Drainer) — always sum to 100.
+/// Tier 0 shelters the player from Heavy/Puller/Drainer; higher tiers introduce them.
+pub fn archetype_weights(tier: u8) -> (u8, u8, u8, u8, u8, u8) {
     if tier == 0 {
-        (60, 30, 10, 0, 0)
+        (60, 30, 10, 0, 0, 0)
     } else if tier == 1 {
-        (40, 25, 20, 15, 0)
+        (40, 25, 20, 15, 0, 0)
     } else if tier == 2 {
-        (25, 20, 25, 15, 15)
+        // Drainer introduced at tier 2 as a stamina-pressure threat alongside Puller.
+        (25, 20, 20, 15, 10, 10)
     } else if tier == 3 {
-        (15, 20, 25, 20, 20)
+        (15, 20, 20, 15, 15, 15)
     } else {
-        (10, 15, 25, 25, 25)
+        (10, 15, 20, 20, 20, 15)
     }
 }
 
-fn weighted_pick(roll: u8, wb: u8, wc: u8, wf: u8, wh: u8, wp: u8) -> u8 {
-    let _ = wp;
+fn weighted_pick(roll: u8, wb: u8, wc: u8, wf: u8, wh: u8, wp: u8, wd: u8) -> u8 {
+    let _ = wd;
     if roll < wb {
         ARCH_BRUTE
     } else if roll < wb + wc {
@@ -183,23 +185,26 @@ fn weighted_pick(roll: u8, wb: u8, wc: u8, wf: u8, wh: u8, wp: u8) -> u8 {
         ARCH_FLANKER
     } else if roll < wb + wc + wf + wh {
         ARCH_HEAVY
-    } else {
+    } else if roll < wb + wc + wf + wh + wp {
         ARCH_PULLER
+    } else {
+        ARCH_DRAINER
     }
 }
 
 /// Roll an archetype honoring the tier weight table and per-room caps:
-/// at most 2 Pullers and 2 Heavies per room. Rerolls with a rotated seed up
-/// to 3 times; falls back to Brute if the caps consistently win.
+/// at most 2 Pullers, 2 Heavies, and 2 Drainers per room. Rerolls with a
+/// rotated seed up to 3 times; falls back to Brute if the caps consistently win.
 pub fn roll_archetype_capped(
     seed: felt252,
     room_id: u8,
     slot_index: u8,
     pullers_so_far: u8,
     heavies_so_far: u8,
+    drainers_so_far: u8,
 ) -> u8 {
     let tier = room_tier(room_id);
-    let (wb, wc, wf, wh, wp) = archetype_weights(tier);
+    let (wb, wc, wf, wh, wp, wd) = archetype_weights(tier);
 
     let mut attempt: u32 = 0;
     let mut result: u8 = ARCH_BRUTE;
@@ -213,9 +218,10 @@ pub fn roll_archetype_capped(
         );
         let v: u256 = h.into();
         let roll: u8 = (v.low % 100).try_into().unwrap();
-        let candidate = weighted_pick(roll, wb, wc, wf, wh, wp);
+        let candidate = weighted_pick(roll, wb, wc, wf, wh, wp, wd);
         let reject = (candidate == ARCH_PULLER && pullers_so_far >= 2)
-            || (candidate == ARCH_HEAVY && heavies_so_far >= 2);
+            || (candidate == ARCH_HEAVY && heavies_so_far >= 2)
+            || (candidate == ARCH_DRAINER && drainers_so_far >= 2);
         if !reject {
             result = candidate;
             decided = true;
@@ -227,17 +233,21 @@ pub fn roll_archetype_capped(
 }
 
 /// Unscaled base stats — (hp, offense, defense, speed, is_immovable).
+/// POC cuts so strikes feel decisive. Drainer has zero offense: it deals no
+/// HP damage, only stamina drain via telegraph resolution.
 pub fn archetype_base_stats(archetype: u8) -> (u16, u8, u8, u8, bool) {
     if archetype == ARCH_BRUTE {
-        (40, 15, 8, 5, false)
+        (30, 15, 8, 5, false)
     } else if archetype == ARCH_CASTER {
-        (25, 20, 3, 8, false)
+        (20, 20, 3, 8, false)
     } else if archetype == ARCH_FLANKER {
-        (40, 12, 4, 7, false)
+        (25, 12, 4, 7, false)
     } else if archetype == ARCH_HEAVY {
-        (70, 15, 10, 3, true)
+        (45, 15, 10, 3, true)
+    } else if archetype == ARCH_PULLER {
+        (22, 0, 5, 6, false)
     } else {
-        (35, 0, 5, 6, false) // Puller (and fallback)
+        (22, 0, 4, 6, false) // Drainer (and fallback)
     }
 }
 
@@ -296,8 +306,8 @@ fn pow2_u64(n: u8) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::{
-        ARCH_BRUTE, ARCH_CASTER, ARCH_FLANKER, ARCH_HEAVY, ARCH_PULLER, archetype_base_stats,
-        archetype_weights, enemy_count, obstacle_count, room_tier,
+        ARCH_BRUTE, ARCH_CASTER, ARCH_FLANKER, ARCH_HEAVY, ARCH_PULLER, ARCH_DRAINER,
+        archetype_base_stats, archetype_weights, enemy_count, obstacle_count, room_tier,
         roll_archetype_capped, scaled_archetype_stats, stat_mult,
     };
 
@@ -380,8 +390,8 @@ mod tests {
     fn test_archetype_weights_sum_to_100() {
         let mut tier: u8 = 0;
         while tier < 5 {
-            let (b, c, f, h, p) = archetype_weights(tier);
-            let sum: u16 = b.into() + c.into() + f.into() + h.into() + p.into();
+            let (b, c, f, h, p, d) = archetype_weights(tier);
+            let sum: u16 = b.into() + c.into() + f.into() + h.into() + p.into() + d.into();
             assert!(sum == 100, "weights don't sum to 100");
             tier += 1;
         };
@@ -389,18 +399,29 @@ mod tests {
 
     #[test]
     fn test_archetype_weights_tier_0_no_hard_archetypes() {
-        // Tier 0 must shield the player from Heavy + Puller while they learn.
-        let (_b, _c, _f, h, p) = archetype_weights(0);
+        // Tier 0 must shield the player from Heavy + Puller + Drainer while
+        // they learn. Brute/Caster/Flanker only.
+        let (_b, _c, _f, h, p, d) = archetype_weights(0);
         assert!(h == 0, "tier 0 Heavy weight");
         assert!(p == 0, "tier 0 Puller weight");
+        assert!(d == 0, "tier 0 Drainer weight");
     }
 
     #[test]
     fn test_archetype_weights_tier_1_no_puller() {
-        // Tier 1 introduces Heavy, Puller still absent.
-        let (_b, _c, _f, h, p) = archetype_weights(1);
+        // Tier 1 introduces Heavy; Puller and Drainer still absent.
+        let (_b, _c, _f, h, p, d) = archetype_weights(1);
         assert!(h > 0, "tier 1 Heavy present");
         assert!(p == 0, "tier 1 Puller still absent");
+        assert!(d == 0, "tier 1 Drainer still absent");
+    }
+
+    #[test]
+    fn test_archetype_weights_tier_2_introduces_drainer() {
+        // Drainer debuts at tier 2 alongside Puller.
+        let (_b, _c, _f, _h, p, d) = archetype_weights(2);
+        assert!(p > 0, "tier 2 Puller present");
+        assert!(d > 0, "tier 2 Drainer present");
     }
 
     // --- roll_archetype_capped honors caps ---
@@ -412,7 +433,7 @@ mod tests {
         let seed: felt252 = 'test_seed';
         let mut slot: u8 = 0;
         while slot < 20 {
-            let result = roll_archetype_capped(seed, 20, slot, 2, 0);
+            let result = roll_archetype_capped(seed, 20, slot, 2, 0, 0);
             assert!(result != ARCH_PULLER, "rolled Puller despite cap");
             slot += 1;
         };
@@ -423,30 +444,46 @@ mod tests {
         let seed: felt252 = 'test_seed';
         let mut slot: u8 = 0;
         while slot < 20 {
-            let result = roll_archetype_capped(seed, 20, slot, 0, 2);
+            let result = roll_archetype_capped(seed, 20, slot, 0, 2, 0);
             assert!(result != ARCH_HEAVY, "rolled Heavy despite cap");
             slot += 1;
         };
     }
 
-    // --- archetype_base_stats covers all 5 ---
+    #[test]
+    fn test_roll_archetype_capped_respects_drainer_cap() {
+        let seed: felt252 = 'test_seed';
+        let mut slot: u8 = 0;
+        while slot < 20 {
+            let result = roll_archetype_capped(seed, 20, slot, 0, 0, 2);
+            assert!(result != ARCH_DRAINER, "rolled Drainer despite cap");
+            slot += 1;
+        };
+    }
+
+    // --- archetype_base_stats covers all 6 ---
 
     #[test]
     fn test_archetype_base_stats_all() {
+        // POC HP: Brute 30 / Caster 20 / Flanker 25 / Heavy 45 / Puller 22 / Drainer 22.
         let (brute_hp, _, _, brute_speed, brute_im) = archetype_base_stats(ARCH_BRUTE);
-        assert!(brute_hp == 40 && brute_speed == 5 && !brute_im, "brute");
+        assert!(brute_hp == 30 && brute_speed == 5 && !brute_im, "brute");
 
         let (caster_hp, _, _, caster_speed, _) = archetype_base_stats(ARCH_CASTER);
-        assert!(caster_hp == 25 && caster_speed == 8, "caster");
+        assert!(caster_hp == 20 && caster_speed == 8, "caster");
 
         let (flanker_hp, _, _, flanker_speed, _) = archetype_base_stats(ARCH_FLANKER);
-        assert!(flanker_hp == 40 && flanker_speed == 7, "flanker");
+        assert!(flanker_hp == 25 && flanker_speed == 7, "flanker");
 
         let (heavy_hp, _, heavy_def, _, heavy_im) = archetype_base_stats(ARCH_HEAVY);
-        assert!(heavy_hp == 70 && heavy_def == 10 && heavy_im, "heavy immovable");
+        assert!(heavy_hp == 45 && heavy_def == 10 && heavy_im, "heavy immovable");
 
         let (puller_hp, puller_off, _, _, _) = archetype_base_stats(ARCH_PULLER);
-        assert!(puller_hp == 35 && puller_off == 0, "puller zero offense");
+        assert!(puller_hp == 22 && puller_off == 0, "puller zero offense");
+
+        let (drainer_hp, drainer_off, _, _, drainer_im) = archetype_base_stats(ARCH_DRAINER);
+        // Drainer deals stamina drain via telegraph, not HP damage: offense=0.
+        assert!(drainer_hp == 22 && drainer_off == 0 && !drainer_im, "drainer");
     }
 
     // --- scaled_archetype_stats — hp and offense scale, others don't ---
@@ -464,9 +501,10 @@ mod tests {
 
     #[test]
     fn test_scaled_stats_hp_offense_at_room_15() {
-        // Brute @ room 15: stat_mult = 610% → hp=244, offense=91.
+        // Brute @ room 15 with POC base 30 hp / 15 off: stat_mult = 610% →
+        // hp = 30 * 610 / 100 = 183, offense = 15 * 610 / 100 = 91.
         let (hp, off, _, _, _) = scaled_archetype_stats(ARCH_BRUTE, 15);
-        assert!(hp == 244, "brute hp room 15");
+        assert!(hp == 183, "brute hp room 15");
         assert!(off == 91, "brute offense room 15");
     }
 

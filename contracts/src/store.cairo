@@ -232,11 +232,12 @@ pub impl StoreImpl of StoreTrait {
         pos_x: u8,
         pos_y: u8,
         turn_index: u16,
+        orb_type: u8,
     ) {
         self
             .world
             .emit_event(
-                @OrbSpawned { player, game_id, room_id, pos_x, pos_y, turn_index },
+                @OrbSpawned { player, game_id, room_id, pos_x, pos_y, turn_index, orb_type },
             );
     }
 
@@ -247,12 +248,15 @@ pub impl StoreImpl of StoreTrait {
         room_id: u8,
         pos_x: u8,
         pos_y: u8,
-        stamina_after: u16,
+        resource_after: u16,
+        orb_type: u8,
     ) {
         self
             .world
             .emit_event(
-                @OrbCollected { player, game_id, room_id, pos_x, pos_y, stamina_after },
+                @OrbCollected {
+                    player, game_id, room_id, pos_x, pos_y, resource_after, orb_type,
+                },
             );
     }
 

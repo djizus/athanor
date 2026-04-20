@@ -28,9 +28,11 @@ export const SLAM_DAMAGE = 10;
 export const SLAM_PUSH_DISTANCE = 1;
 
 export const ORB_STAMINA_BONUS = 20;
-export const COLLISION_DAMAGE = 5;
+export const ORB_HP_BONUS = 10;
+export const STAMINA_DRAIN_AMOUNT = 20;
 
-export const HERO_HP = 100;
+// HERO_HP removed: hero HP now comes from the active Tier (see state/tiers.ts)
+// so the single source of truth matches GameSettings.hero_hp on-chain.
 
 export const ABILITY_STRIKE = 0;
 export const ABILITY_DASH = 1;

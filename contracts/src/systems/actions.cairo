@@ -19,8 +19,8 @@ pub mod actions {
     use athanor::constants::{
         GRID_WIDTH, GRID_HEIGHT, MOVE_COST_PER_TILE, HERO_OFFENSE,
         HERO_DEFENSE, HERO_SPEED, STRIKE_DAMAGE, DASH_DAMAGE, HEAL_AMOUNT, SHOVE_DAMAGE,
-        SHOVE_PUSH_DISTANCE, SLAM_DAMAGE, SLAM_PUSH_DISTANCE, COLLISION_DAMAGE,
-        ORB_STAMINA_BONUS,
+        SHOVE_PUSH_DISTANCE, SLAM_DAMAGE, SLAM_PUSH_DISTANCE,
+        ORB_STAMINA_BONUS, ORB_HP_BONUS, STAMINA_DRAIN_AMOUNT,
     };
     use athanor::helpers::bitmap;
     use athanor::helpers::procedural;
@@ -32,9 +32,11 @@ pub mod actions {
         PHASE_EXPLORE, PHASE_PLAYER_TURN, PHASE_ENEMY_TURN, PHASE_COMPLETE, PHASE_FAILED,
         PHASE_GAME_OVER,
         FACTION_PLAYER, FACTION_ENEMY, ARCHETYPE_HERO, ARCHETYPE_BRUTE, ARCHETYPE_CASTER,
-        ARCHETYPE_FLANKER, ARCHETYPE_HEAVY, ARCHETYPE_PULLER, ABILITY_STRIKE, ABILITY_DASH,
+        ARCHETYPE_FLANKER, ARCHETYPE_HEAVY, ARCHETYPE_PULLER, ARCHETYPE_DRAINER,
+        ABILITY_STRIKE, ABILITY_DASH,
         ABILITY_HEAL, ABILITY_SHOVE, ABILITY_SLAM, TARGET_DIRECTIONAL, SHAPE_SINGLE_TILE,
         SHAPE_CIRCLE, SHAPE_CROSS, TELEGRAPH_TYPE_DAMAGE, TELEGRAPH_TYPE_PULL,
+        TELEGRAPH_TYPE_STAMINA_DRAIN,
     };
     use athanor::systems::{movement, abilities, telegraph, enemy_ai};
 
@@ -297,6 +299,8 @@ pub mod actions {
                 cleared: false,
                 orbs_fresh: 0,
                 orbs_aged: 0,
+                hp_orbs_fresh: 0,
+                hp_orbs_aged: 0,
             };
 
             room.occupancy = bitmap::set_bit(room.occupancy, ENTRY_X, ENTRY_Y);
@@ -323,20 +327,23 @@ pub mod actions {
             self.reset_enemy_slots(ref store, player, game_id, room_id);
 
             // Procedural enemy spawn with tier-weighted archetypes, anti-snowball
-            // caps (2 Pullers / 2 Heavies max), and stat scaling.
+            // caps (2 Pullers / 2 Heavies / 2 Drainers max), and stat scaling.
             let total = procedural::enemy_count(room_id);
             let mut i: u8 = 0;
             let mut pullers_so_far: u8 = 0;
             let mut heavies_so_far: u8 = 0;
+            let mut drainers_so_far: u8 = 0;
             while i < total {
                 let actor_id: u8 = i + 1;
                 let archetype = procedural::roll_archetype_capped(
-                    run.seed, room_id, i, pullers_so_far, heavies_so_far,
+                    run.seed, room_id, i, pullers_so_far, heavies_so_far, drainers_so_far,
                 );
                 if archetype == procedural::ARCH_PULLER {
                     pullers_so_far += 1;
                 } else if archetype == procedural::ARCH_HEAVY {
                     heavies_so_far += 1;
+                } else if archetype == procedural::ARCH_DRAINER {
+                    drainers_so_far += 1;
                 }
                 let (hp, offense, defense, speed, is_immovable) =
                     procedural::scaled_archetype_stats(archetype, room_id);
@@ -465,56 +472,15 @@ pub mod actions {
             let dist = movement::manhattan_distance(from_x, from_y, target_x, target_y);
             let stamina_cost: u16 = dist.into() * player_actor.move_cost.into();
             assert(player_actor.stamina >= stamina_cost, 'Not enough stamina');
+            // No bump: enemy-occupied tiles are hard blockers. Displacement
+            // and "free" collision damage moved entirely into Shove/Slam.
+            assert(!bitmap::get_bit(room.occupancy, target_x, target_y), 'Target occupied');
+
             player_actor.stamina -= stamina_cost;
 
-            let mut did_move = false;
-            let mut move_to_x = from_x;
-            let mut move_to_y = from_y;
-
-            if !bitmap::get_bit(room.occupancy, target_x, target_y) {
-                move_to_x = target_x;
-                move_to_y = target_y;
-                did_move = true;
-            } else {
-                let target_actor_id = self.actor_at_position(
-                    ref store, player, game_id, run.room_id, target_x, target_y,
-                );
-                assert(target_actor_id != INVALID_ACTOR_ID, 'Target occupied');
-
-                let target_actor = store.get_actor_state(player, game_id, target_actor_id);
-                assert(target_actor.alive, 'Target occupied');
-                assert(target_actor.faction == FACTION_ENEMY, 'Target occupied');
-                assert(target_actor.room_id == run.room_id, 'Target occupied');
-
-                let push_direction = self.direction_from_delta(from_x, from_y, target_x, target_y);
-                let target_was_immovable = target_actor.is_immovable;
-
-                let (updated_room, pushed) = self.push_actor_steps(
-                    ref store,
-                    player,
-                    game_id,
-                    room,
-                    run.room_id,
-                    target_actor_id,
-                    push_direction,
-                    1,
-                    PLAYER_ACTOR_ID,
-                );
-                room = updated_room;
-
-                if pushed {
-                    move_to_x = target_x;
-                    move_to_y = target_y;
-                    did_move = true;
-                } else if !target_was_immovable {
-                    let target_after = store.get_actor_state(player, game_id, target_actor_id);
-                    if !target_after.alive {
-                        move_to_x = target_x;
-                        move_to_y = target_y;
-                        did_move = true;
-                    };
-                };
-            };
+            let move_to_x = target_x;
+            let move_to_y = target_y;
+            let did_move = true;
 
             if did_move {
                 player_actor.pos_x = move_to_x;
@@ -554,14 +520,8 @@ pub mod actions {
                 }
             };
 
-            // Run-total stamina: spending the last point ends the run. Checked
-            // after room-clear so the final-stamina kill still scores the room.
-            let final_player = store.get_actor_state(player, game_id, PLAYER_ACTOR_ID);
-            if final_player.stamina == 0 {
-                self.latch_game_over(ref store, player, game_id, ref run);
-                return false;
-            }
-
+            // Per-turn refill model: stamina reaching 0 is NOT a game-over.
+            // The run ends only when player HP ≤ 0.
             true
         }
 
@@ -895,14 +855,8 @@ pub mod actions {
                 }
             };
 
-            // Run-total stamina: spending the last point ends the run. Checked
-            // after room-clear so the final-stamina kill still scores the room.
-            let final_player = store.get_actor_state(player, game_id, PLAYER_ACTOR_ID);
-            if final_player.stamina == 0 {
-                self.latch_game_over(ref store, player, game_id, ref run);
-                return false;
-            }
-
+            // Per-turn refill model: stamina reaching 0 is NOT a game-over.
+            // The run ends only when player HP ≤ 0.
             let _ = target_b;
             true
         }
@@ -945,7 +899,50 @@ pub mod actions {
                 telegraph_id += 1;
             };
 
-            // Step 1b: resolve DAMAGE telegraphs.
+            // Step 1b: resolve STAMINA_DRAIN telegraphs. Drain after PULL so
+            // the player's post-pull tile is what matters. Killing the
+            // Drainer before its telegraph resolves cancels the drain
+            // automatically (the `tg.resolved` check skips it — no special
+            // handling needed because we emit `tg` from a still-live source).
+            telegraph_id = 0;
+            while telegraph_id < telegraph_count {
+                let mut tg = store.get_telegraph_state(player, game_id, telegraph_id);
+                if !tg.resolved
+                    && tg.room_id == run.room_id
+                    && tg.resolves_turn == run.turn_index
+                    && tg.telegraph_type == TELEGRAPH_TYPE_STAMINA_DRAIN
+                {
+                    let mut player_actor = store.get_actor_state(
+                        player, game_id, PLAYER_ACTOR_ID,
+                    );
+                    if player_actor.alive && player_actor.room_id == run.room_id {
+                        let in_zone = telegraph::tile_in_shape(
+                            tg.shape_type,
+                            tg.param_a,
+                            tg.param_b,
+                            tg.param_c,
+                            player_actor.pos_x,
+                            player_actor.pos_y,
+                        );
+                        if in_zone {
+                            // Saturating subtract — stamina never goes below 0.
+                            if player_actor.stamina > tg.damage {
+                                player_actor.stamina -= tg.damage;
+                            } else {
+                                player_actor.stamina = 0;
+                            };
+                            store.set_actor_state(@player_actor);
+                        };
+                    };
+                    tg.resolved = true;
+                    store.set_telegraph_state(@tg);
+                    store.emit_telegraph_resolved(player, game_id, telegraph_id, run.room_id);
+                };
+
+                telegraph_id += 1;
+            };
+
+            // Step 1c: resolve DAMAGE telegraphs.
             telegraph_id = 0;
             while telegraph_id < telegraph_count {
                 let mut tg = store.get_telegraph_state(player, game_id, telegraph_id);
@@ -1019,14 +1016,14 @@ pub mod actions {
                 return;
             }
 
-            // Step 3: stamina-zero game-over check before transitioning to player turn.
-            // If the player ended their turn at exactly 0 stamina (after any orb pickups
-            // during enemy phase), latch game-over instead of starting a dead turn.
-            let player_stamina_check = store.get_actor_state(player, game_id, PLAYER_ACTOR_ID);
-            if player_stamina_check.stamina == 0 {
-                store.set_room_state(@room);
-                self.latch_game_over(ref store, player, game_id, ref run);
-                return;
+            // Step 3: refill stamina to max at the start of the next player
+            // turn. Per-turn-refill model: intra-turn bonuses (kill +10, orb
+            // +20) evaporate here and the player starts fresh with their cap.
+            // HP is preserved — only HP ≤ 0 ends the run.
+            let mut player_refill = store.get_actor_state(player, game_id, PLAYER_ACTOR_ID);
+            if player_refill.alive {
+                player_refill.stamina = player_refill.max_stamina;
+                store.set_actor_state(@player_refill);
             }
 
             // Step 4: phase transition.
@@ -1046,11 +1043,15 @@ pub mod actions {
                 slot_index += 1;
             };
 
-            // Orb aging rotation. Orbs live at most 2 player turns: they spawn
-            // in `orbs_fresh`, migrate to `orbs_aged` at the end of this enemy
-            // phase, and expire on the next rotation unless collected.
+            // Orb aging rotation. Orbs live at most 2 player turns: they
+            // spawn in `*_fresh`, migrate to `*_aged` at the end of this
+            // enemy phase, and expire on the next rotation unless collected.
+            // Stamina and HP orbs share the same lifetime — they differ only
+            // in what they grant on pickup.
             room.orbs_aged = room.orbs_fresh;
             room.orbs_fresh = 0;
+            room.hp_orbs_aged = room.hp_orbs_fresh;
+            room.hp_orbs_fresh = 0;
 
             store.set_room_state(@room);
             store.emit_enemy_turn_computed(player, game_id, run.room_id, run.turn_index);
@@ -1404,6 +1405,11 @@ pub mod actions {
             room
         }
 
+        /// Push `target_actor_id` up to `push_distance` tiles in `direction`.
+        /// Used by the Shove and Slam abilities. On obstruction (wall, other
+        /// actor) or when the target is immovable, the push silently stops —
+        /// no collision damage. The ability's base damage already landed
+        /// before push_actor_steps was called.
         fn push_actor_steps(
             self: @ContractState,
             ref store: Store,
@@ -1416,23 +1422,15 @@ pub mod actions {
             push_distance: u8,
             source_actor_id: u8,
         ) -> (RoomState, bool) {
+            let _ = source_actor_id;
             let mut target = store.get_actor_state(player, game_id, target_actor_id);
             if !target.alive || target.room_id != room_id {
                 return (room, false);
             }
 
             if target.is_immovable {
-                let (updated_room, _) = self.apply_flat_damage_to_actor(
-                    ref store,
-                    player,
-                    game_id,
-                    room,
-                    room_id,
-                    target_actor_id,
-                    source_actor_id,
-                    COLLISION_DAMAGE,
-                );
-                return (updated_room, false);
+                // Immovable (Heavy) just doesn't move. No bonus damage.
+                return (room, false);
             }
 
             let mut moved = false;
@@ -1446,17 +1444,7 @@ pub mod actions {
                     || bitmap::get_bit(room.blocked, next_x, next_y)
                     || bitmap::get_bit(room.occupancy, next_x, next_y)
                 {
-                    let (updated_room, _) = self.apply_flat_damage_to_actor(
-                        ref store,
-                        player,
-                        game_id,
-                        room,
-                        room_id,
-                        target_actor_id,
-                        source_actor_id,
-                        COLLISION_DAMAGE,
-                    );
-                    room = updated_room;
+                    // Push blocked. Silent fail — no collision bonus damage.
                     break;
                 };
 
@@ -1522,9 +1510,14 @@ pub mod actions {
                 );
         }
 
-        /// Collect any energy orb on (x, y). Called for every tile the player
+        /// Collect any orb on (x, y). Called for every tile the player
         /// occupies — voluntary move destination, each Dash transit tile, and
         /// each step of a Pull displacement. Idempotent on empty tiles.
+        ///
+        /// Stamina orbs (Brute/Flanker/Drainer drops) top up stamina, capped
+        /// at the per-turn max. HP orbs (Caster/Heavy/Puller drops) restore
+        /// HP capped at max_hp. Stamina orbs have no carryover — refill at
+        /// next player turn wipes any excess anyway.
         fn try_collect_orb_at(
             self: @ContractState,
             ref store: Store,
@@ -1535,17 +1528,50 @@ pub mod actions {
             x: u8,
             y: u8,
         ) {
-            let has_orb = bitmap::get_bit(room.orbs_fresh, x, y)
+            let has_stamina_orb = bitmap::get_bit(room.orbs_fresh, x, y)
                 || bitmap::get_bit(room.orbs_aged, x, y);
-            if !has_orb {
-                return;
+            if has_stamina_orb {
+                let bonus: u16 = ORB_STAMINA_BONUS;
+                let max_s = player_actor.max_stamina;
+                if player_actor.stamina + bonus > max_s {
+                    player_actor.stamina = max_s;
+                } else {
+                    player_actor.stamina += bonus;
+                };
+                room.orbs_fresh = bitmap::clear_bit(room.orbs_fresh, x, y);
+                room.orbs_aged = bitmap::clear_bit(room.orbs_aged, x, y);
+                store.emit_orb_collected(
+                    player, game_id, room.room_id, x, y, player_actor.stamina, 0,
+                );
             }
-            player_actor.stamina += ORB_STAMINA_BONUS;
-            room.orbs_fresh = bitmap::clear_bit(room.orbs_fresh, x, y);
-            room.orbs_aged = bitmap::clear_bit(room.orbs_aged, x, y);
-            store.emit_orb_collected(
-                player, game_id, room.room_id, x, y, player_actor.stamina,
-            );
+
+            let has_hp_orb = bitmap::get_bit(room.hp_orbs_fresh, x, y)
+                || bitmap::get_bit(room.hp_orbs_aged, x, y);
+            if has_hp_orb {
+                player_actor.hp = self.add_hp_capped(
+                    player_actor.hp, player_actor.max_hp, ORB_HP_BONUS,
+                );
+                room.hp_orbs_fresh = bitmap::clear_bit(room.hp_orbs_fresh, x, y);
+                room.hp_orbs_aged = bitmap::clear_bit(room.hp_orbs_aged, x, y);
+                store.emit_orb_collected(
+                    player, game_id, room.room_id, x, y, player_actor.hp, 1,
+                );
+            }
+        }
+
+        /// Orb kind dropped by each enemy archetype on death.
+        /// 0 = stamina, 1 = HP. Aggressive attackers drop stamina (reward
+        /// for aggression); support/control enemies drop HP (reward for
+        /// prioritizing threats).
+        fn archetype_orb_kind(self: @ContractState, archetype: u8) -> u8 {
+            if archetype == ARCHETYPE_BRUTE
+                || archetype == ARCHETYPE_FLANKER
+                || archetype == ARCHETYPE_DRAINER {
+                0
+            } else {
+                // Caster, Heavy, Puller, and any future support archetype.
+                1
+            }
         }
 
         fn apply_damage_to_actor(
@@ -1572,29 +1598,6 @@ pub mod actions {
                 abilities::compute_telegraph_damage(base_damage, target.defense)
             };
 
-            self.apply_resolved_damage_to_actor(
-                ref store,
-                player,
-                game_id,
-                room,
-                room_id,
-                target_actor_id,
-                source_actor_id,
-                damage,
-            )
-        }
-
-        fn apply_flat_damage_to_actor(
-            self: @ContractState,
-            ref store: Store,
-            player: ContractAddress,
-            game_id: u32,
-            room: RoomState,
-            room_id: u8,
-            target_actor_id: u8,
-            source_actor_id: u8,
-            damage: u16,
-        ) -> (RoomState, bool) {
             self.apply_resolved_damage_to_actor(
                 ref store,
                 player,
@@ -1657,21 +1660,34 @@ pub mod actions {
             if died {
                 store.emit_actor_died(player, game_id, target_actor_id, room_id);
 
-                // Ascend: enemy death spawns an energy orb on its tile and
-                // awards score = max_hp × 10 (so scaled late-game enemies are
-                // worth more).
+                // Ascend: enemy death spawns an orb on its tile (kind depends
+                // on archetype — see archetype_orb_kind) and awards score =
+                // max_hp × 10 so scaled late-game enemies are worth more.
                 if target.faction == FACTION_ENEMY {
                     let mut run = store.get_run_state(player, game_id);
                     let kill_score: u32 = target.max_hp.into() * 10;
                     run.score += kill_score;
                     store.set_run_state(@run);
 
-                    room.orbs_fresh = bitmap::set_bit(
-                        room.orbs_fresh, target.pos_x, target.pos_y,
-                    );
+                    let orb_kind = self.archetype_orb_kind(target.archetype);
+                    if orb_kind == 0 {
+                        room.orbs_fresh = bitmap::set_bit(
+                            room.orbs_fresh, target.pos_x, target.pos_y,
+                        );
+                    } else {
+                        room.hp_orbs_fresh = bitmap::set_bit(
+                            room.hp_orbs_fresh, target.pos_x, target.pos_y,
+                        );
+                    };
                     store
                         .emit_orb_spawned(
-                            player, game_id, room_id, target.pos_x, target.pos_y, run.turn_index,
+                            player,
+                            game_id,
+                            room_id,
+                            target.pos_x,
+                            target.pos_y,
+                            run.turn_index,
+                            orb_kind,
                         );
                 };
             };
@@ -1712,7 +1728,9 @@ pub mod actions {
             ref run: RunState,
             ref room: RoomState,
         ) {
-            // speed desc + actor_id asc.
+            // speed desc + actor_id asc. Drainer (speed 6) interleaves with
+            // Puller (also speed 6); actor_id asc resolves tie-break inside
+            // process_enemies_of_archetype.
             self.process_enemies_of_archetype(
                 ref store, player, game_id, ref run, ref room, ARCHETYPE_CASTER,
             );
@@ -1721,6 +1739,9 @@ pub mod actions {
             );
             self.process_enemies_of_archetype(
                 ref store, player, game_id, ref run, ref room, ARCHETYPE_PULLER,
+            );
+            self.process_enemies_of_archetype(
+                ref store, player, game_id, ref run, ref room, ARCHETYPE_DRAINER,
             );
             self.process_enemies_of_archetype(
                 ref store, player, game_id, ref run, ref room, ARCHETYPE_BRUTE,
@@ -1882,6 +1903,23 @@ pub mod actions {
                     enemy.pos_y = next_y;
                     moved = true;
                 };
+            } else if enemy.archetype == ARCHETYPE_DRAINER {
+                // Drainer mirrors Puller's spacing: retreat when too close
+                // so the player has to chase through the drain telegraph.
+                let (next_x, next_y, can_move) = enemy_ai::choose_step_away(
+                    enemy.pos_x,
+                    enemy.pos_y,
+                    player_actor.pos_x,
+                    player_actor.pos_y,
+                    room.blocked,
+                    occupancy_without_self,
+                );
+
+                if can_move {
+                    enemy.pos_x = next_x;
+                    enemy.pos_y = next_y;
+                    moved = true;
+                };
             };
 
             if moved {
@@ -1978,6 +2016,26 @@ pub mod actions {
                     enemy.pos_x,
                     enemy.pos_y,
                     2,
+                );
+            } else if enemy.archetype == ARCHETYPE_DRAINER {
+                // 3×3 STAMINA_DRAIN zone centered on the player. The
+                // `damage` u16 carries the drain amount (resolver reads it
+                // as stamina when telegraph_type == TELEGRAPH_TYPE_STAMINA_DRAIN).
+                self.create_telegraph(
+                    ref store,
+                    player,
+                    game_id,
+                    ref run,
+                    enemy_actor_id,
+                    TELEGRAPH_TYPE_STAMINA_DRAIN,
+                    SHAPE_CIRCLE,
+                    player_after_move.pos_x,
+                    player_after_move.pos_y,
+                    0,
+                    STAMINA_DRAIN_AMOUNT,
+                    0,
+                    0,
+                    0,
                 );
             };
         }

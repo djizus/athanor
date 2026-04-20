@@ -6,6 +6,7 @@ import {
   computeEnemyIntents,
   computeReachable,
   newCombatState,
+  refillStamina,
   tryMove,
   type CombatState,
   type Position,
@@ -58,11 +59,6 @@ export function mountApp(root: HTMLElement): void {
 
     renderMainMenu(root, {
       dojo,
-      onEnter: (mode, tier) => {
-        if (mode === "offline") {
-          startGame(tier, null);
-        }
-      },
       onOnlineSpawn: async (tier) => {
         if (!dojo) throw new Error("Online not configured");
         const gameId = nextGameId++;
@@ -74,13 +70,12 @@ export function mountApp(root: HTMLElement): void {
     });
   };
 
-  const startGame = (tier: Tier, onlineRun: OnlineRun | null): void => {
+  const startGame = (tier: Tier, onlineRun: OnlineRun): void => {
     teardown?.();
     root.innerHTML = "";
     root.className = "screen game";
 
-    const isOnline = onlineRun !== null;
-    const combat = newCombatState(tier, isOnline);
+    const combat = newCombatState(tier);
     state = combat;
 
     const canvas = document.createElement("canvas");
@@ -112,9 +107,7 @@ export function mountApp(root: HTMLElement): void {
       hud.refresh(state);
       refreshOverlays();
       grid.flash([{ x: state.player.x, y: state.player.y }], TILE_FLASH_HIT_COLOR, 150);
-      if (onlineRun) {
-        onlineRun.pendingActions.push(...packMove(x, y));
-      }
+      onlineRun.pendingActions.push(...packMove(x, y));
       if (state.run.gameOver) {
         renderGameOver(root, state, toMenu);
       }
@@ -124,34 +117,46 @@ export function mountApp(root: HTMLElement): void {
     hud.onReset(() => {
       if (!state) return;
       const tierRef = state.run.tier;
-      const wasOnline = state.online;
-      state = newCombatState(tierRef, wasOnline);
+      state = newCombatState(tierRef);
       syncActorMeshes(actorMeshes, state);
       hud.refresh(state);
       refreshOverlays();
-      if (onlineRun) {
-        onlineRun.pendingActions = [];
-      }
+      onlineRun.pendingActions = [];
     });
     hud.onConfirm(async () => {
       if (!state) return;
-      // Placeholder confirm visual: briefly flash the player's tile.
+      // Confirm visual: briefly flash the player's tile. The real turn end
+      // (enemy phase, telegraph resolves, stamina refill) is driven by the
+      // contract's confirm_turn — the client applies state from Torii.
       grid.flash([{ x: state.player.x, y: state.player.y }], TILE_FLASH_HIT_COLOR, 250);
 
-      if (!onlineRun) {
-        // Offline: rotate intents so enemies "threaten" the new player position.
+      if (onlineRun.submitting) return;
+      if (onlineRun.pendingActions.length === 0) {
+        // Empty-turn confirm: act like a no-op locally so intents rotate and
+        // stamina refills. Once Torii subscription replaces the placeholder
+        // combat state this branch goes away.
         computeEnemyIntents(state);
+        refillStamina(state);
+        hud.refresh(state);
         refreshOverlays();
         return;
       }
-      if (onlineRun.submitting) return;
-      if (onlineRun.pendingActions.length === 0) return;
 
       onlineRun.submitting = true;
       const batch = onlineRun.pendingActions;
       onlineRun.pendingActions = [];
       try {
         await onlineRun.client.confirmTurn(onlineRun.gameId, batch);
+        // TODO(torii): replace this optimistic shim with a Torii subscription
+        // that mirrors the contract's post-enemy-phase state. For now the
+        // contract has already refilled stamina on-chain; we mirror locally
+        // so the HUD isn't stale until the next re-sync lands.
+        if (state) {
+          refillStamina(state);
+          computeEnemyIntents(state);
+          hud.refresh(state);
+          refreshOverlays();
+        }
       } catch (err) {
         onlineRun.pendingActions = batch;
         // eslint-disable-next-line no-console

@@ -54,36 +54,16 @@ pub mod setup {
 
         self.settings.initializer();
 
+        // Single-mode POC: one Standard settings row. See PLAN.md "POC Pivot"
+        // — Bronze/Silver/Gold tiers were collapsed to a single config.
         store.set_game_settings(@GameSettingsTrait::new_default());
-        store.set_game_settings(@GameSettingsTrait::new_silver());
-        store.set_game_settings(@GameSettingsTrait::new_gold());
 
         let creator_address = starknet::get_tx_info().unbox().account_contract_address;
         store
             .set_game_settings_metadata(
                 @GameSettingsMetadata {
                     settings_id: 1,
-                    name: 'Bronze',
-                    created_by: creator_address,
-                    created_at: timestamp,
-                    is_active: true,
-                },
-            );
-        store
-            .set_game_settings_metadata(
-                @GameSettingsMetadata {
-                    settings_id: 2,
-                    name: 'Silver',
-                    created_by: creator_address,
-                    created_at: timestamp,
-                    is_active: true,
-                },
-            );
-        store
-            .set_game_settings_metadata(
-                @GameSettingsMetadata {
-                    settings_id: 3,
-                    name: 'Gold',
+                    name: 'Standard',
                     created_by: creator_address,
                     created_at: timestamp,
                     is_active: true,
@@ -111,54 +91,14 @@ pub mod setup {
                 game_address: actions_address,
                 settings_id: 1,
                 settings_details: GameSettingDetails {
-                    name: "Ascend - Bronze",
-                    description: "Ascend tactical roguelike. Bronze tier: 500 stamina budget.",
+                    name: "Ascend - Standard",
+                    description: "Endless tactical roguelike. 80 HP, 80 stamina/turn refilled.",
                     settings: array![
-                        GameSetting { name: 'Tier', value: 'Bronze' },
-                        GameSetting { name: 'Stamina', value: '500' },
+                        GameSetting { name: 'Mode', value: 'Standard' },
+                        GameSetting { name: 'HP', value: '80' },
+                        GameSetting { name: 'StaTurn', value: '80' },
                         GameSetting { name: 'Grid', value: '8x8' },
                         GameSetting { name: 'Class', value: 'Warrior' },
-                        GameSetting { name: 'Lives', value: '1' },
-                    ]
-                        .span(),
-                },
-                minigame_token_address: token_address,
-            );
-
-        self
-            .settings
-            .create_settings(
-                game_address: actions_address,
-                settings_id: 2,
-                settings_details: GameSettingDetails {
-                    name: "Ascend - Silver",
-                    description: "Ascend tactical roguelike. Silver tier: 1500 stamina budget.",
-                    settings: array![
-                        GameSetting { name: 'Tier', value: 'Silver' },
-                        GameSetting { name: 'Stamina', value: '1500' },
-                        GameSetting { name: 'Grid', value: '8x8' },
-                        GameSetting { name: 'Class', value: 'Warrior' },
-                        GameSetting { name: 'Lives', value: '1' },
-                    ]
-                        .span(),
-                },
-                minigame_token_address: token_address,
-            );
-
-        self
-            .settings
-            .create_settings(
-                game_address: actions_address,
-                settings_id: 3,
-                settings_details: GameSettingDetails {
-                    name: "Ascend - Gold",
-                    description: "Ascend tactical roguelike. Gold tier: 4000 stamina budget.",
-                    settings: array![
-                        GameSetting { name: 'Tier', value: 'Gold' },
-                        GameSetting { name: 'Stamina', value: '4000' },
-                        GameSetting { name: 'Grid', value: '8x8' },
-                        GameSetting { name: 'Class', value: 'Warrior' },
-                        GameSetting { name: 'Lives', value: '1' },
                     ]
                         .span(),
                 },
@@ -188,7 +128,7 @@ pub mod setup {
     #[abi(embed_v0)]
     impl MinigameSettingsDetailsImpl of IMinigameSettingsDetails<ContractState> {
         fn settings_count(self: @ContractState) -> u32 {
-            3
+            1
         }
 
         fn settings_details(self: @ContractState, settings_id: u32) -> GameSettingDetails {

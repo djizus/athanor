@@ -266,18 +266,19 @@ mod tests {
         assert!(unpacked.room_id == 5, "room_id");
     }
 
-    // Ascend run-total stamina: each tier buys a fixed budget. Verify the packed
-    // u16 slots round-trip the largest tier cleanly (headroom up to u16 max = 65535).
+    // Stamina field u16 round-trip headroom. Under the single-mode POC,
+    // stamina rarely exceeds ~200 in practice, but the packing schema
+    // allocates 16 bits so large values must still survive.
     #[test]
-    fn test_actor_state_round_trip_gold_tier_stamina() {
+    fn test_actor_state_round_trip_high_stamina() {
         let original = ActorState {
             player: starknet::contract_address_const::<0xabc>(),
             game_id: 1,
             actor_id: 0,
             faction: 0,
             archetype: 0,
-            hp: 100,
-            max_hp: 100,
+            hp: 80,
+            max_hp: 80,
             stamina: 4000,
             max_stamina: 4000,
             offense: 20,
@@ -293,7 +294,37 @@ mod tests {
         };
         let packed = ActorStatePackingTrait::pack(@original);
         let unpacked = packed.unpack();
-        assert!(unpacked.stamina == 4000, "gold stamina");
-        assert!(unpacked.max_stamina == 4000, "gold max_stamina");
+        assert!(unpacked.stamina == 4000, "high stamina");
+        assert!(unpacked.max_stamina == 4000, "high max_stamina");
+    }
+
+    // Verify the packed archetype field (3 bits) carries the new Drainer
+    // archetype (6) cleanly.
+    #[test]
+    fn test_actor_state_round_trip_drainer_archetype() {
+        let original = ActorState {
+            player: starknet::contract_address_const::<0xabc>(),
+            game_id: 1,
+            actor_id: 1,
+            faction: 1,
+            archetype: 6, // ARCHETYPE_DRAINER
+            hp: 22,
+            max_hp: 22,
+            stamina: 0,
+            max_stamina: 0,
+            offense: 0,
+            defense: 4,
+            speed: 6,
+            move_cost: 0,
+            pos_x: 5,
+            pos_y: 5,
+            alive: true,
+            guard_active: false,
+            is_immovable: false,
+            room_id: 0,
+        };
+        let packed = ActorStatePackingTrait::pack(@original);
+        let unpacked = packed.unpack();
+        assert!(unpacked.archetype == 6, "drainer archetype round trip");
     }
 }

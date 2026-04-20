@@ -12,7 +12,8 @@ export function renderGameOver(
   card.className = "game-over-card";
 
   const title = document.createElement("h2");
-  title.textContent = state.player.hp <= 0 ? "YOU DIED" : "OUT OF STAMINA";
+  // HP ≤ 0 is the only game-over path — stamina refills each turn.
+  title.textContent = "YOU DIED";
   card.appendChild(title);
 
   const stats = document.createElement("p");

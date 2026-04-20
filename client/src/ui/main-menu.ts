@@ -1,14 +1,14 @@
-import { TIERS, tierFeeRaw, type Tier } from "../state/tiers.js";
+import { TIER_STANDARD, tierFeeRaw, type Tier } from "../state/tiers.js";
 import type { DojoClient } from "../dojo/client.js";
 
-export type MenuMode = "offline" | "online";
-export type MenuCallback = (mode: MenuMode, tier: Tier) => void | Promise<void>;
-
 export interface MainMenuContext {
-  /** Null when the client is not configured (env vars missing) — online column shows a helpful message. */
+  /**
+   * Null when the client is not configured (env vars missing). The menu shows
+   * a helpful message in that case and the "Start Run" button stays disabled
+   * until `scripts/deploy_dev.sh` has populated `client/.env.local`.
+   */
   dojo: DojoClient | null;
-  onEnter: MenuCallback;
-  /** Called by the menu to pay + spawn on-chain. Must approve and submit spawn before resolving. */
+  /** Approves the entry fee and submits `spawn(gameId, settings_id)` on-chain. */
   onOnlineSpawn: (tier: Tier) => Promise<void>;
 }
 
@@ -27,46 +27,20 @@ export function renderMainMenu(container: HTMLElement, ctx: MainMenuContext): vo
 
   const subtitle = document.createElement("p");
   subtitle.className = "subtitle";
-  subtitle.textContent = "How deep can you go before the stamina runs out?";
+  subtitle.textContent =
+    "Endless tactical roguelike. 80 HP, 80 stamina/turn — refilled. Every move counts.";
   card.appendChild(subtitle);
 
-  card.appendChild(buildOfflineColumn(ctx));
   card.appendChild(buildOnlineColumn(ctx));
 
   const note = document.createElement("p");
   note.className = "note";
   note.textContent = ctx.dojo
-    ? "Online mode uses the shared dev burner. mLORDS mint is unrestricted for testing."
-    : "Online disabled — run scripts/deploy_dev.sh to bootstrap the dev env.";
+    ? "Dev burner connected. mLORDS mint is unrestricted for testing."
+    : "Dev env not bootstrapped — run scripts/deploy_dev.sh.";
   card.appendChild(note);
 
   container.appendChild(card);
-}
-
-function buildOfflineColumn(ctx: MainMenuContext): HTMLElement {
-  const col = document.createElement("div");
-  col.className = "tier-column";
-
-  const heading = document.createElement("h2");
-  heading.textContent = "Offline";
-  col.appendChild(heading);
-
-  const info = document.createElement("p");
-  info.className = "column-note";
-  info.textContent = "No fee. Local combat skeleton.";
-  col.appendChild(info);
-
-  for (const tier of TIERS) {
-    const btn = document.createElement("button");
-    btn.className = `tier-button tier-${tier.name.toLowerCase()}`;
-    btn.textContent = `${tier.name} — ${tier.stamina} stamina`;
-    btn.addEventListener("click", () => {
-      void ctx.onEnter("offline", tier);
-    });
-    col.appendChild(btn);
-  }
-
-  return col;
 }
 
 function buildOnlineColumn(ctx: MainMenuContext): HTMLElement {
@@ -74,7 +48,7 @@ function buildOnlineColumn(ctx: MainMenuContext): HTMLElement {
   col.className = "tier-column";
 
   const heading = document.createElement("h2");
-  heading.textContent = "Online (dev)";
+  heading.textContent = "Start Run";
   col.appendChild(heading);
 
   const balanceLabel = document.createElement("p");
@@ -88,16 +62,12 @@ function buildOnlineColumn(ctx: MainMenuContext): HTMLElement {
   mintBtn.disabled = !ctx.dojo;
   col.appendChild(mintBtn);
 
-  const tierButtons: Array<{ tier: Tier; btn: HTMLButtonElement }> = [];
-  for (const tier of TIERS) {
-    const btn = document.createElement("button");
-    btn.className = `tier-button tier-${tier.name.toLowerCase()}`;
-    const fee = tier.entryFeeLords.toLocaleString();
-    btn.textContent = `${tier.name} — ${tier.stamina} stamina · ${fee} mLORDS`;
-    btn.disabled = !ctx.dojo;
-    col.appendChild(btn);
-    tierButtons.push({ tier, btn });
-  }
+  const startBtn = document.createElement("button");
+  startBtn.className = "tier-button tier-standard";
+  const fee = TIER_STANDARD.entryFeeLords.toLocaleString();
+  startBtn.textContent = `Start — ${TIER_STANDARD.heroHp} HP · ${TIER_STANDARD.staminaPerTurn} STA/turn · ${fee} mLORDS`;
+  startBtn.disabled = !ctx.dojo;
+  col.appendChild(startBtn);
 
   if (!ctx.dojo) {
     return col;
@@ -110,18 +80,18 @@ function buildOnlineColumn(ctx: MainMenuContext): HTMLElement {
   const setBusy = (on: boolean): void => {
     busy = on;
     mintBtn.disabled = on;
-    for (const { btn } of tierButtons) btn.disabled = on;
+    startBtn.disabled = on;
     refreshAffordability();
   };
 
   const refreshAffordability = (): void => {
     if (busy) return;
     balanceLabel.textContent = `Balance: ${currentBalance.toLocaleString()} mLORDS`;
-    for (const { tier, btn } of tierButtons) {
-      const affordable = currentBalance >= tier.entryFeeLords;
-      btn.disabled = !affordable;
-      btn.title = affordable ? "" : `Need ${tier.entryFeeLords} mLORDS — mint more`;
-    }
+    const affordable = currentBalance >= TIER_STANDARD.entryFeeLords;
+    startBtn.disabled = !affordable;
+    startBtn.title = affordable
+      ? ""
+      : `Need ${TIER_STANDARD.entryFeeLords} mLORDS — mint more`;
   };
 
   const reloadBalance = async (): Promise<void> => {
@@ -150,23 +120,21 @@ function buildOnlineColumn(ctx: MainMenuContext): HTMLElement {
     }
   });
 
-  for (const { tier, btn } of tierButtons) {
-    btn.addEventListener("click", async () => {
-      if (busy) return;
-      setBusy(true);
-      const originalLabel = btn.textContent ?? "";
-      btn.textContent = "Paying fee...";
-      try {
-        await dojo.approveLords(tierFeeRaw(tier));
-        btn.textContent = "Spawning...";
-        await ctx.onOnlineSpawn(tier);
-      } catch (err) {
-        balanceLabel.textContent = `Spawn failed: ${(err as Error).message}`;
-        btn.textContent = originalLabel;
-        setBusy(false);
-      }
-    });
-  }
+  startBtn.addEventListener("click", async () => {
+    if (busy) return;
+    setBusy(true);
+    const originalLabel = startBtn.textContent ?? "";
+    startBtn.textContent = "Paying fee...";
+    try {
+      await dojo.approveLords(tierFeeRaw(TIER_STANDARD));
+      startBtn.textContent = "Spawning...";
+      await ctx.onOnlineSpawn(TIER_STANDARD);
+    } catch (err) {
+      balanceLabel.textContent = `Spawn failed: ${(err as Error).message}`;
+      startBtn.textContent = originalLabel;
+      setBusy(false);
+    }
+  });
 
   void reloadBalance();
 

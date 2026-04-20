@@ -74,9 +74,9 @@ export function createHud(parent: HTMLElement, initial: CombatState): HudHandle 
   actions.appendChild(confirmBtn);
 
   const refresh = (state: CombatState): void => {
-    tierBadge.textContent = state.online
-      ? `${state.run.tier.name} — online`
-      : `${state.run.tier.name} — offline`;
+    // Single-mode POC: always online. The badge exists to keep the HUD
+    // header honest once tiers return (Bronze/Silver/Gold would show here).
+    tierBadge.textContent = `${state.run.tier.name} — online`;
 
     const hpFill = hpBlock.querySelector<HTMLElement>(".hp-fill")!;
     const hpValue = hpBlock.querySelector<HTMLElement>(".hp-value")!;

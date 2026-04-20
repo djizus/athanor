@@ -1,8 +1,88 @@
 # Athanor v2 — Combat System Redesign Plan
 
-> **Last updated**: 2026-03-26 — Complete combat redesign
-> **Status**: Design finalized. Ready for implementation.
-> **Branch**: `offline` (builds on existing combat prototype with 57 passing tests)
+> **Last updated**: 2026-04-20 — Single-mode POC pivot (see "POC Pivot" below)
+> **Status**: POC live on `feat/ascend`; sections marked _(superseded)_ are historical.
+> **Branch**: `feat/ascend`
+
+---
+
+## POC Pivot — 2026-04-20
+
+This document was written for the v2 combat redesign. Scope has since
+narrowed to a single-mode, online-only POC; everything below is preserved
+for context but several design calls have been reversed. When in doubt,
+this section is the source of truth.
+
+### Current design (single-mode POC)
+
+- **One mode only**: "Standard". No Bronze/Silver/Gold tiers. The main menu
+  exposes a single online "Start Run" button.
+- **Online-only**: offline mode is gone. The client always talks to the
+  deployed contract via Torii / Starknet. Offline placeholder state still
+  exists in `state/combat.ts` only while the Torii subscription is being
+  wired up — every action runs through `confirm_turn` on-chain.
+- **Endless runs**: no room count, no "win". A run ends only when player HP ≤ 0.
+- **Stamina is per-turn**, refilled to the cap at the start of each player
+  turn (contract-side, in `process_enemy_phase`). Stamina = 0 is no longer a
+  game-over. Intra-turn bonuses (kill +10, orb +20) evaporate on refill.
+- **Hero**: 80 HP, 80 stamina/turn (`GameSettings::new_default()`).
+- **Enemy HP** (POC cut): Brute 30 / Caster 20 / Flanker 25 / Heavy 45 /
+  Puller 22 / Drainer 22 — see `helpers::procedural::archetype_base_stats`.
+- **No bump displacement**: `process_move` hard-rejects enemy-occupied tiles.
+  `push_actor_steps` silently no-ops on block/immovable — collision damage
+  is gone. Displacement lives exclusively in Shove and Slam.
+- **Per-archetype orb drops** (2-turn lifetime):
+  - Stamina orbs (+20, same-turn only): Brute / Flanker / Drainer kills
+    → `RoomState.orbs_fresh` / `orbs_aged`.
+  - HP orbs (+10, persistent via HP): Caster / Heavy / Puller kills
+    → `RoomState.hp_orbs_fresh` / `hp_orbs_aged`.
+- **Drainer (new 6th archetype)**: 22 HP, speed 6. AI mirrors Puller (maintain
+  distance). Telegraphs a 3×3 `STAMINA_DRAIN` zone on the player. On resolve
+  the zone subtracts 20 stamina (saturating at 0). Zero HP damage. Drops a
+  stamina orb on death.
+- **Telegraph resolve order**: PULL → STAMINA_DRAIN → DAMAGE (`process_enemy_phase`).
+- **Entry fee**: single 100 mLORDS. The deploy script mints the local mock.
+
+### What's unchanged from v2
+
+- Turn loop: `PLAYER_ACTION → RESOLVE → ENEMY_ACTION`.
+- 5 abilities (Strike / Dash / Heal / Shove / Slam) — costs, cooldowns, damage unchanged.
+- 5 original archetypes + Drainer. All AI deterministic.
+- Procedural 8×8 room generation and endless ramp curve in `helpers::procedural`.
+- Score formula: `max_hp × 10` per kill + `100 × rooms_cleared` per clear.
+- Packed models (`ActorState`, `TelegraphState`, `AbilitySlotState`).
+
+### What was cut (relative to v2 in this doc)
+
+- Tier system (Bronze/Silver/Gold) — gone. `GameSettings` keeps its struct
+  but only one row (`settings_id: 1`, mode `'Standard'`).
+- Bump displacement and collision damage (`COLLISION_DAMAGE` constant, bump
+  branch in `process_move`, damage branches in `push_actor_steps`) — gone.
+- Offline game mode in the client — gone. Menu is online-only.
+- "Out of stamina" game-over — replaced by HP ≤ 0 as the only terminal.
+
+### Dev bootstrap
+
+See `scripts/deploy_dev.sh` for the full flow. `b682b92 fix(ascend):
+unblock local dev loop` pinned the following fixes so `sozo migrate` succeeds
+against a vanilla `katana --dev`:
+
+- `actions.cairo` skips `minigame.initializer(...)` when `denshokan_address == 0x0`.
+- `setup.cairo` skips the EGC `create_settings` registration when `token_address == 0x0`.
+- `dojo_dev.toml` grants `[writers]` on the `athanor_0_1` namespace to
+  `athanor_0_1-actions` and `athanor_0_1-setup`.
+- `deploy_dev.sh` uses `sozo declare/deploy --katana-account katana0 --wait`
+  instead of starkli (whose `pending` block tag katana 1.7 rejects).
+- `client/vite.config.ts` uses `vite-plugin-mkcert` so Vite serves HTTPS on
+  localhost (Chrome HSTS cache blocks plain HTTP after any prior mkcert project).
+
+Known-good toolchain: sozo 1.8.6, scarb 2.15.1 (cairo 2.15.0), katana 1.7.x,
+dojo crate 1.8.0. Newer katana (1.7.1+) also works — sozo handles the RPC
+dialect.
+
+---
+
+## v2 plan (superseded, kept for reference)
 
 ---
 

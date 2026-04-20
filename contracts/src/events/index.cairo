@@ -163,6 +163,8 @@ pub struct OrbSpawned {
     pub pos_x: u8,
     pub pos_y: u8,
     pub turn_index: u16,
+    // 0 = stamina orb, 1 = HP orb. See systems::actions::archetype_orb_kind.
+    pub orb_type: u8,
 }
 
 #[derive(Copy, Drop, Serde)]
@@ -175,7 +177,9 @@ pub struct OrbCollected {
     pub room_id: u8,
     pub pos_x: u8,
     pub pos_y: u8,
-    pub stamina_after: u16,
+    // For orb_type=0 (stamina) this is stamina_after; for orb_type=1 (HP) it's hp_after.
+    pub resource_after: u16,
+    pub orb_type: u8,
 }
 
 #[derive(Copy, Drop, Serde)]
