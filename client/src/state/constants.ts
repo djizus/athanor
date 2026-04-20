@@ -31,6 +31,10 @@ export const ORB_STAMINA_BONUS = 20;
 export const ORB_HP_BONUS = 10;
 export const STAMINA_DRAIN_AMOUNT = 20;
 
+export const HERO_OFFENSE = 20;
+export const HERO_DEFENSE = 5;
+export const HERO_SPEED = 10;
+
 // HERO_HP removed: hero HP now comes from the active Tier (see state/tiers.ts)
 // so the single source of truth matches GameSettings.hero_hp on-chain.
 

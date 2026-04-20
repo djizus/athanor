@@ -4,6 +4,9 @@ import {
   GRID_HEIGHT,
   GRID_WIDTH,
   HEAL_AMOUNT,
+  HERO_DEFENSE,
+  HERO_OFFENSE,
+  HERO_SPEED,
   MOVE_COST_PER_TILE,
   ORB_HP_BONUS,
   ORB_STAMINA_BONUS,
@@ -44,7 +47,13 @@ export interface Actor {
   y: number;
   hp: number;
   maxHp: number;
+  offense: number;
+  defense: number;
+  speed: number;
+  moveCost: number;
   alive: boolean;
+  isImmovable: boolean;
+  roomId: number;
   intent?: Intent;
 }
 
@@ -59,6 +68,7 @@ export interface RunState {
   phase: number;
   roomId: number;
   turnIndex: number;
+  pendingRoomClear: boolean;
   gameOver: boolean;
 }
 
@@ -112,6 +122,7 @@ export function newCombatState(tier: Tier): CombatState {
       phase: 1,
       roomId: 0,
       turnIndex: 0,
+      pendingRoomClear: false,
       gameOver: false,
     },
     player: {
@@ -122,7 +133,13 @@ export function newCombatState(tier: Tier): CombatState {
       y: 1,
       hp: tier.heroHp,
       maxHp: tier.heroHp,
+      offense: HERO_OFFENSE,
+      defense: HERO_DEFENSE,
+      speed: HERO_SPEED,
+      moveCost: MOVE_COST_PER_TILE,
       alive: true,
+      isImmovable: false,
+      roomId: 0,
     },
     enemies: placeholderEnemies(),
     obstacles: placeholderObstacles(),
@@ -139,9 +156,54 @@ export function newCombatState(tier: Tier): CombatState {
 function placeholderEnemies(): Actor[] {
   // POC HP values — mirror helpers::procedural::archetype_base_stats.
   return [
-    { id: 1, faction: FACTION_ENEMY, archetype: 1, x: 6, y: 6, hp: 30, maxHp: 30, alive: true },
-    { id: 2, faction: FACTION_ENEMY, archetype: 1, x: 5, y: 2, hp: 30, maxHp: 30, alive: true },
-    { id: 3, faction: FACTION_ENEMY, archetype: 2, x: 2, y: 6, hp: 20, maxHp: 20, alive: true },
+    {
+      id: 1,
+      faction: FACTION_ENEMY,
+      archetype: 1,
+      x: 6,
+      y: 6,
+      hp: 30,
+      maxHp: 30,
+      offense: 15,
+      defense: 8,
+      speed: 5,
+      moveCost: MOVE_COST_PER_TILE,
+      alive: true,
+      isImmovable: false,
+      roomId: 0,
+    },
+    {
+      id: 2,
+      faction: FACTION_ENEMY,
+      archetype: 1,
+      x: 5,
+      y: 2,
+      hp: 30,
+      maxHp: 30,
+      offense: 15,
+      defense: 8,
+      speed: 5,
+      moveCost: MOVE_COST_PER_TILE,
+      alive: true,
+      isImmovable: false,
+      roomId: 0,
+    },
+    {
+      id: 3,
+      faction: FACTION_ENEMY,
+      archetype: 2,
+      x: 2,
+      y: 6,
+      hp: 20,
+      maxHp: 20,
+      offense: 20,
+      defense: 3,
+      speed: 8,
+      moveCost: MOVE_COST_PER_TILE,
+      alive: true,
+      isImmovable: false,
+      roomId: 0,
+    },
   ];
 }
 
@@ -188,7 +250,7 @@ export function isBlocked(state: CombatState, x: number, y: number): boolean {
  * player's own tile.
  */
 export function computeReachable(state: CombatState): Position[] {
-  if (state.run.gameOver) return [];
+  if (!canComposeTurn(state)) return [];
   const { player } = state;
   const budget = Math.floor(state.run.stamina / MOVE_COST_PER_TILE);
   if (budget <= 0) return [];
@@ -275,7 +337,7 @@ export interface AbilityResult {
 }
 
 export function tryMove(state: CombatState, targetX: number, targetY: number): MoveResult {
-  if (state.run.gameOver) return { ok: false, reason: "Run over" };
+  if (!canComposeTurn(state)) return { ok: false, reason: "Turn locked" };
   const { player } = state;
   if (targetX === player.x && targetY === player.y) return { ok: true };
   if (!inBounds(targetX, targetY)) return { ok: false, reason: "Out of bounds" };
@@ -314,7 +376,7 @@ export function cooldownOf(state: CombatState, abilityId: AbilityId): number {
 }
 
 export function canUseAbility(state: CombatState, abilityId: AbilityId): boolean {
-  if (state.run.gameOver) return false;
+  if (!canComposeTurn(state)) return false;
   const def = ABILITIES[abilityId];
   if (!def) return false;
   if (cooldownOf(state, abilityId) > 0) return false;
@@ -350,7 +412,7 @@ export function tryUseAbility(
     if (manhattan(state.player.x, state.player.y, targetX, targetY) !== 1) {
       return { ok: false, reason: "Target not adjacent" };
     }
-    applyDamage(state, enemy, STRIKE_DAMAGE);
+    applyDamage(state, state.player, enemy, STRIKE_DAMAGE);
     affectedTiles = [{ x: targetX, y: targetY }];
   } else if (abilityId === 1) {
     const dx = Math.sign(targetX - state.player.x);
@@ -371,7 +433,7 @@ export function tryUseAbility(
       if (!inBounds(nextX, nextY) || isObstacle(state, nextX, nextY)) break;
       const enemy = state.enemies.find((actor) => actor.alive && actor.x === nextX && actor.y === nextY);
       if (enemy) {
-        applyDamage(state, enemy, DASH_DAMAGE);
+        applyDamage(state, state.player, enemy, DASH_DAMAGE);
         affectedTiles = [{ x: enemy.x, y: enemy.y }];
         break;
       }
@@ -405,7 +467,7 @@ export function tryUseAbility(
     if (manhattan(state.player.x, state.player.y, targetX, targetY) !== 1) {
       return { ok: false, reason: "Target not adjacent" };
     }
-    applyDamage(state, enemy, SHOVE_DAMAGE);
+    applyDamage(state, state.player, enemy, SHOVE_DAMAGE);
     if (enemy.alive) {
       const dx = Math.sign(enemy.x - state.player.x);
       const dy = Math.sign(enemy.y - state.player.y);
@@ -424,7 +486,7 @@ export function tryUseAbility(
     }
     affectedTiles = [{ x: state.player.x, y: state.player.y }];
     for (const enemy of adjacentEnemies) {
-      applyDamage(state, enemy, SLAM_DAMAGE);
+      applyDamage(state, state.player, enemy, SLAM_DAMAGE);
       if (enemy.alive) {
         const dx = Math.sign(enemy.x - state.player.x);
         const dy = Math.sign(enemy.y - state.player.y);
@@ -436,11 +498,13 @@ export function tryUseAbility(
 
   spendStamina(state, ABILITIES[abilityId].cost);
   state.abilityCooldowns[abilityId] = ABILITIES[abilityId].cooldown;
+  maybeFinalizeRoom(state);
   computeEnemyIntents(state);
   return { ok: true, affectedTiles };
 }
 
-function applyDamage(state: CombatState, actor: Actor, damage: number): void {
+function applyDamage(state: CombatState, source: Actor, actor: Actor, baseDamage: number): void {
+  const damage = computeDamageWithStats(baseDamage, source.offense, actor.defense);
   actor.hp = Math.max(0, actor.hp - damage);
   if (actor.hp === 0) {
     actor.alive = false;
@@ -468,6 +532,7 @@ function spawnOrbForEnemy(state: CombatState, actor: Actor): void {
 }
 
 function pushActor(state: CombatState, actor: Actor, dx: number, dy: number, steps: number): void {
+  if (actor.isImmovable) return;
   let curX = actor.x;
   let curY = actor.y;
   for (let step = 0; step < steps; step++) {
@@ -479,4 +544,21 @@ function pushActor(state: CombatState, actor: Actor, dx: number, dy: number, ste
   }
   actor.x = curX;
   actor.y = curY;
+}
+
+function computeDamageWithStats(baseDamage: number, attackerOffense: number, targetDefense: number): number {
+  return Math.max(1, baseDamage + attackerOffense - targetDefense);
+}
+
+function maybeFinalizeRoom(state: CombatState): void {
+  if (state.run.pendingRoomClear) return;
+  if (state.enemies.some((enemy) => enemy.alive)) return;
+  state.run.roomsCleared += 1;
+  state.run.score += 100 * state.run.roomsCleared;
+  state.run.phase = 0;
+  state.run.pendingRoomClear = true;
+}
+
+function canComposeTurn(state: CombatState): boolean {
+  return !state.run.gameOver && !state.run.pendingRoomClear && state.run.phase === 1;
 }

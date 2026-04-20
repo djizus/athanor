@@ -33,6 +33,7 @@ interface OnlineRun {
 }
 
 const PHASE_EXPLORE = 0;
+const PHASE_PLAYER_TURN = 1;
 
 function collectIntentTiles(state: CombatState): Position[] {
   const out: Position[] = [];
@@ -104,6 +105,7 @@ export function mountApp(root: HTMLElement): void {
     const hud = createHud(root, combat);
     let selectedAbilityId: AbilityId | null = null;
     let turnStartState = cloneCombatState(combat);
+    let submittingText = "Submitting turn...";
 
     const syncFromChain = async (opts?: { minTurnIndex?: number; phase?: number; roomId?: number }): Promise<void> => {
       const minTurnIndex = opts?.minTurnIndex ?? 0;
@@ -206,9 +208,62 @@ export function mountApp(root: HTMLElement): void {
       grid.setSelected(selectedAbilityId === null ? [] : [{ x: state.player.x, y: state.player.y }]);
       hud.refresh(state, {
         selectedAbilityId,
-        statusText: abilityPrompt(selectedAbilityId),
+        statusText: state.run.pendingRoomClear
+          ? "Room cleared. Finishing turn and entering the next room..."
+          : abilityPrompt(selectedAbilityId),
         submitting: onlineRun.submitting,
+        submittingText,
       });
+    };
+
+    const submitTurn = async (message: string): Promise<void> => {
+      if (!state) return;
+      if (onlineRun.submitting) return;
+
+      grid.flash([{ x: state.player.x, y: state.player.y }], TILE_FLASH_HIT_COLOR, 250);
+      onlineRun.submitting = true;
+      submittingText = message;
+      refreshPresentation();
+
+      const startTurnIndex = state.run.turnIndex;
+      const startRoomId = state.run.roomId;
+      const batch = onlineRun.pendingActions;
+      onlineRun.pendingActions = [];
+      try {
+        await onlineRun.client.confirmTurn(onlineRun.gameId, batch);
+        await syncAfterConfirm(startTurnIndex, startRoomId);
+        if (state && !state.run.gameOver && state.run.phase === PHASE_EXPLORE) {
+          await advanceToNextRoom(startRoomId + 1);
+        }
+      } catch (err) {
+        try {
+          await syncFromChain();
+        } catch {
+          restoreTurnStart();
+        }
+        onlineRun.pendingActions = [];
+        hud.showToast(`${explainConfirmError(err)}. Turn reverted.`, "error");
+        // eslint-disable-next-line no-console
+        console.error("[ascend] confirm_turn failed", err);
+      } finally {
+        onlineRun.submitting = false;
+        submittingText = "Submitting turn...";
+        refreshPresentation();
+      }
+    };
+
+    const advanceToNextRoom = async (roomId: number): Promise<void> => {
+      onlineRun.submitting = true;
+      submittingText = "Entering next room...";
+      refreshPresentation();
+      try {
+        await onlineRun.client.enterRoom(onlineRun.gameId, roomId);
+        await syncFromChain({ phase: PHASE_PLAYER_TURN, roomId });
+      } finally {
+        onlineRun.submitting = false;
+        submittingText = "Submitting turn...";
+        refreshPresentation();
+      }
     };
 
     const clearAbilitySelection = (): void => {
@@ -254,6 +309,9 @@ export function mountApp(root: HTMLElement): void {
         if (state.run.gameOver) {
           renderGameOver(root, state, toMenu);
         }
+        if (state.run.pendingRoomClear) {
+          void submitTurn("Room cleared. Finalizing turn...");
+        }
         return;
       }
 
@@ -285,40 +343,7 @@ export function mountApp(root: HTMLElement): void {
     hud.onConfirm(async () => {
       if (!state) return;
       if (onlineRun.submitting) return;
-      // Confirm visual: briefly flash the player's tile. The real turn end
-      // (enemy phase, telegraph resolves, stamina refill) is driven by the
-      // contract's confirm_turn — the client applies state from Torii.
-      grid.flash([{ x: state.player.x, y: state.player.y }], TILE_FLASH_HIT_COLOR, 250);
-
-      if (onlineRun.submitting) return;
-
-      onlineRun.submitting = true;
-      refreshPresentation();
-      const startTurnIndex = state.run.turnIndex;
-      const batch = onlineRun.pendingActions;
-      onlineRun.pendingActions = [];
-      try {
-        const startRoomId = state.run.roomId;
-        await onlineRun.client.confirmTurn(onlineRun.gameId, batch);
-        await syncAfterConfirm(startTurnIndex, startRoomId);
-        if (state && !state.run.gameOver && state.run.phase === PHASE_EXPLORE) {
-          await onlineRun.client.enterRoom(onlineRun.gameId, startRoomId + 1);
-          await syncFromChain({ phase: 1, roomId: startRoomId + 1 });
-        }
-      } catch (err) {
-        try {
-          await syncFromChain();
-        } catch {
-          restoreTurnStart();
-        }
-        onlineRun.pendingActions = [];
-        hud.showToast(`${explainConfirmError(err)}. Turn reverted.`, "error");
-        // eslint-disable-next-line no-console
-        console.error("[ascend] confirm_turn failed", err);
-      } finally {
-        onlineRun.submitting = false;
-        refreshPresentation();
-      }
+      await submitTurn("Submitting turn...");
     });
     hud.onAbility((abilityId) => {
       toggleAbilitySelection(abilityId);
@@ -338,6 +363,10 @@ export function mountApp(root: HTMLElement): void {
       }
     };
     window.addEventListener("keydown", onKeyDown);
+
+    if (state.run.phase === PHASE_EXPLORE && !state.run.gameOver) {
+      void advanceToNextRoom(state.run.roomId + 1);
+    }
 
     const clock = { running: true };
     const frame = (): void => {

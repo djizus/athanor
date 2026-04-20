@@ -5,6 +5,7 @@ export interface HudViewState {
   selectedAbilityId: AbilityId | null;
   statusText: string;
   submitting: boolean;
+  submittingText: string;
 }
 
 export interface HudHandle {
@@ -122,7 +123,7 @@ export function createHud(parent: HTMLElement, initial: CombatState): HudHandle 
     toast.classList.toggle("is-visible", view.submitting || toast.classList.contains("is-error"));
     if (view.submitting) {
       toast.classList.remove("is-error");
-      toast.querySelector<HTMLElement>(".hud-toast-text")!.textContent = "Submitting turn...";
+      toast.querySelector<HTMLElement>(".hud-toast-text")!.textContent = view.submittingText;
     }
   };
 
@@ -145,6 +146,7 @@ export function createHud(parent: HTMLElement, initial: CombatState): HudHandle 
     selectedAbilityId: null,
     statusText: "Move on green tiles. Red tiles are enemy danger.",
     submitting: false,
+    submittingText: "Submitting turn...",
   });
 
   return {
