@@ -265,4 +265,35 @@ mod tests {
         assert!(unpacked.alive, "alive");
         assert!(unpacked.room_id == 5, "room_id");
     }
+
+    // Ascend run-total stamina: each tier buys a fixed budget. Verify the packed
+    // u16 slots round-trip the largest tier cleanly (headroom up to u16 max = 65535).
+    #[test]
+    fn test_actor_state_round_trip_gold_tier_stamina() {
+        let original = ActorState {
+            player: starknet::contract_address_const::<0xabc>(),
+            game_id: 1,
+            actor_id: 0,
+            faction: 0,
+            archetype: 0,
+            hp: 100,
+            max_hp: 100,
+            stamina: 4000,
+            max_stamina: 4000,
+            offense: 20,
+            defense: 5,
+            speed: 10,
+            move_cost: 10,
+            pos_x: 1,
+            pos_y: 1,
+            alive: true,
+            guard_active: false,
+            is_immovable: false,
+            room_id: 0,
+        };
+        let packed = ActorStatePackingTrait::pack(@original);
+        let unpacked = packed.unpack();
+        assert!(unpacked.stamina == 4000, "gold stamina");
+        assert!(unpacked.max_stamina == 4000, "gold max_stamina");
+    }
 }

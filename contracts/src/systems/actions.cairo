@@ -13,10 +13,11 @@ pub mod actions {
     use game_components_embeddable_game_standard::minigame::interface::IMinigameTokenData;
     use game_components_embeddable_game_standard::minigame::minigame_component::MinigameComponent;
     use openzeppelin::introspection::src5::SRC5Component;
-    use starknet::{ContractAddress, get_caller_address};
+    use openzeppelin::interfaces::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use starknet::{ContractAddress, get_caller_address, get_contract_address};
 
     use athanor::constants::{
-        GRID_WIDTH, GRID_HEIGHT, BASE_STAMINA, MOVE_COST_PER_TILE, HERO_OFFENSE,
+        GRID_WIDTH, GRID_HEIGHT, MOVE_COST_PER_TILE, HERO_OFFENSE,
         HERO_DEFENSE, HERO_SPEED, STRIKE_DAMAGE, DASH_DAMAGE, HEAL_AMOUNT, SHOVE_DAMAGE,
         SHOVE_PUSH_DISTANCE, SLAM_DAMAGE, SLAM_PUSH_DISTANCE, COLLISION_DAMAGE,
         ORB_STAMINA_BONUS,
@@ -69,6 +70,7 @@ pub mod actions {
         ref self: ContractState,
         denshokan_address: ContractAddress,
         vrf_address: ContractAddress,
+        lords_address: ContractAddress,
     ) {
         let world: WorldStorage = self.world(@"athanor_0_1");
         let creator_address = starknet::get_tx_info().unbox().account_contract_address;
@@ -98,7 +100,12 @@ pub mod actions {
         let mut store = StoreTrait::new(world);
         store
             .set_config(
-                @Config { key: 0, token_address: denshokan_address, vrf_address },
+                @Config {
+                    key: 0,
+                    token_address: denshokan_address,
+                    vrf_address,
+                    lords_address,
+                },
             );
     }
 
@@ -194,9 +201,20 @@ pub mod actions {
             assert(settings.exists(), 'actions: settings not found');
             assert(settings.hero_class == 0, 'actions: class not supported');
 
+            let config = store.get_config();
+
+            // Collect the entry fee in mLORDS. Player must have approved this
+            // contract for at least `entry_fee_lords` before calling spawn.
+            // entry_fee_lords == 0 is treated as a free run (dev / offline).
+            if settings.entry_fee_lords != 0 {
+                let lords = IERC20Dispatcher { contract_address: config.lords_address };
+                let amount: u256 = settings.entry_fee_lords.into();
+                let ok = lords.transfer_from(player, get_contract_address(), amount);
+                assert(ok, 'actions: fee transfer failed');
+            }
+
             // Consume VRF once per run; every per-room derivation in step 6
             // will poseidon-hash this seed with room_id and other state bits.
-            let config = store.get_config();
             let random = RandomTrait::new(config.vrf_address, game_id.into());
 
             let run = RunState {
@@ -279,7 +297,6 @@ pub mod actions {
 
             player_actor.pos_x = ENTRY_X;
             player_actor.pos_y = ENTRY_Y;
-            player_actor.stamina = BASE_STAMINA;
             player_actor.guard_active = false;
             player_actor.is_immovable = false;
             player_actor.room_id = room_id;
@@ -530,6 +547,14 @@ pub mod actions {
                     return false;
                 }
             };
+
+            // Run-total stamina: spending the last point ends the run. Checked
+            // after room-clear so the final-stamina kill still scores the room.
+            let final_player = store.get_actor_state(player, game_id, PLAYER_ACTOR_ID);
+            if final_player.stamina == 0 {
+                self.latch_game_over(ref store, player, game_id, ref run);
+                return false;
+            }
 
             true
         }
@@ -864,6 +889,14 @@ pub mod actions {
                 }
             };
 
+            // Run-total stamina: spending the last point ends the run. Checked
+            // after room-clear so the final-stamina kill still scores the room.
+            let final_player = store.get_actor_state(player, game_id, PLAYER_ACTOR_ID);
+            if final_player.stamina == 0 {
+                self.latch_game_over(ref store, player, game_id, ref run);
+                return false;
+            }
+
             let _ = target_b;
             true
         }
@@ -980,14 +1013,20 @@ pub mod actions {
                 return;
             }
 
-            // Step 3: phase transition.
+            // Step 3: stamina-zero game-over check before transitioning to player turn.
+            // If the player ended their turn at exactly 0 stamina (after any orb pickups
+            // during enemy phase), latch game-over instead of starting a dead turn.
+            let player_stamina_check = store.get_actor_state(player, game_id, PLAYER_ACTOR_ID);
+            if player_stamina_check.stamina == 0 {
+                store.set_room_state(@room);
+                self.latch_game_over(ref store, player, game_id, ref run);
+                return;
+            }
+
+            // Step 4: phase transition.
             run.turn_index += 1;
             run.phase = PHASE_PLAYER_TURN;
             store.set_run_state(@run);
-
-            let mut player_actor = store.get_actor_state(player, game_id, PLAYER_ACTOR_ID);
-            player_actor.stamina = BASE_STAMINA;
-            store.set_actor_state(@player_actor);
 
             let mut slot_index: u8 = 0;
             while slot_index < MAX_ABILITY_SLOTS {
@@ -1614,8 +1653,7 @@ pub mod actions {
 
                 // Ascend: enemy death spawns an energy orb on its tile and
                 // awards score = max_hp × 10 (so scaled late-game enemies are
-                // worth more). Replaces the old direct-to-stamina
-                // KILL_STAMINA_BONUS.
+                // worth more).
                 if target.faction == FACTION_ENEMY {
                     let mut run = store.get_run_state(player, game_id);
                     let kill_score: u32 = target.max_hp.into() * 10;

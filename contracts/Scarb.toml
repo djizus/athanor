@@ -6,6 +6,7 @@ cairo-version.workspace = true
 
 [[target.starknet-contract]]
 sierra = true
+casm = true
 build-external-contracts = ["dojo::world::world_contract::world"]
 
 [dependencies]
