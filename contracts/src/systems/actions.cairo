@@ -76,26 +76,32 @@ pub mod actions {
         let creator_address = starknet::get_tx_info().unbox().account_contract_address;
         let (setup_address, _) = world.dns(@"setup").expect('actions: setup not found');
 
-        self
-            .minigame
-            .initializer(
-                creator_address: creator_address,
-                name: "Athanor:Ascend",
-                description: "On-chain tactical roguelike - how deep can you go?",
-                developer: "djizus",
-                publisher: "djizus",
-                genre: "Tactics",
-                image: "",
-                color: Option::None,
-                client_url: Option::None,
-                renderer_address: Option::None,
-                settings_address: Option::Some(setup_address),
-                objectives_address: Option::None,
-                token_address: denshokan_address,
-                royalty_fraction: Option::None,
-                skills_address: Option::None,
-                version: 1,
-            );
+        // Only register with Denshokan when a real token contract is supplied.
+        // Local dev (Katana) passes 0x0 because no Denshokan is deployed; calling
+        // `initializer` with 0x0 would revert inside the minigame component when
+        // it performs its ISRC5 supports_interface check.
+        if denshokan_address.into() != 0_felt252 {
+            self
+                .minigame
+                .initializer(
+                    creator_address: creator_address,
+                    name: "Athanor:Ascend",
+                    description: "On-chain tactical roguelike - how deep can you go?",
+                    developer: "djizus",
+                    publisher: "djizus",
+                    genre: "Tactics",
+                    image: "",
+                    color: Option::None,
+                    client_url: Option::None,
+                    renderer_address: Option::None,
+                    settings_address: Option::Some(setup_address),
+                    objectives_address: Option::None,
+                    token_address: denshokan_address,
+                    royalty_fraction: Option::None,
+                    skills_address: Option::None,
+                    version: 1,
+                );
+        }
 
         let mut store = StoreTrait::new(world);
         store

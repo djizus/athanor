@@ -5,6 +5,12 @@ seed = "athanor_0_1"
 [namespace]
 default = "athanor_0_1"
 
+# Grant writer permissions on the namespace so setup::dojo_init can seed
+# GameSettings / GameSettingsMetadata rows and actions can mutate RunState,
+# RoomState, etc. during gameplay.
+[writers]
+"athanor_0_1" = ["athanor_0_1-actions", "athanor_0_1-setup"]
+
 # Dev init: three addresses passed to actions::dojo_init —
 #   (denshokan_address, vrf_address, lords_address)
 # Denshokan is 0x0 locally (token ownership check stubbed in spawn).
@@ -12,4 +18,4 @@ default = "athanor_0_1"
 # LORDS must be the deployed mock_lords address. scripts/deploy_dev.sh
 # declares + deploys mock_lords then rewrites this entry before migrating.
 [init_call_args]
-"athanor_0_1-actions" = ["0x0", "0x0", "0x0"]
+"athanor_0_1-actions" = ["0x0", "0x0", "0x056c9fed5c98539ef4c4f1563e058e605ba3b7501bc3ffa63c6128d02e7be0b6"]

@@ -94,6 +94,17 @@ pub mod setup {
         let minigame = IMinigameDispatcher { contract_address: actions_address };
         let token_address = minigame.token_address();
 
+        // In local dev the actions contract never registered with Denshokan
+        // (no token passed through dojo_init), so `token_address` comes back as
+        // 0x0. The EGC settings component performs an ISRC5 check against
+        // `minigame_token_address` inside `create_settings`, which reverts when
+        // that contract isn't deployed. Skip the EGC-side registration in that
+        // case — the on-chain GameSettings/Metadata rows above are what the
+        // game actually reads, and Denshokan lookups are unused in dev.
+        if token_address.into() == 0_felt252 {
+            return;
+        }
+
         self
             .settings
             .create_settings(
