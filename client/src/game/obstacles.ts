@@ -7,6 +7,7 @@ const OBSTACLE_HEIGHT = 0.9;
 
 export interface ObstacleBundle {
   group: THREE.Group;
+  sync: (positions: Position[]) => void;
   dispose: () => void;
 }
 
@@ -21,14 +22,20 @@ export function createObstacles(scene: THREE.Scene, positions: Position[]): Obst
     flatShading: true,
   });
 
-  for (const p of positions) {
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.set(p.x * TILE_SIZE, OBSTACLE_HEIGHT / 2, p.y * TILE_SIZE);
-    group.add(mesh);
-  }
+  const sync = (nextPositions: Position[]): void => {
+    group.clear();
+    for (const p of nextPositions) {
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.position.set(p.x * TILE_SIZE, OBSTACLE_HEIGHT / 2, p.y * TILE_SIZE);
+      group.add(mesh);
+    }
+  };
+
+  sync(positions);
 
   return {
     group,
+    sync,
     dispose: () => {
       scene.remove(group);
       geometry.dispose();

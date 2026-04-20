@@ -134,6 +134,7 @@ export function mountApp(root: HTMLElement): void {
       state = latest;
       turnStartState = cloneCombatState(latest);
       selectedAbilityId = null;
+      obstacles.sync(state.obstacles);
       syncActorMeshes(actorMeshes, state);
       orbs.sync(state);
       refreshPresentation();
@@ -179,6 +180,7 @@ export function mountApp(root: HTMLElement): void {
       state = latest;
       turnStartState = cloneCombatState(latest);
       selectedAbilityId = null;
+      obstacles.sync(state.obstacles);
       syncActorMeshes(actorMeshes, state);
       orbs.sync(state);
       refreshPresentation();
@@ -286,55 +288,65 @@ export function mountApp(root: HTMLElement): void {
 
     refreshPresentation();
 
-    const detachInput = attachGridInput(canvas, sceneBundle, grid, ({ x, y }) => {
-      if (!state) return;
-      if (onlineRun.submitting) return;
-      if (selectedAbilityId !== null) {
-        const target = { x, y };
-        const payload = buildAbilityPayload(state, selectedAbilityId, target);
-        const result = payload ? tryUseAbility(state, selectedAbilityId, x, y) : { ok: false };
-        if (!payload || !result.ok) {
-          grid.flash([{ x, y }], TILE_FLASH_BAD_COLOR, 200);
+    const detachInput = attachGridInput(
+      canvas,
+      sceneBundle,
+      grid,
+      ({ x, y }) => {
+        if (!state) return;
+        if (onlineRun.submitting) return;
+        if (selectedAbilityId !== null) {
+          const target = { x, y };
+          const payload = buildAbilityPayload(state, selectedAbilityId, target);
+          const result = payload ? tryUseAbility(state, selectedAbilityId, x, y) : { ok: false };
+          if (!payload || !result.ok) {
+            grid.flash([{ x, y }], TILE_FLASH_BAD_COLOR, 200);
+            return;
+          }
+
+          onlineRun.pendingActions.push(
+            ...packAbility(selectedAbilityId, payload.targetMode, payload.targetA, payload.targetB),
+          );
+          clearAbilitySelection();
+          syncActorMeshes(actorMeshes, state);
+          orbs.sync(state);
+          refreshPresentation();
+          grid.flash(result.affectedTiles ?? [{ x, y }], TILE_FLASH_HIT_COLOR, 180);
+          if (state.run.gameOver) {
+            renderGameOver(root, state, toMenu);
+          }
+          if (state.run.pendingRoomClear) {
+            void submitTurn("Room cleared. Finalizing turn...");
+          }
           return;
         }
 
-        onlineRun.pendingActions.push(
-          ...packAbility(selectedAbilityId, payload.targetMode, payload.targetA, payload.targetB),
-        );
-        clearAbilitySelection();
+        const result = tryMove(state, x, y);
+        if (!result.ok) {
+          grid.flash([{ x, y }], TILE_FLASH_BAD_COLOR, 200);
+          return;
+        }
         syncActorMeshes(actorMeshes, state);
         orbs.sync(state);
         refreshPresentation();
-        grid.flash(result.affectedTiles ?? [{ x, y }], TILE_FLASH_HIT_COLOR, 180);
+        grid.flash([{ x: state.player.x, y: state.player.y }], TILE_FLASH_HIT_COLOR, 150);
+        onlineRun.pendingActions.push(...packMove(x, y));
         if (state.run.gameOver) {
           renderGameOver(root, state, toMenu);
         }
-        if (state.run.pendingRoomClear) {
-          void submitTurn("Room cleared. Finalizing turn...");
-        }
-        return;
-      }
-
-      const result = tryMove(state, x, y);
-      if (!result.ok) {
-        grid.flash([{ x, y }], TILE_FLASH_BAD_COLOR, 200);
-        return;
-      }
-      syncActorMeshes(actorMeshes, state);
-      orbs.sync(state);
-      refreshPresentation();
-      grid.flash([{ x: state.player.x, y: state.player.y }], TILE_FLASH_HIT_COLOR, 150);
-      onlineRun.pendingActions.push(...packMove(x, y));
-      if (state.run.gameOver) {
-        renderGameOver(root, state, toMenu);
-      }
-    });
+      },
+      () => {
+        if (!state || onlineRun.submitting) return;
+        clearAbilitySelection();
+      },
+    );
 
     hud.onExit(toMenu);
     hud.onReset(() => {
       if (onlineRun.submitting) return;
       state = cloneCombatState(turnStartState);
       selectedAbilityId = null;
+      obstacles.sync(state.obstacles);
       syncActorMeshes(actorMeshes, state);
       orbs.sync(state);
       refreshPresentation();

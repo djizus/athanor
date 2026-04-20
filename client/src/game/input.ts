@@ -12,6 +12,7 @@ export function attachGridInput(
   sceneBundle: SceneBundle,
   grid: GridBundle,
   onTileClick: (e: GridClickEvent) => void,
+  onCancel?: () => void,
 ): () => void {
   const pointer = new THREE.Vector2();
 
@@ -23,6 +24,11 @@ export function attachGridInput(
   };
 
   const onPointerDown = (ev: PointerEvent): void => {
+    if (ev.button === 2) {
+      ev.preventDefault();
+      onCancel?.();
+      return;
+    }
     if (ev.button !== 0) return;
     const ndc = toNdc(ev);
     sceneBundle.raycaster.setFromCamera(ndc, sceneBundle.camera);
@@ -36,6 +42,14 @@ export function attachGridInput(
     }
   };
 
+  const onContextMenu = (ev: MouseEvent): void => {
+    ev.preventDefault();
+  };
+
   canvas.addEventListener("pointerdown", onPointerDown);
-  return () => canvas.removeEventListener("pointerdown", onPointerDown);
+  canvas.addEventListener("contextmenu", onContextMenu);
+  return () => {
+    canvas.removeEventListener("pointerdown", onPointerDown);
+    canvas.removeEventListener("contextmenu", onContextMenu);
+  };
 }
