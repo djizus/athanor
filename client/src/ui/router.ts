@@ -140,6 +140,14 @@ export function mountApp(root: HTMLElement): void {
       }
     };
 
+    const restoreTurnStart = (): void => {
+      state = cloneCombatState(turnStartState);
+      selectedAbilityId = null;
+      syncActorMeshes(actorMeshes, state);
+      orbs.sync(state);
+      refreshPresentation();
+    };
+
     const syncAfterConfirm = async (startTurnIndex: number, startRoomId: number): Promise<void> => {
       let latest: CombatState | null = null;
       for (let attempt = 0; attempt < 12; attempt++) {
@@ -175,6 +183,18 @@ export function mountApp(root: HTMLElement): void {
       if (state.run.gameOver) {
         renderGameOver(root, state, toMenu);
       }
+    };
+
+    const explainConfirmError = (err: unknown): string => {
+      const message = err instanceof Error ? err.message : String(err);
+      const quoted = message.match(/'([^']+)'/);
+      if (quoted) {
+        return quoted[1];
+      }
+      if (message.includes("Target not alive")) return "Target not alive";
+      if (message.includes("Ability on cooldown")) return "Ability on cooldown";
+      if (message.includes("Not player turn")) return "Not player turn";
+      return "Turn failed. Reverted to turn start.";
     };
 
     const refreshPresentation = (): void => {
@@ -286,7 +306,13 @@ export function mountApp(root: HTMLElement): void {
           await syncFromChain({ phase: 1, roomId: startRoomId + 1 });
         }
       } catch (err) {
-        onlineRun.pendingActions = batch;
+        try {
+          await syncFromChain();
+        } catch {
+          restoreTurnStart();
+        }
+        onlineRun.pendingActions = [];
+        hud.showToast(`${explainConfirmError(err)}. Turn reverted.`, "error");
         // eslint-disable-next-line no-console
         console.error("[ascend] confirm_turn failed", err);
       } finally {

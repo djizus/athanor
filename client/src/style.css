@@ -364,6 +364,16 @@ body,
   display: flex;
 }
 
+.hud-toast.is-error {
+  border-color: rgba(224, 96, 96, 0.4);
+  background: rgba(24, 10, 10, 0.94);
+  color: #f6d7d7;
+}
+
+.hud-toast.is-error .hud-spinner {
+  display: none;
+}
+
 .hud-spinner {
   width: 14px;
   height: 14px;

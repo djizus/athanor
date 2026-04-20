@@ -10,6 +10,7 @@ export interface HudViewState {
 export interface HudHandle {
   root: HTMLElement;
   refresh: (state: CombatState, view: HudViewState) => void;
+  showToast: (message: string, kind?: "error" | "info") => void;
   onAbility: (cb: (abilityId: AbilityId) => void) => void;
   onConfirm: (cb: () => void) => void;
   onReset: (cb: () => void) => void;
@@ -87,6 +88,7 @@ export function createHud(parent: HTMLElement, initial: CombatState): HudHandle 
   toast.className = "hud-toast";
   toast.innerHTML = `<span class="hud-spinner" aria-hidden="true"></span><span class="hud-toast-text">Submitting turn...</span>`;
   root.appendChild(toast);
+  let toastTimer: number | null = null;
 
   const refresh = (state: CombatState, view: HudViewState): void => {
     // Single-mode POC: always online. The badge exists to keep the HUD
@@ -117,7 +119,26 @@ export function createHud(parent: HTMLElement, initial: CombatState): HudHandle 
     confirmBtn.disabled = view.submitting;
     resetBtn.disabled = view.submitting;
     exitButton.disabled = view.submitting;
-    toast.classList.toggle("is-visible", view.submitting);
+    toast.classList.toggle("is-visible", view.submitting || toast.classList.contains("is-error"));
+    if (view.submitting) {
+      toast.classList.remove("is-error");
+      toast.querySelector<HTMLElement>(".hud-toast-text")!.textContent = "Submitting turn...";
+    }
+  };
+
+  const showToast = (message: string, kind: "error" | "info" = "info"): void => {
+    if (toastTimer !== null) {
+      window.clearTimeout(toastTimer);
+      toastTimer = null;
+    }
+    toast.classList.add("is-visible");
+    toast.classList.toggle("is-error", kind === "error");
+    toast.querySelector<HTMLElement>(".hud-toast-text")!.textContent = message;
+    toastTimer = window.setTimeout(() => {
+      toast.classList.remove("is-visible", "is-error");
+      toast.querySelector<HTMLElement>(".hud-toast-text")!.textContent = "Submitting turn...";
+      toastTimer = null;
+    }, kind === "error" ? 5000 : 2500);
   };
 
   refresh(initial, {
@@ -129,6 +150,7 @@ export function createHud(parent: HTMLElement, initial: CombatState): HudHandle 
   return {
     root,
     refresh,
+    showToast,
     onAbility(cb) {
       for (const btn of abilityButtons) {
         btn.addEventListener("click", () => {
