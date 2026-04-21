@@ -83,7 +83,7 @@ mod tests {
         // Per-turn stamina cap, NOT run-total budget.
         assert!(s.hero_stamina == 80, "per-turn stamina cap");
         assert!(s.hero_hp == 80, "hero hp");
-        assert!(s.archetype_count == 6, "drainer archetype included");
+        assert!(s.archetype_count == 7, "marksman archetype included");
         assert!(s.entry_fee_lords == 100_u128 * LORDS_WEI, "entry fee");
     }
 }

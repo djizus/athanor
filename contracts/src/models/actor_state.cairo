@@ -324,6 +324,6 @@ mod tests {
         };
         let packed = ActorStatePackingTrait::pack(@original);
         let unpacked = packed.unpack();
-        assert!(unpacked.archetype == 6, "drainer archetype round trip");
+        assert!(unpacked.archetype == 7, "marksman archetype round trip");
     }
 }

@@ -372,7 +372,8 @@ mod tests {
         assert!(obstacle_count(0) == 4, "room 0");
         assert!(obstacle_count(4) == 6, "room 4");
         assert!(obstacle_count(10) == 9, "room 10");
-        assert!(obstacle_count(20) == 16, "room 20 at cap");
+        assert!(obstacle_count(20) == 14, "room 20");
+        assert!(obstacle_count(24) == 16, "room 24 at cap");
         assert!(obstacle_count(100) == 16, "room 100 capped");
     }
 

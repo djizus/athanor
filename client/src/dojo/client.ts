@@ -5,7 +5,8 @@
 import { CallData, cairo, type Call } from "starknet";
 import type { Signer } from "./burner.js";
 import type { DojoConfig } from "./config.js";
-import { fetchCombatState, fetchRunSummaries, type RunSummary } from "./torii.js";
+import { fetchCombatState } from "./rpc.js";
+import { fetchRunSummaries, type RunSummary } from "./torii.js";
 import type { CombatState } from "../state/combat.js";
 import type { Tier } from "../state/tiers.js";
 
@@ -132,12 +133,26 @@ export function createDojoClient(cfg: DojoConfig, signer: Signer): DojoClient {
     },
 
     async listRuns() {
-      return fetchRunSummaries(cfg.toriiUrl, account.address);
+      // Torii is used for cross-run discovery only. In-run state comes from
+      // RPC via loadRun().
+      if (!cfg.toriiUrl) return [];
+      try {
+        return await fetchRunSummaries(cfg.toriiUrl, account.address);
+      } catch (err) {
+        console.warn("[dojo] listRuns via Torii failed", err);
+        return [];
+      }
     },
 
     async loadRun(gameId, tier) {
       for (let attempt = 0; attempt < 8; attempt++) {
-        const snapshot = await fetchCombatState(cfg.toriiUrl, account.address, gameId, tier);
+        const snapshot = await fetchCombatState(
+          signer.provider,
+          cfg,
+          account.address,
+          gameId,
+          tier,
+        );
         if (snapshot) return snapshot;
         await new Promise((resolve) => window.setTimeout(resolve, 400));
       }
@@ -145,8 +160,12 @@ export function createDojoClient(cfg: DojoConfig, signer: Signer): DojoClient {
     },
 
     async nextGameId() {
-      const runs = await fetchRunSummaries(cfg.toriiUrl, account.address);
-      return runs.reduce((max, run) => Math.max(max, run.gameId), 0) + 1;
+      try {
+        const runs = await api.listRuns();
+        return runs.reduce((max, run) => Math.max(max, run.gameId), 0) + 1;
+      } catch {
+        return 1;
+      }
     },
   };
 

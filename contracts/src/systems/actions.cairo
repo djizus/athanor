@@ -3,6 +3,28 @@ trait IActions<T> {
     fn spawn(ref self: T, game_id: u32, settings_id: u32);
     fn enter_room(ref self: T, game_id: u32, room_id: u8);
     fn confirm_turn(ref self: T, game_id: u32, actions: Span<felt252>);
+
+    // --- RPC read views (no Torii required) ---
+    // Returned as (player, game_id, ... packed fields). Callers look up state
+    // directly via starknet_call and decode the packed fields client-side.
+    fn view_run_state(
+        self: @T, player: starknet::ContractAddress, game_id: u32,
+    ) -> (u8, u8, u16, u8, u8, u8, felt252, u32, u16, u64, u64);
+    fn view_room_state(
+        self: @T, player: starknet::ContractAddress, game_id: u32, room_id: u8,
+    ) -> (u8, u8, u64, u64, u8, bool, u64, u64, u64, u64);
+    fn view_actor_state(
+        self: @T, player: starknet::ContractAddress, game_id: u32, actor_id: u8,
+    ) -> (u64, u64);
+    fn view_ability_slot(
+        self: @T, player: starknet::ContractAddress, game_id: u32, actor_id: u8, slot_index: u8,
+    ) -> u16;
+    fn view_telegraph_state(
+        self: @T, player: starknet::ContractAddress, game_id: u32, telegraph_id: u8,
+    ) -> (u64, u64);
+    fn view_telegraph_count(
+        self: @T, player: starknet::ContractAddress, game_id: u32,
+    ) -> u8;
 }
 
 #[dojo::contract]
@@ -27,6 +49,9 @@ pub mod actions {
     use athanor::helpers::random::{RandomTrait};
     use athanor::models::config::{Config, GameSettingsTrait};
     use athanor::models::index::{RunState, RunOwner, RoomState, ActorState, AbilitySlotState, TelegraphState};
+    use athanor::models::actor_state::ActorStatePackingTrait;
+    use athanor::models::ability_slot::AbilitySlotStatePackingTrait;
+    use athanor::models::telegraph_state::TelegraphStatePackingTrait;
     use athanor::store::{Store, StoreTrait};
     use athanor::systems::phase::{
         PHASE_EXPLORE, PHASE_PLAYER_TURN, PHASE_ENEMY_TURN, PHASE_COMPLETE, PHASE_FAILED,
@@ -425,6 +450,89 @@ pub mod actions {
             if run_after.phase == PHASE_PLAYER_TURN {
                 self.process_enemy_phase(ref store, player, game_id);
             }
+        }
+
+        // --- RPC read views ---
+        // These return the packed fields directly so the client can reconstruct
+        // CombatState without Torii. Decoding is client-side and mirrors the
+        // packing declared in models/actor_state, ability_slot, telegraph_state.
+
+        fn view_run_state(
+            self: @ContractState, player: ContractAddress, game_id: u32,
+        ) -> (u8, u8, u16, u8, u8, u8, felt252, u32, u16, u64, u64) {
+            let mut store = self.store();
+            let run = store.get_run_state(player, game_id);
+            (
+                run.phase,
+                run.room_id,
+                run.turn_index,
+                run.player_actor_id,
+                run.status_flags,
+                run.last_player_direction,
+                run.seed,
+                run.score,
+                run.rooms_cleared,
+                run.started_at,
+                run.ended_at,
+            )
+        }
+
+        fn view_room_state(
+            self: @ContractState, player: ContractAddress, game_id: u32, room_id: u8,
+        ) -> (u8, u8, u64, u64, u8, bool, u64, u64, u64, u64) {
+            let mut store = self.store();
+            let room = store.get_room_state(player, game_id, room_id);
+            (
+                room.width,
+                room.height,
+                room.blocked,
+                room.occupancy,
+                room.enemy_count,
+                room.cleared,
+                room.orbs_fresh,
+                room.orbs_aged,
+                room.hp_orbs_fresh,
+                room.hp_orbs_aged,
+            )
+        }
+
+        fn view_actor_state(
+            self: @ContractState, player: ContractAddress, game_id: u32, actor_id: u8,
+        ) -> (u64, u64) {
+            let mut store = self.store();
+            let actor = store.get_actor_state(player, game_id, actor_id);
+            let packed = ActorStatePackingTrait::pack(@actor);
+            (packed.resources, packed.stats)
+        }
+
+        fn view_ability_slot(
+            self: @ContractState,
+            player: ContractAddress,
+            game_id: u32,
+            actor_id: u8,
+            slot_index: u8,
+        ) -> u16 {
+            let mut store = self.store();
+            let slot = store.get_ability_slot_state(player, game_id, actor_id, slot_index);
+            let packed = AbilitySlotStatePackingTrait::pack(@slot);
+            packed.packed
+        }
+
+        fn view_telegraph_state(
+            self: @ContractState, player: ContractAddress, game_id: u32, telegraph_id: u8,
+        ) -> (u64, u64) {
+            let mut store = self.store();
+            let tg = store.get_telegraph_state(player, game_id, telegraph_id);
+            let packed = TelegraphStatePackingTrait::pack(@tg);
+            (packed.packed_a, packed.packed_b)
+        }
+
+        fn view_telegraph_count(
+            self: @ContractState, player: ContractAddress, game_id: u32,
+        ) -> u8 {
+            let mut store = self.store();
+            let run = store.get_run_state(player, game_id);
+            run.status_flags
         }
     }
 
