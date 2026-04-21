@@ -970,10 +970,17 @@ pub mod actions {
                 used_target_y = player_actor.pos_y;
             };
 
+            // Re-read run before saving it back so kill-score updates written by
+            // apply_damage_to_actor are preserved. The local `run` may still
+            // carry directional changes from Dash, so merge those fields in.
+            let mut persisted_run = store.get_run_state(player, game_id);
+            persisted_run.last_player_direction = run.last_player_direction;
+
             // player_actor already saved before ability execution; will re-read below.
             store.set_room_state(@room);
             store.set_ability_slot_state(@slot);
-            store.set_run_state(@run);
+            store.set_run_state(@persisted_run);
+            run = persisted_run;
 
             store.emit_ability_used(
                 player,
