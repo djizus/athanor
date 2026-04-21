@@ -4,24 +4,53 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 const loader = new GLTFLoader();
 const cache = new Map<string, Promise<THREE.Group>>();
 
+// GLB magic number "glTF" in little-endian + version 2.
+const GLB_MAGIC = 0x46546c67;
+
 /**
  * Load a GLB from the public `/models/...` served by Vite and cache the parsed
- * scene. Subsequent calls for the same URL reuse the cached scene. Consumers
- * should call `instantiateFrom` to get a fresh clone they can safely add to
- * the scene.
+ * scene. Subsequent calls for the same URL reuse the cached scene.
+ *
+ * The load path fetches the bytes directly and validates the GLB magic number
+ * before handing off to GLTFLoader. This matters in dev because Vite's SPA
+ * fallback returns index.html (HTTP 200, text/html) for missing files, which
+ * would otherwise crash GLTFLoader's parser deep in the call stack.
  */
 export function loadModel(url: string): Promise<THREE.Group> {
   const existing = cache.get(url);
   if (existing) return existing;
 
-  const promise = new Promise<THREE.Group>((resolve, reject) => {
-    loader.load(
-      url,
-      (gltf) => resolve(gltf.scene),
-      undefined,
-      (err) => reject(err),
-    );
-  });
+  const promise = (async (): Promise<THREE.Group> => {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`GLB fetch failed: ${response.status} for ${url}`);
+    }
+    const ct = response.headers.get("content-type") ?? "";
+    if (ct.startsWith("text/html")) {
+      throw new Error(`Asset not found (got HTML fallback): ${url}`);
+    }
+    const buffer = await response.arrayBuffer();
+    if (buffer.byteLength < 12) {
+      throw new Error(`Asset too small to be a GLB: ${url} (${buffer.byteLength} bytes)`);
+    }
+    const magic = new DataView(buffer).getUint32(0, true);
+    if (magic !== GLB_MAGIC) {
+      throw new Error(`Asset is not a GLB (bad magic): ${url}`);
+    }
+
+    return await new Promise<THREE.Group>((resolve, reject) => {
+      loader.parse(
+        buffer,
+        "",
+        (gltf) => resolve(gltf.scene),
+        (err) => reject(err as unknown as Error),
+      );
+    });
+  })();
+
+  // On failure, evict from cache so a follow-up retry (e.g. after the asset
+  // lands on disk) can succeed without a page reload.
+  promise.catch(() => cache.delete(url));
   cache.set(url, promise);
   return promise;
 }

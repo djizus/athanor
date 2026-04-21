@@ -1,0 +1,13 @@
+{
+  "id": "tile-grass-b",
+  "category": "tiles",
+  "prompt": "floating rocky grass island tile chunk, flat top with a small embedded boulder on one edge, moss patches, rough rocky underside tapering to a point, 1 meter wide. low-poly stylized, painterly hand-painted textures, warm rim light, Bastion and Hades art direction, PBR baked, clean silhouette, origin at base, facing +Z, game-ready",
+  "polycount_target": 8000,
+  "provider": "meshy",
+  "preview_task_id": "019db01f-77a4-7b02-87d8-302cfec118b4",
+  "refine_task_id": "019db024-5df2-7bdf-abe6-0f389d8b8cc9",
+  "generated_at": "2026-04-21T13:06:19.733Z",
+  "glb_bytes": 1366776,
+  "thumb_path": "tile-grass-b.thumb.png",
+  "postprocessed": true
+}
