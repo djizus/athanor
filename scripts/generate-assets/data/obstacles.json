@@ -1,0 +1,10 @@
+{
+  "obstacle-rock": {
+    "prompt": "cluster of stylized mossy boulders sitting on a small rocky base",
+    "polycount": 6000
+  },
+  "obstacle-crystal": {
+    "prompt": "glowing violet crystal formation jutting from a small rock base",
+    "polycount": 6000
+  }
+}

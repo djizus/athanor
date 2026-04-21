@@ -35,12 +35,23 @@ node_modules/
 
 # Generated assets (v1 pipeline output)
 scripts/generate-assets/output/
+scripts/generate-assets/output.v1.bak/
 scripts/generate-assets/node_modules/
+scripts/generate-assets/.env
+scripts/generate-assets/.env.old.bak
+
+# 3D asset pipeline cache (raw pre-postprocess GLBs + task log)
+client/public/models/.cache/
 
 # Screenshots & QA captures
 screenshots/
 screenshot_*.png
 test_*.png
+# Repo-root PNG captures from Playwright MCP runs
+/*.png
+
+# Local dev scratch
+realms.json
 
 # Godot export output
 client/export/

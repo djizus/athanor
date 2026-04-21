@@ -1,0 +1,21 @@
+{
+  "name": "athanor-generate-assets",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Athanor 3D asset generation pipeline (Meshy API).",
+  "type": "module",
+  "scripts": {
+    "generate": "tsx generate-models.ts",
+    "generate:dry": "tsx generate-models.ts --dry-run"
+  },
+  "dependencies": {
+    "@gltf-transform/core": "^4.3.0",
+    "@gltf-transform/functions": "^4.3.0",
+    "sharp": "^0.33.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.6.0"
+  }
+}

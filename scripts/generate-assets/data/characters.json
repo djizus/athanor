@@ -1,0 +1,22 @@
+{
+  "hero": {
+    "prompt": "stylized fantasy warrior with heavy hammer, chunky proportions, hooded cloak",
+    "polycount": 12000,
+    "pose": "a-pose"
+  },
+  "enemy-brute": {
+    "prompt": "hulking brawler with tusks, shoulders forward, thick arms",
+    "polycount": 12000,
+    "pose": "a-pose"
+  },
+  "enemy-caster": {
+    "prompt": "robed occultist with hood, floating glyph above open palm",
+    "polycount": 12000,
+    "pose": "a-pose"
+  },
+  "enemy-heavy": {
+    "prompt": "massive stone golem, wide stance, cracked runes faintly glowing",
+    "polycount": 15000,
+    "pose": "a-pose"
+  }
+}

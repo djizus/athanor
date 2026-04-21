@@ -1,0 +1,10 @@
+{
+  "tile-grass-a": {
+    "prompt": "floating rocky grass island tile chunk, flat top, mossy grass edges, rough rocky underside tapering to a point, 1 meter wide",
+    "polycount": 8000
+  },
+  "tile-grass-b": {
+    "prompt": "floating rocky grass island tile chunk, flat top with a small embedded boulder on one edge, moss patches, rough rocky underside tapering to a point, 1 meter wide",
+    "polycount": 8000
+  }
+}

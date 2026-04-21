@@ -2,12 +2,17 @@ import * as THREE from "three";
 import type { Actor, CombatState } from "../state/combat.js";
 import { FACTION_PLAYER } from "../state/combat.js";
 import { TILE_SIZE } from "./scene.js";
+import { fitAndGround, instantiateFrom, loadModel } from "./assets.js";
 
 export interface ActorMesh {
   actorId: number;
   group: THREE.Group;
   hpForeground: THREE.Sprite;
+  bodyPlaceholder: THREE.Mesh | null;
 }
+
+const HERO_MODEL_URL = "/models/characters/hero.glb";
+const HERO_TARGET_HEIGHT = 0.9; // world units (tile is 1.0)
 
 const PLAYER_COLOR = 0x6ed6ff;
 const ENEMY_COLORS: Record<number, number> = {
@@ -62,7 +67,31 @@ function buildActorGroup(actor: Actor): ActorMesh {
   fg.renderOrder = 11;
   group.add(fg);
 
-  return { actorId: actor.id, group, hpForeground: fg };
+  return { actorId: actor.id, group, hpForeground: fg, bodyPlaceholder: body };
+}
+
+/**
+ * Swap the placeholder cube body for the hero GLB once it finishes loading.
+ * Safe to call multiple times — subsequent calls are no-ops.
+ */
+function attachHeroModel(am: ActorMesh): void {
+  loadModel(HERO_MODEL_URL)
+    .then((source) => {
+      if (!am.bodyPlaceholder) return; // already swapped
+      const model = instantiateFrom(source);
+      fitAndGround(model, HERO_TARGET_HEIGHT);
+      am.group.remove(am.bodyPlaceholder);
+      const geom = am.bodyPlaceholder.geometry;
+      const mat = am.bodyPlaceholder.material as THREE.Material;
+      geom.dispose();
+      mat.dispose();
+      am.bodyPlaceholder = null;
+      am.group.add(model);
+    })
+    .catch((err) => {
+      // Non-fatal — keep the placeholder cube so the game stays playable.
+      console.warn(`[actor] hero model failed to load from ${HERO_MODEL_URL}:`, err);
+    });
 }
 
 export function createActorMeshes(scene: THREE.Scene, state: CombatState): ActorMesh[] {
@@ -71,6 +100,9 @@ export function createActorMeshes(scene: THREE.Scene, state: CombatState): Actor
   for (const actor of all) {
     const am = buildActorGroup(actor);
     scene.add(am.group);
+    if (actor.faction === FACTION_PLAYER) {
+      attachHeroModel(am);
+    }
     meshes.push(am);
   }
   syncActorMeshes(meshes, state);

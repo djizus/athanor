@@ -1,0 +1,14 @@
+{
+  "id": "hero",
+  "category": "characters",
+  "prompt": "stylized fantasy warrior with heavy hammer, chunky proportions, hooded cloak. low-poly stylized, painterly hand-painted textures, warm rim light, Bastion and Hades art direction, PBR baked, clean silhouette, origin at base, facing +Z, game-ready",
+  "polycount_target": 12000,
+  "pose": "a-pose",
+  "provider": "meshy",
+  "preview_task_id": "019db013-dff8-7e68-85b7-1f756a6ec133",
+  "refine_task_id": "019db016-108f-7994-8e24-18f77e959c26",
+  "generated_at": "2026-04-21T12:50:16.850Z",
+  "glb_bytes": 1092156,
+  "thumb_path": "hero.thumb.png",
+  "postprocessed": true
+}
