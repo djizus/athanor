@@ -66,6 +66,50 @@ body,
   gap: 8px;
 }
 
+.run-hub {
+  grid-column: 1 / span 2;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.run-hub > h2 {
+  grid-column: 1 / span 2;
+  margin: 0;
+  font-size: 14px;
+  color: #b0b0c8;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+.menu-section {
+  border: 1px solid #2d2d44;
+  background: rgba(16, 16, 26, 0.8);
+  border-radius: 6px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.menu-section h3 {
+  margin: 0;
+  font-size: 12px;
+  color: #a5a5be;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.run-list {
+  margin: 0;
+  padding-left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: #babace;
+  font-size: 12px;
+}
+
 .tier-column h2 {
   margin: 0 0 4px 0;
   font-size: 14px;
@@ -383,6 +427,22 @@ body,
   animation: hud-spin 0.8s linear infinite;
 }
 
+@media (max-width: 760px) {
+  .menu-card {
+    min-width: 0;
+    width: calc(100% - 24px);
+    padding: 22px 16px;
+  }
+
+  .run-hub {
+    grid-template-columns: 1fr;
+  }
+
+  .run-hub > h2 {
+    grid-column: 1;
+  }
+}
+
 @keyframes hud-spin {
   to {
     transform: rotate(360deg);
@@ -451,6 +511,14 @@ body,
 .game-over-card p {
   margin: 0 0 24px 0;
   color: #b0b0c8;
+}
+
+.game-over-card .game-over-settlement {
+  margin: -14px 0 24px 0;
+  max-width: 380px;
+  color: #d7d7f2;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .game-over-card button {

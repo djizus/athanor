@@ -6,8 +6,9 @@ import { CallData, cairo, type Call } from "starknet";
 import type { Signer } from "./burner.js";
 import type { DojoConfig } from "./config.js";
 import { fetchCombatState } from "./rpc.js";
-import { fetchRunSummaries, type RunSummary } from "./torii.js";
+import { createMainnetRunRegistry, type MainnetRunRegistry } from "./mainnet.js";
 import type { CombatState } from "../state/combat.js";
+import type { RunMeta } from "../state/run-meta.js";
 import type { Tier } from "../state/tiers.js";
 
 // Action type IDs mirror contracts/src/systems/actions.cairo.
@@ -27,6 +28,7 @@ export interface LordsBalance {
 export interface DojoClient {
   connected: boolean;
   address: string;
+  runRegistry: MainnetRunRegistry;
   connect: () => Promise<DojoSession>;
   lordsBalance: () => Promise<LordsBalance>;
   mintLords: (wholeAmount: bigint) => Promise<string>;
@@ -34,23 +36,23 @@ export interface DojoClient {
   spawn: (gameId: number, settingsId: number) => Promise<string>;
   enterRoom: (gameId: number, roomId: number) => Promise<string>;
   confirmTurn: (gameId: number, actionsPacked: number[]) => Promise<string>;
-  listRuns: () => Promise<RunSummary[]>;
+  listRuns: () => Promise<RunMeta[]>;
   loadRun: (gameId: number, tier: Tier) => Promise<CombatState | null>;
   nextGameId: () => Promise<number>;
 }
 
 const DECIMALS = 10n ** 18n;
 
-export type { RunSummary };
-
 export function createDojoClient(cfg: DojoConfig, signer: Signer): DojoClient {
   const { account } = signer;
+  const runRegistry = createMainnetRunRegistry({ provider: signer.provider, cfg });
 
   const callData = CallData.compile;
 
   const api: DojoClient = {
     connected: true,
     address: account.address,
+    runRegistry,
 
     async connect() {
       return {
@@ -133,15 +135,7 @@ export function createDojoClient(cfg: DojoConfig, signer: Signer): DojoClient {
     },
 
     async listRuns() {
-      // Torii is used for cross-run discovery only. In-run state comes from
-      // RPC via loadRun().
-      if (!cfg.toriiUrl) return [];
-      try {
-        return await fetchRunSummaries(cfg.toriiUrl, account.address);
-      } catch (err) {
-        console.warn("[dojo] listRuns via Torii failed", err);
-        return [];
-      }
+      return runRegistry.listOwnedRuns(account.address);
     },
 
     async loadRun(gameId, tier) {
@@ -162,7 +156,7 @@ export function createDojoClient(cfg: DojoConfig, signer: Signer): DojoClient {
     async nextGameId() {
       try {
         const runs = await api.listRuns();
-        return runs.reduce((max, run) => Math.max(max, run.gameId), 0) + 1;
+        return runs.reduce((max, run) => Math.max(max, run.tokenId), 0) + 1;
       } catch {
         return 1;
       }

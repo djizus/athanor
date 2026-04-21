@@ -4,7 +4,7 @@ use dojo::model::ModelStorage;
 use dojo::event::EventStorage;
 
 use athanor::models::index::{
-    RunState, RunOwner, RoomState, ActorState, ActorStatePacked, AbilitySlotState,
+    RunState, RunOwner, PlayerRunCursor, PlayerRunIndex, RoomState, ActorState, ActorStatePacked, AbilitySlotState,
     AbilitySlotStatePacked, TelegraphState, TelegraphStatePacked,
 };
 use athanor::models::actor_state::ActorStatePackingTrait;
@@ -40,6 +40,22 @@ pub impl StoreImpl of StoreTrait {
     }
 
     fn set_run_owner(ref self: Store, model: @RunOwner) {
+        self.world.write_model(model);
+    }
+
+    fn get_player_run_cursor(ref self: Store, player: ContractAddress) -> PlayerRunCursor {
+        self.world.read_model(player)
+    }
+
+    fn set_player_run_cursor(ref self: Store, model: @PlayerRunCursor) {
+        self.world.write_model(model);
+    }
+
+    fn get_player_run_index(ref self: Store, player: ContractAddress, index: u32) -> PlayerRunIndex {
+        self.world.read_model((player, index))
+    }
+
+    fn set_player_run_index(ref self: Store, model: @PlayerRunIndex) {
         self.world.write_model(model);
     }
 

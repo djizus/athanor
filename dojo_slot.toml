@@ -1,7 +1,7 @@
 [world]
 name = "Athanor"
 description = "Onchain tactical dungeon crawler — grid-based combat with telegraphed attacks"
-seed = "athanor_0_1"
+seed = "athanor_0_1_20260421"
 
 [env]
 rpc_url = "https://api.cartridge.gg/x/zathanor-slot/katana"

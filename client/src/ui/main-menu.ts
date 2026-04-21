@@ -1,5 +1,6 @@
 import { TIER_STANDARD, tierFeeRaw, type Tier } from "../state/tiers.js";
-import type { DojoClient, RunSummary } from "../dojo/client.js";
+import type { DojoClient } from "../dojo/client.js";
+import type { RunMeta } from "../state/run-meta.js";
 
 export interface MainMenuContext {
   /**
@@ -10,7 +11,7 @@ export interface MainMenuContext {
   dojo: DojoClient | null;
   /** Approves the entry fee and submits `spawn(gameId, settings_id)` on-chain. */
   onOnlineSpawn: (tier: Tier) => Promise<void>;
-  onResumeRun: (run: RunSummary) => Promise<void>;
+  onResumeRun: (run: RunMeta) => Promise<void>;
 }
 
 const MINT_AMOUNT = 100_000n;
@@ -32,7 +33,7 @@ export function renderMainMenu(container: HTMLElement, ctx: MainMenuContext): vo
     "Endless tactical roguelike. 80 HP, 80 stamina/turn — refilled. Every move counts.";
   card.appendChild(subtitle);
 
-  card.appendChild(buildOnlineColumn(ctx));
+  card.appendChild(buildRunHub(ctx));
 
   const note = document.createElement("p");
   note.className = "note";
@@ -44,46 +45,104 @@ export function renderMainMenu(container: HTMLElement, ctx: MainMenuContext): vo
   container.appendChild(card);
 }
 
-function buildOnlineColumn(ctx: MainMenuContext): HTMLElement {
+function buildRunHub(ctx: MainMenuContext): HTMLElement {
   const col = document.createElement("div");
-  col.className = "tier-column";
+  col.className = "run-hub";
 
   const heading = document.createElement("h2");
-  heading.textContent = "Start Run";
+  heading.textContent = "Mainnet Run Hub";
   col.appendChild(heading);
+
+  const buySection = document.createElement("div");
+  buySection.className = "menu-section";
+  const buyTitle = document.createElement("h3");
+  buyTitle.textContent = "Buy Run";
+  buySection.appendChild(buyTitle);
 
   const balanceLabel = document.createElement("p");
   balanceLabel.className = "column-note balance-label";
   balanceLabel.textContent = ctx.dojo ? "Loading balance..." : "Dev env not bootstrapped";
-  col.appendChild(balanceLabel);
+  buySection.appendChild(balanceLabel);
 
   const mintBtn = document.createElement("button");
   mintBtn.className = "tier-button mint-button";
   mintBtn.textContent = `Mint ${MINT_AMOUNT.toLocaleString()} mLORDS`;
   mintBtn.disabled = !ctx.dojo;
-  col.appendChild(mintBtn);
+  buySection.appendChild(mintBtn);
 
   const startBtn = document.createElement("button");
   startBtn.className = "tier-button tier-standard";
   const fee = TIER_STANDARD.entryFeeLords.toLocaleString();
   startBtn.textContent = `Start — ${TIER_STANDARD.heroHp} HP · ${TIER_STANDARD.staminaPerTurn} STA/turn · ${fee} mLORDS`;
   startBtn.disabled = !ctx.dojo;
-  col.appendChild(startBtn);
+  buySection.appendChild(startBtn);
+  col.appendChild(buySection);
+
+  const activeSection = document.createElement("div");
+  activeSection.className = "menu-section";
+  const activeTitle = document.createElement("h3");
+  activeTitle.textContent = "Resume Active Run";
+  activeSection.appendChild(activeTitle);
 
   const resumeBtn = document.createElement("button");
   resumeBtn.className = "tier-button tier-standard";
   resumeBtn.textContent = "Resume latest run";
   resumeBtn.disabled = true;
-  col.appendChild(resumeBtn);
+  activeSection.appendChild(resumeBtn);
+  col.appendChild(activeSection);
+
+  const pendingSection = document.createElement("div");
+  pendingSection.className = "menu-section";
+  const pendingTitle = document.createElement("h3");
+  pendingTitle.textContent = "Pending Settlement";
+  pendingSection.appendChild(pendingTitle);
+  const pendingList = document.createElement("ul");
+  pendingList.className = "run-list";
+  pendingSection.appendChild(pendingList);
+  col.appendChild(pendingSection);
+
+  const settledSection = document.createElement("div");
+  settledSection.className = "menu-section";
+  const settledTitle = document.createElement("h3");
+  settledTitle.textContent = "Recent Settled Runs";
+  settledSection.appendChild(settledTitle);
+  const settledList = document.createElement("ul");
+  settledList.className = "run-list";
+  settledSection.appendChild(settledList);
+  col.appendChild(settledSection);
 
   if (!ctx.dojo) {
+    pendingList.innerHTML = "<li>Mainnet registry unavailable</li>";
+    settledList.innerHTML = "<li>Mainnet registry unavailable</li>";
     return col;
   }
 
   const dojo = ctx.dojo;
   let currentBalance = 0n;
   let busy = false;
-  let latestActiveRun: RunSummary | null = null;
+  let latestActiveRun: RunMeta | null = null;
+
+  const renderRunList = (target: HTMLElement, runs: RunMeta[], emptyText: string): void => {
+    target.innerHTML = "";
+    if (runs.length === 0) {
+      const li = document.createElement("li");
+      li.textContent = emptyText;
+      target.appendChild(li);
+      return;
+    }
+    for (const run of runs.slice(0, 4)) {
+      const li = document.createElement("li");
+      const parts = [`#${run.tokenId}`, run.status.replaceAll("_", " ")];
+      if (typeof run.finalScore === "number") {
+        parts.push(`score ${run.finalScore}`);
+      }
+      if (typeof run.roomId === "number") {
+        parts.push(`room ${run.roomId + 1}`);
+      }
+      li.textContent = parts.join(" · ");
+      target.appendChild(li);
+    }
+  };
 
   const setBusy = (on: boolean): void => {
     busy = on;
@@ -105,16 +164,29 @@ function buildOnlineColumn(ctx: MainMenuContext): HTMLElement {
 
   const reloadRuns = async (): Promise<void> => {
     try {
-      const runs = await dojo.listRuns();
-      latestActiveRun = runs.find((run) => run.endedAt === 0n) ?? null;
+      const address = dojo.address;
+      const [activeRuns, pendingRuns, settledRuns] = await Promise.all([
+        dojo.runRegistry.listActiveRuns(address),
+        dojo.runRegistry.listPendingSettlements(address),
+        dojo.runRegistry.listSettledRuns(address),
+      ]);
+
+      latestActiveRun = activeRuns[0] ?? null;
       if (latestActiveRun) {
-        resumeBtn.textContent = `Resume run #${latestActiveRun.gameId} · Room ${latestActiveRun.roomId + 1}`;
+        const roomLabel =
+          typeof latestActiveRun.roomId === "number" ? ` · Room ${latestActiveRun.roomId + 1}` : "";
+        resumeBtn.textContent = `Resume run #${latestActiveRun.tokenId}${roomLabel}`;
       } else {
         resumeBtn.textContent = "No active run to resume";
       }
+
+      renderRunList(pendingList, pendingRuns, "No ended runs awaiting oracle");
+      renderRunList(settledList, settledRuns, "No settled runs yet");
     } catch (err) {
       resumeBtn.textContent = `Resume unavailable: ${(err as Error).message}`;
       latestActiveRun = null;
+      renderRunList(pendingList, [], "Settlement status unavailable");
+      renderRunList(settledList, [], "Settlement status unavailable");
     }
     refreshAffordability();
   };

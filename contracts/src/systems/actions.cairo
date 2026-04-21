@@ -25,6 +25,9 @@ trait IActions<T> {
     fn view_telegraph_count(
         self: @T, player: starknet::ContractAddress, game_id: u32,
     ) -> u8;
+    fn view_player_run_count(self: @T, player: starknet::ContractAddress) -> u32;
+    fn view_player_run_id(self: @T, player: starknet::ContractAddress, index: u32) -> u32;
+    fn view_run_owner(self: @T, game_id: u32) -> starknet::ContractAddress;
 }
 
 #[dojo::contract]
@@ -48,7 +51,10 @@ pub mod actions {
     use athanor::helpers::procedural;
     use athanor::helpers::random::{RandomTrait};
     use athanor::models::config::{Config, GameSettingsTrait};
-    use athanor::models::index::{RunState, RunOwner, RoomState, ActorState, AbilitySlotState, TelegraphState};
+    use athanor::models::index::{
+        RunState, RunOwner, PlayerRunIndex, RoomState, ActorState, AbilitySlotState,
+        TelegraphState,
+    };
     use athanor::models::actor_state::ActorStatePackingTrait;
     use athanor::models::ability_slot::AbilitySlotStatePackingTrait;
     use athanor::models::telegraph_state::TelegraphStatePackingTrait;
@@ -225,6 +231,9 @@ pub mod actions {
             let mut store = self.store();
             let player = get_caller_address();
 
+            let existing_owner = store.get_run_owner(game_id);
+            assert(existing_owner.player.into() == 0_felt252, 'actions: game_id already used');
+
             // TODO(ascend): once Denshokan is wired up in tests, assert token
             // ownership. For local dev this is skipped because no test
             // Denshokan mints `game_id` tokens.
@@ -267,6 +276,11 @@ pub mod actions {
             };
             store.set_run_state(@run);
             store.set_run_owner(@RunOwner { game_id, player });
+            let mut run_cursor = store.get_player_run_cursor(player);
+            let run_index = run_cursor.count;
+            store.set_player_run_index(@PlayerRunIndex { player, index: run_index, game_id });
+            run_cursor.count = run_index + 1;
+            store.set_player_run_cursor(@run_cursor);
 
             let actor = ActorState {
                 player,
@@ -533,6 +547,28 @@ pub mod actions {
             let mut store = self.store();
             let run = store.get_run_state(player, game_id);
             run.status_flags
+        }
+
+        fn view_player_run_count(self: @ContractState, player: ContractAddress) -> u32 {
+            let mut store = self.store();
+            let cursor = store.get_player_run_cursor(player);
+            cursor.count
+        }
+
+        fn view_player_run_id(self: @ContractState, player: ContractAddress, index: u32) -> u32 {
+            let mut store = self.store();
+            let cursor = store.get_player_run_cursor(player);
+            if index >= cursor.count {
+                return 0;
+            }
+            let row = store.get_player_run_index(player, index);
+            row.game_id
+        }
+
+        fn view_run_owner(self: @ContractState, game_id: u32) -> ContractAddress {
+            let mut store = self.store();
+            let owner = store.get_run_owner(game_id);
+            owner.player
         }
     }
 

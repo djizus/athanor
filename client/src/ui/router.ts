@@ -76,9 +76,9 @@ export function mountApp(root: HTMLElement): void {
       },
       onResumeRun: async (run) => {
         if (!dojo) throw new Error("Online not configured");
-        const liveState = await dojo.loadRun(run.gameId, TIER_STANDARD);
-        if (!liveState) throw new Error(`Run ${run.gameId} not found`);
-        online = { client: dojo, gameId: run.gameId, pendingActions: [], submitting: false };
+        const liveState = await dojo.loadRun(run.tokenId, TIER_STANDARD);
+        if (!liveState) throw new Error(`Run ${run.tokenId} not found`);
+        online = { client: dojo, gameId: run.tokenId, pendingActions: [], submitting: false };
         startGame(TIER_STANDARD, online, liveState);
       },
     });
@@ -107,6 +107,13 @@ export function mountApp(root: HTMLElement): void {
     let turnStartState = cloneCombatState(combat);
     let submittingText = "Submitting turn...";
 
+    const showGameOver = (): void => {
+      if (!state) return;
+      renderGameOver(root, state, toMenu, {
+        loadSettlement: async () => onlineRun.client.runRegistry.getRunSettlement(onlineRun.gameId),
+      });
+    };
+
     const syncFromChain = async (opts?: { minTurnIndex?: number; phase?: number; roomId?: number }): Promise<void> => {
       const minTurnIndex = opts?.minTurnIndex ?? 0;
       let latest: CombatState | null = null;
@@ -129,7 +136,7 @@ export function mountApp(root: HTMLElement): void {
         (opts?.phase !== undefined && latest.run.phase !== opts.phase) ||
         (opts?.roomId !== undefined && latest.run.roomId !== opts.roomId)
       ) {
-        throw new Error(`Run ${onlineRun.gameId} could not be refreshed from Torii`);
+        throw new Error(`Run ${onlineRun.gameId} could not be refreshed from RPC`);
       }
       state = latest;
       turnStartState = cloneCombatState(latest);
@@ -139,7 +146,7 @@ export function mountApp(root: HTMLElement): void {
       orbs.sync(state);
       refreshPresentation();
       if (state.run.gameOver) {
-        renderGameOver(root, state, toMenu);
+        showGameOver();
       }
     };
 
@@ -174,7 +181,7 @@ export function mountApp(root: HTMLElement): void {
           latest.run.turnIndex <= startTurnIndex &&
           !(latest.run.roomId === startRoomId && latest.run.phase === PHASE_EXPLORE))
       ) {
-        throw new Error(`Run ${onlineRun.gameId} could not be refreshed from Torii`);
+        throw new Error(`Run ${onlineRun.gameId} could not be refreshed from RPC`);
       }
 
       state = latest;
@@ -185,7 +192,7 @@ export function mountApp(root: HTMLElement): void {
       orbs.sync(state);
       refreshPresentation();
       if (state.run.gameOver) {
-        renderGameOver(root, state, toMenu);
+        showGameOver();
       }
     };
 
@@ -313,7 +320,7 @@ export function mountApp(root: HTMLElement): void {
           refreshPresentation();
           grid.flash(result.affectedTiles ?? [{ x, y }], TILE_FLASH_HIT_COLOR, 180);
           if (state.run.gameOver) {
-            renderGameOver(root, state, toMenu);
+            showGameOver();
           }
           if (state.run.pendingRoomClear) {
             void submitTurn("Room cleared. Finalizing turn...");
@@ -332,7 +339,7 @@ export function mountApp(root: HTMLElement): void {
         grid.flash([{ x: state.player.x, y: state.player.y }], TILE_FLASH_HIT_COLOR, 150);
         onlineRun.pendingActions.push(...packMove(x, y));
         if (state.run.gameOver) {
-          renderGameOver(root, state, toMenu);
+          showGameOver();
         }
       },
       () => {
